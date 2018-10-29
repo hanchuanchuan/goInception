@@ -19,16 +19,16 @@ import (
 	"sync/atomic"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/executor"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/table/tables"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/mock"
-	"github.com/pingcap/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/executor"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/table/tables"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/util/testkit"
 	"golang.org/x/net/context"
 )
 
@@ -1248,7 +1248,7 @@ func (s *testSuite) TestMultipleTableUpdate(c *C) {
 	r.Check(testkit.Rows("11 month_price_11", "12 items_price_12", "13 month_price_13"))
 	tk.MustExec("commit")
 
-	// fix https://github.com/pingcap/tidb/issues/369
+	// fix https://github.com/hanchuanchuan/tidb/issues/369
 	testSQL := `
 		DROP TABLE IF EXISTS t1, t2;
 		create table t1 (c int);
@@ -1258,7 +1258,7 @@ func (s *testSuite) TestMultipleTableUpdate(c *C) {
 		update t1, t2 set t1.c = 10, t2.c = "abc";`
 	tk.MustExec(testSQL)
 
-	// fix https://github.com/pingcap/tidb/issues/376
+	// fix https://github.com/hanchuanchuan/tidb/issues/376
 	testSQL = `DROP TABLE IF EXISTS t1, t2;
 		create table t1 (c1 int);
 		create table t2 (c2 int);
@@ -1270,7 +1270,7 @@ func (s *testSuite) TestMultipleTableUpdate(c *C) {
 	r = tk.MustQuery("select * from t1")
 	r.Check(testkit.Rows("10", "10"))
 
-	// test https://github.com/pingcap/tidb/issues/3604
+	// test https://github.com/hanchuanchuan/tidb/issues/3604
 	tk.MustExec("drop table if exists t, t")
 	tk.MustExec("create table t (a int, b int)")
 	tk.MustExec("insert into t values(1, 1), (2, 2), (3, 3)")
@@ -1837,7 +1837,7 @@ func (s *testBypassSuite) TestLatch(c *C) {
 	tk1.MustExec("commit")
 }
 
-// TestIssue4067 Test issue https://github.com/pingcap/tidb/issues/4067
+// TestIssue4067 Test issue https://github.com/hanchuanchuan/tidb/issues/4067
 func (s *testSuite) TestIssue4067(c *C) {
 	tk := testkit.NewTestKit(c, s.store)
 	tk.MustExec("use test")

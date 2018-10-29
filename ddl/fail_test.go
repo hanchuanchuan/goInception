@@ -16,9 +16,9 @@ package ddl
 import (
 	gofail "github.com/etcd-io/gofail/runtime"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/types"
 	"golang.org/x/net/context"
 )
 
@@ -49,10 +49,10 @@ func (s *testColumnChangeSuite) TestFailBeforeDecodeArgs(c *C) {
 			stateCnt++
 		} else if job.SchemaState == model.StateWriteReorganization {
 			if first {
-				gofail.Enable("github.com/pingcap/tidb/ddl/errorBeforeDecodeArgs", `return(true)`)
+				gofail.Enable("github.com/hanchuanchuan/tidb/ddl/errorBeforeDecodeArgs", `return(true)`)
 				first = false
 			} else {
-				gofail.Disable("github.com/pingcap/tidb/ddl/errorBeforeDecodeArgs")
+				gofail.Disable("github.com/hanchuanchuan/tidb/ddl/errorBeforeDecodeArgs")
 			}
 		}
 	}

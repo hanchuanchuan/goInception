@@ -17,11 +17,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/util/codec"
-	"github.com/pingcap/tidb/util/hack"
-	"github.com/pingcap/tidb/util/kvcache"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/util/hack"
+	"github.com/hanchuanchuan/tidb/util/kvcache"
 )
 
 var (

@@ -16,11 +16,11 @@ package executor
 import (
 	"time"
 
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/statistics"
-	"github.com/pingcap/tidb/store/tikv/oracle"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/statistics"
+	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
+	"github.com/hanchuanchuan/tidb/types"
 	"github.com/pkg/errors"
 )
 

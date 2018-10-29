@@ -15,11 +15,11 @@ package aggfuncs
 
 import (
 	"github.com/cznic/mathutil"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
-	"github.com/pingcap/tidb/util/set"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/util/set"
 	"github.com/pkg/errors"
 )
 

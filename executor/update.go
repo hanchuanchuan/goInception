@@ -14,12 +14,12 @@
 package executor
 
 import (
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -105,7 +105,7 @@ func (e *UpdateExec) exec(schema *expression.Schema) ([]types.Datum, error) {
 // outer join: the outer row can not match any inner rows, and in this scenario
 // the inner handle field is filled with a NULL value.
 //
-// This fixes: https://github.com/pingcap/tidb/issues/7176.
+// This fixes: https://github.com/hanchuanchuan/tidb/issues/7176.
 func (e *UpdateExec) canNotUpdate(handle types.Datum) bool {
 	return handle.IsNull()
 }

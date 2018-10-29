@@ -18,9 +18,9 @@ import (
 
 	"github.com/pingcap/kvproto/pkg/errorpb"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/metrics"
-	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"

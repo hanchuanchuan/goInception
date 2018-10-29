@@ -14,10 +14,10 @@
 package core
 
 import (
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/model"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/model"
 	log "github.com/sirupsen/logrus"
 )
 

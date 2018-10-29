@@ -18,7 +18,7 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/kv"
+	"github.com/hanchuanchuan/tidb/kv"
 	"golang.org/x/net/context"
 )
 

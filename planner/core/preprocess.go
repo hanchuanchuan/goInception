@@ -17,15 +17,15 @@ import (
 	"math"
 	"strings"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/ddl"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/parser"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/ddl"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/parser"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/pkg/errors"
 )
 
@@ -466,7 +466,7 @@ func checkColumn(colDef *ast.ColumnDef) error {
 		cs := tp.Charset
 		// TODO: TableDefaultCharset-->DatabaseDefaultCharset-->SystemDefaultCharset.
 		// TODO: Change TableOption parser to parse collate.
-		// Reference https://github.com/pingcap/tidb/blob/b091e828cfa1d506b014345fb8337e424a4ab905/ddl/ddl_api.go#L185-L204
+		// Reference https://github.com/hanchuanchuan/tidb/blob/b091e828cfa1d506b014345fb8337e424a4ab905/ddl/ddl_api.go#L185-L204
 		if len(tp.Charset) == 0 {
 			cs = mysql.DefaultCharset
 		}

@@ -14,12 +14,12 @@
 package perfschema
 
 import (
-	"github.com/pingcap/tidb/meta/autoid"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/meta/autoid"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/charset"
 )
 
 type columnInfo struct {

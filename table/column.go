@@ -21,16 +21,16 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/types/json"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/util/hack"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/types/json"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -112,7 +112,7 @@ func FindOnUpdateCols(cols []*Column) []*Column {
 }
 
 // truncateTrailingSpaces trancates trailing spaces for CHAR[(M)] column.
-// fix: https://github.com/pingcap/tidb/issues/3660
+// fix: https://github.com/hanchuanchuan/tidb/issues/3660
 func truncateTrailingSpaces(v *types.Datum) {
 	if v.Kind() == types.KindNull {
 		return

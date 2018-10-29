@@ -25,8 +25,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/hack"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/pkg/errors"
 )
 

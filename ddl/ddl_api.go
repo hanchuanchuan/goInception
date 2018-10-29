@@ -24,17 +24,17 @@ import (
 	"time"
 
 	"github.com/cznic/mathutil"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/meta/autoid"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/meta/autoid"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/pkg/errors"
 )
 
@@ -1613,7 +1613,7 @@ func (d *ddl) getModifiableColumnJob(ctx sessionctx.Context, ident ast.Ident, or
 
 	newCol := table.ToColumn(&model.ColumnInfo{
 		ID: col.ID,
-		// We use this PR(https://github.com/pingcap/tidb/pull/6274) as the dividing line to define whether it is a new version or an old version TiDB.
+		// We use this PR(https://github.com/hanchuanchuan/tidb/pull/6274) as the dividing line to define whether it is a new version or an old version TiDB.
 		// The old version TiDB initializes the column's offset and state here.
 		// The new version TiDB doesn't initialize the column's offset and state, and it will do the initialization in run DDL function.
 		// When we do the rolling upgrade the following may happen:

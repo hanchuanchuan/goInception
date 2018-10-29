@@ -23,9 +23,9 @@ import (
 	gotime "time"
 	"unicode"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/terror"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

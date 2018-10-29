@@ -21,12 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/types/json"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/types/json"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/pkg/errors"
 	"github.com/twinj/uuid"
 )

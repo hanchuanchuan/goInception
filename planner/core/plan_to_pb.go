@@ -14,13 +14,13 @@
 package core
 
 import (
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/expression/aggregation"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/tablecodec"
-	"github.com/pingcap/tidb/util/ranger"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/expression/aggregation"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/tablecodec"
+	"github.com/hanchuanchuan/tidb/util/ranger"
 	"github.com/pingcap/tipb/go-tipb"
 	"github.com/pkg/errors"
 )

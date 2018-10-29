@@ -15,7 +15,7 @@ package util
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/pkg/errors"
 )
 

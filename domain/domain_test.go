@@ -19,11 +19,11 @@ import (
 
 	"github.com/ngaut/pools"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/util/mock"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/pkg/errors"
 )
 

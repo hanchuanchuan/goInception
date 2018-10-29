@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/pingcap/tidb/expression"
+	"github.com/hanchuanchuan/tidb/expression"
 )
 
 // pushDownTopNOptimizer pushes down the topN or limit. In the future we will remove the limit from `requiredProperty` in CBO phase.

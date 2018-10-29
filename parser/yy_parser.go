@@ -19,11 +19,11 @@ import (
 	"strconv"
 	"unicode"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/hack"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/pkg/errors"
 )
 

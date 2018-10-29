@@ -14,10 +14,10 @@
 package aggregation
 
 import (
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/codec"
-	"github.com/pingcap/tidb/util/mvmap"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/util/mvmap"
 	"github.com/pkg/errors"
 )
 

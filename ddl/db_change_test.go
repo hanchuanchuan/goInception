@@ -21,21 +21,21 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/ddl"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/executor"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/parser"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/admin"
-	"github.com/pingcap/tidb/util/testkit"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/ddl"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/executor"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/parser"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/admin"
+	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -399,7 +399,7 @@ func (s *testStateChangeSuite) TestAppendEnum(c *C) {
 	checkResult(result, testkit.Rows(expected...))
 }
 
-// https://github.com/pingcap/tidb/pull/6249 fixes the following two test cases.
+// https://github.com/hanchuanchuan/tidb/pull/6249 fixes the following two test cases.
 func (s *testStateChangeSuite) TestWriteOnlyWriteNULL(c *C) {
 	sqls := make([]sqlWithErr, 1)
 	sqls[0] = sqlWithErr{"insert t set c1 = 'c1_new', c3 = '2019-02-12', c4 = 8 on duplicate key update c1 = values(c1)", nil}

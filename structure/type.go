@@ -16,8 +16,8 @@ package structure
 import (
 	"bytes"
 
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/pkg/errors"
 )
 

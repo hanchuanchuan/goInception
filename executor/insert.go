@@ -14,13 +14,13 @@
 package executor
 
 import (
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/table/tables"
-	"github.com/pingcap/tidb/tablecodec"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/table/tables"
+	"github.com/hanchuanchuan/tidb/tablecodec"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"

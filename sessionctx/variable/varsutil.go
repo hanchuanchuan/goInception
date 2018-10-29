@@ -22,10 +22,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/timeutil"
+	"github.com/hanchuanchuan/tidb/config"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/timeutil"
 	"github.com/pkg/errors"
 )
 

@@ -18,12 +18,12 @@ import (
 	"sync"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

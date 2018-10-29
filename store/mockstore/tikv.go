@@ -18,10 +18,10 @@ import (
 	"strings"
 
 	"github.com/pingcap/pd/client"
-	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/mockstore/mocktikv"
-	"github.com/pingcap/tidb/store/tikv"
+	"github.com/hanchuanchuan/tidb/config"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/tidb/store/tikv"
 	"github.com/pkg/errors"
 )
 

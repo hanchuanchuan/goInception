@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/util/auth"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/util/auth"
 )
 
 var (

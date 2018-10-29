@@ -17,17 +17,17 @@ import (
 	"math"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/parser"
-	plannercore "github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/util/printer"
-	"github.com/pingcap/tidb/util/testkit"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/parser"
+	plannercore "github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/util/printer"
+	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 )
 
 var _ = Suite(&testInferTypeSuite{})

@@ -15,8 +15,8 @@ package tikv
 
 import (
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pingcap/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

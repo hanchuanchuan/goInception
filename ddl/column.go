@@ -14,11 +14,11 @@
 package ddl
 
 import (
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/ddl/util"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/meta"
-	"github.com/pingcap/tidb/model"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/ddl/util"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/meta"
+	"github.com/hanchuanchuan/tidb/model"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

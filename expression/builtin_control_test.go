@@ -18,11 +18,11 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
-	"github.com/pingcap/tidb/util/testleak"
-	"github.com/pingcap/tidb/util/testutil"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/util/testutil"
 )
 
 func (s *testEvaluatorSuite) TestCaseWhen(c *C) {

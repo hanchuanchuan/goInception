@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/metrics"
-	"github.com/pingcap/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"

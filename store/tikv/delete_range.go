@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/pkg/errors"
 )
 

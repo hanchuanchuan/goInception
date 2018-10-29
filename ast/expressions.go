@@ -20,10 +20,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/parser/opcode"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/parser/opcode"
+	"github.com/hanchuanchuan/tidb/types"
 )
 
 var (

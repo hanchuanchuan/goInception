@@ -17,7 +17,7 @@ import (
 	"fmt"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/model"
+	"github.com/hanchuanchuan/tidb/model"
 )
 
 // generateKeys4Schema will generate keys for a given schema. Used only in this file.

@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/metrics"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/structure"
-	"github.com/pingcap/tidb/terror"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/structure"
+	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

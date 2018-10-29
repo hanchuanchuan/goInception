@@ -15,8 +15,8 @@ package types
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 )
 
 var _ = Suite(&testBinaryLiteralSuite{})

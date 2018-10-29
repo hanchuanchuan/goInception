@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/util"
-	"github.com/pingcap/tidb/util/auth"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/util"
+	"github.com/hanchuanchuan/tidb/util/auth"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"golang.org/x/net/context"
 )
 

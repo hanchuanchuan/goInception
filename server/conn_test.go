@@ -19,7 +19,7 @@ import (
 	"encoding/binary"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/mysql"
 )
 
 type ConnTestSuite struct{}

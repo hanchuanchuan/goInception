@@ -21,10 +21,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/parser/opcode"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/parser/opcode"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/pkg/errors"
 )
 

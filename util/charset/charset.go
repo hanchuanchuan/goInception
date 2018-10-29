@@ -16,7 +16,7 @@ package charset
 import (
 	"strings"
 
-	"github.com/pingcap/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/pkg/errors"
 )
 

@@ -15,9 +15,9 @@ package executor_test
 
 import (
 	. "github.com/pingcap/check"
-	plannercore "github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/testkit"
+	plannercore "github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/testkit"
 )
 
 func (s *testSuite) TestAggregation(c *C) {

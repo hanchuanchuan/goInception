@@ -30,24 +30,24 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/meta"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/sessionctx/binloginfo"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/store/tikv"
-	"github.com/pingcap/tidb/store/tikv/tikvrpc"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/tablecodec"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/config"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/meta"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/binloginfo"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/store/tikv"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/tablecodec"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -205,7 +205,7 @@ func (t *tikvHandlerTool) getMvccByStartTs(startTS uint64, startKey, endKey []by
 func (t *tikvHandlerTool) getMvccByIdxValue(idx table.Index, values url.Values, idxCols []*model.ColumnInfo, handleStr string) (*kvrpcpb.MvccGetByKeyResponse, error) {
 	sc := new(stmtctx.StatementContext)
 	// HTTP request is not a database session, set timezone to UTC directly here.
-	// See https://github.com/pingcap/tidb/blob/master/docs/tidb_http_api.md for more details.
+	// See https://github.com/hanchuanchuan/tidb/blob/master/docs/tidb_http_api.md for more details.
 	sc.TimeZone = time.UTC
 	idxRow, err := t.formValue2DatumRow(sc, values, idxCols)
 	if err != nil {

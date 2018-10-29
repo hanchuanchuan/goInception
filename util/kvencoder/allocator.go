@@ -16,7 +16,7 @@ package kvenc
 import (
 	"sync/atomic"
 
-	"github.com/pingcap/tidb/meta/autoid"
+	"github.com/hanchuanchuan/tidb/meta/autoid"
 )
 
 var _ autoid.Allocator = &Allocator{}

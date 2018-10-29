@@ -21,23 +21,23 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	plannercore "github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/auth"
-	"github.com/pingcap/tidb/util/mock"
-	"github.com/pingcap/tidb/util/testkit"
-	"github.com/pingcap/tidb/util/testleak"
-	"github.com/pingcap/tidb/util/testutil"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	plannercore "github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/auth"
+	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/util/testutil"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -2254,7 +2254,7 @@ func (s *testIntegrationSuite) TestBuiltin(c *C) {
 	result.Check(testkit.Rows("2442"))
 
 	// for regexp, rlike
-	// https://github.com/pingcap/tidb/issues/4080
+	// https://github.com/hanchuanchuan/tidb/issues/4080
 	tk.MustExec(`drop table if exists t;`)
 	tk.MustExec(`create table t (a char(10), b varchar(10), c binary(10), d varbinary(10));`)
 	tk.MustExec(`insert into t values ('text','text','text','text');`)

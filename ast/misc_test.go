@@ -15,9 +15,9 @@ package ast_test
 
 import (
 	. "github.com/pingcap/check"
-	. "github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/parser"
-	"github.com/pingcap/tidb/util/auth"
+	. "github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/parser"
+	"github.com/hanchuanchuan/tidb/util/auth"
 )
 
 var _ = Suite(&testMiscSuite{})

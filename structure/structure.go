@@ -14,8 +14,8 @@
 package structure
 
 import (
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/terror"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/terror"
 )
 
 // structure error codes.

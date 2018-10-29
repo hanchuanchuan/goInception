@@ -14,12 +14,12 @@
 package executor
 
 import (
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

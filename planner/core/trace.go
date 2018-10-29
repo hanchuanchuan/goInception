@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/pingcap/tidb/ast"
+	"github.com/hanchuanchuan/tidb/ast"
 )
 
 // Trace represents a trace plan.

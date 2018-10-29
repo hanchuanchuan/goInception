@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

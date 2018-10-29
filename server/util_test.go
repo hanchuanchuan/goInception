@@ -15,14 +15,14 @@ package server
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/pkg/errors"
 )
 

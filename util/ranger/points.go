@@ -18,13 +18,13 @@ import (
 	"math"
 	"sort"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/pkg/errors"
 )
 

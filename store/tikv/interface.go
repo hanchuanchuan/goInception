@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/pingcap/pd/client"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/tikv/oracle"
-	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 )
 
 // Storage represent the kv.Storage runs on TiKV.

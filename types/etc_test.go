@@ -18,9 +18,9 @@ import (
 	"testing"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 )
 
 func TestT(t *testing.T) {

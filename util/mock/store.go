@@ -14,8 +14,8 @@
 package mock
 
 import (
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/tikv/oracle"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
 )
 
 // Store implements kv.Storage interface.

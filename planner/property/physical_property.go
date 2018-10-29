@@ -16,8 +16,8 @@ package property
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/util/codec"
 )
 
 // PhysicalProperty stands for the required physical property by parents.

@@ -19,10 +19,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/types/json"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/util/format"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types/json"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/util/format"
 )
 
 // UnspecifiedLength is unspecified length.

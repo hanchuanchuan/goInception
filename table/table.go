@@ -18,13 +18,13 @@
 package table
 
 import (
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/meta/autoid"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/meta/autoid"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
 )
 
 // Type , the type of table, store data in different ways.

@@ -16,12 +16,12 @@ package privileges
 import (
 	"strings"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/privilege"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/auth"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/privilege"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/auth"
 	log "github.com/sirupsen/logrus"
 )
 

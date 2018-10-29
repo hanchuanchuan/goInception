@@ -17,9 +17,9 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
 )
 
 // calcFraction is used to calculate the fraction of the interval [lower, upper] that lies within the [lower, value]

@@ -16,9 +16,9 @@ package aggfuncs
 import (
 	"unsafe"
 
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 )
 
 // All the AggFunc implementations are listed here for navigation.

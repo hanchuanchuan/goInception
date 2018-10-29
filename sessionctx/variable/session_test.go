@@ -15,7 +15,7 @@ package variable_test
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/util/mock"
 )
 
 var _ = Suite(&testSessionSuite{})

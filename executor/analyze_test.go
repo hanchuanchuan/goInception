@@ -16,11 +16,11 @@ package executor_test
 import (
 	"fmt"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/executor"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/executor"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/util/testkit"
 )
 
 func (s *testSuite) TestAnalyzePartition(c *C) {

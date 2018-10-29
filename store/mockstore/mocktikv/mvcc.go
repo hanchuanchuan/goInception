@@ -22,7 +22,7 @@ import (
 
 	"github.com/google/btree"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/pkg/errors"
 )
 

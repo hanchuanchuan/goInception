@@ -16,9 +16,9 @@ package core
 import (
 	"sort"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/sessionctx"
 	log "github.com/sirupsen/logrus"
 )
 

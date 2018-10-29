@@ -15,12 +15,12 @@ package privileges_test
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/privilege/privileges"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/privilege/privileges"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
 )
 
 var _ = Suite(&testCacheSuite{})

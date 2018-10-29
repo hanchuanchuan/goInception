@@ -17,8 +17,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/expression/aggregation"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/expression/aggregation"
 )
 
 // ExplainInfo implements PhysicalPlan interface.

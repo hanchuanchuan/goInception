@@ -15,9 +15,9 @@ package types_test
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/mock"
 )
 
 func (s *testTimeSuite) TestTimeFormatMethod(c *C) {

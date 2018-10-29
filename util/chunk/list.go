@@ -14,8 +14,8 @@
 package chunk
 
 import (
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/memory"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/memory"
 	"github.com/pkg/errors"
 )
 

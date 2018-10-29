@@ -18,13 +18,13 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/mock"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 )
 
 func (s *testExpressionSuite) TestGetTimeValue(c *C) {

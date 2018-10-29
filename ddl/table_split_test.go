@@ -18,12 +18,12 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ddl"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/store/tikv"
-	"github.com/pingcap/tidb/tablecodec"
+	"github.com/hanchuanchuan/tidb/ddl"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/store/tikv"
+	"github.com/hanchuanchuan/tidb/tablecodec"
 	"golang.org/x/net/context"
 )
 

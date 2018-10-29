@@ -15,9 +15,9 @@ package ranger_test
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/ranger"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/ranger"
 )
 
 var _ = Suite(&testRangeSuite{})

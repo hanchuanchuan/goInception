@@ -17,7 +17,7 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 )
 
 func (s *testStatisticsSuite) TestSketch(c *C) {

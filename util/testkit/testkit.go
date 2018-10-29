@@ -20,10 +20,10 @@ import (
 	"sync/atomic"
 
 	"github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/util/testutil"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/util/testutil"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

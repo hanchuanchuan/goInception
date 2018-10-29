@@ -15,11 +15,11 @@ package expression
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 )
 
 func (s *testEvaluatorSuite) TestColumn(c *C) {

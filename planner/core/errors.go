@@ -14,8 +14,8 @@
 package core
 
 import (
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/terror"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/terror"
 )
 
 const (

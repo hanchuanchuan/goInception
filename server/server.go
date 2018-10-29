@@ -43,12 +43,12 @@ import (
 	"time"
 
 	"github.com/blacktear23/go-proxyprotocol"
-	"github.com/pingcap/tidb/config"
-	"github.com/pingcap/tidb/metrics"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util"
+	"github.com/hanchuanchuan/tidb/config"
+	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
