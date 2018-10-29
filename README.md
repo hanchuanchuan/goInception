@@ -4,6 +4,6 @@
 
 ## 引用
 
-- **inception**: [@PingCAP](https://github.com/hanchuanchuan/inception)
+- **inception**: https://github.com/hanchuanchuan/inception
 - **TiDB**: https://github.com/pingcap/tidb
 
