@@ -19,11 +19,11 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/pingcap/tidb/model"
-	stats "github.com/pingcap/tidb/statistics"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/model"
+	stats "github.com/hanchuanchuan/tidb/statistics"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

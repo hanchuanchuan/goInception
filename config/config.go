@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pingcap/tidb/util/logutil"
+	"github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/pkg/errors"
 	tracing "github.com/uber/jaeger-client-go/config"
 )

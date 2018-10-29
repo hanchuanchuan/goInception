@@ -19,7 +19,7 @@ import (
 
 	. "github.com/pingcap/check"
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/tidb/kv"
+	"github.com/hanchuanchuan/tidb/kv"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

@@ -18,9 +18,9 @@ import (
 	"unicode/utf8"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/testkit"
 )
 
 const (

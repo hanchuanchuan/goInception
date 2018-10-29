@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/util/execdetails"
-	"github.com/pingcap/tidb/util/memory"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/util/execdetails"
+	"github.com/hanchuanchuan/tidb/util/memory"
 )
 
 const (

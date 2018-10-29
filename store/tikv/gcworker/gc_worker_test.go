@@ -22,11 +22,11 @@ import (
 	gofail "github.com/etcd-io/gofail/runtime"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/kvproto/pkg/errorpb"
-	"github.com/pingcap/tidb/domain"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/store/mockoracle"
-	"github.com/pingcap/tidb/store/mockstore"
-	"github.com/pingcap/tidb/store/tikv"
+	"github.com/hanchuanchuan/tidb/domain"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/store/mockoracle"
+	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/tidb/store/tikv"
 	"golang.org/x/net/context"
 )
 
@@ -160,23 +160,23 @@ func (s *testGCWorkerSuite) TestDoGCForOneRegion(c *C) {
 	c.Assert(regionErr, IsNil)
 	c.Assert(err, IsNil)
 
-	gofail.Enable("github.com/pingcap/tidb/store/tikv/tikvStoreSendReqResult", `return("timeout")`)
+	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult", `return("timeout")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr, IsNil)
 	c.Assert(err, NotNil)
-	gofail.Disable("github.com/pingcap/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
 
-	gofail.Enable("github.com/pingcap/tidb/store/tikv/tikvStoreSendReqResult", `return("GCNotLeader")`)
+	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult", `return("GCNotLeader")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr.GetNotLeader(), NotNil)
 	c.Assert(err, IsNil)
-	gofail.Disable("github.com/pingcap/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
 
-	gofail.Enable("github.com/pingcap/tidb/store/tikv/tikvStoreSendReqResult", `return("GCServerIsBusy")`)
+	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult", `return("GCServerIsBusy")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr.GetServerIsBusy(), NotNil)
 	c.Assert(err, IsNil)
-	gofail.Disable("github.com/pingcap/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
 }
 
 func (s *testGCWorkerSuite) TestDoGC(c *C) {

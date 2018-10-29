@@ -22,12 +22,12 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types/json"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/util/hack"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types/json"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -1138,8 +1138,8 @@ func ProduceDecWithSpecifiedTp(dec *MyDecimal, tp *FieldType, sc *stmtctx.Statem
 			}
 			if !dec.IsZero() && frac > decimal && dec.Compare(&old) != 0 {
 				if sc.InInsertStmt || sc.InUpdateOrDeleteStmt {
-					// fix https://github.com/pingcap/tidb/issues/3895
-					// fix https://github.com/pingcap/tidb/issues/5532
+					// fix https://github.com/hanchuanchuan/tidb/issues/3895
+					// fix https://github.com/hanchuanchuan/tidb/issues/5532
 					sc.AppendWarning(ErrTruncated)
 					err = nil
 				} else {

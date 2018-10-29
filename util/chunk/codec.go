@@ -19,8 +19,8 @@ import (
 	"unsafe"
 
 	"github.com/cznic/mathutil"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types"
 )
 
 // Codec is used to:

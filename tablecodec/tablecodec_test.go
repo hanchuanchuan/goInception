@@ -21,12 +21,12 @@ import (
 
 	gofail "github.com/etcd-io/gofail/runtime"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/codec"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 )
 
 func TestT(t *testing.T) {
@@ -282,8 +282,8 @@ func (s *testTableCodecSuite) TestCutKey(c *C) {
 }
 
 func (s *testTableCodecSuite) TestDecodeBadDecical(c *C) {
-	gofail.Enable("github.com/pingcap/tidb/util/codec/errorInDecodeDecimal", `return(true)`)
-	defer gofail.Disable("github.com/pingcap/tidb/util/codec/errorInDecodeDecimal")
+	gofail.Enable("github.com/hanchuanchuan/tidb/util/codec/errorInDecodeDecimal", `return(true)`)
+	defer gofail.Disable("github.com/hanchuanchuan/tidb/util/codec/errorInDecodeDecimal")
 	dec := types.NewDecFromStringForTest("0.111")
 	b, err := codec.EncodeDecimal(nil, dec, 0, 0)
 	c.Assert(err, IsNil)

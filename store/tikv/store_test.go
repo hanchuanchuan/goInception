@@ -21,9 +21,9 @@ import (
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/pd/client"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/store/mockoracle"
-	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/mockoracle"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

@@ -18,10 +18,10 @@ import (
 	"strings"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/executor"
-	plannercore "github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/util/testkit"
+	"github.com/hanchuanchuan/tidb/executor"
+	plannercore "github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

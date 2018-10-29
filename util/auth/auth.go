@@ -19,7 +19,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/pingcap/tidb/terror"
+	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/pkg/errors"
 )
 

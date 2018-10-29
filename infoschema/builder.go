@@ -17,12 +17,12 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pingcap/tidb/meta"
-	"github.com/pingcap/tidb/meta/autoid"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/perfschema"
-	"github.com/pingcap/tidb/table"
-	"github.com/pingcap/tidb/table/tables"
+	"github.com/hanchuanchuan/tidb/meta"
+	"github.com/hanchuanchuan/tidb/meta/autoid"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/perfschema"
+	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/tidb/table/tables"
 	"github.com/pkg/errors"
 )
 

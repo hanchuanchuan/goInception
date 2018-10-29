@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/types"
 )
 
 var (

@@ -14,9 +14,9 @@
 package ddl
 
 import (
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/sessionctx"
 	"golang.org/x/net/context"
 )
 

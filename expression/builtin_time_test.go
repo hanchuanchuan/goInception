@@ -20,18 +20,18 @@ import (
 	"time"
 
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/sessionctx/variable"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/util/chunk"
-	"github.com/pingcap/tidb/util/mock"
-	"github.com/pingcap/tidb/util/testleak"
-	"github.com/pingcap/tidb/util/testutil"
-	"github.com/pingcap/tidb/util/timeutil"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/variable"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/util/testutil"
+	"github.com/hanchuanchuan/tidb/util/timeutil"
 	"github.com/pkg/errors"
 )
 
@@ -545,7 +545,7 @@ func (s *testEvaluatorSuite) TestDayOfYear(c *C) {
 func (s *testEvaluatorSuite) TestDateFormat(c *C) {
 	defer testleak.AfterTest(c)()
 
-	// Test case for https://github.com/pingcap/tidb/issues/2908
+	// Test case for https://github.com/hanchuanchuan/tidb/issues/2908
 	// SELECT DATE_FORMAT(null,'%Y-%M-%D')
 	args := []types.Datum{types.NewDatum(nil), types.NewStringDatum("%Y-%M-%D")}
 	fc := funcs[ast.DateFormat]
@@ -1534,7 +1534,7 @@ func (s *testEvaluatorSuite) TestUnixTimestamp(c *C) {
 	c.Assert(d.GetInt64()-time.Now().Unix(), GreaterEqual, int64(-1))
 	c.Assert(d.GetInt64()-time.Now().Unix(), LessEqual, int64(1))
 
-	// https://github.com/pingcap/tidb/issues/2496
+	// https://github.com/hanchuanchuan/tidb/issues/2496
 	// Test UNIX_TIMESTAMP(NOW()).
 	now, isNull, err := evalNowWithFsp(s.ctx, 0)
 	c.Assert(err, IsNil)
@@ -1550,7 +1550,7 @@ func (s *testEvaluatorSuite) TestUnixTimestamp(c *C) {
 	c.Assert(val-time.Now().Unix(), GreaterEqual, int64(-1))
 	c.Assert(val-time.Now().Unix(), LessEqual, int64(1))
 
-	// https://github.com/pingcap/tidb/issues/2852
+	// https://github.com/hanchuanchuan/tidb/issues/2852
 	// Test UNIX_TIMESTAMP(NULL).
 	args = []types.Datum{types.NewDatum(nil)}
 	f, err = fc.getFunction(s.ctx, s.datumsToConstants(args))

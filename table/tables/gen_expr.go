@@ -16,9 +16,9 @@ package tables
 import (
 	"fmt"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/parser"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/parser"
 	"github.com/pkg/errors"
 )
 

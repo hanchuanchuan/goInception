@@ -16,8 +16,8 @@ package memory
 import (
 	"sync"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/terror"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/terror"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -13,10 +13,10 @@
 package core
 
 import (
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/table/tables"
-	"github.com/pingcap/tidb/util/ranger"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/table/tables"
+	"github.com/hanchuanchuan/tidb/util/ranger"
 	"github.com/pkg/errors"
 )
 

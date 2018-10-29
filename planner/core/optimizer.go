@@ -16,12 +16,12 @@ package core
 import (
 	"math"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/planner/property"
-	"github.com/pingcap/tidb/privilege"
-	"github.com/pingcap/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/planner/property"
+	"github.com/hanchuanchuan/tidb/privilege"
+	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/pkg/errors"
 )
 

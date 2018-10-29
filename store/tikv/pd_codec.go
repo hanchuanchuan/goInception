@@ -16,7 +16,7 @@ package tikv
 import (
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/pd/client"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

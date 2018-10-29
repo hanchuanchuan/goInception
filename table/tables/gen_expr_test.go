@@ -15,7 +15,7 @@ package tables
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/ast"
+	"github.com/hanchuanchuan/tidb/ast"
 )
 
 var _ = Suite(&testGenExprSuite{})

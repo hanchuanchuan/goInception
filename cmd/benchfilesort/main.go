@@ -24,12 +24,12 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/terror"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/codec"
-	"github.com/pingcap/tidb/util/filesort"
-	"github.com/pingcap/tidb/util/logutil"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/tidb/util/filesort"
+	"github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

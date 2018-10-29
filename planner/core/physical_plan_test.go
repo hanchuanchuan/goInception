@@ -15,15 +15,15 @@ package core_test
 
 import (
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/infoschema"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/parser"
-	"github.com/pingcap/tidb/planner"
-	"github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/session"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/util/testleak"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/parser"
+	"github.com/hanchuanchuan/tidb/planner"
+	"github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/util/testleak"
 	"golang.org/x/net/context"
 )
 

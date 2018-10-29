@@ -15,8 +15,8 @@ package executor
 
 import (
 	"github.com/cznic/mathutil"
-	"github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"golang.org/x/net/context"
 )
 

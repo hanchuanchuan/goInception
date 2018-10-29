@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/pkg/errors"
 )
 

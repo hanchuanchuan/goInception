@@ -16,8 +16,8 @@ package mocktikv
 import (
 	"container/heap"
 
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
 	"github.com/pingcap/tipb/go-tipb"
 	"github.com/pkg/errors"
 )

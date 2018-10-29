@@ -18,9 +18,9 @@ package ast
 import (
 	"io"
 
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/chunk"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/chunk"
 	"golang.org/x/net/context"
 )
 

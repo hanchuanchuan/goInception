@@ -20,7 +20,7 @@ package util
 import (
 	"bytes"
 
-	"github.com/pingcap/tidb/kv"
+	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/pkg/errors"
 )
 

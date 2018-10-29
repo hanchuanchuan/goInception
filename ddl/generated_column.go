@@ -14,8 +14,8 @@
 package ddl
 
 import (
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/table"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/table"
 	"github.com/pkg/errors"
 )
 

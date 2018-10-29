@@ -41,9 +41,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/types"
-	"github.com/pingcap/tidb/util/hack"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

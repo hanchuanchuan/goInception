@@ -16,8 +16,8 @@ package core
 import (
 	"math"
 
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/planner/property"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/planner/property"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )

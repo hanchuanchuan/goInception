@@ -27,10 +27,10 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/tidb/kv"
-	tmysql "github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/util/logutil"
-	"github.com/pingcap/tidb/util/printer"
+	"github.com/hanchuanchuan/tidb/kv"
+	tmysql "github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/util/logutil"
+	"github.com/hanchuanchuan/tidb/util/printer"
 	log "github.com/sirupsen/logrus"
 )
 

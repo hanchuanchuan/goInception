@@ -18,8 +18,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/pingcap/tidb/sessionctx/stmtctx"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/tidb/types"
 	"github.com/pkg/errors"
 )
 

@@ -14,11 +14,11 @@
 package planner
 
 import (
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/infoschema"
-	plannercore "github.com/pingcap/tidb/planner/core"
-	"github.com/pingcap/tidb/privilege"
-	"github.com/pingcap/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/infoschema"
+	plannercore "github.com/hanchuanchuan/tidb/planner/core"
+	"github.com/hanchuanchuan/tidb/privilege"
+	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/pkg/errors"
 )
 

@@ -15,7 +15,7 @@ package ast_test
 
 import (
 	. "github.com/pingcap/check"
-	. "github.com/pingcap/tidb/ast"
+	. "github.com/hanchuanchuan/tidb/ast"
 )
 
 var _ = Suite(&testDDLSuite{})

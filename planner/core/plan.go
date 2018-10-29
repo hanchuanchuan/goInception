@@ -17,10 +17,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/expression"
-	"github.com/pingcap/tidb/planner/property"
-	"github.com/pingcap/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/planner/property"
+	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/pingcap/tipb/go-tipb"
 	"github.com/pkg/errors"
 )

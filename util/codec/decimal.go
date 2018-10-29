@@ -14,7 +14,7 @@
 package codec
 
 import (
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/types"
 	"github.com/pkg/errors"
 )
 

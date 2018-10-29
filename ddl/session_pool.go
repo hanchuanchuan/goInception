@@ -17,9 +17,9 @@ import (
 	"sync"
 
 	"github.com/ngaut/pools"
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/sessionctx"
-	"github.com/pingcap/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/tidb/util/mock"
 	"github.com/pkg/errors"
 )
 
