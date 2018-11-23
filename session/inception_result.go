@@ -232,9 +232,12 @@ func (s *MyRecordSets) Append(r *Record) {
 	row[1].SetString(stageList[r.Stage])
 	row[2].SetInt64(int64(r.Errlevel))
 	row[3].SetString(statusList[r.StageStatus])
-	// row[4].SetString(r.ErrorMessage)
 
-	row[4].SetString(strings.TrimRight(r.Buf.String(), "\n"))
+	if r.ErrorMessage != "" {
+		row[4].SetString(r.ErrorMessage)
+	} else {
+		row[4].SetString(strings.TrimRight(r.Buf.String(), "\n"))
+	}
 
 	row[5].SetString(r.Sql)
 	row[6].SetInt64(int64(r.AffectedRows))

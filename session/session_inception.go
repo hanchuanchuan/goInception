@@ -24,6 +24,7 @@ import (
 
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
 	// "github.com/hanchuanchuan/tidb/table"
 	"github.com/pkg/errors"
@@ -144,7 +145,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			// log.Info(len(stmtNodes))
 
 			if err != nil {
-
+				fmt.Println(err)
+				fmt.Println(fmt.Sprintf("解析失败! %s", err))
 				s.recordSets.Append(&Record{
 					Sql:          s1,
 					Errlevel:     2,
@@ -194,12 +196,23 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					s.checkInsert(node, currentSql)
 				case *ast.DeleteStmt:
 					s.checkDelete(node, currentSql)
+				case *ast.UpdateStmt:
+					s.checkUpdate(node, currentSql)
+
+				case *ast.CreateTableStmt:
+					s.checkCreateTable(node, currentSql)
+				case *ast.AlterTableStmt:
+					s.checkAlterTable(node, currentSql)
+
 					// default:
 					// s.recordSets.Append(&Record{
 					// 	Sql:          currentSql,
 					// 	Errlevel:     0,
 					// 	ErrorMessage: fmt.Sprintf("%T", node),
 					// })
+				default:
+					fmt.Println("无匹配类型...")
+					fmt.Printf("%T\n", stmtNode)
 				}
 
 				// fmt.Println(stmtNode.Text())
@@ -314,12 +327,269 @@ func (s *session) parseOptions(sql string) {
 
 }
 
-func (s *session) checkCommand() {
+func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
+
+	fmt.Println("checkCreateTable")
+
+	// Table       *TableName
+	// ReferTable  *TableName
+	// Cols        []*ColumnDef
+	// Constraints []*Constraint
+	// Options     []*TableOption
+	// Partition   *PartitionOptions
+	// OnDuplicate OnDuplicateCreateTableSelectType
+	// Select      ResultSetNode
+
+	s.checkDBExists(node.Table.Schema.O)
+
+	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, false)
+
+	if table != nil {
+		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
+	}
+
+}
+
+func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
+
+	fmt.Println("checkAlterTable")
+
+	// Table *TableName
+	// Specs []*AlterTableSpec
+
+	// Tp              AlterTableType
+	// Name            string
+	// Constraint      *Constraint
+	// Options         []*TableOption
+	// NewTable        *TableName
+	// NewColumns      []*ColumnDef
+	// OldColumnName   *ColumnName
+	// Position        *ColumnPosition
+	// LockType        LockType
+	// Comment         string
+	// FromKey         model.CIStr
+	// ToKey           model.CIStr
+	// PartDefinitions []*PartitionDefinition
+
+	// AlterTableOption = 1
+	// AlterTableAddColumns = 2
+	// AlterTableAddConstraint = 3
+	// AlterTableDropColumn = 4
+	// AlterTableDropPrimaryKey = 5
+	// AlterTableDropIndex = 6
+	// AlterTableDropForeignKey = 7
+	// AlterTableModifyColumn = 8
+	// AlterTableChangeColumn = 9
+	// AlterTableRenameTable = 10
+	// AlterTableAlterColumn = 11
+	// AlterTableLock = 12
+	// AlterTableAlgorithm = 13
+	// AlterTableRenameIndex = 14
+	// AlterTableForce = 15
+	// AlterTableAddPartitions = 16
+	// AlterTableDropPartition = 17
+
+	s.checkDBExists(node.Table.Schema.O)
+
+	// table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
+	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
+
+	// fmt.Printf("%s \n", table)
+	for _, alter := range node.Specs {
+		// fmt.Printf("%s \n", alter)
+		fmt.Println(alter.Tp)
+		switch alter.Tp {
+		case ast.AlterTableAddColumns:
+			s.checkAddColumn(table, alter)
+		case ast.AlterTableDropColumn:
+			s.checkDropColumn(table, alter)
+		case ast.AlterTableAddConstraint:
+			s.checkAddConstraint(table, alter)
+		case ast.AlterTableDropIndex:
+			s.checkDropIndex(table, alter)
+		}
+	}
+
+	// if table == nil {
+	// 	s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
+	// }
+
+}
+
+func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Printf("%s \n", c)
+	// fmt.Printf("%s \n", c.NewColumns)
+
+	for _, nc := range c.NewColumns {
+		fmt.Printf("%s \n", nc)
+		found := false
+		for _, field := range t.Fileds {
+			if strings.EqualFold(field.Field, nc.Name.Name.O) {
+				found = true
+				break
+			}
+		}
+		if found {
+			s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+		}
+	}
+
+	if c.Position.Tp != ast.ColumnPositionNone {
+		found := false
+		for _, field := range t.Fileds {
+			if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+				fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
+		}
+	}
+}
+
+func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Printf("%s \n", c)
+	// fmt.Printf("%s \n", c.NewColumns)
+
+	found := false
+	for _, field := range t.Fileds {
+		if strings.EqualFold(field.Field, c.OldColumnName.Name.O) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+			fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
+	}
+}
+
+func (s *session) checkCreateIndex(t *TableInfo, ct *ast.Constraint) {
+	fmt.Println("checkCreateIndex")
+
+	for _, col := range ct.Keys {
+		found := false
+		for _, field := range t.Fileds {
+			if strings.EqualFold(field.Field, col.Column.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
+		}
+	}
+
+}
+
+func (s *session) checkDropIndex(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Println("checkDropIndex")
+
+}
+
+func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Printf("%s \n", c.Constraint)
+	fmt.Printf("%s \n", c.Constraint.Keys)
+
+	switch c.Constraint.Tp {
+	case ast.ConstraintIndex:
+		s.checkCreateIndex(t, c.Constraint)
+		// case ast.ConstraintForeignKey:
+		// 	s.checkDropColumn(table, alter)
+		// case ast.AlterTableAddConstraint:
+		// 	s.checkAddConstraint(table, alter)
+	}
+
+	// ConstraintNoConstraint ConstraintType = iota
+	// ConstraintPrimaryKey
+	// ConstraintKey
+	// ConstraintIndex
+	// ConstraintUniq
+	// ConstraintUniqKey
+	// ConstraintUniqIndex
+	// ConstraintForeignKey
+	// ConstraintFulltext
+
+	// Tp   ConstraintType
+	// Name string
+
+	// Keys []*IndexColName // Used for PRIMARY KEY, UNIQUE, ......
+
+	// Refer *ReferenceDef // Used for foreign key.
+
+	// Option *IndexOption // Index Options
+
+	// for _, nc := range c.NewColumns {
+	// 	fmt.Printf("%s \n", nc)
+	// 	found := false
+	// 	for _, field := range t.Fileds {
+	// 		if strings.EqualFold(field.Field, nc.Name.Name.O) {
+	// 			found = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if found {
+	// 		s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+	// 	}
+	// }
+
+	// if c.Position.Tp != ast.ColumnPositionNone {
+	// 	found := false
+	// 	for _, field := range t.Fileds {
+	// 		if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
+	// 			found = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !found {
+	// 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+	// 			fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
+	// 	}
+	// }
+}
+
+func (s *session) checkDBExists(db string) {
+
+	if db == "" {
+		db = s.DBName
+	}
+
+	if _, ok := s.dbCacheList[db]; ok {
+		return
+	}
+
+	sql := "show databases like '%s';"
+
+	// count:= s.db.Exec(fmt.Sprintf(sql,db)).AffectedRows
+
+	rows, err := s.db.Raw(fmt.Sprintf(sql, db)).Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+
+	var name string
+	for rows.Next() {
+		rows.Scan(&name)
+	}
+
+	if name == "" {
+		s.AppendErrorNo(ER_DB_NOT_EXISTED_ERROR, db)
+	} else {
+		s.dbCacheList[db] = true
+	}
 
 }
 
 func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
+	fmt.Println("checkInsert")
 	// IsReplace   bool
 	// IgnoreErr   bool
 	// Table       *TableRefsClause
@@ -337,6 +607,19 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		s.AppendErrorNo(ER_WITH_INSERT_FIELD)
 		return
 	}
+
+	t := getSingleTableName(x.Table)
+
+	for _, c := range x.Columns {
+		if c.Schema.O == "" {
+			c.Schema = model.NewCIStr(s.DBName)
+		}
+		if c.Table.O == "" {
+			c.Table = model.NewCIStr(t.Name.O)
+		}
+	}
+
+	s.checkFieldsValid(x.Columns, s.getTableFromCache(t.Schema.O, t.Name.O, true))
 
 	if len(x.Lists) > 0 {
 		if fieldCount == 0 {
@@ -453,63 +736,162 @@ func getSingleTableName(tableRefs *ast.TableRefsClause) *ast.TableName {
 
 func (s *session) getExplainInfo(sql string) []ExplainInfo {
 	var rows []ExplainInfo
-	s.db.Raw(sql).Scan(&rows)
-
-	fmt.Println(rows)
+	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
 
 	return rows
 }
 
-func (s *session) checkDelete(node *ast.DeleteStmt, sql string) *Record {
+func (s *session) explainOrAnalyzeSql(sql string) {
 
-	result := &Record{
-		Errlevel: 0,
-	}
-	// // TableRefs is used in both single table and multiple table delete statement.
-	// TableRefs *TableRefsClause
-	// // Tables is only used in multiple table delete statement.
-	// Tables       *DeleteTableList
-	// Where        ExprNode
-	// Order        *OrderByClause
-	// Limit        *Limit
-	// Priority     mysql.PriorityEnum
-	// IgnoreErr    bool
-	// Quick        bool
-	// IsMultiTable bool
-	// BeforeFrom   bool
-	// // TableHints represents the table level Optimizer Hint for join type.
-	// TableHints []*TableOptimizerHint
+	var explain []string
 
-	fmt.Println("checkDelete")
-	fmt.Println(node.Tables, node.TableRefs)
-	if node.TableRefs != nil {
-		a := node.TableRefs.TableRefs
-		fmt.Println(a)
-		if a.Left != nil {
-			if tblSrc, ok := a.Left.(*ast.TableSource); ok {
-				fmt.Println("----------------------------------")
-				// fmt.Println(tblSrc)
-				// fmt.Println(tblSrc.AsName)
-				// fmt.Println(tblSrc.Source)
-				// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+	explain = append(explain, "EXPLAIN ")
+	explain = append(explain, sql)
 
-				if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-					fmt.Println(tblName.Schema)
-					fmt.Println(tblName.Name)
+	fmt.Println(explain)
 
-					s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
-				}
-			}
+	rows := s.getExplainInfo(strings.Join(explain, ""))
 
-		}
-		// fmt.Println(a.Left, a.Left.Text())
-		// fmt.Println(fmt.Sprintf("%T", a.Left))
-		// fmt.Println(a.Right)
-	}
-	return result
+	s.myRecord.AnlyzeExplain(rows)
+
 }
 
-func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists bool) {
+func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
+
+	fmt.Println("checkUpdate")
+
+	// fmt.Printf("%s \n", node.TableRefs)
+	// fmt.Printf("%s \n", node.List)
+	// TableRefs     *TableRefsClause
+	// List          []*Assignment
+	// Where         ExprNode
+	// Order         *OrderByClause
+	// Limit         *Limit
+	// Priority      mysql.PriorityEnum
+	// IgnoreErr     bool
+	// MultipleTable bool
+	// TableHints    []*TableOptimizerHint
+
+	var tableList []*ast.TableName
+	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+	for _, tblName := range tableList {
+		fmt.Println(tblName.Schema)
+		fmt.Println(tblName.Name)
+
+		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+	}
+
+	s.explainOrAnalyzeSql(sql)
+}
+
+func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
+
+	fmt.Println("checkDelete")
+
+	if node.Tables != nil {
+		t := node.Tables.Tables
+		for _, a := range t {
+			s.getTableFromCache(a.Schema.O, a.Name.O, true)
+		}
+	}
+
+	var tableList []*ast.TableName
+	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+	for _, tblName := range tableList {
+		fmt.Println(tblName.Schema)
+		fmt.Println(tblName.Name)
+
+		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+	}
+
+	s.explainOrAnalyzeSql(sql)
+
+	// if node.TableRefs != nil {
+	// 	a := node.TableRefs.TableRefs
+	// 	// fmt.Println(a)
+	// 	fmt.Printf("%T,%s  \n", a, a)
+	// 	fmt.Println("===================")
+	// 	fmt.Printf("%T , %s  \n", a.Left, a.Left)
+	// 	fmt.Printf("%T , %s  \n", a.Right, a.Right)
+	// 	if a.Left != nil {
+	// 		if tblSrc, ok := a.Left.(*ast.Join); ok {
+	// 			fmt.Println("---left")
+	// 			// fmt.Println(tblSrc)
+	// 			// fmt.Println(tblSrc.AsName)
+	// 			// fmt.Println(tblSrc.Source)
+	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+
+	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
+	// 				fmt.Println(tblName.Schema)
+	// 				fmt.Println(tblName.Name)
+
+	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
+	// 			}
+	// 		}
+
+	// 		if tblSrc, ok := a.Left.(*ast.TableSource); ok {
+	// 			fmt.Println("---left")
+	// 			// fmt.Println(tblSrc)
+	// 			// fmt.Println(tblSrc.AsName)
+	// 			// fmt.Println(tblSrc.Source)
+	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+
+	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
+	// 				fmt.Println(tblName.Schema)
+	// 				fmt.Println(tblName.Name)
+
+	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
+	// 			}
+	// 		}
+	// 	}
+	// 	if a.Right != nil {
+	// 		if tblSrc, ok := a.Right.(*ast.TableSource); ok {
+	// 			fmt.Println("+++right")
+	// 			// fmt.Println(tblSrc)
+	// 			// fmt.Println(tblSrc.AsName)
+	// 			// fmt.Println(tblSrc.Source)
+	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+
+	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
+	// 				fmt.Println(tblName.Schema)
+	// 				fmt.Println(tblName.Name)
+
+	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
+	// 			}
+	// 		}
+	// 	}
+	// 	// fmt.Println(a.Left, a.Left.Text())
+	// 	// fmt.Println(fmt.Sprintf("%T", a.Left))
+	// 	// fmt.Println(a.Right)
+	// }
+}
+
+func (s *session) checkFieldsValid(columns []*ast.ColumnName, table *TableInfo) {
+
+	for _, c := range columns {
+		found := false
+		for _, field := range table.Fileds {
+			if strings.EqualFold(field.Field, c.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
+		}
+	}
+
+}
+
+func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists bool) []FieldInfo {
 	if db == "" {
 		db = s.DBName
 	}
@@ -520,17 +902,17 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 || reportNotExists {
-				fmt.Println(myErr.Number)
-				fmt.Println(myErr.Message)
 				s.AppendErrorMessage(myErr.Message)
 			}
 		} else {
-			fmt.Println(fmt.Sprintf("%T", err))
+			s.AppendErrorMessage(err.Error())
 		}
+
+		return nil
 	}
 	// errs := a.GetErrors()
 
-	fmt.Println(rows)
+	return rows
 }
 
 func (r *Record) AppendErrorMessage(msg string) {
@@ -555,5 +937,56 @@ func (s *session) AppendErrorMessage(msg string) {
 }
 
 func (s *session) AppendErrorNo(number int, values ...interface{}) {
-	s.myRecord.AppendErrorNo(number)
+	s.myRecord.AppendErrorNo(number, values...)
+}
+
+func extractTableList(node ast.ResultSetNode, input []*ast.TableName) []*ast.TableName {
+	switch x := node.(type) {
+	case *ast.Join:
+		input = extractTableList(x.Left, input)
+		input = extractTableList(x.Right, input)
+	case *ast.TableSource:
+		if s, ok := x.Source.(*ast.TableName); ok {
+			if x.AsName.L != "" {
+				newTableName := *s
+				newTableName.Name = x.AsName
+				s.Name = x.AsName
+				input = append(input, &newTableName)
+			} else {
+				input = append(input, s)
+			}
+		}
+	}
+	return input
+}
+
+func (s *session) getTableFromCache(db string, tableName string, reportNotExists bool) *TableInfo {
+	if db == "" {
+		db = s.DBName
+	}
+	key := fmt.Sprintf("%s.%s", db, tableName)
+
+	if t, ok := s.tableCacheList[key]; ok {
+		return t
+	} else {
+		rows := s.QueryTableFromDB(db, tableName, reportNotExists)
+
+		if rows != nil {
+			newT := &TableInfo{
+				Schema: db,
+				Name:   tableName,
+				Fileds: rows,
+			}
+
+			s.tableCacheList[key] = newT
+
+			return newT
+		}
+	}
+
+	return nil
+}
+
+func (s *session) CacheNewTable(dbname string, tablename string) {
+
 }
