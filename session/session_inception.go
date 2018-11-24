@@ -414,16 +414,15 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			s.checkDropColumn(table, alter)
 		case ast.AlterTableAddConstraint:
 			s.checkAddConstraint(table, alter)
+
 		case ast.AlterTableDropPrimaryKey:
 			s.checkDropPrimaryKey(table, alter)
-
 		case ast.AlterTableDropIndex:
 			s.AlterTableDropIndex(table, alter)
 
 		default:
 			fmt.Println("未定义的解析: ", alter.Tp)
 		}
-
 	}
 
 	// if table == nil {
@@ -494,18 +493,43 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	}
 }
 
+func (s *session) checkCreateIndex(t *TableInfo, ct *ast.Constraint) {
+	fmt.Println("checkCreateIndex")
+
+	for _, col := range ct.Keys {
+		found := false
+		for _, field := range t.Fileds {
+			if strings.EqualFold(field.Field, col.Column.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
+		}
+	}
+
+}
+
+func (s *session) checkDropIndex(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Println("checkDropIndex")
+
+}
+
+
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	fmt.Printf("%s \n", c.Constraint)
 	fmt.Printf("%s \n", c.Constraint.Keys)
 
-	// switch c.Tp {
-	// case ast.ConstraintIndex:
-	// 	s.checkAddColumn(table, alter)
-	// case ast.AlterTableDropColumn:
-	// 	s.checkDropColumn(table, alter)
-	// case ast.AlterTableAddConstraint:
-	// 	s.checkAddConstraint(table, alter)
-	// }
+	switch c.Constraint.Tp {
+	case ast.ConstraintIndex:
+		s.checkCreateIndex(t, c.Constraint)
+		// case ast.ConstraintForeignKey:
+		// 	s.checkDropColumn(table, alter)
+		// case ast.AlterTableAddConstraint:
+		// 	s.checkAddConstraint(table, alter)
+	}
+
 	// ConstraintNoConstraint ConstraintType = iota
 	// ConstraintPrimaryKey
 	// ConstraintKey
@@ -789,6 +813,33 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		fmt.Println(tblName.Schema)
 		fmt.Println(tblName.Name)
 
+	s.myRecord.AnlyzeExplain(rows)
+
+}
+
+func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
+
+	fmt.Println("checkUpdate")
+
+	// fmt.Printf("%s \n", node.TableRefs)
+	// fmt.Printf("%s \n", node.List)
+	// TableRefs     *TableRefsClause
+	// List          []*Assignment
+	// Where         ExprNode
+	// Order         *OrderByClause
+	// Limit         *Limit
+	// Priority      mysql.PriorityEnum
+	// IgnoreErr     bool
+	// MultipleTable bool
+	// TableHints    []*TableOptimizerHint
+
+	var tableList []*ast.TableName
+	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+	for _, tblName := range tableList {
+		fmt.Println(tblName.Schema)
+		fmt.Println(tblName.Name)
+
 		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 	}
 
@@ -803,6 +854,93 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 		t := node.Tables.Tables
 		for _, a := range t {
 			s.getTableFromCache(a.Schema.O, a.Name.O, true)
+		}
+	}
+
+	var tableList []*ast.TableName
+	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+	for _, tblName := range tableList {
+		fmt.Println(tblName.Schema)
+		fmt.Println(tblName.Name)
+
+		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+	}
+
+	s.explainOrAnalyzeSql(sql)
+
+	// if node.TableRefs != nil {
+	// 	a := node.TableRefs.TableRefs
+	// 	// fmt.Println(a)
+	// 	fmt.Printf("%T,%s  \n", a, a)
+	// 	fmt.Println("===================")
+	// 	fmt.Printf("%T , %s  \n", a.Left, a.Left)
+	// 	fmt.Printf("%T , %s  \n", a.Right, a.Right)
+	// 	if a.Left != nil {
+	// 		if tblSrc, ok := a.Left.(*ast.Join); ok {
+	// 			fmt.Println("---left")
+	// 			// fmt.Println(tblSrc)
+	// 			// fmt.Println(tblSrc.AsName)
+	// 			// fmt.Println(tblSrc.Source)
+	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+
+	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
+	// 				fmt.Println(tblName.Schema)
+	// 				fmt.Println(tblName.Name)
+
+	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
+	// 			}
+	// 		}
+
+	// 		if tblSrc, ok := a.Left.(*ast.TableSource); ok {
+	// 			fmt.Println("---left")
+	// 			// fmt.Println(tblSrc)
+	// 			// fmt.Println(tblSrc.AsName)
+	// 			// fmt.Println(tblSrc.Source)
+	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+
+	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
+	// 				fmt.Println(tblName.Schema)
+	// 				fmt.Println(tblName.Name)
+
+	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
+	// 			}
+	// 		}
+	// 	}
+	// 	if a.Right != nil {
+	// 		if tblSrc, ok := a.Right.(*ast.TableSource); ok {
+	// 			fmt.Println("+++right")
+	// 			// fmt.Println(tblSrc)
+	// 			// fmt.Println(tblSrc.AsName)
+	// 			// fmt.Println(tblSrc.Source)
+	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+
+	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
+	// 				fmt.Println(tblName.Schema)
+	// 				fmt.Println(tblName.Name)
+
+	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
+	// 			}
+	// 		}
+	// 	}
+	// 	// fmt.Println(a.Left, a.Left.Text())
+	// 	// fmt.Println(fmt.Sprintf("%T", a.Left))
+	// 	// fmt.Println(a.Right)
+	// }
+}
+
+func (s *session) checkFieldsValid(columns []*ast.ColumnName, table *TableInfo) {
+
+	for _, c := range columns {
+		found := false
+		for _, field := range table.Fileds {
+			if strings.EqualFold(field.Field, c.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
 		}
 	}
 
