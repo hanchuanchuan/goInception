@@ -27,7 +27,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ngaut/pools"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/executor"
@@ -54,6 +53,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/kvcache"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
+	"github.com/ngaut/pools"
 	"github.com/pingcap/tipb/go-binlog"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -165,6 +165,9 @@ type session struct {
 	DBName string
 
 	myRecord *Record
+
+	tableCacheList map[string]*TableInfo
+	dbCacheList    map[string]bool
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
@@ -1213,6 +1216,9 @@ func createSession(store kv.Storage) (*session, error) {
 
 		haveBegin:  false,
 		haveCommit: false,
+
+		tableCacheList: make(map[string]*TableInfo),
+		dbCacheList:    make(map[string]bool),
 	}
 
 	s.recordSets = NewRecordSets()
