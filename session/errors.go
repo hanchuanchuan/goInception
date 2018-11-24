@@ -162,23 +162,23 @@ var (
 		"sql没有源信息.",
 		"sql没有操作类型设置.",
 		"无效的sql操作类型.",
-		"%s near '%-80s' at line %d",
+		"%s near '%s' at line %d",
 		"You have an error in your SQL syntax, ",
 		"Execute in source server failed.",
 		"Shutdown complete.",
 		"insert语句需要指定字段列表.",
 		"insert语句需要指定值列表.",
 		"Column count doesn't match value count at row %d.",
-		"Unknown column '%-192s' in '%-192s'.",
-		"Column '%-192s' specified twice in table '%-192s'.",
-		"Column '%-192s' cannot be null in %d row.",
+		"Unknown column '%s' in '%s'.",
+		"Column '%s' specified twice in table '%s'.",
+		"Column '%s' cannot be null in %d row.",
 		"selete语句请指定where条件.",
 		"%s: Normal shutdown\n",
-		"%s: Forcing close of thread %ld  user: '%-48s'\n",
+		"%s: Forcing close of thread %ld  user: '%s'\n",
 		"Too many connections",
 		"Invalid command.",
 		"Invalid source infomation.",
-		"Incorrect database name '%-100s'.",
+		"Incorrect database name '%s'.",
 		"Exist incorrect variable.",
 		"Exist incorrect option.",
 		"No database selected.",
@@ -187,54 +187,54 @@ var (
 		"Select only star is not allowed.",
 		"Order by rand is not allowed in select statement.",
 		"Identifier is not allowed to been upper-case.",
-		"Unknown collation: '%-64s'.",
-		"Not supported data type on field: '%-64s'.",
-		"Column '%-64s' in table '%-64s' is not allowed to been nullable.",
-		"Duplicate column name '%-192s'.",
-		"Incorrect column name '%-100s'.",
+		"Unknown collation: '%s'.",
+		"Not supported data type on field: '%s'.",
+		"Column '%s' in table '%s' is not allowed to been nullable.",
+		"Duplicate column name '%s'.",
+		"Incorrect column name '%s'.",
 		"Incorrect table definition; there can be only one auto column and it must be defined as a key.",
 		"The used table type doesn't support AUTO_INCREMENT columns.",
-		"Foreign key is not allowed in table '%-64s'.",
-		"Too many key parts in Key '%-64s' in table '%-64s' specified, max %d parts allowed.",
-		"Identifier name '%-100s' is too long.",
+		"Foreign key is not allowed in table '%s'.",
+		"Too many key parts in Key '%s' in table '%s' specified, max %d parts allowed.",
+		"Identifier name '%s' is too long.",
 		"Update rows more then %d.",
-		"Incorrect index name '%-100s' in table '%-64s'.",
-		"Too many keys specified in table '%-64s', max %d keys allowed.",
-		"Not supported key type: '%-64s'.",
+		"Incorrect index name '%s' in table '%s'.",
+		"Too many keys specified in table '%s', max %d keys allowed.",
+		"Not supported key type: '%s'.",
 		"Incorrect prefix key; the used key part isn't a string, the used length is longer than the key part, or the storagengine doesn't support unique prefix keys",
-		"The used storage engine can't index column '%-192s'.",
-		"Specified key '%-64s' was too long; max key length is %d bytes.",
+		"The used storage engine can't index column '%s'.",
+		"Specified key '%s' was too long; max key length is %d bytes.",
 		"Multiple primary key defined.",
-		"Duplicate key name '%-192s'.",
-		"Comment for index '%-64s' is too long (max = %lu).",
-		"Duplicate index '%-64s' defined on the table '%-64s.%-64s'.",
+		"Duplicate key name '%s'.",
+		"Comment for index '%s' is too long (max = %lu).",
+		"Duplicate index '%s' defined on the table '%s.%s'.",
 		"Set 'tmp' prefix for temporary table.",
-		"Set engine to innodb for table '%-64s'.",
-		"Set charset to one of '%-192s' for table '%-64s'.",
-		"表 '%-64s' 禁止设置字符集!",
-		"Set charset to one of '%-192s'.",
-		"Set comments for table '%-192s'.",
-		"Column '%-64s' in table '%-64s' have no comments.",
-		"Set a primary key for table '%-64s'.",
+		"Set engine to innodb for table '%s'.",
+		"Set charset to one of '%s' for table '%s'.",
+		"表 '%s' 禁止设置字符集!",
+		"Set charset to one of '%s'.",
+		"Set comments for table '%s'.",
+		"Column '%s' in table '%s' have no comments.",
+		"Set a primary key for table '%s'.",
 		"Partition is not allowed in table.",
 		"Type enum is used in column.",
-		"Type blob/text is used in column '%-192s'.",
-		"Column '%-64s' have existed.",
-		"Column '%-64s' not existed.",
-		"Can't DROP '%-192s'; check that column/key exists.",
-		"Invalid default value for column '%-192s'.",
+		"Type blob/text is used in column '%s'.",
+		"Column '%s' have existed.",
+		"Column '%s' not existed.",
+		"Can't DROP '%s'; check that column/key exists.",
+		"Invalid default value for column '%s'.",
 		"user name",
 		"host name",
 		"Your password does not satisfy the current policy requirements.",
-		"String '%-70s' is too long for %s (should be no longer than %d).",
-		"BLOB column '%-192s' can't be used in key specification with the used table type.",
+		"String '%s' is too long for %s (should be no longer than %d).",
+		"BLOB column '%s' can't be used in key specification with the used table type.",
 		"The backup dbname '%-s-%d-%s' is too long.",
 		"Invalid remote backup information.",
 		"Binlog is corrupted.",
 		"Got an error reading communication packets.",
 		"Replication event checksum verification failed while reading from network.",
 		"Relay log write failure: %s.",
-		"Variable '%-192s' is a %s variable.",
+		"Variable '%s' is a %s variable.",
 		"Must start as begin statement.",
 		"Out of memory; restart server and try again (needed %d bytes).",
 		"Have you begin twice? Or you didn't commit last time, if so, you can execute commit explicitly.",
@@ -244,38 +244,38 @@ var (
 		"Require argument.",
 		"Ambiguous argument.",
 		"Exist error at before statement.",
-		"Unknown system variable '%-64s'.",
-		"Unknown character set: '%-64s'.",
+		"Unknown system variable '%s'.",
+		"Unknown character set: '%s'.",
 		"Must end with commit.",
-		"Selected Database '%-64s' not existed.",
-		"Table '%-192s' already exists.",
-		"Index '%-192s' in table '%-64s' need 'idx_' prefix.",
-		"Index '%-192s' in table '%-64s' need 'uniq_' prefix.",
-		"Set unsigned attribute on auto increment column in table '%-64s'.",
-		"Set column '%-192s' to TEXT type.",
-		"Set column '%-192s' to VARCHAR type.",
-		"Key column '%-192s' doesn't exist in table.",
+		"Selected Database '%s' not existed.",
+		"Table '%s' already exists.",
+		"Index '%s' in table '%s' need 'idx_' prefix.",
+		"Index '%s' in table '%s' need 'uniq_' prefix.",
+		"Set unsigned attribute on auto increment column in table '%s'.",
+		"Set column '%s' to TEXT type.",
+		"Set column '%s' to VARCHAR type.",
+		"Key column '%s' doesn't exist in table.",
 		"Set auto-increment initialize value to 1.",
 		"Incorrect arguments to %s.",
 		"Set auto-increment data type to int or bigint.",
-		"Set default value for timestamp column '%-64s'.",
-		"表 '%-64s' 列 '%-64s' 禁止设置字符集!",
-		"Auto increment column '%-64s' is meaningful? it's dangerous!",
-		"表 '%-64s' 的多个alter操作请合并成一个.",
-		"BLOB/TEXT column '%-192s' can't have a default value.",
+		"Set default value for timestamp column '%s'.",
+		"表 '%s' 列 '%s' 禁止设置字符集!",
+		"Auto increment column '%s' is meaningful? it's dangerous!",
+		"表 '%s' 的多个alter操作请合并成一个.",
+		"BLOB/TEXT column '%s' can't have a default value.",
 		"Add ';' after the last sql statement.",
-		"Column '%-192s' in %-192s is ambiguous.",
-		"Table '%-192s' doesn't exist.",
-		"Unknown table '%-192s' in %-32s.",
+		"Column '%s' in %s is ambiguous.",
+		"Table '%s' doesn't exist.",
+		"Unknown table '%s' in %s.",
 		"Invalid use of group function.",
 		"暂不支持create/drop index和rename语法,请使用alter语句替换.",
-		"Set Default value for column '%-192s' in table '%-192s'",
-		"Truncated incorrect %-32s value: '%-128s'",
-		"TEXT/BLOB Column '%-64s' in table '%-64s' can't  been not null.",
-		"Variable '%-64s' can't be set to the value of '%-200s'",
+		"Set Default value for column '%s' in table '%s'",
+		"Truncated incorrect %s value: '%s'",
+		"TEXT/BLOB Column '%s' in table '%s' can't  been not null.",
+		"Variable '%s' can't be set to the value of '%s'",
 		"Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
-		"Invalid ON UPDATE clause for '%-192s' column",
-		"DDL can not coexist with the DML for table '%-192s'.",
+		"Invalid ON UPDATE clause for '%s' column",
+		"DDL can not coexist with the DML for table '%s'.",
 		"Corrupted replication event was detected.",
 		"COLLATION '%s' is not valid for CHARACTER SET '%s'",
 		"Not supported statement of alter option",
@@ -290,7 +290,7 @@ var (
 		"Primary key column '%s' is not int or bigint type in table '%s'.'%s'.",
 		"Too many primary key part in table '%s'.'%s', max parts: %d",
 		"Leading spaces are removed from name '%s'",
-		"类型转换警告: 列 '%-64s' %s -> %s.",
+		"类型转换警告: 列 '%s' %s -> %s.",
 		"TheLastError,ByeBye",
 	}
 )
@@ -301,23 +301,23 @@ var (
 // 	ER_SQL_NO_SOURCE                       = "sql没有源信息."
 // 	ER_SQL_NO_OP_TYPE                      = "sql没有操作类型设置."
 // 	ER_SQL_INVALID_OP_TYPE                 = "无效的sql操作类型."
-// 	ER_PARSE_ERROR                         = "%s near '%-80s' at line %d"
+// 	ER_PARSE_ERROR                         = "%s near '%s' at line %d"
 // 	ER_SYNTAX_ERROR                        = "You have an error in your SQL syntax, "
 // 	ER_REMOTE_EXE_ERROR                    = "Execute in source server failed."
 // 	ER_SHUTDOWN_COMPLETE                   = "Shutdown complete."
 // 	ER_WITH_INSERT_FIELD                   = "insert语句需要指定字段列表."
 // 	ER_WITH_INSERT_VALUES                  = "insert语句需要指定值列表."
 // 	ER_WRONG_VALUE_COUNT_ON_ROW            = "Column count doesn't match value count at row %d."
-// 	ER_BAD_FIELD_ERROR                     = "Unknown column '%-192s' in '%-192s'."
-// 	ER_FIELD_SPECIFIED_TWICE               = "Column '%-192s' specified twice in table '%-192s'."
-// 	ER_BAD_NULL_ERROR                      = "Column '%-192s' cannot be null in %d row."
+// 	ER_BAD_FIELD_ERROR                     = "Unknown column '%s' in '%s'."
+// 	ER_FIELD_SPECIFIED_TWICE               = "Column '%s' specified twice in table '%s'."
+// 	ER_BAD_NULL_ERROR                      = "Column '%s' cannot be null in %d row."
 // 	ER_NO_WHERE_CONDITION                  = "selete语句请指定where条件."
 // 	ER_NORMAL_SHUTDOWN                     = "%s: Normal shutdown\n"
-// 	ER_FORCING_CLOSE                       = "%s: Forcing close of thread %ld  user: '%-48s'\n"
+// 	ER_FORCING_CLOSE                       = "%s: Forcing close of thread %ld  user: '%s'\n"
 // 	ER_CON_COUNT_ERROR                     = "Too many connections"
 // 	ER_INVALID_COMMAND                     = "Invalid command."
 // 	ER_SQL_INVALID_SOURCE                  = "Invalid source infomation."
-// 	ER_WRONG_DB_NAME                       = "Incorrect database name '%-100s'."
+// 	ER_WRONG_DB_NAME                       = "Incorrect database name '%s'."
 // 	EXIT_UNKNOWN_VARIABLE                  = "Exist incorrect variable."
 // 	EXIT_UNKNOWN_OPTION                    = "Exist incorrect option."
 // 	ER_NO_DB_ERROR                         = "No database selected."
@@ -326,54 +326,54 @@ var (
 // 	ER_SELECT_ONLY_STAR                    = "Select only star is not allowed."
 // 	ER_ORDERY_BY_RAND                      = "Order by rand is not allowed in select statement."
 // 	ER_ID_IS_UPER                          = "Identifier is not allowed to been upper-case."
-// 	ER_UNKNOWN_COLLATION                   = "Unknown collation: '%-64s'."
-// 	ER_INVALID_DATA_TYPE                   = "Not supported data type on field: '%-64s'."
-// 	ER_NOT_ALLOWED_NULLABLE                = "Column '%-64s' in table '%-64s' is not allowed to been nullable."
-// 	ER_DUP_FIELDNAME                       = "Duplicate column name '%-192s'."
-// 	ER_WRONG_COLUMN_NAME                   = "Incorrect column name '%-100s'."
+// 	ER_UNKNOWN_COLLATION                   = "Unknown collation: '%s'."
+// 	ER_INVALID_DATA_TYPE                   = "Not supported data type on field: '%s'."
+// 	ER_NOT_ALLOWED_NULLABLE                = "Column '%s' in table '%s' is not allowed to been nullable."
+// 	ER_DUP_FIELDNAME                       = "Duplicate column name '%s'."
+// 	ER_WRONG_COLUMN_NAME                   = "Incorrect column name '%s'."
 // 	ER_WRONG_AUTO_KEY                      = "Incorrect table definition; there can be only one auto column and it must be defined as a key."
 // 	ER_TABLE_CANT_HANDLE_AUTO_INCREMENT    = "The used table type doesn't support AUTO_INCREMENT columns."
-// 	ER_FOREIGN_KEY                         = "Foreign key is not allowed in table '%-64s'."
-// 	ER_TOO_MANY_KEY_PARTS                  = "Too many key parts in Key '%-64s' in table '%-64s' specified, max %d parts allowed."
-// 	ER_TOO_LONG_IDENT                      = "Identifier name '%-100s' is too long."
+// 	ER_FOREIGN_KEY                         = "Foreign key is not allowed in table '%s'."
+// 	ER_TOO_MANY_KEY_PARTS                  = "Too many key parts in Key '%s' in table '%s' specified, max %d parts allowed."
+// 	ER_TOO_LONG_IDENT                      = "Identifier name '%s' is too long."
 // 	ER_UDPATE_TOO_MUCH_ROWS                = "Update rows more then %d."
-// 	ER_WRONG_NAME_FOR_INDEX                = "Incorrect index name '%-100s' in table '%-64s'."
-// 	ER_TOO_MANY_KEYS                       = "Too many keys specified in table '%-64s', max %d keys allowed."
-// 	ER_NOT_SUPPORTED_KEY_TYPE              = "Not supported key type: '%-64s'."
+// 	ER_WRONG_NAME_FOR_INDEX                = "Incorrect index name '%s' in table '%s'."
+// 	ER_TOO_MANY_KEYS                       = "Too many keys specified in table '%s', max %d keys allowed."
+// 	ER_NOT_SUPPORTED_KEY_TYPE              = "Not supported key type: '%s'."
 // 	ER_WRONG_SUB_KEY                       = "Incorrect prefix key; the used key part isn't a string, the used length is longer than the key part, or the storagengine doesn't support unique prefix keys"
-// 	ER_WRONG_KEY_COLUMN                    = "The used storage engine can't index column '%-192s'."
-// 	ER_TOO_LONG_KEY                        = "Specified key '%-64s' was too long; max key length is %d bytes."
+// 	ER_WRONG_KEY_COLUMN                    = "The used storage engine can't index column '%s'."
+// 	ER_TOO_LONG_KEY                        = "Specified key '%s' was too long; max key length is %d bytes."
 // 	ER_MULTIPLE_PRI_KEY                    = "Multiple primary key defined."
-// 	ER_DUP_KEYNAME                         = "Duplicate key name '%-192s'."
-// 	ER_TOO_LONG_INDEX_COMMENT              = "Comment for index '%-64s' is too long (max = %lu)."
-// 	ER_DUP_INDEX                           = "Duplicate index '%-64s' defined on the table '%-64s.%-64s'."
+// 	ER_DUP_KEYNAME                         = "Duplicate key name '%s'."
+// 	ER_TOO_LONG_INDEX_COMMENT              = "Comment for index '%s' is too long (max = %lu)."
+// 	ER_DUP_INDEX                           = "Duplicate index '%s' defined on the table '%s.%s'."
 // 	ER_TEMP_TABLE_TMP_PREFIX               = "Set 'tmp' prefix for temporary table."
-// 	ER_TABLE_MUST_INNODB                   = "Set engine to innodb for table '%-64s'."
-// 	ER_TABLE_CHARSET_MUST_UTF8             = "Set charset to one of '%-192s' for table '%-64s'."
-// 	ER_TABLE_CHARSET_MUST_NULL             = "表 '%-64s' 禁止设置字符集!"
-// 	ER_NAMES_MUST_UTF8                     = "Set charset to one of '%-192s'."
-// 	ER_TABLE_MUST_HAVE_COMMENT             = "Set comments for table '%-192s'."
-// 	ER_COLUMN_HAVE_NO_COMMENT              = "Column '%-64s' in table '%-64s' have no comments."
-// 	ER_TABLE_MUST_HAVE_PK                  = "Set a primary key for table '%-64s'."
+// 	ER_TABLE_MUST_INNODB                   = "Set engine to innodb for table '%s'."
+// 	ER_TABLE_CHARSET_MUST_UTF8             = "Set charset to one of '%s' for table '%s'."
+// 	ER_TABLE_CHARSET_MUST_NULL             = "表 '%s' 禁止设置字符集!"
+// 	ER_NAMES_MUST_UTF8                     = "Set charset to one of '%s'."
+// 	ER_TABLE_MUST_HAVE_COMMENT             = "Set comments for table '%s'."
+// 	ER_COLUMN_HAVE_NO_COMMENT              = "Column '%s' in table '%s' have no comments."
+// 	ER_TABLE_MUST_HAVE_PK                  = "Set a primary key for table '%s'."
 // 	ER_PARTITION_NOT_ALLOWED               = "Partition is not allowed in table."
 // 	ER_USE_ENUM                            = "Type enum is used in column."
-// 	ER_USE_TEXT_OR_BLOB                    = "Type blob/text is used in column '%-192s'."
-// 	ER_COLUMN_EXISTED                      = "Column '%-64s' have existed."
-// 	ER_COLUMN_NOT_EXISTED                  = "Column '%-64s' not existed."
-// 	ER_CANT_DROP_FIELD_OR_KEY              = "Can't DROP '%-192s'; check that column/key exists."
-// 	ER_INVALID_DEFAULT                     = "Invalid default value for column '%-192s'."
+// 	ER_USE_TEXT_OR_BLOB                    = "Type blob/text is used in column '%s'."
+// 	ER_COLUMN_EXISTED                      = "Column '%s' have existed."
+// 	ER_COLUMN_NOT_EXISTED                  = "Column '%s' not existed."
+// 	ER_CANT_DROP_FIELD_OR_KEY              = "Can't DROP '%s'; check that column/key exists."
+// 	ER_INVALID_DEFAULT                     = "Invalid default value for column '%s'."
 // 	ER_USERNAME                            = "user name"
 // 	ER_HOSTNAME                            = "host name"
 // 	ER_NOT_VALID_PASSWORD                  = "Your password does not satisfy the current policy requirements."
-// 	ER_WRONG_STRING_LENGTH                 = "String '%-70s' is too long for %s (should be no longer than %d)."
-// 	ER_BLOB_USED_AS_KEY                    = "BLOB column '%-192s' can't be used in key specification with the used table type."
+// 	ER_WRONG_STRING_LENGTH                 = "String '%s' is too long for %s (should be no longer than %d)."
+// 	ER_BLOB_USED_AS_KEY                    = "BLOB column '%s' can't be used in key specification with the used table type."
 // 	ER_TOO_LONG_BAKDB_NAME                 = "The backup dbname '%-s-%d-%s' is too long."
 // 	ER_INVALID_BACKUP_HOST_INFO            = "Invalid remote backup information."
 // 	ER_BINLOG_CORRUPTED                    = "Binlog is corrupted."
 // 	ER_NET_READ_ERROR                      = "Got an error reading communication packets."
 // 	ER_NETWORK_READ_EVENT_CHECKSUM_FAILURE = "Replication event checksum verification failed while reading from network."
 // 	ER_SLAVE_RELAY_LOG_WRITE_FAILURE       = "Relay log write failure: %s."
-// 	ER_INCORRECT_GLOBAL_LOCAL_VAR          = "Variable '%-192s' is a %s variable."
+// 	ER_INCORRECT_GLOBAL_LOCAL_VAR          = "Variable '%s' is a %s variable."
 // 	ER_START_AS_BEGIN                      = "Must start as begin statement."
 // 	ER_OUTOFMEMORY                         = "Out of memory; restart server and try again (needed %d bytes)."
 // 	ER_HAVE_BEGIN                          = "Have you begin twice? Or you didn't commit last time, if so, you can execute commit explicitly."
@@ -383,38 +383,38 @@ var (
 // 	EXIT_ARGUMENT_REQUIRED                 = "Require argument."
 // 	EXIT_AMBIGUOUS_OPTION                  = "Ambiguous argument."
 // 	ER_ERROR_EXIST_BEFORE                  = "Exist error at before statement."
-// 	ER_UNKNOWN_SYSTEM_VARIABLE             = "Unknown system variable '%-64s'."
-// 	ER_UNKNOWN_CHARACTER_SET               = "Unknown character set: '%-64s'."
+// 	ER_UNKNOWN_SYSTEM_VARIABLE             = "Unknown system variable '%s'."
+// 	ER_UNKNOWN_CHARACTER_SET               = "Unknown character set: '%s'."
 // 	ER_END_WITH_COMMIT                     = "Must end with commit."
-// 	ER_DB_NOT_EXISTED_ERROR                = "Selected Database '%-64s' not existed."
-// 	ER_TABLE_EXISTS_ERROR                  = "Table '%-192s' already exists."
-// 	ER_INDEX_NAME_IDX_PREFIX               = "Index '%-192s' in table '%-64s' need 'idx_' prefix."
-// 	ER_INDEX_NAME_UNIQ_PREFIX              = "Index '%-192s' in table '%-64s' need 'uniq_' prefix."
-// 	ER_AUTOINC_UNSIGNED                    = "Set unsigned attribute on auto increment column in table '%-64s'."
-// 	ER_VARCHAR_TO_TEXT_LEN                 = "Set column '%-192s' to TEXT type."
-// 	ER_CHAR_TO_VARCHAR_LEN                 = "Set column '%-192s' to VARCHAR type."
-// 	ER_KEY_COLUMN_DOES_NOT_EXITS           = "Key column '%-192s' doesn't exist in table."
+// 	ER_DB_NOT_EXISTED_ERROR                = "Selected Database '%s' not existed."
+// 	ER_TABLE_EXISTS_ERROR                  = "Table '%s' already exists."
+// 	ER_INDEX_NAME_IDX_PREFIX               = "Index '%s' in table '%s' need 'idx_' prefix."
+// 	ER_INDEX_NAME_UNIQ_PREFIX              = "Index '%s' in table '%s' need 'uniq_' prefix."
+// 	ER_AUTOINC_UNSIGNED                    = "Set unsigned attribute on auto increment column in table '%s'."
+// 	ER_VARCHAR_TO_TEXT_LEN                 = "Set column '%s' to TEXT type."
+// 	ER_CHAR_TO_VARCHAR_LEN                 = "Set column '%s' to VARCHAR type."
+// 	ER_KEY_COLUMN_DOES_NOT_EXITS           = "Key column '%s' doesn't exist in table."
 // 	ER_INC_INIT_ERR                        = "Set auto-increment initialize value to 1."
 // 	ER_WRONG_ARGUMENTS                     = "Incorrect arguments to %s."
 // 	ER_SET_DATA_TYPE_INT_BIGINT            = "Set auto-increment data type to int or bigint."
-// 	ER_TIMESTAMP_DEFAULT                   = "Set default value for timestamp column '%-64s'."
-// 	ER_CHARSET_ON_COLUMN                   = "表 '%-64s' 列 '%-64s' 禁止设置字符集!"
-// 	ER_AUTO_INCR_ID_WARNING                = "Auto increment column '%-64s' is meaningful? it's dangerous!"
-// 	ER_ALTER_TABLE_ONCE                    = "表 '%-64s' 的多个alter操作请合并成一个."
-// 	ER_BLOB_CANT_HAVE_DEFAULT              = "BLOB/TEXT column '%-192s' can't have a default value."
+// 	ER_TIMESTAMP_DEFAULT                   = "Set default value for timestamp column '%s'."
+// 	ER_CHARSET_ON_COLUMN                   = "表 '%s' 列 '%s' 禁止设置字符集!"
+// 	ER_AUTO_INCR_ID_WARNING                = "Auto increment column '%s' is meaningful? it's dangerous!"
+// 	ER_ALTER_TABLE_ONCE                    = "表 '%s' 的多个alter操作请合并成一个."
+// 	ER_BLOB_CANT_HAVE_DEFAULT              = "BLOB/TEXT column '%s' can't have a default value."
 // 	ER_END_WITH_SEMICOLON                  = "Add ';' after the last sql statement."
-// 	ER_NON_UNIQ_ERROR                      = "Column '%-192s' in %-192s is ambiguous."
-// 	ER_TABLE_NOT_EXISTED_ERROR             = "Table '%-192s' doesn't exist."
-// 	ER_UNKNOWN_TABLE                       = "Unknown table '%-192s' in %-32s."
+// 	ER_NON_UNIQ_ERROR                      = "Column '%s' in %s is ambiguous."
+// 	ER_TABLE_NOT_EXISTED_ERROR             = "Table '%s' doesn't exist."
+// 	ER_UNKNOWN_TABLE                       = "Unknown table '%s' in %s."
 // 	ER_INVALID_GROUP_FUNC_USE              = "Invalid use of group function."
 // 	ER_INDEX_USE_ALTER_TABLE               = "暂不支持create/drop index和rename语法,请使用alter语句替换."
-// 	ER_WITH_DEFAULT_ADD_COLUMN             = "Set Default value for column '%-192s' in table '%-192s'"
-// 	ER_TRUNCATED_WRONG_VALUE               = "Truncated incorrect %-32s value: '%-128s'"
-// 	ER_TEXT_NOT_NULLABLE_ERROR             = "TEXT/BLOB Column '%-64s' in table '%-64s' can't  been not null."
-// 	ER_WRONG_VALUE_FOR_VAR                 = "Variable '%-64s' can't be set to the value of '%-200s'"
+// 	ER_WITH_DEFAULT_ADD_COLUMN             = "Set Default value for column '%s' in table '%s'"
+// 	ER_TRUNCATED_WRONG_VALUE               = "Truncated incorrect %s value: '%s'"
+// 	ER_TEXT_NOT_NULLABLE_ERROR             = "TEXT/BLOB Column '%s' in table '%s' can't  been not null."
+// 	ER_WRONG_VALUE_FOR_VAR                 = "Variable '%s' can't be set to the value of '%s'"
 // 	ER_TOO_MUCH_AUTO_TIMESTAMP_COLS        = "Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause"
-// 	ER_INVALID_ON_UPDATE                   = "Invalid ON UPDATE clause for '%-192s' column"
-// 	ER_DDL_DML_COEXIST                     = "DDL can not coexist with the DML for table '%-192s'."
+// 	ER_INVALID_ON_UPDATE                   = "Invalid ON UPDATE clause for '%s' column"
+// 	ER_DDL_DML_COEXIST                     = "DDL can not coexist with the DML for table '%s'."
 // 	ER_SLAVE_CORRUPT_EVENT                 = "Corrupted replication event was detected."
 // 	ER_COLLATION_CHARSET_MISMATCH          = "COLLATION '%s' is not valid for CHARACTER SET '%s'"
 // 	ER_NOT_SUPPORTED_ALTER_OPTION          = "Not supported statement of alter option"
@@ -429,7 +429,7 @@ var (
 // 	ER_PK_COLS_NOT_INT                     = "Primary key column '%s' is not int or bigint type in table '%s'.'%s'."
 // 	ER_PK_TOO_MANY_PARTS                   = "Too many primary key part in table '%s'.'%s', max parts: %d"
 // 	ER_REMOVED_SPACES                      = "Leading spaces are removed from name '%s'"
-// 	ER_CHANGE_COLUMN_TYPE                  = "类型转换警告: 列 '%-64s' %s -> %s."
+// 	ER_CHANGE_COLUMN_TYPE                  = "类型转换警告: 列 '%s' %s -> %s."
 // 	ER_ERROR_LAST                          = "TheLastError,ByeBye"
 // )
 
