@@ -36,6 +36,7 @@ import (
 
 	// "database/sql/driver"
 	mysqlDriver "github.com/go-sql-driver/mysql"
+	// "github.com/hanchuanchuan/tidb/config"
 	"github.com/jinzhu/gorm"
 	// _ "github.com/jinzhu/gorm/dialects/mysql"
 )
@@ -84,7 +85,17 @@ type FieldInfo struct {
 type TableInfo struct {
 	Schema string
 	Name   string
-	Fileds []FieldInfo
+	Fields []FieldInfo
+}
+
+type IndexInfo struct {
+	gorm.Model
+
+	Table      string `gorm:"Column:Table"`
+	IndexName  string `gorm:"Column:Key_name"`
+	Seq        string `gorm:"Column:Seq_in_index"`
+	ColumnName string `gorm:"Column:Column_name"`
+	IndexType  string `gorm:"Column:Index_type"`
 }
 
 var reg *regexp.Regexp
@@ -105,6 +116,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
 
+	fmt.Println("%+v", s.Inc)
 	// fmt.Println("---------------===============")
 	sqlList := strings.Split(sql, "\n")
 	// fmt.Println(len(sqlList))
@@ -161,8 +173,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			}
 
 			for _, stmtNode := range stmtNodes {
-				fmt.Println("当前语句: ", stmtNode)
-				fmt.Printf("%T\n", stmtNode)
+				// fmt.Println("当前语句: ", stmtNode)
+				// fmt.Printf("%T\n", stmtNode)
 
 				currentSql := stmtNode.Text()
 
@@ -418,7 +430,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableDropPrimaryKey:
 			s.checkDropPrimaryKey(table, alter)
 		case ast.AlterTableDropIndex:
-			s.AlterTableDropIndex(table, alter)
+			s.checkDropIndex(table, alter)
+		case ast.AlterTableDropForeignKey:
+			s.checkDropForeignKey(table, alter)
+
+		case ast.AlterTableModifyColumn:
+			s.checkModifyColumn(table, alter)
 
 		default:
 			fmt.Println("未定义的解析: ", alter.Tp)
@@ -431,16 +448,218 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 }
 
-func (s *session) AlterTableDropIndex(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("AlterTableDropIndex")
+func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Println("checkModifyColumn")
+
+	// fmt.Printf("%s \n", c)
+
+	for _, nc := range c.NewColumns {
+		// fmt.Printf("%s \n", nc)
+		// fmt.Printf("%s --- %s \n", nc.Name, nc.Tp)
+		found := false
+		var foundField FieldInfo
+
+		for _, field := range t.Fields {
+			if strings.EqualFold(field.Field, nc.Name.Name.O) {
+				found = true
+				foundField = field
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+		}
+
+		if nc.Tp.Charset != "" || nc.Tp.Collate != "" {
+			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
+		}
+
+		fieldType := nc.Tp.CompactStr()
+
+		switch nc.Tp.Tp {
+		case mysql.TypeDecimal, mysql.TypeNewDecimal,
+			mysql.TypeVarchar,
+			mysql.TypeVarString, mysql.TypeString:
+
+			fmt.Println(nc.Name, fieldType)
+			str := string([]byte(foundField.Type)[:7])
+			if strings.Index(fieldType, str) == -1 {
+				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+					foundField.Type, fieldType)
+			}
+		default:
+			if fieldType != foundField.Type {
+				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+					foundField.Type, fieldType)
+			}
+		}
+
+		s.mysqlCheckField(t, nc)
+	}
+
+	// if c.Position.Tp != ast.ColumnPositionNone {
+	// 	found := false
+	// 	for _, field := range t.Fields {
+	// 		if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
+	// 			found = true
+	// 			break
+	// 		}
+	// 	}
+	// 	if !found {
+	// 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+	// 			fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
+	// 	}
+	// }
+}
+
+func mysqlFiledIsBlob(tp byte) bool {
+
+	if tp == mysql.TypeTinyBlob || tp == mysql.TypeMediumBlob ||
+		tp == mysql.TypeLongBlob || tp == mysql.TypeBlob {
+		return true
+	}
+	return false
+}
+
+func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
+	fmt.Println("mysqlCheckField")
+
+	if field.Tp.Tp == mysql.TypeEnum ||
+		field.Tp.Tp == mysql.TypeSet ||
+		field.Tp.Tp == mysql.TypeBit {
+		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
+	}
+
+	fmt.Printf("%#v \n", field.Tp)
+
+	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > 10 {
+		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
+	}
+
+	hasComment := false
+	// notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)
+	// autoIncrement := mysql.HasAutoIncrementFlag(field.Tp.Flag)
+
+	notNullFlag := false
+	autoIncrement := false
+
+	// fmt.Println(field.Name.Name, field.Tp.Flag, notNullFlag, autoIncrement)
+	if len(field.Options) > 0 {
+		for _, op := range field.Options {
+			// fmt.Println(op)
+			// fmt.Printf("%s \n", op)
+			// fmt.Printf("%s %T \n", op.Expr, op.Expr)
+
+			switch op.Tp {
+			case ast.ColumnOptionComment:
+				if op.Expr.GetDatum().GetString() != "" {
+					hasComment = true
+				}
+			case ast.ColumnOptionNotNull:
+				notNullFlag = true
+			case ast.ColumnOptionNull:
+				notNullFlag = false
+			case ast.ColumnOptionAutoIncrement:
+				autoIncrement = true
+			}
+		}
+	}
+	if !hasComment {
+		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, t.Name)
+	}
+
+	if mysqlFiledIsBlob(field.Tp.Tp) {
+		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
+	} else {
+		if !notNullFlag && !s.Inc.EnableNullable {
+			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, t.Name)
+		}
+	}
+
+	if len(field.Name.Name.O) > mysql.MaxColumnNameLength {
+		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
+	}
+
+	if mysqlFiledIsBlob(field.Tp.Tp) && notNullFlag {
+		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, t.Name)
+	}
+
+	if autoIncrement {
+		if !mysql.HasUnsignedFlag(field.Tp.Flag) {
+			s.AppendErrorNo(ER_AUTOINC_UNSIGNED, t.Name)
+		}
+
+		if field.Tp.Tp != mysql.TypeLong &&
+			field.Tp.Tp != mysql.TypeLonglong &&
+			field.Tp.Tp != mysql.TypeInt24 {
+			s.AppendErrorNo(ER_SET_DATA_TYPE_INT_BIGINT)
+		}
+	}
+
+	if field.Tp.Tp == mysql.TypeTimestamp {
+		if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
+			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, t.Name)
+		}
+	}
+
+}
+
+func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Println("checkDropForeignKey")
 
 	fmt.Printf("%s \n", c)
+
+	s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+
+}
+func (s *session) checkDropIndex(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Println("checkDropIndex")
+
+	fmt.Printf("%s \n", c)
+
+	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
+
+	var rows []IndexInfo
+	fmt.Println("++++++++")
+	if err := s.db.Raw(sql, c.Name).Scan(&rows).Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+
+	if len(rows) == 0 {
+		s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, c.Name))
+	}
 }
 
 func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
 	fmt.Println("checkDropPrimaryKey")
 
-	fmt.Printf("%s \n", c)
+	c.Name = "PRIMARY"
+
+	s.checkDropIndex(t, c)
+
+	// fmt.Printf("%s \n", c)
+
+	// sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
+
+	// var rows []IndexInfo
+	// fmt.Println("++++++++")
+	// if err := s.db.Raw(sql, "PRIMARY").Scan(&rows).Error; err != nil {
+	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 		s.AppendErrorMessage(myErr.Message)
+	// 	} else {
+	// 		s.AppendErrorMessage(err.Error())
+	// 	}
+	// }
+
+	// if len(rows) == 0 {
+	// 	s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, "PRIMARY"))
+	// }
 }
 
 func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
@@ -450,7 +669,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	for _, nc := range c.NewColumns {
 		fmt.Printf("%s \n", nc)
 		found := false
-		for _, field := range t.Fileds {
+		for _, field := range t.Fields {
 			if strings.EqualFold(field.Field, nc.Name.Name.O) {
 				found = true
 				break
@@ -458,12 +677,14 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		}
 		if found {
 			s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+		} else {
+			s.mysqlCheckField(t, nc)
 		}
 	}
 
 	if c.Position.Tp != ast.ColumnPositionNone {
 		found := false
-		for _, field := range t.Fileds {
+		for _, field := range t.Fields {
 			if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
 				found = true
 				break
@@ -481,7 +702,7 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	// fmt.Printf("%s \n", c.NewColumns)
 
 	found := false
-	for _, field := range t.Fileds {
+	for _, field := range t.Fields {
 		if strings.EqualFold(field.Field, c.OldColumnName.Name.O) {
 			found = true
 			break
@@ -498,7 +719,7 @@ func (s *session) checkCreateIndex(t *TableInfo, ct *ast.Constraint) {
 
 	for _, col := range ct.Keys {
 		found := false
-		for _, field := range t.Fileds {
+		for _, field := range t.Fields {
 			if strings.EqualFold(field.Field, col.Column.Name.O) {
 				found = true
 				break
@@ -510,12 +731,6 @@ func (s *session) checkCreateIndex(t *TableInfo, ct *ast.Constraint) {
 	}
 
 }
-
-func (s *session) checkDropIndex(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("checkDropIndex")
-
-}
-
 
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	fmt.Printf("%s \n", c.Constraint)
@@ -552,7 +767,7 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	// for _, nc := range c.NewColumns {
 	// 	fmt.Printf("%s \n", nc)
 	// 	found := false
-	// 	for _, field := range t.Fileds {
+	// 	for _, field := range t.Fields {
 	// 		if strings.EqualFold(field.Field, nc.Name.Name.O) {
 	// 			found = true
 	// 			break
@@ -565,7 +780,7 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 
 	// if c.Position.Tp != ast.ColumnPositionNone {
 	// 	found := false
-	// 	for _, field := range t.Fileds {
+	// 	for _, field := range t.Fields {
 	// 		if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
 	// 			found = true
 	// 			break
@@ -813,33 +1028,6 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		fmt.Println(tblName.Schema)
 		fmt.Println(tblName.Name)
 
-	s.myRecord.AnlyzeExplain(rows)
-
-}
-
-func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
-
-	fmt.Println("checkUpdate")
-
-	// fmt.Printf("%s \n", node.TableRefs)
-	// fmt.Printf("%s \n", node.List)
-	// TableRefs     *TableRefsClause
-	// List          []*Assignment
-	// Where         ExprNode
-	// Order         *OrderByClause
-	// Limit         *Limit
-	// Priority      mysql.PriorityEnum
-	// IgnoreErr     bool
-	// MultipleTable bool
-	// TableHints    []*TableOptimizerHint
-
-	var tableList []*ast.TableName
-	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
-
-	for _, tblName := range tableList {
-		fmt.Println(tblName.Schema)
-		fmt.Println(tblName.Name)
-
 		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 	}
 
@@ -933,94 +1121,7 @@ func (s *session) checkFieldsValid(columns []*ast.ColumnName, table *TableInfo) 
 
 	for _, c := range columns {
 		found := false
-		for _, field := range table.Fileds {
-			if strings.EqualFold(field.Field, c.Name.O) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
-		}
-	}
-
-	var tableList []*ast.TableName
-	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
-
-	for _, tblName := range tableList {
-		fmt.Println(tblName.Schema)
-		fmt.Println(tblName.Name)
-
-		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
-	}
-
-	s.explainOrAnalyzeSql(sql)
-
-	// if node.TableRefs != nil {
-	// 	a := node.TableRefs.TableRefs
-	// 	// fmt.Println(a)
-	// 	fmt.Printf("%T,%s  \n", a, a)
-	// 	fmt.Println("===================")
-	// 	fmt.Printf("%T , %s  \n", a.Left, a.Left)
-	// 	fmt.Printf("%T , %s  \n", a.Right, a.Right)
-	// 	if a.Left != nil {
-	// 		if tblSrc, ok := a.Left.(*ast.Join); ok {
-	// 			fmt.Println("---left")
-	// 			// fmt.Println(tblSrc)
-	// 			// fmt.Println(tblSrc.AsName)
-	// 			// fmt.Println(tblSrc.Source)
-	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
-
-	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-	// 				fmt.Println(tblName.Schema)
-	// 				fmt.Println(tblName.Name)
-
-	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
-	// 			}
-	// 		}
-
-	// 		if tblSrc, ok := a.Left.(*ast.TableSource); ok {
-	// 			fmt.Println("---left")
-	// 			// fmt.Println(tblSrc)
-	// 			// fmt.Println(tblSrc.AsName)
-	// 			// fmt.Println(tblSrc.Source)
-	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
-
-	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-	// 				fmt.Println(tblName.Schema)
-	// 				fmt.Println(tblName.Name)
-
-	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
-	// 			}
-	// 		}
-	// 	}
-	// 	if a.Right != nil {
-	// 		if tblSrc, ok := a.Right.(*ast.TableSource); ok {
-	// 			fmt.Println("+++right")
-	// 			// fmt.Println(tblSrc)
-	// 			// fmt.Println(tblSrc.AsName)
-	// 			// fmt.Println(tblSrc.Source)
-	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
-
-	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-	// 				fmt.Println(tblName.Schema)
-	// 				fmt.Println(tblName.Name)
-
-	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
-	// 			}
-	// 		}
-	// 	}
-	// 	// fmt.Println(a.Left, a.Left.Text())
-	// 	// fmt.Println(fmt.Sprintf("%T", a.Left))
-	// 	// fmt.Println(a.Right)
-	// }
-}
-
-func (s *session) checkFieldsValid(columns []*ast.ColumnName, table *TableInfo) {
-
-	for _, c := range columns {
-		found := false
-		for _, field := range table.Fileds {
+		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, c.Name.O) {
 				found = true
 				break
@@ -1117,7 +1218,7 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 			newT := &TableInfo{
 				Schema: db,
 				Name:   tableName,
-				Fileds: rows,
+				Fields: rows,
 			}
 
 			s.tableCacheList[key] = newT
