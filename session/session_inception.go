@@ -504,7 +504,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	// fmt.Printf("%s \n", table)
 	for _, alter := range node.Specs {
 		// fmt.Printf("%s \n", alter)
-		fmt.Println(alter.Tp)
+		// fmt.Println(alter.Tp)
 		switch alter.Tp {
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
@@ -524,6 +524,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 		case ast.AlterTableModifyColumn:
 			s.checkModifyColumn(table, alter)
+		case ast.AlterTableChangeColumn:
+			s.checkChangeColumn(table, alter)
 
 		default:
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
@@ -532,40 +534,92 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	}
 }
 
+func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	fmt.Println("checkChangeColumn")
+
+	// fmt.Printf("%#v \n", c)
+
+	fmt.Println(c.OldColumnName, len(c.NewColumns))
+	found := false
+	for _, nc := range c.NewColumns {
+		if nc.Name.Name.L == c.OldColumnName.Name.O {
+			found = true
+		}
+	}
+	// 更新了列名
+	if !found {
+		s.AppendErrorMessage(
+			fmt.Sprintf("列'%s'.'%s'禁止变更列名.",
+				t.Name, c.OldColumnName.Name))
+	}
+	s.checkModifyColumn(t, c)
+}
+
 func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	fmt.Println("checkModifyColumn")
 
-	// fmt.Printf("%s \n", c)
+	fmt.Printf("%#v \n", c)
 
 	for _, nc := range c.NewColumns {
 		// fmt.Printf("%s \n", nc)
-		// fmt.Printf("%s --- %s \n", nc.Name, nc.Tp)
+		fmt.Printf("%s --- %s \n", nc.Name, nc.Tp)
 		found := false
 		var foundField FieldInfo
 
-		for _, field := range t.Fields {
-			if strings.EqualFold(field.Field, nc.Name.Name.O) {
-				found = true
-				foundField = field
-				break
+		if c.OldColumnName == nil || c.OldColumnName.Name.L == nc.Name.Name.L {
+
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, nc.Name.Name.O) {
+					found = true
+					foundField = field
+					break
+				}
+			}
+
+			if !found {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+			}
+		} else {
+			oldFound := false
+			newFound := false
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, c.OldColumnName.Name.L) {
+					oldFound = true
+					foundField = field
+				}
+				if strings.EqualFold(field.Field, nc.Name.Name.L) {
+					newFound = true
+				}
+			}
+
+			if newFound {
+				s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, foundField.Field))
+			} else if !oldFound {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 			}
 		}
-		if !found {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
-		}
+
+		// 未变更列名时,列需要存在
+		// 变更列名后,新列名不能存在
+		// if c.OldColumnName == nil && !found {
+		// 	s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+		// } else if c.OldColumnName != nil &&
+		// 	!strings.EqualFold(c.OldColumnName.Name.L, foundField.Field) && found {
+		// 	s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, foundField.Field))
+		// }
 
 		if nc.Tp.Charset != "" || nc.Tp.Collate != "" {
 			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
 		}
 
 		fieldType := nc.Tp.CompactStr()
+		fmt.Println("--------------", nc.Name, fieldType, foundField.Type, foundField)
 
 		switch nc.Tp.Tp {
 		case mysql.TypeDecimal, mysql.TypeNewDecimal,
 			mysql.TypeVarchar,
 			mysql.TypeVarString, mysql.TypeString:
 
-			fmt.Println(nc.Name, fieldType)
 			str := string([]byte(foundField.Type)[:7])
 			if strings.Index(fieldType, str) == -1 {
 				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
@@ -650,7 +704,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			}
 		}
 	}
-	if !hasComment {
+	if !hasComment && s.Inc.CheckColumnComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, t.Name)
 	}
 
@@ -1345,7 +1399,7 @@ func (r *Record) AppendErrorMessage(msg string) {
 }
 
 func (r *Record) AppendErrorNo(number int, values ...interface{}) {
-	r.Errlevel |= GetErrorLevel(number)
+	r.Errlevel = Max(r.Errlevel, GetErrorLevel(number))
 	if len(values) == 0 {
 		r.Buf.WriteString(GetErrorMessage(number))
 	} else {
@@ -1444,4 +1498,18 @@ func FieldLengthWithType(tp string) int {
 
 	fmt.Println(p, l)
 	return l
+}
+
+func Max(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }

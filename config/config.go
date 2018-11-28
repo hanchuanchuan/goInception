@@ -286,6 +286,8 @@ type Inc struct {
 	MaxPrimaryKeyParts uint `toml:"max-primary-key-parts" json:"max-primary-key-parts"`
 
 	MaxKeys uint `toml:"max-keys" json:"max-keys"`
+
+	CheckColumnComment bool `toml:"check-column-comment" json:"check-column-comment"`
 }
 
 var defaultConf = Config{
@@ -363,8 +365,9 @@ var defaultConf = Config{
 		WriteTimeout: "15s",
 	},
 	Inc: Inc{
-		EnableNullable:  true,
-		EnableDropTable: false,
+		EnableNullable:     true,
+		EnableDropTable:    false,
+		CheckColumnComment: false,
 	},
 }
 
