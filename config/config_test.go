@@ -14,6 +14,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -61,6 +62,8 @@ commit-timeout="41s"`)
 	configFile = path.Join(path.Dir(localFile), "config.toml.example")
 	c.Assert(conf.Load(configFile), IsNil)
 
+	// fmt.Println(conf)
+	// fmt.Println(GetGlobalConfig())
 	// Make sure the example config is the same as default config.
 	c.Assert(conf, DeepEquals, GetGlobalConfig())
 }
