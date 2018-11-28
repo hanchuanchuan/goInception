@@ -36,6 +36,7 @@ import (
 
 	// "database/sql/driver"
 	mysqlDriver "github.com/go-sql-driver/mysql"
+	// "github.com/hanchuanchuan/tidb/config"
 	"github.com/jinzhu/gorm"
 	// _ "github.com/jinzhu/gorm/dialects/mysql"
 )
@@ -115,6 +116,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
 
+	fmt.Println("%+v", s.Inc)
 	// fmt.Println("---------------===============")
 	sqlList := strings.Split(sql, "\n")
 	// fmt.Println(len(sqlList))
@@ -171,8 +173,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			}
 
 			for _, stmtNode := range stmtNodes {
-				fmt.Println("当前语句: ", stmtNode)
-				fmt.Printf("%T\n", stmtNode)
+				// fmt.Println("当前语句: ", stmtNode)
+				// fmt.Printf("%T\n", stmtNode)
 
 				currentSql := stmtNode.Text()
 
@@ -449,11 +451,19 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	fmt.Println("checkModifyColumn")
 
+<<<<<<< HEAD
 	fmt.Printf("%s \n", c)
 
 	for _, nc := range c.NewColumns {
 		fmt.Printf("%s \n", nc)
 		fmt.Printf("%s --- %s \n", nc.Name, nc.Tp)
+=======
+	// fmt.Printf("%s \n", c)
+
+	for _, nc := range c.NewColumns {
+		// fmt.Printf("%s \n", nc)
+		// fmt.Printf("%s --- %s \n", nc.Name, nc.Tp)
+>>>>>>> c5f37d488d1ee5c82420bdc1987774edb6aedcc1
 		found := false
 		var foundField FieldInfo
 
@@ -530,11 +540,17 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
+<<<<<<< HEAD
+=======
+	fmt.Printf("%#v \n", field.Tp)
+
+>>>>>>> c5f37d488d1ee5c82420bdc1987774edb6aedcc1
 	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > 10 {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
 
 	hasComment := false
+<<<<<<< HEAD
 	notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)
 	autoIncrement := mysql.HasAutoIncrementFlag(field.Tp.Flag)
 
@@ -543,14 +559,38 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			fmt.Println(op)
 			fmt.Printf("%s \n", op)
 			fmt.Printf("%s %T \n", op.Expr, op.Expr)
+=======
+	// notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)
+	// autoIncrement := mysql.HasAutoIncrementFlag(field.Tp.Flag)
+
+	notNullFlag := false
+	autoIncrement := false
+
+	// fmt.Println(field.Name.Name, field.Tp.Flag, notNullFlag, autoIncrement)
+	if len(field.Options) > 0 {
+		for _, op := range field.Options {
+			// fmt.Println(op)
+			// fmt.Printf("%s \n", op)
+			// fmt.Printf("%s %T \n", op.Expr, op.Expr)
+>>>>>>> c5f37d488d1ee5c82420bdc1987774edb6aedcc1
 
 			switch op.Tp {
 			case ast.ColumnOptionComment:
 				if op.Expr.GetDatum().GetString() != "" {
 					hasComment = true
 				}
+<<<<<<< HEAD
 			}
 
+=======
+			case ast.ColumnOptionNotNull:
+				notNullFlag = true
+			case ast.ColumnOptionNull:
+				notNullFlag = false
+			case ast.ColumnOptionAutoIncrement:
+				autoIncrement = true
+			}
+>>>>>>> c5f37d488d1ee5c82420bdc1987774edb6aedcc1
 		}
 	}
 	if !hasComment {
@@ -560,7 +600,11 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if mysqlFiledIsBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
+<<<<<<< HEAD
 		if !notNullFlag {
+=======
+		if !notNullFlag && !s.Inc.EnableNullable {
+>>>>>>> c5f37d488d1ee5c82420bdc1987774edb6aedcc1
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, t.Name)
 		}
 	}
@@ -577,7 +621,14 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		if !mysql.HasUnsignedFlag(field.Tp.Flag) {
 			s.AppendErrorNo(ER_AUTOINC_UNSIGNED, t.Name)
 		}
+<<<<<<< HEAD
 		if field.Tp.Flen < 4 {
+=======
+
+		if field.Tp.Tp != mysql.TypeLong &&
+			field.Tp.Tp != mysql.TypeLonglong &&
+			field.Tp.Tp != mysql.TypeInt24 {
+>>>>>>> c5f37d488d1ee5c82420bdc1987774edb6aedcc1
 			s.AppendErrorNo(ER_SET_DATA_TYPE_INT_BIGINT)
 		}
 	}

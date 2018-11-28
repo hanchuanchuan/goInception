@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -168,6 +169,8 @@ type session struct {
 
 	tableCacheList map[string]*TableInfo
 	dbCacheList    map[string]bool
+
+	Inc config.Inc
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
@@ -1219,6 +1222,8 @@ func createSession(store kv.Storage) (*session, error) {
 
 		tableCacheList: make(map[string]*TableInfo),
 		dbCacheList:    make(map[string]bool),
+
+		Inc: config.GetGlobalConfig().Inc,
 	}
 
 	s.recordSets = NewRecordSets()
