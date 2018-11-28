@@ -278,7 +278,14 @@ type Inc struct {
 	// inception_remote_system_user = inception
 	// inception_remote_system_password = inception
 
+	// 允许空列
 	EnableNullable bool `toml:"enable-nullable" json:"enable-nullable"`
+	// 允许删除表
+	EnableDropTable bool `toml:"enable-drop-table" json:"enable-drop-table"`
+	// 主键最多允许有几列组合
+	MaxPrimaryKeyParts uint `toml:"max-primary-key-parts" json:"max-primary-key-parts"`
+
+	MaxKeys uint `toml:"max-keys" json:"max-keys"`
 }
 
 var defaultConf = Config{
@@ -356,7 +363,8 @@ var defaultConf = Config{
 		WriteTimeout: "15s",
 	},
 	Inc: Inc{
-		EnableNullable: true,
+		EnableNullable:  true,
+		EnableDropTable: false,
 	},
 }
 

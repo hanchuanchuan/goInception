@@ -11,3 +11,6 @@ port = 4000
 
 [inc]
 enable-nullable = true
+enable-drop-table = false
+max-primary-key-parts = 3
+max-keys = 3
