@@ -152,11 +152,12 @@ const (
 	ER_PK_TOO_MANY_PARTS
 	ER_REMOVED_SPACES
 	ER_CHANGE_COLUMN_TYPE
+	ER_CANT_DROP_TABLE
 	ER_ERROR_LAST
 )
 
 var (
-	MyErrors = [135]string{
+	MyErrors = [136]string{
 		"HelloWorld",
 		"不支持的语法类型.",
 		"sql没有源信息.",
@@ -291,6 +292,7 @@ var (
 		"Too many primary key part in table '%s'.'%s', max parts: %d",
 		"Leading spaces are removed from name '%s'",
 		"类型转换警告: 列 '%s' %s -> %s.",
+		"禁用【DROP】|【TRUNCATE】删除/清空表 '%s', 请改用RENAME重写.",
 		"TheLastError,ByeBye",
 	}
 )
@@ -528,6 +530,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_COLLATION_CHARSET_MISMATCH,
 		ER_VIEW_SELECT_CLAUSE,
 		ER_NOT_SUPPORTED_ITEM_TYPE,
+		ER_CANT_DROP_TABLE,
 		ER_INCEPTION_EMPTY_QUERY:
 		return 2
 
