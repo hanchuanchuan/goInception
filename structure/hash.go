@@ -16,6 +16,7 @@ package structure
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 
 	"github.com/hanchuanchuan/tidb/kv"
@@ -44,6 +45,7 @@ func (meta hashMeta) IsEmpty() bool {
 
 // HSet sets the string value of a hash field.
 func (t *TxStructure) HSet(key []byte, field []byte, value []byte) error {
+	fmt.Println(key)
 	if t.readWriter == nil {
 		return errWriteOnSnapshot
 	}

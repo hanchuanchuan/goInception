@@ -14,15 +14,16 @@
 package meta_test
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/meta"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 
@@ -111,6 +112,7 @@ func (s *testSuite) TestMeta(c *C) {
 	c.Assert(n, Equals, int64(10))
 
 	err = t.CreateTable(1, tbInfo)
+	fmt.Println(err)
 	c.Assert(err, NotNil)
 
 	tbInfo.Name = model.NewCIStr("tt")
