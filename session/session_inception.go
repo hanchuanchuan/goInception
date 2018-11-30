@@ -944,10 +944,13 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	switch c.Constraint.Tp {
 	case ast.ConstraintIndex:
 		s.checkAddIndex(t, c.Constraint)
-		// case ast.ConstraintForeignKey:
-		// 	s.checkDropColumn(table, alter)
-		// case ast.AlterTableAddConstraint:
-		// 	s.checkAddConstraint(table, alter)
+	// case ast.ConstraintForeignKey:
+	// 	s.checkDropColumn(table, alter)
+	// case ast.AlterTableAddConstraint:
+	// 	s.checkAddConstraint(table, alter)
+	default:
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+		fmt.Println("未定义的解析: ", c.Constraint.Tp)
 	}
 
 	// ConstraintNoConstraint ConstraintType = iota
@@ -1399,7 +1402,7 @@ func (r *Record) AppendErrorMessage(msg string) {
 }
 
 func (r *Record) AppendErrorNo(number int, values ...interface{}) {
-	r.Errlevel = Max(r.Errlevel, GetErrorLevel(number))
+	r.Errlevel = uint8(Max(int(r.Errlevel), int(GetErrorLevel(number))))
 	if len(values) == 0 {
 		r.Buf.WriteString(GetErrorMessage(number))
 	} else {
