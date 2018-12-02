@@ -15,3 +15,8 @@ enable-drop-table = false
 max-primary-key-parts = 3
 max-keys = 3
 check-column-comment = false
+
+backup-host = "127.0.0.1"
+backup-port = 20001
+backup-user = "inception"
+backup-password = "inception"

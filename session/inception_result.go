@@ -41,6 +41,9 @@ type MyRecordSets struct {
 	samples []types.Datum
 	rc      *recordSet
 	pk      ast.RecordSet
+
+	records  []*Record
+	maxLevel uint8
 }
 
 const (
@@ -101,6 +104,8 @@ type Record struct {
 	Sqlsha1 string
 
 	Buf *bytes.Buffer
+
+	Type ast.StmtNode
 }
 
 func (r *recordSet) Fields() []*ast.ResultField {
@@ -155,7 +160,9 @@ func (r *recordSet) Close() error {
 }
 
 func NewRecordSets() *MyRecordSets {
-	t := &MyRecordSets{}
+	t := &MyRecordSets{
+		records: []*Record{},
+	}
 
 	rc := &recordSet{
 		data:       make([][]types.Datum, 10),
@@ -200,31 +207,34 @@ func (r *recordSet) CreateFiled(name string, tp uint8) {
 		},
 		ColumnAsName: n,
 	}
-
 	r.fieldCount++
 }
 
-func (s *MyRecordSets) AppendRow(sql string, errlevel int) {
+// func (s *MyRecordSets) AppendRow(sql string, errlevel int) {
 
-	row := make([]types.Datum, s.rc.fieldCount)
+// 	row := make([]types.Datum, s.rc.fieldCount)
 
-	row[0].SetInt64(int64(s.rc.count + 1))
-	row[1].SetString("error")
-	row[2].SetInt64(int64(errlevel))
-	row[3].SetString("1")
-	row[4].SetString("testadadsf")
-	row[5].SetString(sql)
-	row[6].SetInt64(int64(1))
-	row[7].SetString("")
-	row[8].SetString("")
-	row[9].SetMysqlTime(types.CurrentTime(mysql.TypeTimestamp))
-	row[10].SetString("")
+// 	row[0].SetInt64(int64(s.rc.count + 1))
+// 	row[1].SetString("error")
+// 	row[2].SetInt64(int64(errlevel))
+// 	row[3].SetString("1")
+// 	row[4].SetString("testadadsf")
+// 	row[5].SetString(sql)
+// 	row[6].SetInt64(int64(1))
+// 	row[7].SetString("")
+// 	row[8].SetString("")
+// 	row[9].SetMysqlTime(types.CurrentTime(mysql.TypeTimestamp))
+// 	row[10].SetString("")
 
-	s.rc.data[s.rc.count] = row
-	s.rc.count++
-}
+// 	s.rc.data[s.rc.count] = row
+// 	s.rc.count++
+// }
 
 func (s *MyRecordSets) Append(r *Record) {
+	s.maxLevel = uint8(Max(int(r.maxLevel), int(r.Errlevel)))
+
+	s.records = append(s.records, r)
+
 	row := make([]types.Datum, s.rc.fieldCount)
 
 	row[0].SetInt64(int64(s.rc.count + 1))
@@ -264,20 +274,18 @@ func (s *MyRecordSets) Append(r *Record) {
 	s.rc.count++
 }
 
-func (s *MyRecordSets) AppentRows() []ast.RecordSet {
+// func (s *MyRecordSets) AppentRows() []ast.RecordSet {
 
-	// s.AppendRow("select 1", 1)
+// 	s.Append(&Record{
+// 		Sql:      "insert into t1 select 1",
+// 		Errlevel: 1,
+// 	})
 
-	s.Append(&Record{
-		Sql:      "insert into t1 select 1",
-		Errlevel: 1,
-	})
-
-	return []ast.RecordSet{s.rc}
-}
+// 	return []ast.RecordSet{s.rc}
+// }
 
 func (s *MyRecordSets) Rows() []ast.RecordSet {
-
+	s.records = nil
 	return []ast.RecordSet{s.rc}
 }
 
@@ -285,4 +293,12 @@ func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
 	if len(rows) > 0 {
 		r.AffectedRows = rows[0].Rows
 	}
+}
+
+func (s *MyRecordSets) All() []*Record {
+	return s.records
+}
+
+func (s *MyRecordSets) MaxLevel() uint8 {
+	return s.maxLevel
 }

@@ -111,6 +111,7 @@ func init() {
 	reg = regexp.MustCompile(`^\/\*(.*?)\*\/`)
 
 	regFieldLength = regexp.MustCompile(`^.*?\((\d)`)
+
 }
 
 func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
@@ -161,8 +162,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			s1 := strings.Join(buf, "\n")
 			stmtNodes, err := s.ParseSQL(ctx, s1, charsetInfo, collation)
 
-			log.Info(len(stmtNodes))
-			fmt.Println("语句数", len(stmtNodes))
+			// log.Info(len(stmtNodes))
+			// fmt.Println("语句数", len(stmtNodes))
 
 			if err != nil {
 				fmt.Println(err)
@@ -187,8 +188,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 				// var checkResult *Record = nil
 				s.myRecord = &Record{
-					Sql: currentSql,
-					Buf: new(bytes.Buffer),
+					Sql:  currentSql,
+					Buf:  new(bytes.Buffer),
+					Type: stmtNode,
 				}
 
 				switch node := stmtNode.(type) {
@@ -203,6 +205,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 						return s.recordSets.Rows(), nil
 					}
+
 					// if err != nil {
 					// 	s.recordSets.Append(&Record{
 					// 		Sql:          currentSql,
@@ -214,6 +217,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					continue
 				case *ast.InceptionCommitStmt:
 					s.haveCommit = true
+
+					s.executeCommit()
+
 					return s.recordSets.Rows(), nil
 
 				case *ast.InsertStmt:
@@ -243,7 +249,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					s.checkTruncateTable(node, currentSql)
 
 				case *ast.CreateIndexStmt:
-					s.checkCreateIndex(node, currentSql)
+					// s.checkCreateIndex(node, currentSql)
+					// table *ast.TableName, IndexName string,
+					// IndexColNames []*ast.IndexColName, IndexOption *ast.IndexOption
+					s.checkCreateIndex(node.Table, node.IndexName,
+						node.IndexColNames, node.IndexOption, nil, node.Unique)
+
 				case *ast.DropIndexStmt:
 					s.checkDropIndex(node, currentSql)
 
@@ -320,6 +331,78 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	return recordSets, nil
 }
 
+func (s *session) executeCommit() {
+	if s.opt.check {
+		return
+	}
+
+	if s.recordSets.MaxLevel == 2 ||
+		(s.recordSets.MaxLevel == 1 && s.opt.ignoreWarnings) {
+		return
+	}
+
+	s.executeAllStatement()
+
+}
+
+func (s *session) executeAllStatement() {
+
+	fmt.Println("---------------------")
+	for i, node := range s.recordSets.All() {
+		fmt.Println(i, node)
+	}
+}
+
+func (s *session) checkBinlogFormatIsRow() bool {
+	log.Info("checkBinlogFormatIsRow")
+
+	sql := "show variables like 'binlog_format';"
+
+	var format string
+
+	rows, err := s.db.Raw(sql).Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&format, &format)
+		}
+	}
+
+	log.Infof("binlog format: %s", format)
+	return format == "ROW"
+}
+
+func (s *session) checkBinlogIsOn() bool {
+	log.Info("checkBinlogIsOn")
+
+	sql := "show variables like 'log_bin';"
+
+	var format string
+
+	rows, err := s.db.Raw(sql).Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&format, &format)
+		}
+	}
+
+	log.Infof("log_bin is %s", format)
+	return format == "ON"
+}
+
 func (s *session) parseOptions(sql string) {
 
 	firsts := reg.FindStringSubmatch(sql)
@@ -365,14 +448,31 @@ func (s *session) parseOptions(sql string) {
 	addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
 		s.opt.user, s.opt.password, s.opt.host, s.opt.port)
 	db, err := gorm.Open("mysql", addr)
+
+	// 禁用日志记录器，不显示任何日志
+	db.LogMode(false)
+
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println(err.Error())
 		s.AppendErrorMessage(err.Error())
 		return
 	}
+
 	s.db = db
 
+	if s.opt.execute {
+		if !s.checkBinlogFormatIsRow() || !s.checkBinlogIsOn() {
+			s.opt.backup = false
+		}
+	}
+
+	if s.opt.backup {
+		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 ||
+			s.Inc.BackupUser == "" || s.Inc.BackupPassword == "" {
+			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
+		}
+	}
 }
 
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
@@ -527,11 +627,24 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableChangeColumn:
 			s.checkChangeColumn(table, alter)
 
+		case ast.AlterTableRenameTable:
+			s.checkAlterTableRenameTable(table, alter)
+
 		default:
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 			fmt.Println("未定义的解析: ", alter.Tp)
 		}
 	}
+}
+
+func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec) {
+	// fmt.Println("checkAlterTableRenameTable")
+
+	table := s.getTableFromCache(c.NewTable.Schema.O, c.NewTable.Name.O, false)
+	if table != nil {
+		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, c.NewTable.Name.O)
+	}
+
 }
 
 func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
@@ -848,10 +961,10 @@ func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 
 }
 
-func (s *session) checkCreateIndex(node *ast.CreateIndexStmt, sql string) {
+func (s *session) checkCreateIndex1(node *ast.CreateIndexStmt, sql string) {
 
-	fmt.Println("checkCreateIndex")
-	// fmt.Printf("%#v \n", node)
+	fmt.Println("checkCreateIndex1")
+	fmt.Printf("%#v \n", node)
 
 	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	if t == nil {
@@ -895,7 +1008,7 @@ func (s *session) checkCreateIndex(node *ast.CreateIndexStmt, sql string) {
 	querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
 
 	var rows []IndexInfo
-	fmt.Println("++++++++")
+	// fmt.Println("++++++++")
 	if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -919,8 +1032,83 @@ func (s *session) checkCreateIndex(node *ast.CreateIndexStmt, sql string) {
 
 }
 
+func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
+	IndexColNames []*ast.IndexColName, IndexOption *ast.IndexOption,
+	t *TableInfo, unique bool) {
+	fmt.Println("checkCreateIndex")
+
+	if t == nil {
+		t = s.getTableFromCache(table.Schema.O, table.Name.O, true)
+		if t == nil {
+			return
+		}
+	}
+
+	keyMaxLen := 0
+	for _, col := range IndexColNames {
+		found := false
+		var foundField FieldInfo
+		for _, field := range t.Fields {
+			if strings.EqualFold(field.Field, col.Column.Name.O) {
+				found = true
+				foundField = field
+				keyMaxLen += FieldLengthWithType(field.Type)
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
+		} else {
+			tp := foundField.Type
+			if strings.Index(tp, "bolb") > -1 {
+				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
+			}
+		}
+	}
+
+	if len(IndexName) > mysql.MaxIndexIdentifierLen {
+		s.AppendErrorMessage(fmt.Sprintf("表'%s'的索引'%s'名称过长", t.Name, IndexName))
+	}
+
+	if keyMaxLen > MaxKeyLength {
+		s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
+	}
+
+	// if len(IndexColNames) > s.Inc.MaxPrimaryKeyParts {
+	// 	s.AppendErrorNo(ER_PK_TOO_MANY_PARTS, t.Name, col.Column.Name.O, s.Inc.MaxPrimaryKeyParts)
+	// }
+
+	querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
+
+	var rows []IndexInfo
+	// fmt.Println("++++++++")
+	if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+
+	if len(rows) > 0 {
+		for _, row := range rows {
+			if strings.EqualFold(row.IndexName, IndexName) {
+				s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
+				break
+			}
+		}
+	}
+
+	if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
+		s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+	}
+
+}
+
 func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
 	fmt.Println("checkAddIndex")
+
+	fmt.Printf("%#v \n", ct)
 
 	for _, col := range ct.Keys {
 		found := false
@@ -938,12 +1126,19 @@ func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
 }
 
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Printf("%s \n", c.Constraint)
-	fmt.Printf("%s \n", c.Constraint.Keys)
+	fmt.Println("checkAddConstraint")
+
+	// fmt.Printf("%s \n", c.Constraint)
+	// fmt.Printf("%s \n", c.Constraint.Keys)
 
 	switch c.Constraint.Tp {
 	case ast.ConstraintIndex:
-		s.checkAddIndex(t, c.Constraint)
+		// s.checkAddIndex(t, c.Constraint)
+		s.checkCreateIndex(nil, c.Constraint.Name,
+			c.Constraint.Keys, c.Constraint.Option, t, false)
+	case ast.ConstraintUniq:
+		s.checkCreateIndex(nil, c.Constraint.Name,
+			c.Constraint.Keys, c.Constraint.Option, t, true)
 	// case ast.ConstraintForeignKey:
 	// 	s.checkDropColumn(table, alter)
 	// case ast.AlterTableAddConstraint:
@@ -1377,14 +1572,14 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	sql := fmt.Sprintf("SHOW FULL FIELDS FROM `%s`.`%s`", db, tableName)
 
 	var rows []FieldInfo
-	fmt.Println("++++++++")
+	// fmt.Println("++++++++")
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 || reportNotExists {
-				s.AppendErrorMessage(myErr.Message)
+				s.AppendErrorMessage(myErr.Message + ".")
 			}
 		} else {
-			s.AppendErrorMessage(err.Error())
+			s.AppendErrorMessage(err.Error() + ".")
 		}
 
 		return nil
@@ -1499,7 +1694,7 @@ func FieldLengthWithType(tp string) int {
 		l = 8
 	}
 
-	fmt.Println(p, l)
+	// fmt.Println(p, l)
 	return l
 }
 
