@@ -288,6 +288,12 @@ type Inc struct {
 	MaxKeys uint `toml:"max-keys" json:"max-keys"`
 
 	CheckColumnComment bool `toml:"check-column-comment" json:"check-column-comment"`
+
+	// 远程备份库信息
+	BackupHost     string `toml:"backup-host" json:"backup-host"`
+	BackupPort     uint   `toml:"backup-port" json:"backup-port"`
+	BackupUser     string `toml:"backup-user" json:"backup-user"`
+	BackupPassword string `toml:"backup-password" json:"backup-password"`
 }
 
 var defaultConf = Config{
