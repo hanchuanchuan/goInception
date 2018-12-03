@@ -43,6 +43,15 @@ import (
 	// _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
+type MasterStatus struct {
+	gorm.Model
+	File              string `gorm:"Column:File"`
+	Position          int    `gorm:"Column:Position"`
+	Binlog_Do_DB      string `gorm:"Column:Binlog_Do_DB"`
+	Binlog_Ignore_DB  string `gorm:"Column:Binlog_Ignore_DB"`
+	Executed_Gtid_Set string `gorm:"Column:Executed_Gtid_Set"`
+}
+
 type sourceOptions struct {
 	host           string
 	port           int
@@ -103,7 +112,10 @@ type IndexInfo struct {
 var reg *regexp.Regexp
 var regFieldLength *regexp.Regexp
 
-const MaxKeyLength = 767
+const (
+	MaxKeyLength      = 767
+	RemoteBackupTable = "$_$Inception_backup_information$_$"
+)
 
 func init() {
 
@@ -361,15 +373,79 @@ func (s *session) executeCommit() {
 		// s.myRecord = s.recordSets.All()[0]
 
 		for _, record := range s.recordSets.All() {
+
 			if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
+				s.myRecord = record
+
 				errno := s.mysqlCreateBackupTables(record)
 				if errno == 2 {
 					break
 				}
+
+				s.mysqlBackupSql(record)
 			}
 		}
 
 	}
+}
+
+func (s *session) mysqlBackupSql(record *Record) {
+	if s.checkSqlIsDDL(record) {
+		s.mysqlExecuteBackupInfoInsertSql(record)
+	} else if s.checkSqlIsDML(record) {
+		s.mysqlExecuteBackupInfoInsertSql(record)
+	}
+
+}
+
+func makeOPIDByTime(execTime int64, threadId int, seqNo int) string {
+	return fmt.Sprintf("'%d_%d_%08d'", execTime, threadId, seqNo)
+}
+
+func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
+
+	buf := bytes.NewBufferString("INSERT INTO ")
+	dbname := s.getRemoteBackupDBName(record)
+	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
+	buf.WriteString(" VALUES(")
+	buf.WriteString(makeOPIDByTime(record.ExecTimestamp, record.ThreadId, record.SeqNo))
+	buf.WriteString(",'")
+	buf.WriteString(record.StartFile)
+	buf.WriteString("',")
+	buf.WriteString(strconv.Itoa(record.StartPosition))
+	buf.WriteString(",'")
+	buf.WriteString(record.EndFile)
+	buf.WriteString("',")
+	buf.WriteString(strconv.Itoa(record.EndPosition))
+	buf.WriteString(",'")
+	buf.WriteString(record.Sql)
+	buf.WriteString("','")
+	buf.WriteString(s.opt.host)
+	buf.WriteString("','")
+	buf.WriteString(record.TableInfo.Schema)
+	buf.WriteString("','")
+	buf.WriteString(record.TableInfo.Name)
+	buf.WriteString("',")
+	buf.WriteString(strconv.Itoa(s.opt.port))
+	buf.WriteString(",NOW(),'UNKNOWN')")
+
+	sql := buf.String()
+	log.Info(sql)
+	if err := s.backupdb.Exec(sql).Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+			return 2
+		}
+	}
+	return 0
+}
+
+func (s *session) mysqlBackupSingleDDLStatement(record *Record) {
+
+}
+
+func (s *session) mysqlBackupSingleStatement(record *Record) {
+
 }
 
 func (s *session) checkSqlIsDML(record *Record) bool {
@@ -385,9 +461,117 @@ func (s *session) checkSqlIsDML(record *Record) bool {
 
 func (s *session) mysqlCreateBackupTables(record *Record) int {
 
-	s.myRecord = record
+	if record.TableInfo == nil {
+		return 0
+	}
+
+	backupDBName := s.getRemoteBackupDBName(record)
+	if backupDBName == "" {
+		return 2
+	}
+
+	sql := fmt.Sprintf("create database if not exists `%s`;", backupDBName)
+	if err := s.backupdb.Exec(sql).Error; err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
+				s.AppendErrorMessage(myErr.Message)
+				return 2
+			}
+		}
+	}
+
+	createSql := s.mysqlCreateSqlFromTableInfo(backupDBName, record.TableInfo)
+	if err := s.backupdb.Exec(createSql).Error; err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
+				s.AppendErrorMessage(myErr.Message)
+				return 2
+			}
+		}
+	}
+
+	createSql = s.mysqlCreateSqlBackupTable(backupDBName)
+	if err := s.backupdb.Exec(createSql).Error; err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
+				s.AppendErrorMessage(myErr.Message)
+				return 2
+			}
+		}
+	}
 
 	return int(record.ErrLevel)
+}
+
+func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
+
+	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
+
+	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
+	buf.WriteString("(")
+
+	buf.WriteString("opid_time varchar(50),")
+	buf.WriteString("start_binlog_file varchar(512),")
+	buf.WriteString("start_binlog_pos int,")
+	buf.WriteString("end_binlog_file varchar(512),")
+	buf.WriteString("end_binlog_pos int,")
+	buf.WriteString("sql_statement text,")
+	buf.WriteString("host VARCHAR(64),")
+	buf.WriteString("dbname VARCHAR(64),")
+	buf.WriteString("tablename VARCHAR(64),")
+	buf.WriteString("port INT,")
+	buf.WriteString("time TIMESTAMP,")
+	buf.WriteString("type VARCHAR(20),")
+	buf.WriteString("PRIMARY KEY(opid_time)")
+
+	buf.WriteString(")ENGINE INNODB DEFAULT CHARSET UTF8;")
+
+	return buf.String()
+}
+func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) string {
+
+	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
+	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, ti.Name))
+	buf.WriteString("(")
+
+	buf.WriteString("id bigint auto_increment primary key, ")
+	buf.WriteString("rollback_statement mediumtext, ")
+	buf.WriteString("opid_time varchar(50)")
+
+	buf.WriteString(") ENGINE INNODB DEFAULT CHARSET UTF8;")
+
+	return buf.String()
+}
+
+func (s *session) mysqlRealQueryBackup(sql string) error {
+	res := s.db.Exec(sql)
+	err := res.Error
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+	return err
+}
+
+func (s *session) getRemoteBackupDBName(record *Record) (v string) {
+
+	v = fmt.Sprintf("%s_%d_%s", s.opt.host, s.opt.port, record.TableInfo.Schema)
+
+	if len(v) > mysql.MaxDatabaseNameLength {
+		s.AppendErrorNo(ER_TOO_LONG_BAKDB_NAME, s.opt.host, s.opt.port, record.TableInfo.Schema)
+		return ""
+	}
+
+	v = strings.Replace(v, "-", "_", -1)
+	v = strings.Replace(v, ".", "_", -1)
+
+	return
 }
 
 func (s *session) checkSqlIsDDL(record *Record) bool {
@@ -465,6 +649,8 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 	record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 
+	record.ExecTimestamp = time.Now().Unix()
+
 	err := res.Error
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -480,51 +666,48 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 		record.ThreadId = s.fetchThreadID()
 
+		if _, ok := record.Type.(*ast.CreateTableStmt); ok &&
+			record.TableInfo == nil && record.DBName != "" && record.TableName != "" {
+			record.TableInfo = s.getTableFromCache(record.DBName, record.TableName, true)
+		}
 	}
-
 }
 
 func (s *session) executeRemoteStatementAndBackup(record *Record) {
 	log.Info("executeRemoteStatementAndBackup")
 
 	if s.opt.backup {
-		file, position := s.mysqlFetchMasterBinlogPosition()
-
-		record.StartFile = file
-		record.StartPosition = position
+		masterStatus := s.mysqlFetchMasterBinlogPosition()
+		if masterStatus != nil {
+			record.StartFile = masterStatus.File
+			record.StartPosition = masterStatus.Position
+		}
 	}
 
 	s.executeRemoteStatement(record)
 
 	if s.opt.backup {
-		file, position := s.mysqlFetchMasterBinlogPosition()
-
-		record.EndFile = file
-		record.EndPosition = position
+		masterStatus := s.mysqlFetchMasterBinlogPosition()
+		if masterStatus != nil {
+			record.EndFile = masterStatus.File
+			record.EndPosition = masterStatus.Position
+		}
 	}
 }
 
-func (s *session) mysqlFetchMasterBinlogPosition() (file string, position int) {
+func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
+	log.Info("mysqlFetchMasterBinlogPosition")
 
-	// res := s.db.Raw("SHOW MASTER STATUS").Scan(&file, &position)
-	// log.Infof("%#v", res)
-
-	rows, err := s.db.Raw("SHOW MASTER STATUS").Rows()
-	defer rows.Close()
-	if err != nil {
+	r := MasterStatus{}
+	if err := s.db.Raw("SHOW MASTER STATUS").Scan(&r).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
-	} else {
-		for rows.Next() {
-			rows.Scan(&file, &position)
-			return
-		}
+		log.Error(err)
 	}
-
-	return
+	return &r
 }
 
 func (s *session) checkBinlogFormatIsRow() bool {
@@ -777,6 +960,12 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
 	}
 
+	if node.Table.Schema.O == "" {
+		s.myRecord.DBName = s.DBName
+	} else {
+		s.myRecord.DBName = node.Table.Schema.O
+	}
+	s.myRecord.TableName = node.Table.Name.O
 }
 
 func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
