@@ -113,6 +113,7 @@ type Record struct {
 	Type ast.StmtNode
 
 	// 备份相关
+	ExecTimestamp int64
 	StartFile     string
 	StartPosition int
 	EndFile       string
@@ -121,6 +122,7 @@ type Record struct {
 	SeqNo         int
 
 	DBName    string
+	TableName string
 	TableInfo *TableInfo
 }
 
