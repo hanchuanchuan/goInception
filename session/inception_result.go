@@ -43,7 +43,9 @@ type MyRecordSets struct {
 	pk      ast.RecordSet
 
 	records  []*Record
-	maxLevel uint8
+	MaxLevel uint8
+
+	SeqNo int
 }
 
 const (
@@ -86,7 +88,7 @@ type Record struct {
 	StageStatus byte
 
 	// 审核级别,0为成功,1为警告,2为错误
-	Errlevel uint8
+	ErrLevel uint8
 	// 错误/警告信息
 	ErrorMessage string
 
@@ -100,12 +102,26 @@ type Record struct {
 	// 备份库的库名
 	BackupDBName string
 
+	// 执行用时
+	ExecTime string
+
 	// sql的hash值,osc使用
 	Sqlsha1 string
 
 	Buf *bytes.Buffer
 
 	Type ast.StmtNode
+
+	// 备份相关
+	StartFile     string
+	StartPosition int
+	EndFile       string
+	EndPosition   int
+	ThreadId      int
+	SeqNo         int
+
+	DBName    string
+	TableInfo *TableInfo
 }
 
 func (r *recordSet) Fields() []*ast.ResultField {
@@ -178,7 +194,7 @@ func NewRecordSets() *MyRecordSets {
 	// 阶段   RERUN EXECUTED CHECKED
 	rc.CreateFiled("stage", mysql.TypeString)
 	// 审核级别,0为成功,1为警告,2为错误
-	rc.CreateFiled("errlevel", mysql.TypeShort)
+	rc.CreateFiled("ErrLevel", mysql.TypeShort)
 	// 阶段说明 Execute Successfully / 审核完成 / 失败...
 	rc.CreateFiled("stagestatus", mysql.TypeString)
 	// 错误/警告信息
@@ -190,7 +206,7 @@ func NewRecordSets() *MyRecordSets {
 	rc.CreateFiled("sequence", mysql.TypeString)
 	// 备份库的库名
 	rc.CreateFiled("backup_dbname", mysql.TypeString)
-	rc.CreateFiled("execute_time", mysql.TypeTimestamp)
+	rc.CreateFiled("execute_time", mysql.TypeString)
 	// sql的hash值,osc使用
 	rc.CreateFiled("sqlsha1", mysql.TypeString)
 
@@ -210,13 +226,13 @@ func (r *recordSet) CreateFiled(name string, tp uint8) {
 	r.fieldCount++
 }
 
-// func (s *MyRecordSets) AppendRow(sql string, errlevel int) {
+// func (s *MyRecordSets) AppendRow(sql string, ErrLevel int) {
 
 // 	row := make([]types.Datum, s.rc.fieldCount)
 
 // 	row[0].SetInt64(int64(s.rc.count + 1))
 // 	row[1].SetString("error")
-// 	row[2].SetInt64(int64(errlevel))
+// 	row[2].SetInt64(int64(ErrLevel))
 // 	row[3].SetString("1")
 // 	row[4].SetString("testadadsf")
 // 	row[5].SetString(sql)
@@ -231,16 +247,20 @@ func (r *recordSet) CreateFiled(name string, tp uint8) {
 // }
 
 func (s *MyRecordSets) Append(r *Record) {
-	s.maxLevel = uint8(Max(int(r.maxLevel), int(r.Errlevel)))
+	s.MaxLevel = uint8(Max(int(s.MaxLevel), int(r.ErrLevel)))
 
+	s.SeqNo++
+	r.SeqNo = s.SeqNo
 	s.records = append(s.records, r)
+}
 
+func (s *MyRecordSets) setFields(r *Record) {
 	row := make([]types.Datum, s.rc.fieldCount)
 
 	row[0].SetInt64(int64(s.rc.count + 1))
 
 	row[1].SetString(stageList[r.Stage])
-	row[2].SetInt64(int64(r.Errlevel))
+	row[2].SetInt64(int64(r.ErrLevel))
 	row[3].SetString(statusList[r.StageStatus])
 
 	if r.ErrorMessage != "" {
@@ -262,7 +282,12 @@ func (s *MyRecordSets) Append(r *Record) {
 		row[8].SetString(r.BackupDBName)
 	}
 
-	row[9].SetMysqlTime(types.CurrentTime(mysql.TypeTimestamp))
+	if r.ExecTime == "" {
+		row[9].SetString("0")
+	} else {
+		row[9].SetString(r.ExecTime)
+	}
+	// row[9].SetMysqlTime(types.CurrentTime(mysql.TypeTimestamp))
 
 	if r.Sqlsha1 == "" {
 		row[10].SetNull()
@@ -278,14 +303,20 @@ func (s *MyRecordSets) Append(r *Record) {
 
 // 	s.Append(&Record{
 // 		Sql:      "insert into t1 select 1",
-// 		Errlevel: 1,
+// 		ErrLevel: 1,
 // 	})
 
 // 	return []ast.RecordSet{s.rc}
 // }
 
 func (s *MyRecordSets) Rows() []ast.RecordSet {
+
+	for _, r := range s.records {
+		s.setFields(r)
+	}
+
 	s.records = nil
+
 	return []ast.RecordSet{s.rc}
 }
 
@@ -297,8 +328,4 @@ func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
 
 func (s *MyRecordSets) All() []*Record {
 	return s.records
-}
-
-func (s *MyRecordSets) MaxLevel() uint8 {
-	return s.maxLevel
 }

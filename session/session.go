@@ -161,7 +161,8 @@ type session struct {
 
 	opt *sourceOptions
 
-	db *gorm.DB
+	db       *gorm.DB
+	backupdb *gorm.DB
 
 	DBName string
 

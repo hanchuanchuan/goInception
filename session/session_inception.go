@@ -124,12 +124,12 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
 
-	// fmt.Println("%+v", s.Inc)
-	// fmt.Println("---------------===============")
+	// log.Info("%+v", s.Inc)
+	// log.Info("---------------===============")
 	sqlList := strings.Split(sql, "\n")
-	// fmt.Println(len(sqlList))
+	// log.Info(len(sqlList))
 	// for i, a := range sqlList {
-	// 	fmt.Println(i, a)
+	// 	log.Info(i, a)
 	// }
 	if !s.haveBegin && sql == "select @@version_comment limit 1" {
 		return s.Execute(ctx, sql)
@@ -163,14 +163,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			stmtNodes, err := s.ParseSQL(ctx, s1, charsetInfo, collation)
 
 			// log.Info(len(stmtNodes))
-			// fmt.Println("语句数", len(stmtNodes))
+			// log.Info("语句数", len(stmtNodes))
 
 			if err != nil {
-				fmt.Println(err)
-				fmt.Println(fmt.Sprintf("解析失败! %s", err))
+				// log.Info(err)
+				// log.Info(fmt.Sprintf("解析失败! %s", err))
 				s.recordSets.Append(&Record{
 					Sql:          s1,
-					Errlevel:     2,
+					ErrLevel:     2,
 					ErrorMessage: err.Error(),
 				})
 				return s.recordSets.Rows(), nil
@@ -181,16 +181,17 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			}
 
 			for _, stmtNode := range stmtNodes {
-				// fmt.Println("当前语句: ", stmtNode)
+				// log.Info("当前语句: ", stmtNode)
 				// fmt.Printf("%T\n", stmtNode)
 
 				currentSql := stmtNode.Text()
 
 				// var checkResult *Record = nil
 				s.myRecord = &Record{
-					Sql:  currentSql,
-					Buf:  new(bytes.Buffer),
-					Type: stmtNode,
+					Sql:   currentSql,
+					Buf:   new(bytes.Buffer),
+					Type:  stmtNode,
+					Stage: StageCheck,
 				}
 
 				switch node := stmtNode.(type) {
@@ -199,21 +200,20 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					s.parseOptions(sql)
 
-					if s.myRecord.Errlevel == 2 {
+					if s.db != nil {
+						defer s.db.Close()
+					}
+					if s.backupdb != nil {
+						defer s.backupdb.Close()
+					}
+
+					if s.myRecord.ErrLevel == 2 {
 						s.myRecord.Sql = ""
 						s.recordSets.Append(s.myRecord)
 
 						return s.recordSets.Rows(), nil
 					}
 
-					// if err != nil {
-					// 	s.recordSets.Append(&Record{
-					// 		Sql:          currentSql,
-					// 		Errlevel:     2,
-					// 		ErrorMessage: err.Error(),
-					// 	})
-					// 	return s.recordSets.Rows(), nil
-					// }
 					continue
 				case *ast.InceptionCommitStmt:
 					s.haveCommit = true
@@ -260,42 +260,28 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 				case *ast.CreateViewStmt:
 					s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
-					// default:
-					// s.recordSets.Append(&Record{
-					// 	Sql:          currentSql,
-					// 	Errlevel:     0,
-					// 	ErrorMessage: fmt.Sprintf("%T", node),
-					// })
+
 				default:
-					fmt.Println("无匹配类型...")
+					log.Info("无匹配类型...")
 					fmt.Printf("%T\n", stmtNode)
 					s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 				}
 
-				// fmt.Println(stmtNode.Text())
-				// fmt.Println("---")
+				// log.Info(stmtNode.Text())
+				// log.Info("---")
 
 				if !s.haveBegin {
-					s.recordSets.Append(&Record{
-						Sql:          currentSql,
-						Errlevel:     2,
-						ErrorMessage: "Must start as begin statement.",
-					})
+					s.AppendErrorMessage("Must start as begin statement.")
+					s.recordSets.Append(s.myRecord)
+					// s.recordSets.Append(&Record{
+					// 	Sql:          currentSql,
+					// 	ErrLevel:     2,
+					// 	ErrorMessage: "Must start as begin statement.",
+					// })
 					return s.recordSets.Rows(), nil
 				}
 
-				// if checkResult != nil {
-				// 	checkResult.Sql = currentSql
-
-				// 	s.recordSets.Append(checkResult)
-				// }
-
 				s.recordSets.Append(s.myRecord)
-
-				// s.recordSets.Append(&Record{
-				// 	Sql:      currentSql,
-				// 	Errlevel: 0,
-				// })
 			}
 
 			buf = nil
@@ -314,7 +300,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	if !s.haveCommit {
 		s.recordSets.Append(&Record{
 			Sql:          "",
-			Errlevel:     2,
+			ErrLevel:     2,
 			ErrorMessage: "Must end with commit.",
 		})
 	}
@@ -336,21 +322,209 @@ func (s *session) executeCommit() {
 		return
 	}
 
+	log.Info("执行最大错误等级", s.recordSets.MaxLevel)
+
 	if s.recordSets.MaxLevel == 2 ||
-		(s.recordSets.MaxLevel == 1 && s.opt.ignoreWarnings) {
+		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+		return
+	}
+
+	// 如果有错误时,把错误输出放在第一行
+	s.myRecord = s.recordSets.All()[0]
+
+	if s.opt.backup {
+		if !s.checkBinlogIsOn() {
+			s.AppendErrorMessage("binlog日志未开启,无法备份!")
+			return
+		}
+
+		if !s.checkBinlogFormatIsRow() {
+			s.modifyBinlogFormatRow()
+		}
+	}
+
+	if s.recordSets.MaxLevel == 2 ||
+		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
 		return
 	}
 
 	s.executeAllStatement()
 
+	if s.recordSets.MaxLevel == 2 ||
+		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+		return
+	}
+
+	if s.opt.backup {
+
+		// 如果有错误时,把错误输出放在第一行
+		// s.myRecord = s.recordSets.All()[0]
+
+		for _, record := range s.recordSets.All() {
+			if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
+				errno := s.mysqlCreateBackupTables(record)
+				if errno == 2 {
+					break
+				}
+			}
+		}
+
+	}
+}
+
+func (s *session) checkSqlIsDML(record *Record) bool {
+
+	switch record.Type.(type) {
+	case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+		return true
+
+	default:
+		return false
+	}
+}
+
+func (s *session) mysqlCreateBackupTables(record *Record) int {
+
+	s.myRecord = record
+
+	return int(record.ErrLevel)
+}
+
+func (s *session) checkSqlIsDDL(record *Record) bool {
+
+	switch record.Type.(type) {
+	case
+		*ast.DropDatabaseStmt,
+
+		*ast.CreateTableStmt,
+		*ast.AlterTableStmt,
+		*ast.DropTableStmt,
+		*ast.RenameTableStmt,
+		*ast.TruncateTableStmt,
+
+		*ast.CreateIndexStmt,
+		*ast.DropIndexStmt:
+		return true
+
+	default:
+		return false
+	}
 }
 
 func (s *session) executeAllStatement() {
 
-	fmt.Println("---------------------")
-	for i, node := range s.recordSets.All() {
-		fmt.Println(i, node)
+	log.Info("---------------------")
+	for _, record := range s.recordSets.All() {
+		errno := s.executeRemoteCommand(record)
+		if errno == 2 {
+			break
+		}
 	}
+}
+
+func (s *session) executeRemoteCommand(record *Record) int {
+
+	s.myRecord = record
+	record.Stage = StageExec
+
+	log.Infof("%T", record.Type)
+	switch node := record.Type.(type) {
+
+	case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+		s.executeRemoteStatementAndBackup(record)
+
+	case *ast.UseStmt,
+		*ast.DropDatabaseStmt,
+
+		*ast.CreateTableStmt,
+		*ast.AlterTableStmt,
+		*ast.DropTableStmt,
+		*ast.RenameTableStmt,
+		*ast.TruncateTableStmt,
+
+		*ast.CreateIndexStmt,
+		*ast.DropIndexStmt:
+		s.executeRemoteStatement(record)
+
+	default:
+		log.Info("无匹配类型...")
+		fmt.Printf("%T\n", node)
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+	}
+
+	return int(record.ErrLevel)
+}
+
+func (s *session) executeRemoteStatement(record *Record) {
+	log.Info("executeRemoteStatement")
+	sql := record.Sql
+
+	start := time.Now()
+
+	res := s.db.Exec(sql)
+
+	record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
+
+	err := res.Error
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+		log.Error(err)
+		record.StageStatus = StatusExecFail
+	} else {
+		record.AffectedRows = int(res.RowsAffected)
+		record.StageStatus = StatusExecOK
+
+		record.ThreadId = s.fetchThreadID()
+
+	}
+
+}
+
+func (s *session) executeRemoteStatementAndBackup(record *Record) {
+	log.Info("executeRemoteStatementAndBackup")
+
+	if s.opt.backup {
+		file, position := s.mysqlFetchMasterBinlogPosition()
+
+		record.StartFile = file
+		record.StartPosition = position
+	}
+
+	s.executeRemoteStatement(record)
+
+	if s.opt.backup {
+		file, position := s.mysqlFetchMasterBinlogPosition()
+
+		record.EndFile = file
+		record.EndPosition = position
+	}
+}
+
+func (s *session) mysqlFetchMasterBinlogPosition() (file string, position int) {
+
+	// res := s.db.Raw("SHOW MASTER STATUS").Scan(&file, &position)
+	// log.Infof("%#v", res)
+
+	rows, err := s.db.Raw("SHOW MASTER STATUS").Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&file, &position)
+			return
+		}
+	}
+
+	return
 }
 
 func (s *session) checkBinlogFormatIsRow() bool {
@@ -376,6 +550,43 @@ func (s *session) checkBinlogFormatIsRow() bool {
 
 	log.Infof("binlog format: %s", format)
 	return format == "ROW"
+}
+
+func (s *session) fetchThreadID() (threadId int) {
+	log.Info("fetchThreadID")
+
+	rows, err := s.db.Raw("select connection_id()").Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&threadId)
+			return
+		}
+	}
+	return
+}
+
+func (s *session) modifyBinlogFormatRow() {
+	log.Info("modifyBinlogFormatRow")
+
+	sql := "set session binlog_format=row;"
+
+	res := s.db.Exec(sql)
+
+	if err := res.Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+		log.Error(err)
+	}
 }
 
 func (s *session) checkBinlogIsOn() bool {
@@ -415,7 +626,7 @@ func (s *session) parseOptions(sql string) {
 	options = strings.Replace(options, ";", "\n", -1)
 	options = strings.Replace(options, "=", ": ", -1)
 
-	// fmt.Println(options)
+	// log.Info(options)
 	// viper.SetConfigType("toml")
 	viper.SetConfigType("yaml")
 
@@ -439,7 +650,7 @@ func (s *session) parseOptions(sql string) {
 
 	if s.opt.host == "" || s.opt.port == 0 ||
 		s.opt.user == "" || s.opt.password == "" {
-		fmt.Println(s.opt)
+		log.Info(s.opt)
 
 		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
 		return
@@ -450,11 +661,11 @@ func (s *session) parseOptions(sql string) {
 	db, err := gorm.Open("mysql", addr)
 
 	// 禁用日志记录器，不显示任何日志
-	db.LogMode(false)
+	// db.LogMode(false)
 
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(err.Error())
+		log.Info(err)
+		log.Info(err.Error())
 		s.AppendErrorMessage(err.Error())
 		return
 	}
@@ -462,8 +673,8 @@ func (s *session) parseOptions(sql string) {
 	s.db = db
 
 	if s.opt.execute {
-		if !s.checkBinlogFormatIsRow() || !s.checkBinlogIsOn() {
-			s.opt.backup = false
+		if s.opt.backup && !s.checkBinlogIsOn() {
+			s.AppendErrorMessage("binlog日志未开启,无法备份!")
 		}
 	}
 
@@ -471,13 +682,25 @@ func (s *session) parseOptions(sql string) {
 		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 ||
 			s.Inc.BackupUser == "" || s.Inc.BackupPassword == "" {
 			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
+		} else {
+			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
+				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort)
+			backupdb, err := gorm.Open("mysql", addr)
+
+			if err != nil {
+				log.Info(err)
+				s.AppendErrorMessage(err.Error())
+				return
+			}
+
+			s.backupdb = backupdb
 		}
 	}
 }
 
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 
-	fmt.Println("checkTruncateTable")
+	log.Info("checkTruncateTable")
 
 	// fmt.Printf("%#v \n", node)
 
@@ -497,7 +720,7 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 
 func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
-	fmt.Println("checkDropTable")
+	log.Info("checkDropTable")
 
 	// fmt.Printf("%#v \n", node)
 	for _, t := range node.Tables {
@@ -507,6 +730,8 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 		} else {
 
 			table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
+
+			s.myRecord.TableInfo = table
 
 			//如果表不存在，但存在if existed，则跳过
 			if table == nil && !node.IfExists {
@@ -518,7 +743,7 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 func (s *session) checkRenametable(node *ast.RenameTableStmt, sql string) {
 
-	fmt.Println("checkRenametable")
+	log.Info("checkRenametable")
 
 	fmt.Printf("%#v \n", node)
 
@@ -533,7 +758,7 @@ func (s *session) checkRenametable(node *ast.RenameTableStmt, sql string) {
 
 func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
-	fmt.Println("checkCreateTable")
+	log.Info("checkCreateTable")
 
 	// Table       *TableName
 	// ReferTable  *TableName
@@ -556,7 +781,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
-	fmt.Println("checkAlterTable")
+	log.Info("checkAlterTable")
 
 	// Table *TableName
 	// Specs []*AlterTableSpec
@@ -601,10 +826,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		return
 	}
 
+	s.myRecord.TableInfo = table
+
 	// fmt.Printf("%s \n", table)
 	for _, alter := range node.Specs {
 		// fmt.Printf("%s \n", alter)
-		// fmt.Println(alter.Tp)
+		// log.Info(alter.Tp)
 		switch alter.Tp {
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
@@ -632,13 +859,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 		default:
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-			fmt.Println("未定义的解析: ", alter.Tp)
+			log.Info("未定义的解析: ", alter.Tp)
 		}
 	}
 }
 
 func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec) {
-	// fmt.Println("checkAlterTableRenameTable")
+	// log.Info("checkAlterTableRenameTable")
 
 	table := s.getTableFromCache(c.NewTable.Schema.O, c.NewTable.Name.O, false)
 	if table != nil {
@@ -648,11 +875,11 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 }
 
 func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("checkChangeColumn")
+	log.Info("checkChangeColumn")
 
 	// fmt.Printf("%#v \n", c)
 
-	fmt.Println(c.OldColumnName, len(c.NewColumns))
+	log.Info(c.OldColumnName, len(c.NewColumns))
 	found := false
 	for _, nc := range c.NewColumns {
 		if nc.Name.Name.L == c.OldColumnName.Name.O {
@@ -669,7 +896,7 @@ func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("checkModifyColumn")
+	log.Info("checkModifyColumn")
 
 	fmt.Printf("%#v \n", c)
 
@@ -726,7 +953,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		}
 
 		fieldType := nc.Tp.CompactStr()
-		fmt.Println("--------------", nc.Name, fieldType, foundField.Type, foundField)
+		log.Info("--------------", nc.Name, fieldType, foundField.Type, foundField)
 
 		switch nc.Tp.Tp {
 		case mysql.TypeDecimal, mysql.TypeNewDecimal,
@@ -775,7 +1002,7 @@ func mysqlFiledIsBlob(tp byte) bool {
 }
 
 func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
-	fmt.Println("mysqlCheckField")
+	log.Info("mysqlCheckField")
 
 	if field.Tp.Tp == mysql.TypeEnum ||
 		field.Tp.Tp == mysql.TypeSet ||
@@ -796,10 +1023,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	notNullFlag := false
 	autoIncrement := false
 
-	// fmt.Println(field.Name.Name, field.Tp.Flag, notNullFlag, autoIncrement)
+	// log.Info(field.Name.Name, field.Tp.Flag, notNullFlag, autoIncrement)
 	if len(field.Options) > 0 {
 		for _, op := range field.Options {
-			// fmt.Println(op)
+			// log.Info(op)
 			// fmt.Printf("%s \n", op)
 			// fmt.Printf("%s %T \n", op.Expr, op.Expr)
 
@@ -858,7 +1085,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 }
 
 func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("checkDropForeignKey")
+	log.Info("checkDropForeignKey")
 
 	fmt.Printf("%s \n", c)
 
@@ -866,7 +1093,7 @@ func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 
 }
 func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool {
-	fmt.Println("checkAlterTableDropIndex")
+	log.Info("checkAlterTableDropIndex")
 
 	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
 
@@ -891,7 +1118,7 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 }
 
 func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("checkDropPrimaryKey")
+	log.Info("checkDropPrimaryKey")
 
 	s.checkAlterTableDropIndex(t, "PRIMARY")
 }
@@ -949,7 +1176,7 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
-	fmt.Println("checkDropIndex")
+	log.Info("checkDropIndex")
 	// fmt.Printf("%#v \n", node)
 
 	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
@@ -963,7 +1190,7 @@ func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 
 func (s *session) checkCreateIndex1(node *ast.CreateIndexStmt, sql string) {
 
-	fmt.Println("checkCreateIndex1")
+	log.Info("checkCreateIndex1")
 	fmt.Printf("%#v \n", node)
 
 	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
@@ -1008,7 +1235,7 @@ func (s *session) checkCreateIndex1(node *ast.CreateIndexStmt, sql string) {
 	querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
 
 	var rows []IndexInfo
-	// fmt.Println("++++++++")
+	// log.Info("++++++++")
 	if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1035,7 +1262,7 @@ func (s *session) checkCreateIndex1(node *ast.CreateIndexStmt, sql string) {
 func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	IndexColNames []*ast.IndexColName, IndexOption *ast.IndexOption,
 	t *TableInfo, unique bool) {
-	fmt.Println("checkCreateIndex")
+	log.Info("checkCreateIndex")
 
 	if t == nil {
 		t = s.getTableFromCache(table.Schema.O, table.Name.O, true)
@@ -1081,7 +1308,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
 
 	var rows []IndexInfo
-	// fmt.Println("++++++++")
+	// log.Info("++++++++")
 	if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1106,7 +1333,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 }
 
 func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
-	fmt.Println("checkAddIndex")
+	log.Info("checkAddIndex")
 
 	fmt.Printf("%#v \n", ct)
 
@@ -1126,7 +1353,7 @@ func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
 }
 
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Println("checkAddConstraint")
+	log.Info("checkAddConstraint")
 
 	// fmt.Printf("%s \n", c.Constraint)
 	// fmt.Printf("%s \n", c.Constraint.Keys)
@@ -1145,7 +1372,7 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	// 	s.checkAddConstraint(table, alter)
 	default:
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-		fmt.Println("未定义的解析: ", c.Constraint.Tp)
+		log.Info("未定义的解析: ", c.Constraint.Tp)
 	}
 
 	// ConstraintNoConstraint ConstraintType = iota
@@ -1239,7 +1466,7 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 
 func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
-	fmt.Println("checkInsert")
+	log.Info("checkInsert")
 	// IsReplace   bool
 	// IgnoreErr   bool
 	// Table       *TableRefsClause
@@ -1269,7 +1496,16 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 	}
 
-	s.checkFieldsValid(x.Columns, s.getTableFromCache(t.Schema.O, t.Name.O, true))
+	// if t.Schema.O != "" {
+	// 	s.myRecord.DBName = t.Schema.O
+	// } else {
+	// 	s.myRecord.DBName = s.DBName
+	// }
+
+	table := s.getTableFromCache(t.Schema.O, t.Name.O, true)
+	s.myRecord.TableInfo = table
+
+	s.checkFieldsValid(x.Columns, table)
 
 	if len(x.Lists) > 0 {
 		if fieldCount == 0 {
@@ -1287,9 +1523,9 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// insert select 语句
 	if x.Select != nil {
 		if sel, ok := x.Select.(*ast.SelectStmt); ok {
-			fmt.Println(sel.Text())
+			log.Info(sel.Text())
 
-			fmt.Println(len(sel.Fields.Fields), sel.Fields)
+			log.Info(len(sel.Fields.Fields), sel.Fields)
 
 			checkWildCard := false
 			if len(sel.Fields.Fields) > 0 {
@@ -1306,18 +1542,18 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			if len(sel.Fields.Fields) > 0 {
 				for _, f := range sel.Fields.Fields {
-					fmt.Println("--------")
+					log.Info("--------")
 
-					fmt.Println(fmt.Sprintf("%T", f.Expr))
+					log.Info(fmt.Sprintf("%T", f.Expr))
 
 					if c, ok := f.Expr.(*ast.ColumnNameExpr); ok {
-						fmt.Println(c.Name)
+						log.Info(c.Name)
 					}
 					if f.Expr == nil {
-						fmt.Println(node.Text())
-						fmt.Println("Expr is NULL", f.WildCard, f.Expr, f.AsName)
-						fmt.Println(f.Text())
-						fmt.Println("是个*号")
+						log.Info(node.Text())
+						log.Info("Expr is NULL", f.WildCard, f.Expr, f.AsName)
+						log.Info(f.Text())
+						log.Info("是个*号")
 					}
 				}
 			}
@@ -1329,7 +1565,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			explain = append(explain, "EXPLAIN ")
 			explain = append(explain, selectSql)
 
-			fmt.Println(explain)
+			log.Info(explain)
 
 			rows := s.getExplainInfo(strings.Join(explain, ""))
 
@@ -1338,12 +1574,12 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 	}
 
-	// fmt.Println(len(node.Setlist), "----------------")
+	// log.Info(len(node.Setlist), "----------------")
 	if len(node.Setlist) > 0 {
 		// Process `set` type column.
 		// columns := make([]string, 0, len(node.Setlist))
 		for _, v := range node.Setlist {
-			fmt.Println(v.Column)
+			log.Info(v.Column)
 			// columns = append(columns, v.Column)
 		}
 
@@ -1359,7 +1595,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 
-	fmt.Println("checkDropDB")
+	log.Info("checkDropDB")
 
 	fmt.Printf("%#v \n", node)
 
@@ -1368,7 +1604,7 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 
 func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 
-	fmt.Println("checkCreateDB")
+	log.Info("checkCreateDB")
 
 	// fmt.Printf("%#v \n", node)
 
@@ -1379,7 +1615,7 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 
 func (s *session) checkChangeDB(node *ast.UseStmt) {
 
-	fmt.Println("checkChangeDB", node.DBName)
+	log.Info("checkChangeDB", node.DBName)
 
 	s.DBName = node.DBName
 	if s.checkDBExists(node.DBName, true) {
@@ -1425,7 +1661,7 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	explain = append(explain, "EXPLAIN ")
 	explain = append(explain, sql)
 
-	fmt.Println(explain)
+	log.Info(explain)
 
 	rows := s.getExplainInfo(strings.Join(explain, ""))
 
@@ -1435,7 +1671,22 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
-	fmt.Println("checkUpdate")
+	log.Info("checkUpdate")
+
+	log.Infof("%#v", node)
+	log.Infof("%#v", node.TableRefs)
+	log.Infof("%#v", node.List)
+
+	// 从set列表读取要更新的表
+	var originTable string
+	var firstColumnName string
+	if node.List != nil {
+		for _, l := range node.List {
+			log.Infof("%#v", l.Column)
+			originTable = l.Column.Table.L
+			firstColumnName = l.Column.Name.L
+		}
+	}
 
 	// fmt.Printf("%s \n", node.TableRefs)
 	// fmt.Printf("%s \n", node.List)
@@ -1452,24 +1703,49 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	var tableList []*ast.TableName
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
+	catchError := false
 	for _, tblName := range tableList {
-		fmt.Println(tblName.Schema)
-		fmt.Println(tblName.Name)
+		log.Info(tblName.Schema)
+		log.Info(tblName.Name)
 
-		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+
+		if t == nil {
+			catchError = true
+		} else if s.myRecord.TableInfo == nil {
+
+			// 如果set没有指定列名,则需要根据列名遍历所有访问表的列,看操作的表是哪一个
+			if originTable == "" {
+				for _, field := range t.Fields {
+					if strings.EqualFold(field.Field, firstColumnName) {
+						s.myRecord.TableInfo = t
+						break
+					}
+				}
+			} else {
+				if originTable == tblName.Name.L {
+					s.myRecord.TableInfo = t
+				}
+			}
+		}
 	}
 
-	s.explainOrAnalyzeSql(sql)
+	if !catchError {
+		s.explainOrAnalyzeSql(sql)
+	}
 }
 
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
-	fmt.Println("checkDelete")
+	log.Info("checkDelete")
+
+	log.Infof("%#v", node)
+
+	log.Infof("%#v", node.TableRefs.TableRefs)
 
 	if node.Tables != nil {
-		t := node.Tables.Tables
-		for _, a := range t {
-			s.getTableFromCache(a.Schema.O, a.Name.O, true)
+		for _, a := range node.Tables.Tables {
+			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
 		}
 	}
 
@@ -1477,47 +1753,47 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
 	for _, tblName := range tableList {
-		fmt.Println(tblName.Schema)
-		fmt.Println(tblName.Name)
-
-		s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+		if s.myRecord.TableInfo == nil {
+			s.myRecord.TableInfo = t
+		}
 	}
 
 	s.explainOrAnalyzeSql(sql)
 
 	// if node.TableRefs != nil {
 	// 	a := node.TableRefs.TableRefs
-	// 	// fmt.Println(a)
+	// 	// log.Info(a)
 	// 	fmt.Printf("%T,%s  \n", a, a)
-	// 	fmt.Println("===================")
+	// 	log.Info("===================")
 	// 	fmt.Printf("%T , %s  \n", a.Left, a.Left)
 	// 	fmt.Printf("%T , %s  \n", a.Right, a.Right)
 	// 	if a.Left != nil {
 	// 		if tblSrc, ok := a.Left.(*ast.Join); ok {
-	// 			fmt.Println("---left")
-	// 			// fmt.Println(tblSrc)
-	// 			// fmt.Println(tblSrc.AsName)
-	// 			// fmt.Println(tblSrc.Source)
-	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+	// 			log.Info("---left")
+	// 			// log.Info(tblSrc)
+	// 			// log.Info(tblSrc.AsName)
+	// 			// log.Info(tblSrc.Source)
+	// 			// log.Info(fmt.Sprintf("%T", tblSrc.Source))
 
 	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-	// 				fmt.Println(tblName.Schema)
-	// 				fmt.Println(tblName.Name)
+	// 				log.Info(tblName.Schema)
+	// 				log.Info(tblName.Name)
 
 	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
 	// 			}
 	// 		}
 
 	// 		if tblSrc, ok := a.Left.(*ast.TableSource); ok {
-	// 			fmt.Println("---left")
-	// 			// fmt.Println(tblSrc)
-	// 			// fmt.Println(tblSrc.AsName)
-	// 			// fmt.Println(tblSrc.Source)
-	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+	// 			log.Info("---left")
+	// 			// log.Info(tblSrc)
+	// 			// log.Info(tblSrc.AsName)
+	// 			// log.Info(tblSrc.Source)
+	// 			// log.Info(fmt.Sprintf("%T", tblSrc.Source))
 
 	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-	// 				fmt.Println(tblName.Schema)
-	// 				fmt.Println(tblName.Name)
+	// 				log.Info(tblName.Schema)
+	// 				log.Info(tblName.Name)
 
 	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
 	// 			}
@@ -1525,23 +1801,23 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	// 	}
 	// 	if a.Right != nil {
 	// 		if tblSrc, ok := a.Right.(*ast.TableSource); ok {
-	// 			fmt.Println("+++right")
-	// 			// fmt.Println(tblSrc)
-	// 			// fmt.Println(tblSrc.AsName)
-	// 			// fmt.Println(tblSrc.Source)
-	// 			// fmt.Println(fmt.Sprintf("%T", tblSrc.Source))
+	// 			log.Info("+++right")
+	// 			// log.Info(tblSrc)
+	// 			// log.Info(tblSrc.AsName)
+	// 			// log.Info(tblSrc.Source)
+	// 			// log.Info(fmt.Sprintf("%T", tblSrc.Source))
 
 	// 			if tblName, ok := tblSrc.Source.(*ast.TableName); ok {
-	// 				fmt.Println(tblName.Schema)
-	// 				fmt.Println(tblName.Name)
+	// 				log.Info(tblName.Schema)
+	// 				log.Info(tblName.Name)
 
 	// 				s.QueryTableFromDB(tblName.Schema.O, tblName.Name.O, true)
 	// 			}
 	// 		}
 	// 	}
-	// 	// fmt.Println(a.Left, a.Left.Text())
-	// 	// fmt.Println(fmt.Sprintf("%T", a.Left))
-	// 	// fmt.Println(a.Right)
+	// 	// log.Info(a.Left, a.Left.Text())
+	// 	// log.Info(fmt.Sprintf("%T", a.Left))
+	// 	// log.Info(a.Right)
 	// }
 }
 
@@ -1572,7 +1848,7 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	sql := fmt.Sprintf("SHOW FULL FIELDS FROM `%s`.`%s`", db, tableName)
 
 	var rows []FieldInfo
-	// fmt.Println("++++++++")
+	// log.Info("++++++++")
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 || reportNotExists {
@@ -1590,14 +1866,18 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 }
 
 func (r *Record) AppendErrorMessage(msg string) {
-	r.Errlevel = 2
+	r.ErrLevel = 2
 
 	r.Buf.WriteString(msg)
 	r.Buf.WriteString("\n")
 }
 
 func (r *Record) AppendErrorNo(number int, values ...interface{}) {
-	r.Errlevel = uint8(Max(int(r.Errlevel), int(GetErrorLevel(number))))
+	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
+
+	// if number == ER_CANT_DROP_TABLE {
+	// 	log.Info("ER_CANT_DROP_TABLE", GetErrorLevel(number), r.ErrLevel)
+	// }
 	if len(values) == 0 {
 		r.Buf.WriteString(GetErrorMessage(number))
 	} else {
@@ -1607,11 +1887,13 @@ func (r *Record) AppendErrorNo(number int, values ...interface{}) {
 }
 
 func (s *session) AppendErrorMessage(msg string) {
+	s.recordSets.MaxLevel = 2
 	s.myRecord.AppendErrorMessage(msg)
 }
 
 func (s *session) AppendErrorNo(number int, values ...interface{}) {
 	s.myRecord.AppendErrorNo(number, values...)
+	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 }
 
 func extractTableList(node ast.ResultSetNode, input []*ast.TableName) []*ast.TableName {
@@ -1694,12 +1976,12 @@ func FieldLengthWithType(tp string) int {
 		l = 8
 	}
 
-	// fmt.Println(p, l)
+	// log.Info(p, l)
 	return l
 }
 
 func Max(x, y int) int {
-	if x < y {
+	if x >= y {
 		return x
 	}
 	return y
