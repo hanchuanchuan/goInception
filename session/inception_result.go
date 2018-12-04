@@ -124,6 +124,8 @@ type Record struct {
 	DBName    string
 	TableName string
 	TableInfo *TableInfo
+	// ddl回滚
+	DDLRollback string
 }
 
 func (r *recordSet) Fields() []*ast.ResultField {

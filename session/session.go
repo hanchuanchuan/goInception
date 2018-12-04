@@ -171,6 +171,11 @@ type session struct {
 	tableCacheList map[string]*TableInfo
 	dbCacheList    map[string]bool
 
+	// 备份库
+	backupDBCacheList map[string]bool
+	// 备份库中的备份表
+	backupTableCacheList map[string]bool
+
 	Inc config.Inc
 }
 
@@ -1223,6 +1228,9 @@ func createSession(store kv.Storage) (*session, error) {
 
 		tableCacheList: make(map[string]*TableInfo),
 		dbCacheList:    make(map[string]bool),
+
+		backupDBCacheList:    make(map[string]bool),
+		backupTableCacheList: make(map[string]bool),
 
 		Inc: config.GetGlobalConfig().Inc,
 	}
