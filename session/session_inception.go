@@ -194,7 +194,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 			for _, stmtNode := range stmtNodes {
 				// log.Info("当前语句: ", stmtNode)
-				// fmt.Printf("%T\n", stmtNode)
+				// log.Infof("%T\n", stmtNode)
 
 				currentSql := stmtNode.Text()
 
@@ -275,7 +275,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 				default:
 					log.Info("无匹配类型...")
-					fmt.Printf("%T\n", stmtNode)
+					log.Infof("%T\n", stmtNode)
 					s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 				}
 
@@ -334,7 +334,7 @@ func (s *session) executeCommit() {
 		return
 	}
 
-	log.Info("执行最大错误等级", s.recordSets.MaxLevel)
+	// log.Info("执行最大错误等级", s.recordSets.MaxLevel)
 
 	if s.recordSets.MaxLevel == 2 ||
 		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
@@ -382,7 +382,11 @@ func (s *session) executeCommit() {
 					break
 				}
 
-				s.mysqlBackupSql(record)
+				if record.TableInfo == nil {
+					s.AppendErrorMessage("无表结构信息,生成备份失败!")
+				} else {
+					s.mysqlBackupSql(record)
+				}
 			}
 		}
 
@@ -395,7 +399,6 @@ func (s *session) mysqlBackupSql(record *Record) {
 	} else if s.checkSqlIsDML(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
 	}
-
 }
 
 func makeOPIDByTime(execTime int64, threadId int, seqNo int) string {
@@ -470,37 +473,49 @@ func (s *session) mysqlCreateBackupTables(record *Record) int {
 		return 2
 	}
 
-	sql := fmt.Sprintf("create database if not exists `%s`;", backupDBName)
-	if err := s.backupdb.Exec(sql).Error; err != nil {
-		log.Error(err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
-				s.AppendErrorMessage(myErr.Message)
-				return 2
+	if _, ok := s.backupDBCacheList[backupDBName]; !ok {
+		sql := fmt.Sprintf("create database if not exists `%s`;", backupDBName)
+		if err := s.backupdb.Exec(sql).Error; err != nil {
+			log.Error(err)
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
+					s.AppendErrorMessage(myErr.Message)
+					return 2
+				}
 			}
 		}
+		s.backupDBCacheList[backupDBName] = true
 	}
 
-	createSql := s.mysqlCreateSqlFromTableInfo(backupDBName, record.TableInfo)
-	if err := s.backupdb.Exec(createSql).Error; err != nil {
-		log.Error(err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
-				s.AppendErrorMessage(myErr.Message)
-				return 2
+	key := fmt.Sprintf("%s.%s", backupDBName, record.TableInfo.Name)
+
+	if _, ok := s.backupTableCacheList[key]; !ok {
+		createSql := s.mysqlCreateSqlFromTableInfo(backupDBName, record.TableInfo)
+		if err := s.backupdb.Exec(createSql).Error; err != nil {
+			log.Error(err)
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
+					s.AppendErrorMessage(myErr.Message)
+					return 2
+				}
 			}
 		}
+		s.backupTableCacheList[key] = true
 	}
 
-	createSql = s.mysqlCreateSqlBackupTable(backupDBName)
-	if err := s.backupdb.Exec(createSql).Error; err != nil {
-		log.Error(err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
-				s.AppendErrorMessage(myErr.Message)
-				return 2
+	key = fmt.Sprintf("%s.%s", backupDBName, RemoteBackupTable)
+	if _, ok := s.backupTableCacheList[key]; !ok {
+		createSql := s.mysqlCreateSqlBackupTable(backupDBName)
+		if err := s.backupdb.Exec(createSql).Error; err != nil {
+			log.Error(err)
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
+					s.AppendErrorMessage(myErr.Message)
+					return 2
+				}
 			}
 		}
+		s.backupTableCacheList[key] = true
 	}
 
 	return int(record.ErrLevel)
@@ -632,7 +647,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 
 	default:
 		log.Info("无匹配类型...")
-		fmt.Printf("%T\n", node)
+		log.Infof("%T\n", node)
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
 
@@ -885,7 +900,7 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 
 	log.Info("checkTruncateTable")
 
-	// fmt.Printf("%#v \n", node)
+	// log.Infof("%#v \n", node)
 
 	t := node.Table
 
@@ -905,7 +920,7 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 	log.Info("checkDropTable")
 
-	// fmt.Printf("%#v \n", node)
+	// log.Infof("%#v \n", node)
 	for _, t := range node.Tables {
 
 		if !s.Inc.EnableDropTable {
@@ -928,7 +943,7 @@ func (s *session) checkRenametable(node *ast.RenameTableStmt, sql string) {
 
 	log.Info("checkRenametable")
 
-	fmt.Printf("%#v \n", node)
+	log.Infof("%#v \n", node)
 
 	s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
 
@@ -942,6 +957,12 @@ func (s *session) checkRenametable(node *ast.RenameTableStmt, sql string) {
 func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	log.Info("checkCreateTable")
+
+	// tidb暂不支持临时表 create temporary table t1
+
+	log.Infof("%#v", node)
+	// log.Infof("%#v", node.Options)
+	// log.Infof("%#v", node.ReferTable)
 
 	// Table       *TableName
 	// ReferTable  *TableName
@@ -966,6 +987,138 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		s.myRecord.DBName = node.Table.Schema.O
 	}
 	s.myRecord.TableName = node.Table.Name.O
+
+	// 缓存表结构 CREATE TABLE LIKE
+	if node.ReferTable != nil {
+		originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
+		if originTable != nil {
+			table := copyTableInfo(originTable)
+
+			table.Name = node.Table.Name.O
+			if node.Table.Schema.O == "" {
+				table.Schema = s.DBName
+			} else {
+				table.Schema = node.Table.Schema.O
+			}
+			s.addTableCache(table)
+			s.myRecord.TableInfo = table
+		}
+	} else {
+
+		hasComment := false
+		for _, opt := range node.Options {
+			// log.Infof("%#v", opt)
+			switch opt.Tp {
+			case ast.TableOptionEngine:
+				if !strings.EqualFold(opt.StrValue, "innodb") {
+					s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
+				}
+			case ast.TableOptionCharset, ast.TableOptionCollate:
+				s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+			case ast.TableOptionComment:
+				if opt.StrValue != "" {
+					hasComment = true
+				}
+			}
+		}
+
+		hasPrimary := false
+		for _, ct := range node.Constraints {
+			log.Infof("%#v", ct)
+
+			switch ct.Tp {
+			case ast.ConstraintPrimaryKey:
+				hasPrimary = len(ct.Keys) > 0
+				break
+			}
+		}
+
+		if !hasPrimary {
+			for _, field := range node.Cols {
+				for _, op := range field.Options {
+					if op.Tp == ast.ColumnOptionPrimaryKey {
+						hasPrimary = true
+						break
+					}
+				}
+				if hasPrimary {
+					break
+				}
+			}
+		}
+
+		if !hasPrimary {
+			s.AppendErrorNo(ER_TABLE_MUST_HAVE_PK, node.Table.Name.O)
+		}
+
+		if !hasComment && s.Inc.CheckTableComment {
+			s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
+		}
+
+		table = s.buildTableInfo(node)
+
+		for _, nc := range node.Cols {
+			s.mysqlCheckField(table, nc)
+		}
+
+		s.myRecord.TableInfo = table
+	}
+
+	if node.Partition != nil {
+		s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
+	}
+
+}
+
+func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
+	log.Info("buildTableInfo")
+
+	table := &TableInfo{}
+
+	if node.Table.Schema.O == "" {
+		table.Schema = s.DBName
+	} else {
+		table.Schema = node.Table.Schema.O
+	}
+
+	table.Name = node.Table.Name.O
+	table.Fields = make([]FieldInfo, 0, len(node.Cols))
+	// 	Field      string `gorm:"Column:Field"`
+	// Type       string `gorm:"Column:Type"`
+	// Collation  string `gorm:"Column:Collation"`
+	// Null       string `gorm:"Column:Null"`
+	// Key        string `gorm:"Column:Key"`
+	// Default    string `gorm:"Column:Default"`
+	// Extra      string `gorm:"Column:Extra"`
+	// Privileges string `gorm:"Column:Privileges"`
+	// Comment    string `gorm:"Column:Comment"`
+
+	for _, field := range node.Cols {
+		c := &FieldInfo{}
+
+		c.Field = field.Name.Name.String()
+		c.Type = field.Tp.CompactStr()
+		c.Null = "YES"
+
+		for _, op := range field.Options {
+			switch op.Tp {
+			case ast.ColumnOptionComment:
+				c.Comment = op.Expr.GetDatum().GetString()
+			case ast.ColumnOptionNotNull:
+				c.Null = "NO"
+			case ast.ColumnOptionPrimaryKey:
+				c.Key = "PRI"
+			case ast.ColumnOptionDefaultValue:
+				c.Default = op.Expr.GetDatum().GetString()
+			}
+		}
+
+		table.Fields = append(table.Fields, *c)
+	}
+
+	// log.Infof("%#v", table)
+
+	return table
 }
 
 func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
@@ -1017,9 +1170,9 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	s.myRecord.TableInfo = table
 
-	// fmt.Printf("%s \n", table)
+	// log.Infof("%s \n", table)
 	for _, alter := range node.Specs {
-		// fmt.Printf("%s \n", alter)
+		// log.Infof("%s \n", alter)
 		// log.Info(alter.Tp)
 		switch alter.Tp {
 		case ast.AlterTableAddColumns:
@@ -1066,7 +1219,7 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Info("checkChangeColumn")
 
-	// fmt.Printf("%#v \n", c)
+	// log.Infof("%#v \n", c)
 
 	log.Info(c.OldColumnName, len(c.NewColumns))
 	found := false
@@ -1087,11 +1240,11 @@ func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
 func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Info("checkModifyColumn")
 
-	fmt.Printf("%#v \n", c)
+	log.Infof("%#v \n", c)
 
 	for _, nc := range c.NewColumns {
-		// fmt.Printf("%s \n", nc)
-		fmt.Printf("%s --- %s \n", nc.Name, nc.Tp)
+		// log.Infof("%s \n", nc)
+		log.Infof("%s --- %s \n", nc.Name, nc.Tp)
 		found := false
 		var foundField FieldInfo
 
@@ -1193,16 +1346,21 @@ func mysqlFiledIsBlob(tp byte) bool {
 func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	log.Info("mysqlCheckField")
 
+	// log.Infof("%#v", field.Tp)
+
+	tableName := t.Name
 	if field.Tp.Tp == mysql.TypeEnum ||
 		field.Tp.Tp == mysql.TypeSet ||
 		field.Tp.Tp == mysql.TypeBit {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
-	// fmt.Printf("%#v \n", field.Tp)
-
 	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > 10 {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
+	}
+
+	if field.Tp.Charset != "" || field.Tp.Collate != "" {
+		s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
 	}
 
 	// notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)
@@ -1212,12 +1370,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	notNullFlag := false
 	autoIncrement := false
 
-	// log.Info(field.Name.Name, field.Tp.Flag, notNullFlag, autoIncrement)
 	if len(field.Options) > 0 {
 		for _, op := range field.Options {
-			// log.Info(op)
-			// fmt.Printf("%s \n", op)
-			// fmt.Printf("%s %T \n", op.Expr, op.Expr)
+			// log.Infof("%#v", op)
 
 			switch op.Tp {
 			case ast.ColumnOptionComment:
@@ -1234,14 +1389,14 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		}
 	}
 	if !hasComment && s.Inc.CheckColumnComment {
-		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, t.Name)
+		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
 
 	if mysqlFiledIsBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
 		if !notNullFlag && !s.Inc.EnableNullable {
-			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, t.Name)
+			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
 		}
 	}
 
@@ -1250,12 +1405,12 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if mysqlFiledIsBlob(field.Tp.Tp) && notNullFlag {
-		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, t.Name)
+		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
 	}
 
 	if autoIncrement {
 		if !mysql.HasUnsignedFlag(field.Tp.Flag) {
-			s.AppendErrorNo(ER_AUTOINC_UNSIGNED, t.Name)
+			s.AppendErrorNo(ER_AUTOINC_UNSIGNED, tableName)
 		}
 
 		if field.Tp.Tp != mysql.TypeLong &&
@@ -1267,7 +1422,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 
 	if field.Tp.Tp == mysql.TypeTimestamp {
 		if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
-			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, t.Name)
+			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, tableName)
 		}
 	}
 
@@ -1276,7 +1431,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Info("checkDropForeignKey")
 
-	fmt.Printf("%s \n", c)
+	log.Infof("%s \n", c)
 
 	s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 
@@ -1313,11 +1468,11 @@ func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Printf("%s \n", c)
-	// fmt.Printf("%s \n", c.NewColumns)
+	log.Infof("%s \n", c)
+	// log.Infof("%s \n", c.NewColumns)
 
 	for _, nc := range c.NewColumns {
-		fmt.Printf("%s \n", nc)
+		log.Infof("%s \n", nc)
 		found := false
 		for _, field := range t.Fields {
 			if strings.EqualFold(field.Field, nc.Name.Name.O) {
@@ -1348,8 +1503,8 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	fmt.Printf("%s \n", c)
-	// fmt.Printf("%s \n", c.NewColumns)
+	log.Infof("%s \n", c)
+	// log.Infof("%s \n", c.NewColumns)
 
 	found := false
 	for _, field := range t.Fields {
@@ -1366,7 +1521,7 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 	log.Info("checkDropIndex")
-	// fmt.Printf("%#v \n", node)
+	// log.Infof("%#v \n", node)
 
 	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	if t == nil {
@@ -1380,7 +1535,7 @@ func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 func (s *session) checkCreateIndex1(node *ast.CreateIndexStmt, sql string) {
 
 	log.Info("checkCreateIndex1")
-	fmt.Printf("%#v \n", node)
+	log.Infof("%#v \n", node)
 
 	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	if t == nil {
@@ -1524,7 +1679,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
 	log.Info("checkAddIndex")
 
-	fmt.Printf("%#v \n", ct)
+	log.Infof("%#v \n", ct)
 
 	for _, col := range ct.Keys {
 		found := false
@@ -1544,8 +1699,8 @@ func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Info("checkAddConstraint")
 
-	// fmt.Printf("%s \n", c.Constraint)
-	// fmt.Printf("%s \n", c.Constraint.Keys)
+	// log.Infof("%s \n", c.Constraint)
+	// log.Infof("%s \n", c.Constraint.Keys)
 
 	switch c.Constraint.Tp {
 	case ast.ConstraintIndex:
@@ -1584,7 +1739,7 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	// Option *IndexOption // Index Options
 
 	// for _, nc := range c.NewColumns {
-	// 	fmt.Printf("%s \n", nc)
+	// 	log.Infof("%s \n", nc)
 	// 	found := false
 	// 	for _, field := range t.Fields {
 	// 		if strings.EqualFold(field.Field, nc.Name.Name.O) {
@@ -1671,7 +1826,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	if fieldCount == 0 {
 		s.AppendErrorNo(ER_WITH_INSERT_FIELD)
-		return
 	}
 
 	t := getSingleTableName(x.Table)
@@ -1692,6 +1846,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// }
 
 	table := s.getTableFromCache(t.Schema.O, t.Name.O, true)
+	log.Infof("%#v", table)
 	s.myRecord.TableInfo = table
 
 	s.checkFieldsValid(x.Columns, table)
@@ -1786,7 +1941,7 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 
 	log.Info("checkDropDB")
 
-	fmt.Printf("%#v \n", node)
+	log.Infof("%#v \n", node)
 
 	s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法删除数据库'%s'.", node.Name))
 }
@@ -1795,7 +1950,7 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 
 	log.Info("checkCreateDB")
 
-	// fmt.Printf("%#v \n", node)
+	// log.Infof("%#v \n", node)
 
 	if s.checkDBExists(node.Name, false) {
 		s.AppendErrorMessage(fmt.Sprintf("数据库'%s'已存在.", node.Name))
@@ -1877,8 +2032,8 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		}
 	}
 
-	// fmt.Printf("%s \n", node.TableRefs)
-	// fmt.Printf("%s \n", node.List)
+	// log.Infof("%s \n", node.TableRefs)
+	// log.Infof("%s \n", node.List)
 	// TableRefs     *TableRefsClause
 	// List          []*Assignment
 	// Where         ExprNode
@@ -1953,10 +2108,10 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	// if node.TableRefs != nil {
 	// 	a := node.TableRefs.TableRefs
 	// 	// log.Info(a)
-	// 	fmt.Printf("%T,%s  \n", a, a)
+	// 	log.Infof("%T,%s  \n", a, a)
 	// 	log.Info("===================")
-	// 	fmt.Printf("%T , %s  \n", a.Left, a.Left)
-	// 	fmt.Printf("%T , %s  \n", a.Right, a.Right)
+	// 	log.Infof("%T , %s  \n", a.Left, a.Left)
+	// 	log.Infof("%T , %s  \n", a.Right, a.Right)
 	// 	if a.Left != nil {
 	// 		if tblSrc, ok := a.Left.(*ast.Join); ok {
 	// 			log.Info("---left")
@@ -2132,6 +2287,17 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 	return nil
 }
 
+func (s *session) addTableCache(t *TableInfo) {
+	if t.Schema == "" {
+		t.Schema = s.DBName
+	}
+	key := fmt.Sprintf("%s.%s", t.Schema, t.Name)
+
+	if t, ok := s.tableCacheList[key]; !ok {
+		s.tableCacheList[key] = t
+	}
+}
+
 func (s *session) CacheNewTable(dbname string, tablename string) {
 
 }
@@ -2165,7 +2331,6 @@ func FieldLengthWithType(tp string) int {
 		l = 8
 	}
 
-	// log.Info(p, l)
 	return l
 }
 
@@ -2181,4 +2346,15 @@ func Min(x, y int) int {
 		return x
 	}
 	return y
+}
+
+func copyTableInfo(t *TableInfo) *TableInfo {
+	p := &TableInfo{}
+
+	p.Schema = t.Schema
+	p.Name = t.Name
+	p.Fields = make([]FieldInfo, len(t.Fields))
+	copy(p.Fields, t.Fields)
+
+	return p
 }

@@ -14,6 +14,7 @@ enable-nullable = true
 enable-drop-table = false
 max-primary-key-parts = 3
 max-keys = 3
+check-table-comment = false
 check-column-comment = false
 
 backup-host = "127.0.0.1"
