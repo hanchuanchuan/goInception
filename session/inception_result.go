@@ -64,7 +64,8 @@ const (
 
 var (
 	stageList  = [3]string{"RERUN", "CHECKED", "EXECUTED"}
-	statusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully", "Execute Successfully,Backup failed", "Execute Successfully,Backup Successfully"}
+	statusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully",
+		"Execute Successfully\nBackup failed", "Execute Successfully\nBackup Successfully"}
 )
 
 type recordSet struct {
