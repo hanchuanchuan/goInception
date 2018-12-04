@@ -396,6 +396,8 @@ func (s *session) executeCommit() {
 func (s *session) mysqlBackupSql(record *Record) {
 	if s.checkSqlIsDDL(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
+
+		s.mysqlExecuteBackupSqlForDDL(record)
 	} else if s.checkSqlIsDML(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
 	}
@@ -403,6 +405,32 @@ func (s *session) mysqlBackupSql(record *Record) {
 
 func makeOPIDByTime(execTime int64, threadId int, seqNo int) string {
 	return fmt.Sprintf("'%d_%d_%08d'", execTime, threadId, seqNo)
+}
+
+func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
+	if record.DDLRollback == "" {
+		return
+	}
+
+	buf := bytes.NewBufferString("INSERT INTO ")
+	dbname := s.getRemoteBackupDBName(record)
+	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, record.TableInfo.Name))
+	buf.WriteString("(rollback_statement, opid_time) VALUES('")
+	buf.WriteString(record.DDLRollback)
+	buf.WriteString("',")
+	buf.WriteString(makeOPIDByTime(
+		record.ExecTimestamp, record.ThreadId, record.SeqNo))
+	buf.WriteString(")")
+
+	sql := buf.String()
+
+	if err := s.backupdb.Exec(sql).Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+			record.StageStatus = StatusBackupFail
+		}
+	}
+	record.StageStatus = StatusBackupOK
 }
 
 func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
@@ -433,13 +461,17 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 	buf.WriteString(",NOW(),'UNKNOWN')")
 
 	sql := buf.String()
-	log.Info(sql)
+
 	if err := s.backupdb.Exec(sql).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
+
+			record.StageStatus = StatusBackupFail
 			return 2
 		}
 	}
+
+	record.StageStatus = StatusBackupOK
 	return 0
 }
 
@@ -452,11 +484,9 @@ func (s *session) mysqlBackupSingleStatement(record *Record) {
 }
 
 func (s *session) checkSqlIsDML(record *Record) bool {
-
 	switch record.Type.(type) {
 	case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
 		return true
-
 	default:
 		return false
 	}
@@ -592,14 +622,9 @@ func (s *session) getRemoteBackupDBName(record *Record) (v string) {
 func (s *session) checkSqlIsDDL(record *Record) bool {
 
 	switch record.Type.(type) {
-	case
-		*ast.DropDatabaseStmt,
-
-		*ast.CreateTableStmt,
+	case *ast.CreateTableStmt,
 		*ast.AlterTableStmt,
 		*ast.DropTableStmt,
-		*ast.RenameTableStmt,
-		*ast.TruncateTableStmt,
 
 		*ast.CreateIndexStmt,
 		*ast.DropIndexStmt:
@@ -934,8 +959,32 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 			//如果表不存在，但存在if existed，则跳过
 			if table == nil && !node.IfExists {
 				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+			} else {
+				s.mysqlShowCreateTable(table.Schema, table.Name)
 			}
 		}
+	}
+}
+
+func (s *session) mysqlShowCreateTable(dbname string, tableName string) {
+	sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", dbname, tableName)
+
+	var res string
+
+	rows, err := s.db.Raw(sql).Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&res)
+		}
+		s.myRecord.DDLRollback = res
+		s.myRecord.DDLRollback += ";"
 	}
 }
 
@@ -979,6 +1028,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	if table != nil {
 		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
+		return
 	}
 
 	if node.Table.Schema.O == "" {
@@ -992,7 +1042,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	if node.ReferTable != nil {
 		originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
 		if originTable != nil {
-			table := copyTableInfo(originTable)
+			table = copyTableInfo(originTable)
 
 			table.Name = node.Table.Name.O
 			if node.Table.Schema.O == "" {
@@ -1066,6 +1116,10 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	if node.Partition != nil {
 		s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
+	}
+
+	if s.opt.execute {
+		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
 	}
 
 }
@@ -1170,6 +1224,10 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	s.myRecord.TableInfo = table
 
+	if s.opt.execute {
+		s.myRecord.DDLRollback += fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
+			table.Schema, table.Name)
+	}
 	// log.Infof("%s \n", table)
 	for _, alter := range node.Specs {
 		// log.Infof("%s \n", alter)
@@ -1456,6 +1514,18 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 			s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
 			return false
 		}
+
+		if s.opt.execute {
+			s.myRecord.DDLRollback += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+			for i, row := range rows {
+				if i == 0 {
+					s.myRecord.DDLRollback += fmt.Sprintf("`%s`", row.ColumnName)
+				} else {
+					s.myRecord.DDLRollback += fmt.Sprintf(",`%s`", row.ColumnName)
+				}
+			}
+			s.myRecord.DDLRollback += ");"
+		}
 		return true
 	}
 
@@ -1484,6 +1554,11 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 		} else {
 			s.mysqlCheckField(t, nc)
+
+			if s.opt.execute {
+				s.myRecord.DDLRollback += fmt.Sprintf("ALTER TABLE `%s`.`%s` DROP COLUMN `%s`;",
+					t.Schema, t.Name, nc.Name.Name.O)
+			}
 		}
 	}
 
@@ -1510,6 +1585,7 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	for _, field := range t.Fields {
 		if strings.EqualFold(field.Field, c.OldColumnName.Name.O) {
 			found = true
+			s.mysqlDropColumnRollback(field)
 			break
 		}
 	}
@@ -1517,6 +1593,35 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 			fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
 	}
+}
+
+func (s *session) mysqlDropColumnRollback(field FieldInfo) {
+	if s.opt.check {
+		return
+	}
+
+	buf := bytes.NewBufferString("ADD COLUMN `")
+	buf.WriteString(field.Field)
+	buf.WriteString("` ")
+	buf.WriteString(field.Type)
+	buf.WriteString(" ")
+	if field.Null == "NO" {
+		buf.WriteString("NOT NULL ")
+	}
+	if field.Default != "" {
+		buf.WriteString("'")
+		buf.WriteString(field.Default)
+		buf.WriteString("' ")
+	}
+	if field.Comment != "" {
+		buf.WriteString("'")
+		buf.WriteString(field.Comment)
+		buf.WriteString("' ")
+	}
+	buf.WriteString(";")
+
+	s.myRecord.DDLRollback += buf.String()
+
 }
 
 func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
@@ -1674,6 +1779,9 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
 	}
 
+	if s.opt.execute {
+		s.myRecord.DDLRollback += fmt.Sprintf("DROP INDEX `%s`;", IndexName)
+	}
 }
 
 func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
