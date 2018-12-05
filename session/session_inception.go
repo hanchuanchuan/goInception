@@ -97,6 +97,16 @@ type TableInfo struct {
 	Schema string
 	Name   string
 	Fields []FieldInfo
+
+	// 是否已删除
+	IsDeleted bool
+	// 备份库是否已创建
+	IsCreated bool
+
+	// 表是否为新增
+	NewCached bool
+	// 列是否为新增
+	NewColumnCached bool
 }
 
 type IndexInfo struct {
@@ -494,7 +504,7 @@ func (s *session) checkSqlIsDML(record *Record) bool {
 
 func (s *session) mysqlCreateBackupTables(record *Record) int {
 
-	if record.TableInfo == nil {
+	if record.TableInfo == nil || record.TableInfo.IsCreated {
 		return 0
 	}
 
@@ -548,6 +558,7 @@ func (s *session) mysqlCreateBackupTables(record *Record) int {
 		s.backupTableCacheList[key] = true
 	}
 
+	record.TableInfo.IsCreated = true
 	return int(record.ErrLevel)
 }
 
@@ -937,6 +948,8 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 
 		if table == nil {
 			s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+		} else {
+			s.mysqlShowTableStatus(table.Schema, table.Name)
 		}
 	}
 }
@@ -954,18 +967,49 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 			table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
 
-			s.myRecord.TableInfo = table
-
 			//如果表不存在，但存在if existed，则跳过
 			if table == nil && !node.IfExists {
 				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
 			} else {
+				// 生成回滚语句
 				s.mysqlShowCreateTable(table.Schema, table.Name)
+				// 获取表估计的受影响行数
+				s.mysqlShowTableStatus(table.Schema, table.Name)
+
+				s.myRecord.TableInfo = table
+
+				s.myRecord.TableInfo.IsDeleted = true
 			}
 		}
 	}
 }
 
+// mysqlShowTableStatus is 获取表估计的受影响行数
+func (s *session) mysqlShowTableStatus(dbname string, tableName string) {
+
+	// sql := fmt.Sprintf("show table status from `%s` where name = '%s';", dbname, tableName)
+	sql := fmt.Sprintf(`select TABLE_ROWS from information_schema.tables \
+		where table_name='%s' and table_schema='%s';`, dbname, tableName)
+
+	var res uint
+
+	rows, err := s.db.Raw(sql).Rows()
+	defer rows.Close()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&res)
+		}
+		s.myRecord.AffectedRows = int(res)
+	}
+}
+
+// mysqlShowCreateTable is 生成回滚语句
 func (s *session) mysqlShowCreateTable(dbname string, tableName string) {
 	sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", dbname, tableName)
 
@@ -994,7 +1038,10 @@ func (s *session) checkRenametable(node *ast.RenameTableStmt, sql string) {
 
 	log.Infof("%#v \n", node)
 
-	s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
+	old := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
+	if old != nil {
+		old.IsDeleted = true
+	}
 
 	table := s.getTableFromCache(node.NewTable.Schema.O, node.NewTable.Name.O, false)
 	if table != nil {
@@ -1050,7 +1097,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			} else {
 				table.Schema = node.Table.Schema.O
 			}
-			s.addTableCache(table)
+			s.cacheNewTable(table)
 			s.myRecord.TableInfo = table
 		}
 	} else {
@@ -1221,6 +1268,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	if table == nil {
 		return
 	}
+
+	s.mysqlShowTableStatus(table.Schema, table.Name)
 
 	s.myRecord.TableInfo = table
 
@@ -1754,29 +1803,31 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	// 	s.AppendErrorNo(ER_PK_TOO_MANY_PARTS, t.Name, col.Column.Name.O, s.Inc.MaxPrimaryKeyParts)
 	// }
 
-	querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
+	if !t.NewCached {
+		querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
 
-	var rows []IndexInfo
-	// log.Info("++++++++")
-	if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	}
-
-	if len(rows) > 0 {
-		for _, row := range rows {
-			if strings.EqualFold(row.IndexName, IndexName) {
-				s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
-				break
+		var rows []IndexInfo
+		// log.Info("++++++++")
+		if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.AppendErrorMessage(myErr.Message)
+			} else {
+				s.AppendErrorMessage(err.Error())
 			}
 		}
-	}
 
-	if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
-		s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+		if len(rows) > 0 {
+			for _, row := range rows {
+				if strings.EqualFold(row.IndexName, IndexName) {
+					s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
+					break
+				}
+			}
+		}
+
+		if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
+			s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+		}
 	}
 
 	if s.opt.execute {
@@ -2375,6 +2426,13 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 	key := fmt.Sprintf("%s.%s", db, tableName)
 
 	if t, ok := s.tableCacheList[key]; ok {
+		// 如果表已删除, 之后又使用到,则报错
+		if t.IsDeleted {
+			if reportNotExists {
+				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+			}
+			return nil
+		}
 		return t
 	} else {
 		rows := s.QueryTableFromDB(db, tableName, reportNotExists)
@@ -2395,19 +2453,19 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 	return nil
 }
 
-func (s *session) addTableCache(t *TableInfo) {
+func (s *session) cacheNewTable(t *TableInfo) {
 	if t.Schema == "" {
 		t.Schema = s.DBName
 	}
 	key := fmt.Sprintf("%s.%s", t.Schema, t.Name)
 
-	if t, ok := s.tableCacheList[key]; !ok {
-		s.tableCacheList[key] = t
-	}
-}
+	t.NewCached = true
+	// 如果表删除后新建,直接覆盖即可
+	s.tableCacheList[key] = t
 
-func (s *session) CacheNewTable(dbname string, tablename string) {
-
+	// if t, ok := s.tableCacheList[key]; !ok {
+	// 	s.tableCacheList[key] = t
+	// }
 }
 
 func FieldLengthWithType(tp string) int {
