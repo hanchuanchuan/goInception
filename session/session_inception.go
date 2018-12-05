@@ -1954,7 +1954,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// }
 
 	table := s.getTableFromCache(t.Schema.O, t.Name.O, true)
-	log.Infof("%#v", table)
+	// log.Infof("%#v", table)
 	s.myRecord.TableInfo = table
 
 	s.checkFieldsValid(x.Columns, table)
@@ -1975,9 +1975,9 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// insert select 语句
 	if x.Select != nil {
 		if sel, ok := x.Select.(*ast.SelectStmt); ok {
-			log.Info(sel.Text())
+			// log.Info(sel.Text())
 
-			log.Info(len(sel.Fields.Fields), sel.Fields)
+			// log.Info(len(sel.Fields.Fields), sel.Fields)
 
 			checkWildCard := false
 			if len(sel.Fields.Fields) > 0 {
@@ -1994,13 +1994,13 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			if len(sel.Fields.Fields) > 0 {
 				for _, f := range sel.Fields.Fields {
-					log.Info("--------")
+					// log.Info("--------")
 
-					log.Info(fmt.Sprintf("%T", f.Expr))
+					// log.Info(fmt.Sprintf("%T", f.Expr))
 
-					if c, ok := f.Expr.(*ast.ColumnNameExpr); ok {
-						log.Info(c.Name)
-					}
+					// if c, ok := f.Expr.(*ast.ColumnNameExpr); ok {
+					// 	// log.Info(c.Name)
+					// }
 					if f.Expr == nil {
 						log.Info(node.Text())
 						log.Info("Expr is NULL", f.WildCard, f.Expr, f.AsName)
@@ -2017,7 +2017,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			explain = append(explain, "EXPLAIN ")
 			explain = append(explain, selectSql)
 
-			log.Info(explain)
+			// log.Info(explain)
 
 			rows := s.getExplainInfo(strings.Join(explain, ""))
 
