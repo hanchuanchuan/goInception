@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/ddl"
 	"github.com/hanchuanchuan/tidb/domain"
@@ -47,6 +46,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/signal"
 	"github.com/hanchuanchuan/tidb/util/systimemon"
 	"github.com/hanchuanchuan/tidb/x-server"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/tipb/go-binlog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -82,8 +82,9 @@ const (
 )
 
 var (
-	version    = flagBoolean(nmVersion, false, "print version information and exit")
-	configPath = flag.String(nmConfig, "", "config file path")
+	version = flagBoolean(nmVersion, false, "print version information and exit")
+	// 添加config文件的默认值
+	configPath = flag.String(nmConfig, "config/config.toml", "config file path")
 
 	// Base
 	store            = flag.String(nmStore, "mocktikv", "registered store name, [tikv, mocktikv]")
