@@ -45,11 +45,16 @@ sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
 inception_magic_start;
 use `test`;
 
-#drop table if exists ttt1 ;
+drop table if exists ttt1 ;
 
-#create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
+create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
 
-ALTER TABLE `test`.`ttt1` ADD PRIMARY KEY(`id`);
+insert into ttt1(id,c1) values(1,'test');
+insert into ttt1(id,c1) values(2,'test'),(3,'test');
+insert into ttt1(id,c1) select id+3,c1 from ttt1;
+insert into ttt1(id,c1) select 8,'123';
+
+
 inception_magic_commit;
 '''
 

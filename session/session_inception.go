@@ -19,7 +19,9 @@ package session
 
 import (
 	"bytes"
+	// "database/sql/driver"
 	"fmt"
+	// "text/template"
 	"time"
 
 	"github.com/hanchuanchuan/tidb/ast"
@@ -388,7 +390,7 @@ func (s *session) executeCommit() {
 			if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
 				s.myRecord = record
 
-				errno := s.mysqlCreateBackupTables(record)
+				errno := s.mysqlCreateBackupTable(record)
 				if errno == 2 {
 					break
 				}
@@ -423,11 +425,12 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 		return
 	}
 
-	buf := bytes.NewBufferString("INSERT INTO ")
+	var buf strings.Builder
+	buf.WriteString("INSERT INTO ")
 	dbname := s.getRemoteBackupDBName(record)
 	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, record.TableInfo.Name))
 	buf.WriteString("(rollback_statement, opid_time) VALUES('")
-	buf.WriteString(record.DDLRollback)
+	buf.WriteString(HTMLEscapeString(record.DDLRollback))
 	buf.WriteString("',")
 	buf.WriteString(makeOPIDByTime(
 		record.ExecTimestamp, record.ThreadId, record.SeqNo))
@@ -446,7 +449,9 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 
 func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 
-	buf := bytes.NewBufferString("INSERT INTO ")
+	var buf strings.Builder
+	// buf := bytes.NewBufferString("INSERT INTO ")
+	buf.WriteString("INSERT INTO ")
 	dbname := s.getRemoteBackupDBName(record)
 	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
 	buf.WriteString(" VALUES(")
@@ -459,8 +464,9 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 	buf.WriteString(record.EndFile)
 	buf.WriteString("',")
 	buf.WriteString(strconv.Itoa(record.EndPosition))
+	// buf.WriteString(",?,'")
 	buf.WriteString(",'")
-	buf.WriteString(record.Sql)
+	buf.WriteString(HTMLEscapeString(record.Sql))
 	buf.WriteString("','")
 	buf.WriteString(s.opt.host)
 	buf.WriteString("','")
@@ -471,9 +477,17 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 	buf.WriteString(strconv.Itoa(s.opt.port))
 	buf.WriteString(",NOW(),'UNKNOWN')")
 
-	sql := buf.String()
+	// var err error
+	// // 参数化
+	// byteSql := []byte(record.Sql)
+	// buf.Reset()
+	// byteSql, err = InterpolateParams(buf.String(), []driver.Value{byteSql})
+	// buf.Write(byteSql)
+	// if err != nil {
+	// 	log.Error(err)
+	// }
 
-	if err := s.backupdb.Exec(sql).Error; err != nil {
+	if err := s.backupdb.Exec(buf.String()).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 
@@ -503,7 +517,7 @@ func (s *session) checkSqlIsDML(record *Record) bool {
 	}
 }
 
-func (s *session) mysqlCreateBackupTables(record *Record) int {
+func (s *session) mysqlCreateBackupTable(record *Record) int {
 
 	if record.TableInfo == nil || record.TableInfo.IsCreated {
 		return 0
@@ -616,9 +630,13 @@ func (s *session) mysqlRealQueryBackup(sql string) error {
 	return err
 }
 
-func (s *session) getRemoteBackupDBName(record *Record) (v string) {
+func (s *session) getRemoteBackupDBName(record *Record) string {
 
-	v = fmt.Sprintf("%s_%d_%s", s.opt.host, s.opt.port, record.TableInfo.Schema)
+	if record.BackupDBName != "" {
+		return record.BackupDBName
+	}
+
+	v := fmt.Sprintf("%s_%d_%s", s.opt.host, s.opt.port, record.TableInfo.Schema)
 
 	if len(v) > mysql.MaxDatabaseNameLength {
 		s.AppendErrorNo(ER_TOO_LONG_BAKDB_NAME, s.opt.host, s.opt.port, record.TableInfo.Schema)
@@ -627,8 +645,8 @@ func (s *session) getRemoteBackupDBName(record *Record) (v string) {
 
 	v = strings.Replace(v, "-", "_", -1)
 	v = strings.Replace(v, ".", "_", -1)
-
-	return
+	record.BackupDBName = v
+	return record.BackupDBName
 }
 
 func (s *session) checkSqlIsDDL(record *Record) bool {
@@ -976,10 +994,15 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 					s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
 				}
 			} else {
-				// 生成回滚语句
-				s.mysqlShowCreateTable(table)
-				// 获取表估计的受影响行数
-				s.mysqlShowTableStatus(table)
+				if s.opt.execute {
+					// 生成回滚语句
+					s.mysqlShowCreateTable(table)
+				}
+
+				if s.opt.check {
+					// 获取表估计的受影响行数
+					s.mysqlShowTableStatus(table)
+				}
 
 				s.myRecord.TableInfo = table
 
@@ -1164,19 +1187,18 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 			switch ct.Tp {
 			case ast.ConstraintPrimaryKey:
-				log.Infof("%#v", ct)
+				// log.Infof("%#v", ct)
 
 				hasPrimary = len(ct.Keys) > 0
 
 				for _, col := range ct.Keys {
 					found := false
-
 					for _, field := range node.Cols {
 						if field.Name.Name.L == col.Column.Name.L {
 							found = true
+							break
 						}
 					}
-
 					if !found {
 						s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 							fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
@@ -2097,7 +2119,17 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// insert select 语句
 	if x.Select != nil {
 		if sel, ok := x.Select.(*ast.SelectStmt); ok {
-			// log.Info(sel.Text())
+
+			log.Infof("%#v", sel.SelectStmtOpts)
+			log.Infof("%#v", sel.From)
+			log.Infof("%#v", sel.Fields)
+
+			// 只考虑insert select单表时,表不存在的情况
+			from := getSingleTableName(sel.From)
+			var fromTable *TableInfo
+			if from != nil {
+				fromTable = s.getTableFromCache(from.Schema.O, from.Name.O, true)
+			}
 
 			// log.Info(len(sel.Fields.Fields), sel.Fields)
 
@@ -2132,19 +2164,17 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				}
 			}
 
-			i := strings.Index(strings.ToLower(sql), "select")
-			selectSql := sql[i:]
-			var explain []string
+			if from == nil || (fromTable != nil && !fromTable.NewCached) {
+				i := strings.Index(strings.ToLower(sql), "select")
+				selectSql := sql[i:]
+				var explain []string
 
-			explain = append(explain, "EXPLAIN ")
-			explain = append(explain, selectSql)
+				explain = append(explain, "EXPLAIN ")
+				explain = append(explain, selectSql)
 
-			// log.Info(explain)
-
-			rows := s.getExplainInfo(strings.Join(explain, ""))
-
-			s.myRecord.AnlyzeExplain(rows)
-
+				rows := s.getExplainInfo(strings.Join(explain, ""))
+				s.myRecord.AnlyzeExplain(rows)
+			}
 		}
 	}
 

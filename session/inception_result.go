@@ -281,10 +281,15 @@ func (s *MyRecordSets) setFields(r *Record) {
 	} else {
 		row[7].SetString(r.Sequence)
 	}
-	if r.BackupDBName == "" {
-		row[8].SetNull()
-	} else {
+
+	if r.StageStatus == StatusBackupOK {
 		row[8].SetString(r.BackupDBName)
+
+		// if r.BackupDBName == "" {
+		// 	row[8].SetNull()
+		// } else {
+		// 	row[8].SetString(r.BackupDBName)
+		// }
 	}
 
 	if r.ExecTime == "" {
