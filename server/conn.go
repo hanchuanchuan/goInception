@@ -48,11 +48,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/opentracing/opentracing-go"
 	// "github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/terror"
@@ -579,8 +579,6 @@ func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
 // The most frequently used command is ComQuery.
 func (cc *clientConn) dispatch(data []byte) error {
 
-	log.Info("dispatch")
-
 	span := opentracing.StartSpan("server.dispatch")
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
 
@@ -624,7 +622,7 @@ func (cc *clientConn) dispatch(data []byte) error {
 	// 	return io.EOF
 	// }
 
-	log.Info("操作类型", cmd)
+	// log.Info("操作类型", cmd)
 
 	switch cmd {
 	case mysql.ComSleep:

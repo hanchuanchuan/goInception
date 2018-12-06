@@ -113,6 +113,7 @@ type IndexInfo struct {
 	gorm.Model
 
 	Table      string `gorm:"Column:Table"`
+	NonUnique  int    `gorm:"Column:Non_unique"`
 	IndexName  string `gorm:"Column:Key_name"`
 	Seq        string `gorm:"Column:Seq_in_index"`
 	ColumnName string `gorm:"Column:Column_name"`
@@ -266,7 +267,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				case *ast.DropTableStmt:
 					s.checkDropTable(node, currentSql)
 				case *ast.RenameTableStmt:
-					s.checkRenametable(node, currentSql)
+					s.checkRenameTable(node, currentSql)
 				case *ast.TruncateTableStmt:
 					s.checkTruncateTable(node, currentSql)
 
@@ -648,7 +649,9 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 
 func (s *session) executeAllStatement() {
 
-	log.Info("---------------------")
+	log.Info("")
+	log.Info("审核通过,开始执行...")
+	log.Info("")
 	for _, record := range s.recordSets.All() {
 		errno := s.executeRemoteCommand(record)
 		if errno == 2 {
@@ -662,7 +665,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 	s.myRecord = record
 	record.Stage = StageExec
 
-	log.Infof("%T", record.Type)
+	// log.Infof("%T", record.Type)
 	switch node := record.Type.(type) {
 
 	case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
@@ -782,7 +785,7 @@ func (s *session) checkBinlogFormatIsRow() bool {
 		}
 	}
 
-	log.Infof("binlog format: %s", format)
+	// log.Infof("binlog format: %s", format)
 	return format == "ROW"
 }
 
@@ -844,7 +847,7 @@ func (s *session) checkBinlogIsOn() bool {
 		}
 	}
 
-	log.Infof("log_bin is %s", format)
+	// log.Infof("log_bin is %s", format)
 	return format == "ON"
 }
 
@@ -949,7 +952,7 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 		if table == nil {
 			s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
 		} else {
-			s.mysqlShowTableStatus(table.Schema, table.Name)
+			s.mysqlShowTableStatus(table)
 		}
 	}
 }
@@ -968,13 +971,15 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 			table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
 
 			//如果表不存在，但存在if existed，则跳过
-			if table == nil && !node.IfExists {
-				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+			if table == nil {
+				if !node.IfExists {
+					s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+				}
 			} else {
 				// 生成回滚语句
-				s.mysqlShowCreateTable(table.Schema, table.Name)
+				s.mysqlShowCreateTable(table)
 				// 获取表估计的受影响行数
-				s.mysqlShowTableStatus(table.Schema, table.Name)
+				s.mysqlShowTableStatus(table)
 
 				s.myRecord.TableInfo = table
 
@@ -985,23 +990,29 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 }
 
 // mysqlShowTableStatus is 获取表估计的受影响行数
-func (s *session) mysqlShowTableStatus(dbname string, tableName string) {
+func (s *session) mysqlShowTableStatus(t *TableInfo) {
+
+	if t.NewCached {
+		return
+	}
 
 	// sql := fmt.Sprintf("show table status from `%s` where name = '%s';", dbname, tableName)
-	sql := fmt.Sprintf(`select TABLE_ROWS from information_schema.tables \
-		where table_name='%s' and table_schema='%s';`, dbname, tableName)
+	sql := fmt.Sprintf(`select TABLE_ROWS from information_schema.tables
+		where table_name='%s' and table_schema='%s';`, t.Schema, t.Name)
 
 	var res uint
 
 	rows, err := s.db.Raw(sql).Rows()
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
-	} else {
+	} else if rows != nil {
 		for rows.Next() {
 			rows.Scan(&res)
 		}
@@ -1010,42 +1021,70 @@ func (s *session) mysqlShowTableStatus(dbname string, tableName string) {
 }
 
 // mysqlShowCreateTable is 生成回滚语句
-func (s *session) mysqlShowCreateTable(dbname string, tableName string) {
-	sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", dbname, tableName)
+func (s *session) mysqlShowCreateTable(t *TableInfo) {
+
+	if t.NewCached {
+		return
+	}
+
+	sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", t.Schema, t.Name)
 
 	var res string
 
 	rows, err := s.db.Raw(sql).Rows()
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
+
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
-	} else {
+	} else if rows != nil {
+
 		for rows.Next() {
-			rows.Scan(&res)
+			rows.Scan(&res, &res)
 		}
 		s.myRecord.DDLRollback = res
 		s.myRecord.DDLRollback += ";"
 	}
 }
 
-func (s *session) checkRenametable(node *ast.RenameTableStmt, sql string) {
+func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
-	log.Info("checkRenametable")
+	log.Info("checkRenameTable")
 
-	log.Infof("%#v \n", node)
+	// log.Infof("%#v \n", node)
 
-	old := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
-	if old != nil {
-		old.IsDeleted = true
+	originTable := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
+	if originTable != nil {
+		originTable.IsDeleted = true
 	}
 
 	table := s.getTableFromCache(node.NewTable.Schema.O, node.NewTable.Name.O, false)
 	if table != nil {
 		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.NewTable.Name.O)
+	}
+
+	// 旧表存在,新建不存在时
+	if originTable != nil && table == nil {
+		table = copyTableInfo(originTable)
+
+		table.Name = node.NewTable.Name.O
+		if node.NewTable.Schema.O == "" {
+			table.Schema = s.DBName
+		} else {
+			table.Schema = node.NewTable.Schema.O
+		}
+		s.cacheNewTable(table)
+		s.myRecord.TableInfo = table
+
+		if s.opt.execute {
+			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
+				table.Schema, table.Name, originTable.Schema, originTable.Name)
+		}
 	}
 
 }
@@ -1056,7 +1095,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	// tidb暂不支持临时表 create temporary table t1
 
-	log.Infof("%#v", node)
+	// log.Infof("%#v", node)
 	// log.Infof("%#v", node.Options)
 	// log.Infof("%#v", node.ReferTable)
 
@@ -1121,11 +1160,29 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 		hasPrimary := false
 		for _, ct := range node.Constraints {
-			log.Infof("%#v", ct)
+			// log.Infof("%#v", ct)
 
 			switch ct.Tp {
 			case ast.ConstraintPrimaryKey:
+				log.Infof("%#v", ct)
+
 				hasPrimary = len(ct.Keys) > 0
+
+				for _, col := range ct.Keys {
+					found := false
+
+					for _, field := range node.Cols {
+						if field.Name.Name.L == col.Column.Name.L {
+							found = true
+						}
+					}
+
+					if !found {
+						s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+							fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
+					}
+				}
+
 				break
 			}
 		}
@@ -1158,6 +1215,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			s.mysqlCheckField(table, nc)
 		}
 
+		s.cacheNewTable(table)
 		s.myRecord.TableInfo = table
 	}
 
@@ -1184,40 +1242,10 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 
 	table.Name = node.Table.Name.O
 	table.Fields = make([]FieldInfo, 0, len(node.Cols))
-	// 	Field      string `gorm:"Column:Field"`
-	// Type       string `gorm:"Column:Type"`
-	// Collation  string `gorm:"Column:Collation"`
-	// Null       string `gorm:"Column:Null"`
-	// Key        string `gorm:"Column:Key"`
-	// Default    string `gorm:"Column:Default"`
-	// Extra      string `gorm:"Column:Extra"`
-	// Privileges string `gorm:"Column:Privileges"`
-	// Comment    string `gorm:"Column:Comment"`
 
 	for _, field := range node.Cols {
-		c := &FieldInfo{}
-
-		c.Field = field.Name.Name.String()
-		c.Type = field.Tp.CompactStr()
-		c.Null = "YES"
-
-		for _, op := range field.Options {
-			switch op.Tp {
-			case ast.ColumnOptionComment:
-				c.Comment = op.Expr.GetDatum().GetString()
-			case ast.ColumnOptionNotNull:
-				c.Null = "NO"
-			case ast.ColumnOptionPrimaryKey:
-				c.Key = "PRI"
-			case ast.ColumnOptionDefaultValue:
-				c.Default = op.Expr.GetDatum().GetString()
-			}
-		}
-
-		table.Fields = append(table.Fields, *c)
+		s.buildNewColumnToCache(table, field)
 	}
-
-	// log.Infof("%#v", table)
 
 	return table
 }
@@ -1269,7 +1297,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		return
 	}
 
-	s.mysqlShowTableStatus(table.Schema, table.Name)
+	s.mysqlShowTableStatus(table)
 
 	s.myRecord.TableInfo = table
 
@@ -1311,6 +1339,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			log.Info("未定义的解析: ", alter.Tp)
 		}
 	}
+
+	if s.opt.execute {
+		if strings.HasSuffix(s.myRecord.DDLRollback, ",") {
+			s.myRecord.DDLRollback = strings.TrimSuffix(s.myRecord.DDLRollback, ",") + ";"
+		}
+	}
+
 }
 
 func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec) {
@@ -1319,6 +1354,25 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 	table := s.getTableFromCache(c.NewTable.Schema.O, c.NewTable.Name.O, false)
 	if table != nil {
 		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, c.NewTable.Name.O)
+	} else {
+		// 旧表存在,新建不存在时
+
+		table = copyTableInfo(t)
+
+		t.IsDeleted = true
+		table.Name = c.NewTable.Name.O
+		if c.NewTable.Schema.O == "" {
+			table.Schema = s.DBName
+		} else {
+			table.Schema = c.NewTable.Schema.O
+		}
+		s.cacheNewTable(table)
+		s.myRecord.TableInfo = table
+
+		if s.opt.execute {
+			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
+				table.Schema, table.Name, t.Schema, t.Name)
+		}
 	}
 
 }
@@ -1328,33 +1382,34 @@ func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 	// log.Infof("%#v \n", c)
 
-	log.Info(c.OldColumnName, len(c.NewColumns))
-	found := false
-	for _, nc := range c.NewColumns {
-		if nc.Name.Name.L == c.OldColumnName.Name.O {
-			found = true
-		}
-	}
+	// log.Info(c.OldColumnName, len(c.NewColumns))
+	// found := false
+	// for _, nc := range c.NewColumns {
+	// 	if nc.Name.Name.L == c.OldColumnName.Name.O {
+	// 		found = true
+	// 	}
+	// }
 	// 更新了列名
-	if !found {
-		s.AppendErrorMessage(
-			fmt.Sprintf("列'%s'.'%s'禁止变更列名.",
-				t.Name, c.OldColumnName.Name))
-	}
+	// if !found {
+	// 	s.AppendErrorMessage(
+	// 		fmt.Sprintf("列'%s'.'%s'禁止变更列名.",
+	// 			t.Name, c.OldColumnName.Name))
+	// }
 	s.checkModifyColumn(t, c)
 }
 
 func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Info("checkModifyColumn")
 
-	log.Infof("%#v \n", c)
+	// log.Infof("%#v \n", c)
 
 	for _, nc := range c.NewColumns {
 		// log.Infof("%s \n", nc)
-		log.Infof("%s --- %s \n", nc.Name, nc.Tp)
+		log.Infof("%s --- %s \n", nc.Name, c.OldColumnName)
 		found := false
 		var foundField FieldInfo
 
+		// 列名未变
 		if c.OldColumnName == nil || c.OldColumnName.Name.L == nc.Name.Name.L {
 
 			for _, field := range t.Fields {
@@ -1367,8 +1422,30 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 			if !found {
 				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+			} else if s.opt.execute {
+				buf := bytes.NewBufferString("MODIFY COLUMN `")
+				buf.WriteString(foundField.Field)
+				buf.WriteString("` ")
+				buf.WriteString(foundField.Type)
+				if foundField.Null == "NO" {
+					buf.WriteString(" NOT NULL")
+				}
+				if foundField.Default != "" {
+					buf.WriteString(" DEFALUT '")
+					buf.WriteString(foundField.Default)
+					buf.WriteString("'")
+				}
+				if foundField.Comment != "" {
+					buf.WriteString(" COMMENT '")
+					buf.WriteString(foundField.Comment)
+					buf.WriteString("'")
+				}
+				buf.WriteString(",")
+
+				s.myRecord.DDLRollback += buf.String()
 			}
-		} else {
+		} else { // 列名改变
+
 			oldFound := false
 			newFound := false
 			for _, field := range t.Fields {
@@ -1382,9 +1459,36 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			}
 
 			if newFound {
-				s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, foundField.Field))
-			} else if !oldFound {
-				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+				s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name.O))
+			}
+			if !oldFound {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
+			}
+
+			log.Info(c.OldColumnName, nc.Name, foundField.Field)
+			if !newFound && oldFound && s.opt.execute {
+				buf := bytes.NewBufferString("CHANGE COLUMN `")
+				buf.WriteString(nc.Name.Name.O)
+				buf.WriteString("` `")
+				buf.WriteString(foundField.Field)
+				buf.WriteString("` ")
+				buf.WriteString(foundField.Type)
+				if foundField.Null == "NO" {
+					buf.WriteString(" NOT NULL")
+				}
+				if foundField.Default != "" {
+					buf.WriteString(" DEFALUT '")
+					buf.WriteString(foundField.Default)
+					buf.WriteString("'")
+				}
+				if foundField.Comment != "" {
+					buf.WriteString(" COMMENT '")
+					buf.WriteString(foundField.Comment)
+					buf.WriteString("'")
+				}
+				buf.WriteString(",")
+
+				s.myRecord.DDLRollback += buf.String()
 			}
 		}
 
@@ -1401,8 +1505,13 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
 		}
 
+		// 列(或旧列)未找到时结束
+		if s.hasError() {
+			return
+		}
+
+		// log.Info("--------------", nc.Name, fieldType, foundField.Type, foundField)
 		fieldType := nc.Tp.CompactStr()
-		log.Info("--------------", nc.Name, fieldType, foundField.Type, foundField)
 
 		switch nc.Tp.Tp {
 		case mysql.TypeDecimal, mysql.TypeNewDecimal,
@@ -1439,6 +1548,26 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	// 			fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
 	// 	}
 	// }
+}
+
+// hasError is return current sql has errors or warnings
+func (s *session) hasError() bool {
+	// || (s.myRecord.ErrLevel == 1 && !s.opt.ignoreWarnings)
+	if s.myRecord.ErrLevel == 2 {
+		return true
+	}
+
+	return false
+}
+
+// hasError is return all sql has errors or warnings
+func (s *session) hasErrorBefore() bool {
+	if s.recordSets.MaxLevel == 2 ||
+		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+		return true
+	}
+
+	return false
 }
 
 func mysqlFiledIsBlob(tp byte) bool {
@@ -1538,7 +1667,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Info("checkDropForeignKey")
 
-	log.Infof("%s \n", c)
+	// log.Infof("%s \n", c)
 
 	s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 
@@ -1546,6 +1675,7 @@ func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool {
 	log.Info("checkAlterTableDropIndex")
 
+	// 删除索引时回库查询
 	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
 
 	var rows []IndexInfo
@@ -1565,15 +1695,25 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 		}
 
 		if s.opt.execute {
-			s.myRecord.DDLRollback += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+
 			for i, row := range rows {
 				if i == 0 {
+					if indexName == "PRIMARY" {
+						s.myRecord.DDLRollback += "ADD PRIMARY KEY("
+					} else {
+						if row.NonUnique == 0 {
+							s.myRecord.DDLRollback += fmt.Sprintf("ADD UNIQUE INDEX `%s`(", indexName)
+						} else {
+							s.myRecord.DDLRollback += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+						}
+					}
+
 					s.myRecord.DDLRollback += fmt.Sprintf("`%s`", row.ColumnName)
 				} else {
 					s.myRecord.DDLRollback += fmt.Sprintf(",`%s`", row.ColumnName)
 				}
 			}
-			s.myRecord.DDLRollback += ");"
+			s.myRecord.DDLRollback += "),"
 		}
 		return true
 	}
@@ -1587,11 +1727,11 @@ func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	log.Infof("%s \n", c)
+	// log.Infof("%s \n", c)
 	// log.Infof("%s \n", c.NewColumns)
 
 	for _, nc := range c.NewColumns {
-		log.Infof("%s \n", nc)
+		// log.Infof("%s \n", nc)
 		found := false
 		for _, field := range t.Fields {
 			if strings.EqualFold(field.Field, nc.Name.Name.O) {
@@ -1604,9 +1744,11 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		} else {
 			s.mysqlCheckField(t, nc)
 
+			s.buildNewColumnToCache(t, nc)
+
 			if s.opt.execute {
-				s.myRecord.DDLRollback += fmt.Sprintf("ALTER TABLE `%s`.`%s` DROP COLUMN `%s`;",
-					t.Schema, t.Name, nc.Name.Name.O)
+				s.myRecord.DDLRollback += fmt.Sprintf("DROP COLUMN `%s`,",
+					nc.Name.Name.O)
 			}
 		}
 	}
@@ -1627,7 +1769,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	log.Infof("%s \n", c)
+	// log.Infof("%s \n", c)
 	// log.Infof("%s \n", c.NewColumns)
 
 	found := false
@@ -1653,21 +1795,20 @@ func (s *session) mysqlDropColumnRollback(field FieldInfo) {
 	buf.WriteString(field.Field)
 	buf.WriteString("` ")
 	buf.WriteString(field.Type)
-	buf.WriteString(" ")
 	if field.Null == "NO" {
-		buf.WriteString("NOT NULL ")
+		buf.WriteString(" NOT NULL")
 	}
 	if field.Default != "" {
-		buf.WriteString("'")
+		buf.WriteString(" DEFALUT '")
 		buf.WriteString(field.Default)
-		buf.WriteString("' ")
+		buf.WriteString("'")
 	}
 	if field.Comment != "" {
-		buf.WriteString("'")
+		buf.WriteString(" COMMENT '")
 		buf.WriteString(field.Comment)
-		buf.WriteString("' ")
+		buf.WriteString("'")
 	}
-	buf.WriteString(";")
+	buf.WriteString(",")
 
 	s.myRecord.DDLRollback += buf.String()
 
@@ -1683,77 +1824,6 @@ func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 	}
 
 	s.checkAlterTableDropIndex(t, node.IndexName)
-
-}
-
-func (s *session) checkCreateIndex1(node *ast.CreateIndexStmt, sql string) {
-
-	log.Info("checkCreateIndex1")
-	log.Infof("%#v \n", node)
-
-	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
-	if t == nil {
-		return
-	}
-
-	keyMaxLen := 0
-	for _, col := range node.IndexColNames {
-		found := false
-		var foundField FieldInfo
-		for _, field := range t.Fields {
-			if strings.EqualFold(field.Field, col.Column.Name.O) {
-				found = true
-				foundField = field
-				keyMaxLen += FieldLengthWithType(field.Type)
-				break
-			}
-		}
-		if !found {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
-		} else {
-			tp := foundField.Type
-			if strings.Index(tp, "bolb") > -1 {
-				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
-			}
-		}
-	}
-
-	if len(node.IndexName) > mysql.MaxIndexIdentifierLen {
-		s.AppendErrorMessage(fmt.Sprintf("表'%s'的索引'%s'名称过长", t.Name, node.IndexName))
-	}
-
-	if keyMaxLen > MaxKeyLength {
-		s.AppendErrorNo(ER_TOO_LONG_KEY, node.IndexName, MaxKeyLength)
-	}
-
-	// if len(node.IndexColNames) > s.Inc.MaxPrimaryKeyParts {
-	// 	s.AppendErrorNo(ER_PK_TOO_MANY_PARTS, t.Name, col.Column.Name.O, s.Inc.MaxPrimaryKeyParts)
-	// }
-
-	querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
-
-	var rows []IndexInfo
-	// log.Info("++++++++")
-	if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	}
-
-	if len(rows) > 0 {
-		for _, row := range rows {
-			if strings.EqualFold(row.IndexName, node.IndexName) {
-				s.AppendErrorNo(ER_DUP_INDEX, node.IndexName, t.Schema, t.Name)
-				break
-			}
-		}
-	}
-
-	if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
-		s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
-	}
 
 }
 
@@ -1831,14 +1901,18 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	}
 
 	if s.opt.execute {
-		s.myRecord.DDLRollback += fmt.Sprintf("DROP INDEX `%s`;", IndexName)
+		if IndexName == "PRIMARY" {
+			s.myRecord.DDLRollback += fmt.Sprintf("DROP PRIMARY KEY,")
+		} else {
+			s.myRecord.DDLRollback += fmt.Sprintf("DROP INDEX `%s`,", IndexName)
+		}
 	}
 }
 
 func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
 	log.Info("checkAddIndex")
 
-	log.Infof("%#v \n", ct)
+	// log.Infof("%#v \n", ct)
 
 	for _, col := range ct.Keys {
 		found := false
@@ -1868,6 +1942,9 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 			c.Constraint.Keys, c.Constraint.Option, t, false)
 	case ast.ConstraintUniq:
 		s.checkCreateIndex(nil, c.Constraint.Name,
+			c.Constraint.Keys, c.Constraint.Option, t, true)
+	case ast.ConstraintPrimaryKey:
+		s.checkCreateIndex(nil, "PRIMARY",
 			c.Constraint.Keys, c.Constraint.Option, t, true)
 	// case ast.ConstraintForeignKey:
 	// 	s.checkDropColumn(table, alter)
@@ -1998,12 +2075,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 	}
 
-	// if t.Schema.O != "" {
-	// 	s.myRecord.DBName = t.Schema.O
-	// } else {
-	// 	s.myRecord.DBName = s.DBName
-	// }
-
 	table := s.getTableFromCache(t.Schema.O, t.Name.O, true)
 	// log.Infof("%#v", table)
 	s.myRecord.TableInfo = table
@@ -2100,7 +2171,7 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 
 	log.Info("checkDropDB")
 
-	log.Infof("%#v \n", node)
+	// log.Infof("%#v \n", node)
 
 	s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法删除数据库'%s'.", node.Name))
 }
@@ -2176,16 +2247,16 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 	log.Info("checkUpdate")
 
-	log.Infof("%#v", node)
-	log.Infof("%#v", node.TableRefs)
-	log.Infof("%#v", node.List)
+	// log.Infof("%#v", node)
+	// log.Infof("%#v", node.TableRefs)
+	// log.Infof("%#v", node.List)
 
 	// 从set列表读取要更新的表
 	var originTable string
 	var firstColumnName string
 	if node.List != nil {
 		for _, l := range node.List {
-			log.Infof("%#v", l.Column)
+			// log.Infof("%#v", l.Column)
 			originTable = l.Column.Table.L
 			firstColumnName = l.Column.Name.L
 		}
@@ -2242,9 +2313,9 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
 	log.Info("checkDelete")
 
-	log.Infof("%#v", node)
+	// log.Infof("%#v", node)
 
-	log.Infof("%#v", node.TableRefs.TableRefs)
+	// log.Infof("%#v", node.TableRefs.TableRefs)
 
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
@@ -2466,6 +2537,33 @@ func (s *session) cacheNewTable(t *TableInfo) {
 	// if t, ok := s.tableCacheList[key]; !ok {
 	// 	s.tableCacheList[key] = t
 	// }
+}
+
+func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) {
+
+	t.NewColumnCached = true
+
+	c := &FieldInfo{}
+
+	c.Field = field.Name.Name.String()
+	c.Type = field.Tp.CompactStr()
+	c.Null = "YES"
+
+	for _, op := range field.Options {
+		switch op.Tp {
+		case ast.ColumnOptionComment:
+			c.Comment = op.Expr.GetDatum().GetString()
+		case ast.ColumnOptionNotNull:
+			c.Null = "NO"
+		case ast.ColumnOptionPrimaryKey:
+			c.Key = "PRI"
+		case ast.ColumnOptionDefaultValue:
+			c.Default = op.Expr.GetDatum().GetString()
+		}
+	}
+
+	t.Fields = append(t.Fields, *c)
+
 }
 
 func FieldLengthWithType(tp string) int {
