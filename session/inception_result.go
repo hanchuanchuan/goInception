@@ -186,7 +186,7 @@ func NewRecordSets() *MyRecordSets {
 	}
 
 	rc := &recordSet{
-		data:       make([][]types.Datum, 10),
+		// data:       make([][]types.Datum, 0),
 		count:      0,
 		cursor:     0,
 		fieldCount: 0,
@@ -320,6 +320,8 @@ func (s *MyRecordSets) setFields(r *Record) {
 // }
 
 func (s *MyRecordSets) Rows() []ast.RecordSet {
+
+	s.rc.data = make([][]types.Datum, len(s.records))
 
 	for _, r := range s.records {
 		s.setFields(r)

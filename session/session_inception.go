@@ -475,7 +475,34 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 	buf.WriteString(record.TableInfo.Name)
 	buf.WriteString("',")
 	buf.WriteString(strconv.Itoa(s.opt.port))
-	buf.WriteString(",NOW(),'UNKNOWN')")
+	buf.WriteString(",NOW(),'")
+
+	switch record.Type.(type) {
+	case *ast.InsertStmt:
+		buf.WriteString("INSERT")
+	case *ast.DeleteStmt:
+		buf.WriteString("DELETE")
+	case *ast.UpdateStmt:
+		buf.WriteString("UPDATE")
+	case *ast.CreateDatabaseStmt:
+		buf.WriteString("CREATEDB")
+	case *ast.CreateTableStmt:
+		buf.WriteString("CREATETABLE")
+	case *ast.AlterTableStmt:
+		buf.WriteString("ALTERTABLE")
+	case *ast.DropTableStmt:
+		buf.WriteString("DROPTABLE")
+	case *ast.RenameTableStmt:
+		buf.WriteString("RENAMETABLE")
+	case *ast.CreateIndexStmt:
+		buf.WriteString("CREATEINDEX")
+	case *ast.DropIndexStmt:
+		buf.WriteString("DROPINDEX")
+	default:
+		buf.WriteString("UNKNOWN")
+	}
+
+	buf.WriteString("')")
 
 	// var err error
 	// // 参数化
@@ -2210,11 +2237,20 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 
 	log.Info("checkCreateDB")
 
-	// log.Infof("%#v \n", node)
+	log.Infof("%#v \n", node)
 
 	if s.checkDBExists(node.Name, false) {
-		s.AppendErrorMessage(fmt.Sprintf("数据库'%s'已存在.", node.Name))
+		if !node.IfNotExists {
+			s.AppendErrorMessage(fmt.Sprintf("数据库'%s'已存在.", node.Name))
+		}
+	} else {
+		s.dbCacheList[node.Name] = true
+
+		if s.opt.execute {
+			s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)
+		}
 	}
+
 }
 
 func (s *session) checkChangeDB(node *ast.UseStmt) {
