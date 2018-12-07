@@ -54,6 +54,16 @@ insert into ttt1(id,c1) values(2,'test'),(3,'test');
 insert into ttt1(id,c1) select id+3,c1 from ttt1;
 insert into ttt1(id,c1) select 8,'123';
 
+drop table if exists ttt2;
+
+create table ttt2(id int primary key,pid int );
+
+insert into ttt2 select 1,1;
+insert into ttt2 select 2,2;
+
+update ttt1 set c11 = c1 ;
+
+delete from ttt1;
 
 inception_magic_commit;
 '''
