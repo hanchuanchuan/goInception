@@ -46,6 +46,9 @@ type MyRecordSets struct {
 	MaxLevel uint8
 
 	SeqNo int
+
+	// 作为record的游标
+	cursor int
 }
 
 const (
@@ -99,7 +102,8 @@ type Record struct {
 	AffectedRows int
 
 	// 对应备份库的opid,用来找到对应的回滚语句
-	Sequence string
+	// Sequence string	改用属性OPID
+
 	// 备份库的库名
 	BackupDBName string
 
@@ -119,7 +123,7 @@ type Record struct {
 	StartPosition int
 	EndFile       string
 	EndPosition   int
-	ThreadId      int
+	ThreadId      uint32
 	SeqNo         int
 
 	DBName    string
@@ -127,6 +131,7 @@ type Record struct {
 	TableInfo *TableInfo
 	// ddl回滚
 	DDLRollback string
+	OPID        string
 }
 
 func (r *recordSet) Fields() []*ast.ResultField {
@@ -257,6 +262,7 @@ func (s *MyRecordSets) Append(r *Record) {
 	s.SeqNo++
 	r.SeqNo = s.SeqNo
 	s.records = append(s.records, r)
+	s.count++
 }
 
 func (s *MyRecordSets) setFields(r *Record) {
@@ -276,10 +282,10 @@ func (s *MyRecordSets) setFields(r *Record) {
 
 	row[5].SetString(r.Sql)
 	row[6].SetInt64(int64(r.AffectedRows))
-	if r.Sequence == "" {
+	if r.OPID == "" {
 		row[7].SetNull()
 	} else {
-		row[7].SetString(r.Sequence)
+		row[7].SetString(r.OPID)
 	}
 
 	if r.StageStatus == StatusBackupOK {
@@ -340,4 +346,13 @@ func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
 
 func (s *MyRecordSets) All() []*Record {
 	return s.records
+}
+
+func (s *MyRecordSets) Next() *Record {
+	if s.cursor == s.count {
+		return nil
+	} else {
+		s.cursor++
+	}
+	return s.records[s.cursor-1]
 }

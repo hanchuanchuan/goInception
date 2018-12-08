@@ -177,6 +177,17 @@ type session struct {
 	backupTableCacheList map[string]bool
 
 	Inc config.Inc
+
+	// 异步备份的通道
+	ch chan *row
+	// 批量insert
+	insertBuffer []interface{}
+
+	// 记录表结构以重用
+	allTables map[uint64]*Table
+
+	// 记录上次的备份表名,如果表名改变时,刷新insert缓存
+	lastBackupTable string
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
