@@ -40,6 +40,27 @@ inception_magic_commit;
 
 # alter table t1 drop primary key;
 
+
+# drop table if exists ttt1 ;
+
+# create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
+
+# insert into ttt1(id,c1) values(1,'test');
+# insert into ttt1(id,c1) values(2,'test'),(3,'test');
+# insert into ttt1(id,c1) select id+3,c1 from ttt1;
+# insert into ttt1(id,c1) select 8,'123';
+
+# drop table if exists ttt2;
+
+# create table ttt2(id int primary key,pid int );
+
+# insert into ttt2 select 1,1;
+# insert into ttt2 select 2,2;
+
+# update ttt1 set c11 = c1 ;
+
+# delete from ttt1;
+
 sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
 --execute=1;--backup=1;--port=3306;--ignore-warnings=1;*/
 inception_magic_start;

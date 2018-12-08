@@ -394,7 +394,6 @@ func (s *session) executeCommit() {
 				if errno == 2 {
 					break
 				}
-
 				if record.TableInfo == nil {
 					s.AppendErrorMessage("无表结构信息,生成备份失败!")
 				} else {
@@ -403,6 +402,8 @@ func (s *session) executeCommit() {
 			}
 		}
 
+		// 解析binlog生成回滚语句
+		s.Parser()
 	}
 }
 
@@ -416,8 +417,8 @@ func (s *session) mysqlBackupSql(record *Record) {
 	}
 }
 
-func makeOPIDByTime(execTime int64, threadId int, seqNo int) string {
-	return fmt.Sprintf("'%d_%d_%08d'", execTime, threadId, seqNo)
+func makeOPIDByTime(execTime int64, threadId uint32, seqNo int) string {
+	return fmt.Sprintf("%d_%d_%08d", execTime, threadId, seqNo)
 }
 
 func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
@@ -431,10 +432,9 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, record.TableInfo.Name))
 	buf.WriteString("(rollback_statement, opid_time) VALUES('")
 	buf.WriteString(HTMLEscapeString(record.DDLRollback))
-	buf.WriteString("',")
-	buf.WriteString(makeOPIDByTime(
-		record.ExecTimestamp, record.ThreadId, record.SeqNo))
-	buf.WriteString(")")
+	buf.WriteString("','")
+	buf.WriteString(record.OPID)
+	buf.WriteString("')")
 
 	sql := buf.String()
 
@@ -449,14 +449,16 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 
 func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 
+	record.OPID = makeOPIDByTime(record.ExecTimestamp, record.ThreadId, record.SeqNo)
+
 	var buf strings.Builder
-	// buf := bytes.NewBufferString("INSERT INTO ")
+
 	buf.WriteString("INSERT INTO ")
 	dbname := s.getRemoteBackupDBName(record)
 	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
-	buf.WriteString(" VALUES(")
-	buf.WriteString(makeOPIDByTime(record.ExecTimestamp, record.ThreadId, record.SeqNo))
-	buf.WriteString(",'")
+	buf.WriteString(" VALUES('")
+	buf.WriteString(record.OPID)
+	buf.WriteString("','")
 	buf.WriteString(record.StartFile)
 	buf.WriteString("',")
 	buf.WriteString(strconv.Itoa(record.StartPosition))
@@ -523,7 +525,7 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 		}
 	}
 
-	record.StageStatus = StatusBackupOK
+	// record.StageStatus = StatusBackupOK
 	return 0
 }
 
@@ -834,7 +836,7 @@ func (s *session) checkBinlogFormatIsRow() bool {
 	return format == "ROW"
 }
 
-func (s *session) fetchThreadID() (threadId int) {
+func (s *session) fetchThreadID() (threadId uint32) {
 	log.Info("fetchThreadID")
 
 	rows, err := s.db.Raw("select connection_id()").Rows()
