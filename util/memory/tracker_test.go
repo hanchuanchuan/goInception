@@ -18,9 +18,9 @@ import (
 	"sync"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 func TestT(t *testing.T) {

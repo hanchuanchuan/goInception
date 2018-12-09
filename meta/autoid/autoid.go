@@ -24,7 +24,7 @@ import (
 	"github.com/hanchuanchuan/tidb/meta"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 

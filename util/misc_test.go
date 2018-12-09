@@ -14,9 +14,9 @@
 package util
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 var _ = Suite(&testMiscSuite{})

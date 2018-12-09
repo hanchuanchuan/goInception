@@ -17,13 +17,13 @@ import (
 	"bytes"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ddl"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
 	"github.com/hanchuanchuan/tidb/store/tikv"
 	"github.com/hanchuanchuan/tidb/tablecodec"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

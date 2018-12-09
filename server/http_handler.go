@@ -28,8 +28,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/infoschema"
@@ -48,7 +46,9 @@ import (
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
+	"github.com/pingcap/kvproto/pkg/metapb"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

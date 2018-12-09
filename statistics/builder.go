@@ -17,7 +17,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // SortedBuilder is used to build histograms for PK and index.

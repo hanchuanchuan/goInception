@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"strings"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/parser"
+	. "github.com/pingcap/check"
 )
 
 // OneByOneSuite is a suite, When with-tikv flag is true, there is only one storage, so the test suite have to run one by one.

@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // secondsPerYear represents seconds in a normal year. Leap year is not considered here.

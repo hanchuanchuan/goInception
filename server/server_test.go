@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	tmysql "github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/hanchuanchuan/tidb/util/printer"
+	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 )
 

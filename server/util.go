@@ -46,7 +46,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/hack"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 func parseNullTermString(b []byte) (str []byte, remain []byte) {

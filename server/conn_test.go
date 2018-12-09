@@ -18,8 +18,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
+	. "github.com/pingcap/check"
 )
 
 type ConnTestSuite struct{}

@@ -21,3 +21,9 @@ backup-host = "127.0.0.1"
 backup-port = 20001
 backup-user = "inception"
 backup-password = "inception"
+
+[log]
+# Log level: debug, info, warn, error, fatal.
+level = "info"
+# Log format, one of json, text, console.
+format = "console"

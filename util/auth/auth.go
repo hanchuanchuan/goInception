@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // UserIdentity represents username and hostname.

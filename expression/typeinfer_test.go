@@ -16,7 +16,6 @@ package expression_test
 import (
 	"math"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/parser"
@@ -28,6 +27,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/printer"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testInferTypeSuite{})

@@ -17,7 +17,6 @@ import (
 	"sync"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/meta"
@@ -28,7 +27,8 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 func TestT(t *testing.T) {

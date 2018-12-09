@@ -14,7 +14,6 @@
 package infoschema_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/statistics"
@@ -22,6 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestInfoschemaFieldValue(c *C) {

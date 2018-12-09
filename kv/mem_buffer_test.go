@@ -20,8 +20,8 @@ import (
 	"math/rand"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 const (

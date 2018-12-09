@@ -16,7 +16,6 @@ package ddl
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/meta"
@@ -26,6 +25,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/mock"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

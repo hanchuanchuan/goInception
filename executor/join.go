@@ -29,7 +29,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/memory"
 	"github.com/hanchuanchuan/tidb/util/mvmap"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

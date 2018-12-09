@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/meta"
 	"github.com/hanchuanchuan/tidb/meta/autoid"
@@ -35,6 +34,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/mock"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

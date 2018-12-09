@@ -21,9 +21,9 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/terror"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

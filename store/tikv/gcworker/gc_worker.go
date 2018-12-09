@@ -22,10 +22,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/kvproto/pkg/errorpb"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/pd/client"
 	"github.com/hanchuanchuan/tidb/ddl/util"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/meta"
@@ -37,7 +33,11 @@ import (
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/tidb/terror"
 	tidbutil "github.com/hanchuanchuan/tidb/util"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/errorpb"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
+	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/pd/client"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

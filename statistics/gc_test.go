@@ -17,8 +17,8 @@ import (
 	"math"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 func (s *testStatsUpdateSuite) TestGCStats(c *C) {

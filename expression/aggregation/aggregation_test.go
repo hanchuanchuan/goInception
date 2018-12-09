@@ -16,7 +16,6 @@ package aggregation
 import (
 	"math"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/expression"
 	"github.com/hanchuanchuan/tidb/mysql"
@@ -25,6 +24,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/mock"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testAggFuncSuit{})

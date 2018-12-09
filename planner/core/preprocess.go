@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // Preprocess resolves table names of the node, and checks some statements validation.

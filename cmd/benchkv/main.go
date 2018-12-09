@@ -27,7 +27,7 @@ import (
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/tikv"
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"

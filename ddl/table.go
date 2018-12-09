@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/tablecodec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 

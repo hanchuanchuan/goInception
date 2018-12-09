@@ -16,8 +16,8 @@ package statistics
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
+	. "github.com/pingcap/check"
 )
 
 func (s *testStatisticsSuite) TestSketch(c *C) {

@@ -21,8 +21,8 @@ import (
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
 var (

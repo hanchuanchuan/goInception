@@ -14,10 +14,10 @@
 package server
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/types"
+	. "github.com/pingcap/check"
 )
 
 func (ts ConnTestSuite) TestParseStmtArgs(c *C) {

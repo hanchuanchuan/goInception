@@ -17,10 +17,10 @@ import (
 	"io"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 func TestT(t *testing.T) {

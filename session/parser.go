@@ -21,40 +21,29 @@ const digits10 = "00000000001111111111222222222233333333334444444444555555555566
 
 type Column struct {
 	gorm.Model
-	ColumnName       string `gorm:"Column:COLUMN_NAME"`
-	CollationName    string `gorm:"Column:COLLATION_NAME"`
-	CharacterSetName string `gorm:"Column:CHARACTER_SET_NAME"`
-	ColumnComment    string `gorm:"Column:COLUMN_COMMENT"`
-	ColumnType       string `gorm:"Column:COLUMN_TYPE"`
-	ColumnKey        string `gorm:"Column:COLUMN_KEY"`
+	Field     string `gorm:"Column:COLUMN_NAME"`
+	Type      string `gorm:"Column:COLUMN_TYPE"`
+	Collation string `gorm:"Column:COLLATION_NAME"`
+	Key       string `gorm:"Column:COLUMN_KEY"`
+	Comment   string `gorm:"Column:COLUMN_COMMENT"`
+
+	// CharacterSetName string `gorm:"Column:CHARACTER_SET_NAME"`
 }
 
 type Table struct {
 	tableId    uint64
-	Columns    []Column
+	Fields     []Column
 	hasPrimary bool
 	primarys   map[int]bool
 }
 
-type MasterLog struct {
-	gorm.Model
-	Name string `gorm:"Column:Log_name"`
-	Size int    `gorm:"Column:File_size"`
-}
-
-// GTID集合,可指定或排除GTID范围
-type GtidSetInfo struct {
-	uuid       []byte
-	startSeqNo int64
-	stopSeqNo  int64
-}
-
-type row struct {
-	sql   []byte
-	e     *replication.BinlogEvent
-	gtid  []byte
-	opid  string
-	table string
+type ChanData struct {
+	sql    []byte
+	e      *replication.BinlogEvent
+	gtid   []byte
+	opid   string
+	table  string
+	record *Record
 }
 
 func (s *session) ProcessChan(wg *sync.WaitGroup) {
@@ -63,7 +52,7 @@ func (s *session) ProcessChan(wg *sync.WaitGroup) {
 		if r == nil {
 			// log.Info("剩余ch", len(s.ch), "cap ch", cap(s.ch), "通道关闭,跳出循环")
 			// log.Info("ProcessChan,close")
-			s.flush(s.lastBackupTable)
+			s.flush(s.lastBackupTable, s.myRecord)
 			wg.Done()
 			break
 		}
@@ -71,9 +60,9 @@ func (s *session) ProcessChan(wg *sync.WaitGroup) {
 		// 如数据尚未进入到ch通道,此时调用flush,数据无法正确入库
 		if len(r.sql) == 0 {
 			// log.Info("flush标志")
-			s.flush(r.table)
+			s.flush(r.table, r.record)
 		} else {
-			s.myWrite(r.sql, r.e, r.opid, r.table)
+			s.myWrite(r.sql, r.e, r.opid, r.table, r.record)
 		}
 	}
 }
@@ -86,7 +75,6 @@ func (s *session) GetNextBackupRecord() *Record {
 		}
 
 		if s.checkSqlIsDML(r) && r.TableInfo != nil {
-			s.myRecord = r
 			// 先置默认值为备份失败,在备份完成后置为成功
 			r.StageStatus = StatusBackupFail
 			return r
@@ -95,13 +83,22 @@ func (s *session) GetNextBackupRecord() *Record {
 }
 
 func (s *session) Parser() {
+
+	// 获取binlog解析起点
+	record := s.GetNextBackupRecord()
+	if record == nil {
+		return
+	}
+
+	s.myRecord = record
+
+	log.Info("Parser")
+
 	var err error
 	var wg sync.WaitGroup
 
 	// 启用Logger，显示详细日志
-	s.backupdb.LogMode(true)
-
-	s.allTables = make(map[uint64]*Table)
+	// s.backupdb.LogMode(true)
 
 	cfg := replication.BinlogSyncerConfig{
 		ServerID: 2000000112,
@@ -118,16 +115,10 @@ func (s *session) Parser() {
 	b := replication.NewBinlogSyncer(cfg)
 	defer b.Close()
 
-	// 获取binlog解析起点
-	record := s.GetNextBackupRecord()
-	if record == nil {
-		return
-	}
-	s.myRecord = record
-
 	startPosition := mysql.Position{record.StartFile, uint32(record.StartPosition)}
 	stopPosition := mysql.Position{record.EndFile, uint32(record.EndPosition)}
 	s.lastBackupTable = fmt.Sprintf("`%s`.`%s`", record.BackupDBName, record.TableInfo.Name)
+	startTime := time.Now()
 
 	logSync, err := b.StartSync(startPosition)
 	if err != nil {
@@ -136,14 +127,23 @@ func (s *session) Parser() {
 	}
 
 	wg.Add(1)
-	s.ch = make(chan *row, 50)
+	s.ch = make(chan *ChanData, 50)
 	go s.ProcessChan(&wg)
+
+	// 最终关闭和返回
+	defer func() {
+		close(s.ch)
+		wg.Wait()
+
+		// log.Info("操作完成", "rows", i)
+		// kwargs := map[string]interface{}{"ok": "1"}
+		// sendMsg(p.cfg.SocketUser, "rollback_binlog_parse_complete", "binlog解析进度", "", kwargs)
+	}()
 
 	currentPosition := startPosition
 	var currentThreadID uint32
 	for {
 		e, err := logSync.GetEvent(context.Background())
-
 		if err != nil {
 			log.Infof("Get event error: %v\n", errors.ErrorStack(err))
 			break
@@ -171,18 +171,14 @@ func (s *session) Parser() {
 					!strings.EqualFold(string(event.Table), record.TableInfo.Name) {
 					goto ENDCHECK
 				}
-
-				_, err = s.tableInformation(event.TableID, event.Schema, event.Table)
-				s.checkError(err)
 			}
-		} else if e.Header.EventType == replication.QUERY_EVENT {
 
+		} else if e.Header.EventType == replication.QUERY_EVENT {
 			if event, ok := e.Event.(*replication.QueryEvent); ok {
 				currentThreadID = event.SlaveProxyID
 			}
 
 		} else if e.Header.EventType == replication.WRITE_ROWS_EVENTv2 {
-
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
 					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
@@ -192,10 +188,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				table, err := s.tableInformation(event.TableID, event.Table.Schema, event.Table.Table)
-				s.checkError(err)
-
-				_, err = s.generateDeleteSql(table, event, e)
+				_, err = s.generateDeleteSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
 		} else if e.Header.EventType == replication.DELETE_ROWS_EVENTv2 {
@@ -208,11 +201,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				table, err := s.tableInformation(event.TableID, event.Table.Schema, event.Table.Table)
-				s.checkError(err)
-
-				_, err = s.generateInsertSql(table, event, e)
-
+				_, err = s.generateInsertSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
 		} else if e.Header.EventType == replication.UPDATE_ROWS_EVENTv2 {
@@ -225,10 +214,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				table, err := s.tableInformation(event.TableID, event.Table.Schema, event.Table.Table)
-				s.checkError(err)
-
-				_, err = s.generateUpdateSql(table, event, e)
+				_, err = s.generateUpdateSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
 		}
@@ -237,58 +223,46 @@ func (s *session) Parser() {
 		// 如果操作已超过binlog范围,切换到下一日志
 		if currentPosition.Compare(stopPosition) > -1 {
 			record.StageStatus = StatusBackupOK
+			record.BackupCostTime = fmt.Sprintf("%.3f", time.Since(startTime).Seconds())
 
-			record = s.GetNextBackupRecord()
-			if record != nil {
-				startPosition = mysql.Position{record.StartFile, uint32(record.StartPosition)}
-				stopPosition = mysql.Position{record.EndFile, uint32(record.EndPosition)}
-				lastBackupTable := fmt.Sprintf("`%s`.`%s`", record.BackupDBName, record.TableInfo.Name)
+			next := s.GetNextBackupRecord()
+			if next != nil {
+				startPosition = mysql.Position{next.StartFile, uint32(next.StartPosition)}
+				stopPosition = mysql.Position{next.EndFile, uint32(next.EndPosition)}
+				lastBackupTable := fmt.Sprintf("`%s`.`%s`", next.BackupDBName, next.TableInfo.Name)
+				startTime = time.Now()
 
 				if s.lastBackupTable != lastBackupTable {
 					// log.Info(s.lastBackupTable, " >>> ", lastBackupTable)
-					s.ch <- &row{sql: nil, table: s.lastBackupTable}
+					s.ch <- &ChanData{sql: nil, table: s.lastBackupTable, record: record}
 					s.lastBackupTable = lastBackupTable
 				}
+				s.myRecord = next
+				record = next
 
 			} else {
 				// log.Info("备份已全部解析,操作结束")
 				break
 			}
 		}
-
-		// if !p.running {
-		// 	fmt.Println("进程手动中止")
-		// 	break
-		// }
 	}
-
-	close(s.ch)
-
-	wg.Wait()
-
-	// log.Info("操作完成", "rows", i)
-
-	// kwargs := map[string]interface{}{"ok": "1"}
-
-	// sendMsg(p.cfg.SocketUser, "rollback_binlog_parse_complete", "binlog解析进度", "", kwargs)
-
 }
 
 // 解析的sql写入缓存,并定期入库
 func (s *session) myWrite(b []byte, binEvent *replication.BinlogEvent,
-	opid string, table string) {
+	opid string, table string, record *Record) {
 	// log.Info("myWrite")
 	b = append(b, ";"...)
 
 	s.insertBuffer = append(s.insertBuffer, string(b), opid)
 
 	if len(s.insertBuffer) >= 1000 {
-		s.flush(table)
+		s.flush(table, record)
 	}
 }
 
 // flush用以写入当前insert缓存,并清空缓存.
-func (s *session) flush(table string) {
+func (s *session) flush(table string, record *Record) {
 	// log.Info("flush ", len(s.insertBuffer))
 	if len(s.insertBuffer) > 0 {
 
@@ -299,8 +273,8 @@ func (s *session) flush(table string) {
 		if err := s.backupdb.Exec(fmt.Sprintf(sql, table, values),
 			s.insertBuffer...).Error; err != nil {
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				s.myRecord.StageStatus = StatusBackupFail
-				s.AppendErrorMessage(myErr.Message)
+				record.StageStatus = StatusBackupFail
+				record.AppendErrorMessage(myErr.Message)
 				log.Error(myErr)
 			}
 		}
@@ -322,25 +296,24 @@ func (s *session) checkError(e error) {
 }
 
 func (s *session) write(b []byte, binEvent *replication.BinlogEvent) {
-	s.ch <- &row{sql: b, e: binEvent, opid: s.myRecord.OPID, table: s.lastBackupTable}
+	s.ch <- &ChanData{sql: b, e: binEvent, opid: s.myRecord.OPID,
+		table: s.lastBackupTable, record: s.myRecord}
 }
 
-func (s *session) generateInsertSql(t *Table, e *replication.RowsEvent,
+func (s *session) generateInsertSql(t *TableInfo, e *replication.RowsEvent,
 	binEvent *replication.BinlogEvent) (string, error) {
 	var buf []byte
-	if len(t.Columns) < int(e.ColumnCount) {
+	if len(t.Fields) < int(e.ColumnCount) {
 		return "", errors.Errorf("表%s.%s缺少列!当前列数:%d,binlog的列数%d",
-			e.Table.Schema, e.Table.Table, len(t.Columns), e.ColumnCount)
+			e.Table.Schema, e.Table.Table, len(t.Fields), e.ColumnCount)
 	}
 
 	var columnNames []string
-	// var values []byte
 	c := "`%s`"
 	template := "INSERT INTO `%s`.`%s`(%s) VALUES(%s)"
-	for i, col := range t.Columns {
+	for i, col := range t.Fields {
 		if i < int(e.ColumnCount) {
-
-			columnNames = append(columnNames, fmt.Sprintf(c, col.ColumnName))
+			columnNames = append(columnNames, fmt.Sprintf(c, col.Field))
 		}
 	}
 
@@ -356,9 +329,9 @@ func (s *session) generateInsertSql(t *Table, e *replication.RowsEvent,
 		for _, d := range rows {
 			vv = append(vv, d)
 			// if _, ok := d.([]byte); ok {
-			//  log.Info().Msgf("%s:%q\n", t.Columns[j].ColumnName, d)
+			//  log.Info().Msgf("%s:%q\n", t.Fields[j].Field, d)
 			// } else {
-			//  log.Info().Msgf("%s:%#v\n", t.Columns[j].ColumnName, d)
+			//  log.Info().Msgf("%s:%#v\n", t.Fields[j].Field, d)
 			// }
 		}
 
@@ -366,18 +339,17 @@ func (s *session) generateInsertSql(t *Table, e *replication.RowsEvent,
 		s.checkError(err)
 
 		s.write(r, binEvent)
-
 	}
 
 	return string(buf), nil
 }
 
-func (s *session) generateDeleteSql(t *Table, e *replication.RowsEvent,
+func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 	binEvent *replication.BinlogEvent) (string, error) {
 	var buf []byte
-	if len(t.Columns) < int(e.ColumnCount) {
+	if len(t.Fields) < int(e.ColumnCount) {
 		return "", errors.Errorf("表%s.%s缺少列!当前列数:%d,binlog的列数%d",
-			e.Table.Schema, e.Table.Table, len(t.Columns), e.ColumnCount)
+			e.Table.Schema, e.Table.Table, len(t.Fields), e.ColumnCount)
 	}
 
 	template := "DELETE FROM `%s`.`%s` WHERE"
@@ -399,10 +371,10 @@ func (s *session) generateDeleteSql(t *Table, e *replication.RowsEvent,
 					vv = append(vv, d)
 					if d == nil {
 						columnNames = append(columnNames,
-							fmt.Sprintf(c_null, t.Columns[i].ColumnName))
+							fmt.Sprintf(c_null, t.Fields[i].Field))
 					} else {
 						columnNames = append(columnNames,
-							fmt.Sprintf(c, t.Columns[i].ColumnName))
+							fmt.Sprintf(c, t.Fields[i].Field))
 					}
 				}
 			} else {
@@ -410,18 +382,13 @@ func (s *session) generateDeleteSql(t *Table, e *replication.RowsEvent,
 
 				if d == nil {
 					columnNames = append(columnNames,
-						fmt.Sprintf(c_null, t.Columns[i].ColumnName))
+						fmt.Sprintf(c_null, t.Fields[i].Field))
 				} else {
 					columnNames = append(columnNames,
-						fmt.Sprintf(c, t.Columns[i].ColumnName))
+						fmt.Sprintf(c, t.Fields[i].Field))
 				}
 			}
 
-			// if _, ok := d.([]byte); ok {
-			//  log.Info().Msgf("%s:%q\n", t.Columns[j].ColumnName, d)
-			// } else {
-			//  log.Info().Msgf("%s:%#v\n", t.Columns[j].ColumnName, d)
-			// }
 		}
 		newSql := strings.Join([]string{sql, strings.Join(columnNames, " AND")}, "")
 
@@ -435,12 +402,12 @@ func (s *session) generateDeleteSql(t *Table, e *replication.RowsEvent,
 	return string(buf), nil
 }
 
-func (s *session) generateUpdateSql(t *Table, e *replication.RowsEvent,
+func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 	binEvent *replication.BinlogEvent) (string, error) {
 	var buf []byte
-	if len(t.Columns) < int(e.ColumnCount) {
+	if len(t.Fields) < int(e.ColumnCount) {
 		return "", errors.Errorf("表%s.%s缺少列!当前列数:%d,binlog的列数%d",
-			e.Table.Schema, e.Table.Table, len(t.Columns), e.ColumnCount)
+			e.Table.Schema, e.Table.Table, len(t.Fields), e.ColumnCount)
 	}
 
 	template := "UPDATE `%s`.`%s` SET%s WHERE"
@@ -453,9 +420,9 @@ func (s *session) generateUpdateSql(t *Table, e *replication.RowsEvent,
 
 	var sets []string
 
-	for i, col := range t.Columns {
+	for i, col := range t.Fields {
 		if i < int(e.ColumnCount) {
-			sets = append(sets, fmt.Sprintf(setValue, col.ColumnName))
+			sets = append(sets, fmt.Sprintf(setValue, col.Field))
 		}
 	}
 
@@ -489,10 +456,10 @@ func (s *session) generateUpdateSql(t *Table, e *replication.RowsEvent,
 
 						if d == nil {
 							columnNames = append(columnNames,
-								fmt.Sprintf(c_null, t.Columns[j].ColumnName))
+								fmt.Sprintf(c_null, t.Fields[j].Field))
 						} else {
 							columnNames = append(columnNames,
-								fmt.Sprintf(c, t.Columns[j].ColumnName))
+								fmt.Sprintf(c, t.Fields[j].Field))
 						}
 					}
 				} else {
@@ -500,10 +467,10 @@ func (s *session) generateUpdateSql(t *Table, e *replication.RowsEvent,
 
 					if d == nil {
 						columnNames = append(columnNames,
-							fmt.Sprintf(c_null, t.Columns[j].ColumnName))
+							fmt.Sprintf(c_null, t.Fields[j].Field))
 					} else {
 						columnNames = append(columnNames,
-							fmt.Sprintf(c, t.Columns[j].ColumnName))
+							fmt.Sprintf(c, t.Fields[j].Field))
 					}
 				}
 
@@ -525,58 +492,6 @@ func (s *session) generateUpdateSql(t *Table, e *replication.RowsEvent,
 	}
 
 	return string(buf), nil
-}
-
-func (s *session) tableInformation(tableId uint64, schema []byte, tableName []byte) (*Table, error) {
-
-	table, ok := s.allTables[tableId]
-	if ok {
-		return table, nil
-	}
-
-	sql := `SELECT COLUMN_NAME, ifnull(COLLATION_NAME,'') as COLLATION_NAME,
-            ifnull(CHARACTER_SET_NAME,'') as CHARACTER_SET_NAME,
-            ifnull(COLUMN_COMMENT,'') as COLUMN_COMMENT, COLUMN_TYPE,
-            ifnull(COLUMN_KEY,'') as COLUMN_KEY
-            FROM information_schema.columns
-            WHERE table_schema = ? and table_name = ?
-            ORDER BY ORDINAL_POSITION`
-
-	var allRecord []Column
-
-	s.db.Raw(sql, string(schema), string(tableName)).Scan(&allRecord)
-
-	var primarys map[int]bool
-	primarys = make(map[int]bool)
-
-	var uniques map[int]bool
-	uniques = make(map[int]bool)
-	for i, r := range allRecord {
-		if r.ColumnKey == "PRI" {
-			primarys[i] = true
-		}
-		if r.ColumnKey == "UNI" {
-			uniques[i] = true
-		}
-	}
-
-	newTable := new(Table)
-	newTable.tableId = tableId
-	newTable.Columns = allRecord
-
-	if len(primarys) > 0 {
-		newTable.primarys = primarys
-		newTable.hasPrimary = true
-	} else if len(uniques) > 0 {
-		newTable.primarys = uniques
-		newTable.hasPrimary = true
-	} else {
-		newTable.hasPrimary = false
-	}
-
-	s.allTables[tableId] = newTable
-
-	return newTable, nil
 }
 
 func InterpolateParams(query string, args []driver.Value) ([]byte, error) {

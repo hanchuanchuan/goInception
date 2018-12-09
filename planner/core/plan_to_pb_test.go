@@ -14,12 +14,12 @@
 package core
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/expression"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"github.com/pingcap/tipb/go-tipb"
 )
 

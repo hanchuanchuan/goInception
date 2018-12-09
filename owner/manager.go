@@ -29,7 +29,7 @@ import (
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

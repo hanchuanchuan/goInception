@@ -30,7 +30,7 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/ranger"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 type visitInfo struct {

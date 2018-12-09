@@ -19,13 +19,13 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 func TestT(t *testing.T) {

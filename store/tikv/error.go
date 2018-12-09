@@ -16,7 +16,7 @@ package tikv
 import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 var (

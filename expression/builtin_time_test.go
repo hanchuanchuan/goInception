@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx"
@@ -32,7 +31,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 func (s *testEvaluatorSuite) TestDate(c *C) {

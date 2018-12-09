@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -35,7 +34,8 @@ import (
 	tmysql "github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

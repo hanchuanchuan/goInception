@@ -17,11 +17,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/types/json"
+	"github.com/pingcap/check"
 )
 
 func (s *testChunkSuite) TestMutRow(c *check.C) {

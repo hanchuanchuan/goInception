@@ -19,8 +19,6 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/pingcap/check"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
@@ -28,6 +26,8 @@ import (
 	"github.com/hanchuanchuan/tidb/tablecodec"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/codec"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"golang.org/x/net/context"
 )
 

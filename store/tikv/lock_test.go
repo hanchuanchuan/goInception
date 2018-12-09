@@ -18,10 +18,10 @@ import (
 	"runtime"
 	"time"
 
-	. "github.com/pingcap/check"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"golang.org/x/net/context"
 )
 

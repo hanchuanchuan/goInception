@@ -14,7 +14,6 @@
 package aggfuncs_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/executor/aggfuncs"
 	"github.com/hanchuanchuan/tidb/expression"
@@ -22,6 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestMergePartialResult4Count(c *C) {

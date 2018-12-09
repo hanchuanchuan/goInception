@@ -14,10 +14,10 @@
 package types
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testFieldTypeSuite{})

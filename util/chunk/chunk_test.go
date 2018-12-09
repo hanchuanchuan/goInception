@@ -22,12 +22,12 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/hack"
+	"github.com/pingcap/check"
 )
 
 func TestT(t *testing.T) {

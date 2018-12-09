@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

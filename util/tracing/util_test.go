@@ -18,9 +18,9 @@ import (
 
 	. "github.com/pingcap/check"
 
+	"github.com/hanchuanchuan/tidb/util/tracing"
 	basictracer "github.com/opentracing/basictracer-go"
 	"github.com/opentracing/opentracing-go"
-	"github.com/hanchuanchuan/tidb/util/tracing"
 	"golang.org/x/net/context"
 )
 

@@ -28,7 +28,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/hack"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // ScalarFunction is the function that returns a value.

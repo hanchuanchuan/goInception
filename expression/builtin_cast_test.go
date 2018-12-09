@@ -19,13 +19,13 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/chunk"
+	. "github.com/pingcap/check"
 )
 
 func (s *testEvaluatorSuite) TestCast(c *C) {

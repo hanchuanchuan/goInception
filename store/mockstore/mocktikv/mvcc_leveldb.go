@@ -18,15 +18,15 @@ import (
 	"math"
 	"sync"
 
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/goleveldb/leveldb"
 	"github.com/pingcap/goleveldb/leveldb/iterator"
 	"github.com/pingcap/goleveldb/leveldb/opt"
 	"github.com/pingcap/goleveldb/leveldb/storage"
 	"github.com/pingcap/goleveldb/leveldb/util"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 

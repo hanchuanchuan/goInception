@@ -17,10 +17,10 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 const (

@@ -16,8 +16,8 @@ package tikv
 import (
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/config"
+	. "github.com/pingcap/check"
 )
 
 func TestT(t *testing.T) {

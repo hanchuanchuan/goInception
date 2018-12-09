@@ -14,13 +14,13 @@
 package expression
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
+	. "github.com/pingcap/check"
 )
 
 func (s *testEvaluatorSuite) TestJSONType(c *C) {

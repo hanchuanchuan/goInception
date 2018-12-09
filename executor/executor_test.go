@@ -27,8 +27,6 @@ import (
 
 	gofail "github.com/etcd-io/gofail/runtime"
 	"github.com/golang/protobuf/proto"
-	. "github.com/pingcap/check"
-	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/executor"
@@ -61,8 +59,10 @@ import (
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
+	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

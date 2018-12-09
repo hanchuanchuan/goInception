@@ -28,7 +28,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

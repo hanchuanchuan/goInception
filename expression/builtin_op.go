@@ -22,8 +22,8 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
 var (

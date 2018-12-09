@@ -30,7 +30,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 const (

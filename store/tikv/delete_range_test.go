@@ -19,8 +19,8 @@ import (
 	"math/rand"
 	"sort"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
+	. "github.com/pingcap/check"
 )
 
 type testDeleteRangeSuite struct {

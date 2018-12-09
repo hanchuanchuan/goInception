@@ -21,7 +21,7 @@ import (
 	"bytes"
 
 	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // ScanMetaWithPrefix scans metadata with the prefix.

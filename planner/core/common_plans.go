@@ -31,7 +31,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/kvcache"
 	"github.com/hanchuanchuan/tidb/util/ranger"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // ShowDDL is for showing DDL information.

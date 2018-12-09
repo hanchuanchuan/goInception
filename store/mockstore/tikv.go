@@ -17,15 +17,14 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/pingcap/pd/client"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors" // MockDriver is in memory mock TiKV driver.
+	"github.com/pingcap/pd/client"
 )
 
-// MockDriver is in memory mock TiKV driver.
 type MockDriver struct {
 }
 

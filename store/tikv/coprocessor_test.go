@@ -14,10 +14,10 @@
 package tikv
 
 import (
-	. "github.com/pingcap/check"
-	"github.com/pingcap/kvproto/pkg/coprocessor"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/kvproto/pkg/coprocessor"
 	"golang.org/x/net/context"
 )
 

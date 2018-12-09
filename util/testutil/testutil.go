@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
+	"github.com/pingcap/check"
 )
 
 // CompareUnorderedStringSlice compare two string slices.

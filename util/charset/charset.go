@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // Charset is a charset.

@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // ActionType is the type for DDL action.

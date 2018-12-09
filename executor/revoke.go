@@ -24,7 +24,7 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

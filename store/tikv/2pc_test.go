@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/pingcap/check"
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"golang.org/x/net/context"
 )
 

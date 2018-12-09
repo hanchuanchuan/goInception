@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/model"
@@ -29,7 +28,8 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 var _ = Suite(&testStatsCacheSuite{})

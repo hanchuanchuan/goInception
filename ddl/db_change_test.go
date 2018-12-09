@@ -20,7 +20,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/ddl"
 	"github.com/hanchuanchuan/tidb/domain"
@@ -36,7 +35,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/admin"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

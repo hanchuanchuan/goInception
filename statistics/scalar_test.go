@@ -16,9 +16,9 @@ package statistics
 import (
 	"math"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
+	. "github.com/pingcap/check"
 )
 
 const eps = 1e-9

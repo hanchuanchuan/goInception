@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/executor"
@@ -42,6 +41,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
+	. "github.com/pingcap/check"
 	"github.com/pingcap/tipb/go-binlog"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

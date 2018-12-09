@@ -33,7 +33,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 

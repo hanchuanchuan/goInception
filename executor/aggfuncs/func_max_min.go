@@ -19,7 +19,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/stringutil"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 type partialResult4MaxMinInt struct {

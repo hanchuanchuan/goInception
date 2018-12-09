@@ -44,7 +44,7 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/hack"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

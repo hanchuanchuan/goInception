@@ -16,13 +16,13 @@ package expression
 import (
 	"encoding/json"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/mock"
+	. "github.com/pingcap/check"
 )
 
 type dataGen4Expr2PbTest struct {

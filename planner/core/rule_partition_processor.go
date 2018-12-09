@@ -17,7 +17,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/table/tables"
 	"github.com/hanchuanchuan/tidb/util/ranger"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // partitionProcessor rewrites the ast for table partition.

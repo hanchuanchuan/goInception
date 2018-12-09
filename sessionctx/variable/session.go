@@ -21,7 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/klauspost/cpuid"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -33,7 +32,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
-	"github.com/pkg/errors"
+	"github.com/klauspost/cpuid"
+	"github.com/pingcap/errors"
 )
 
 const (

@@ -55,8 +55,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/kvcache"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
 	"github.com/ngaut/pools"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
@@ -179,12 +179,12 @@ type session struct {
 	Inc config.Inc
 
 	// 异步备份的通道
-	ch chan *row
+	ch chan *ChanData
 	// 批量insert
 	insertBuffer []interface{}
 
 	// 记录表结构以重用
-	allTables map[uint64]*Table
+	// allTables map[uint64]*Table
 
 	// 记录上次的备份表名,如果表名改变时,刷新insert缓存
 	lastBackupTable string

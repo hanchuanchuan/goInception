@@ -22,11 +22,10 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/hack"
+	"github.com/pingcap/errors" // SchemaState is the state for schema elements.
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
-// SchemaState is the state for schema elements.
 type SchemaState byte
 
 const (

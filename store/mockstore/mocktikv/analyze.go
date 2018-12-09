@@ -15,7 +15,6 @@ package mocktikv
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/pingcap/kvproto/pkg/coprocessor"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/model"
@@ -25,8 +24,9 @@ import (
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/coprocessor"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

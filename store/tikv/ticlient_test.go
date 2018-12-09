@@ -19,11 +19,11 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

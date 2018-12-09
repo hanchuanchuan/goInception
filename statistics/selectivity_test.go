@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/model"
@@ -35,6 +34,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/ranger"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 const eps = 1e-9

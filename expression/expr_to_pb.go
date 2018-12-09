@@ -25,8 +25,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 

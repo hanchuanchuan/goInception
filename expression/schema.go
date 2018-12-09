@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // KeyInfo stores the columns of one unique key or primary key.

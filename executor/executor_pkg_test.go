@@ -16,7 +16,6 @@ package executor
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/expression"
 	"github.com/hanchuanchuan/tidb/model"
@@ -28,6 +27,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/mock"
 	"github.com/hanchuanchuan/tidb/util/ranger"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

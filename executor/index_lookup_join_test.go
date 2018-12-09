@@ -16,8 +16,8 @@ package executor_test
 import (
 	"context"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestIndexLookupJoinHang(c *C) {

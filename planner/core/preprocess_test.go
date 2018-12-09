@@ -14,7 +14,6 @@
 package core_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ddl"
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/model"
@@ -25,7 +24,8 @@ import (
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

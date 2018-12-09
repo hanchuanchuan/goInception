@@ -22,7 +22,7 @@ import (
 	"github.com/hanchuanchuan/tidb/planner/property"
 	"github.com/hanchuanchuan/tidb/privilege"
 	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // OptimizeAstNode optimizes the query to a physical plan directly.

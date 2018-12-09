@@ -20,14 +20,14 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/coprocessor"
 	"github.com/pingcap/kvproto/pkg/errorpb"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

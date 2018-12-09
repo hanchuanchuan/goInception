@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // BinaryLiteral is the internal type for storing bit / hex literal type.

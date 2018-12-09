@@ -31,8 +31,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/ranger"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

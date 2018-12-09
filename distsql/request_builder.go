@@ -25,8 +25,8 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/ranger"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
 // RequestBuilder is used to build a "kv.Request".

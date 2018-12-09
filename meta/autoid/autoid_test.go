@@ -19,13 +19,13 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/meta"
 	"github.com/hanchuanchuan/tidb/meta/autoid"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 func TestT(t *testing.T) {

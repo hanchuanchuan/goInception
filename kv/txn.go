@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

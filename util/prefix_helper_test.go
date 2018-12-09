@@ -17,11 +17,11 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

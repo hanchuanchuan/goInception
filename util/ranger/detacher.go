@@ -19,7 +19,7 @@ import (
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // detachColumnCNFConditions detaches the condition for calculating range from the other conditions.

@@ -20,7 +20,6 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/expression"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -38,7 +37,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

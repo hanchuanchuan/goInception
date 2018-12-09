@@ -21,7 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/expression/aggregation"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // extractCorColumnsBySchema only extracts the correlated columns that match the outer plan's schema.

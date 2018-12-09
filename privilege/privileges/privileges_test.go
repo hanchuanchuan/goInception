@@ -18,7 +18,6 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/mysql"
@@ -29,6 +28,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

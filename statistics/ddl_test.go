@@ -14,11 +14,11 @@
 package statistics_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 func (s *testStatsCacheSuite) TestDDLAfterLoad(c *C) {

@@ -22,7 +22,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/hanchuanchuan/tidb/util/logutil"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	tracing "github.com/uber/jaeger-client-go/config"
 )
 

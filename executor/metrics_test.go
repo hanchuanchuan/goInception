@@ -16,13 +16,13 @@ package executor_test
 import (
 	"fmt"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/parser"
 	"github.com/hanchuanchuan/tidb/planner"
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestStmtLabel(c *C) {

@@ -17,7 +17,6 @@ import (
 	"encoding/hex"
 	"strings"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/sessionctx/variable"
 	"github.com/hanchuanchuan/tidb/terror"
@@ -25,6 +24,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 var cryptTests = []struct {

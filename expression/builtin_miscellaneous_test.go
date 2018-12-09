@@ -16,12 +16,12 @@ import (
 	"math"
 	"strings"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
+	. "github.com/pingcap/check"
 )
 
 func (s *testEvaluatorSuite) TestInetAton(c *C) {

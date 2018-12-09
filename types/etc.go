@@ -25,7 +25,7 @@ import (
 	"github.com/hanchuanchuan/tidb/parser/opcode"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/charset"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // IsTypeBlob returns a boolean indicating whether the tp is a blob type.

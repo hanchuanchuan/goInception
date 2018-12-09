@@ -17,7 +17,7 @@ import (
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/sessionctx/variable"
 	"github.com/hanchuanchuan/tidb/util/admin"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 var (

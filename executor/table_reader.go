@@ -23,8 +23,8 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/ranger"
+	"github.com/pingcap/errors"
 	tipb "github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

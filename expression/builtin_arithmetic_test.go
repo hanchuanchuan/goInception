@@ -16,13 +16,13 @@ package expression
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/testleak"
 	"github.com/hanchuanchuan/tidb/util/testutil"
+	. "github.com/pingcap/check"
 )
 
 func (s *testEvaluatorSuite) TestSetFlenDecimal4RealOrDecimal(c *C) {

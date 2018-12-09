@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/expression"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -31,7 +30,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util/ranger"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 )
 
 func TestT(t *testing.T) {
