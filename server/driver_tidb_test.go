@@ -14,12 +14,12 @@
 package server
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
+	. "github.com/pingcap/check"
 )
 
 type tidbResultSetTestSuite struct{}

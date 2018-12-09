@@ -19,7 +19,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/statistics"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

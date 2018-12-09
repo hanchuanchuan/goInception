@@ -16,8 +16,8 @@ package expression
 import (
 	"fmt"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/model"
+	. "github.com/pingcap/check"
 )
 
 // generateKeys4Schema will generate keys for a given schema. Used only in this file.

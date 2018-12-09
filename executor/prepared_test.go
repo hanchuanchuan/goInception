@@ -17,12 +17,12 @@ import (
 	"math"
 	"strings"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/executor"
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/testkit"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

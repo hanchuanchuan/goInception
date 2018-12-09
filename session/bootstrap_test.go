@@ -16,7 +16,6 @@ package session
 import (
 	"fmt"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -26,6 +25,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx/variable"
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

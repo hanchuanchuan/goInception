@@ -20,13 +20,13 @@ import (
 	"time"
 
 	gofail "github.com/etcd-io/gofail/runtime"
-	. "github.com/pingcap/check"
-	"github.com/pingcap/kvproto/pkg/errorpb"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/store/mockoracle"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
 	"github.com/hanchuanchuan/tidb/store/tikv"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/kvproto/pkg/errorpb"
 	"golang.org/x/net/context"
 )
 

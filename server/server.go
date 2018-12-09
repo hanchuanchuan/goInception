@@ -49,7 +49,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx/variable"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 

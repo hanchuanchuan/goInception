@@ -16,7 +16,7 @@ package expression
 import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 type columnEvaluator struct {

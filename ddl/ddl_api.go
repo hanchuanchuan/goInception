@@ -35,7 +35,7 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 func (d *ddl) CreateSchema(ctx sessionctx.Context, schema model.CIStr, charsetInfo *ast.CharsetOpt) (err error) {

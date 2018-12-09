@@ -25,11 +25,10 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/pingcap/errors" // Aggregation stands for aggregate functions.
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
-// Aggregation stands for aggregate functions.
 type Aggregation interface {
 	// Update during executing.
 	Update(evalCtx *AggEvaluateContext, sc *stmtctx.StatementContext, row chunk.Row) error

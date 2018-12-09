@@ -17,8 +17,8 @@ import (
 	"math/rand"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 type leaseGrantItem struct {

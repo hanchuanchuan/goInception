@@ -16,10 +16,10 @@ package tikv
 import (
 	"bytes"
 
-	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

@@ -17,10 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pingcap/pd/client"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
+	"github.com/pingcap/pd/client"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

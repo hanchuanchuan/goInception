@@ -22,7 +22,6 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -30,6 +29,7 @@ import (
 	"github.com/hanchuanchuan/tidb/statistics"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
+	. "github.com/pingcap/check"
 )
 
 type testDumpStatsSuite struct {

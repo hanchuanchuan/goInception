@@ -21,7 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/statistics"
 	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 func (e *ShowExec) fetchShowStatsMeta() error {

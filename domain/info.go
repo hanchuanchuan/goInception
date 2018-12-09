@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/owner"
 	"github.com/hanchuanchuan/tidb/util/hack"
 	"github.com/hanchuanchuan/tidb/util/printer"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

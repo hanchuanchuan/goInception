@@ -14,10 +14,10 @@
 package ddl
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/sessionctx"
+	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

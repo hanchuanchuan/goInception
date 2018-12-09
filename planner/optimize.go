@@ -19,7 +19,7 @@ import (
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/privilege"
 	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // Optimize does optimization and creates a Plan.

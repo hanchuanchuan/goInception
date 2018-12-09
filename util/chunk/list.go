@@ -16,7 +16,7 @@ package chunk
 import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/memory"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // List holds a slice of chunks, use to append rows with max chunk size properly handled.

@@ -110,6 +110,9 @@ type Record struct {
 	// 执行用时
 	ExecTime string
 
+	// 备份用时
+	BackupCostTime string
+
 	// sql的hash值,osc使用
 	Sqlsha1 string
 
@@ -197,7 +200,7 @@ func NewRecordSets() *MyRecordSets {
 		fieldCount: 0,
 	}
 
-	rc.fields = make([]*ast.ResultField, 11)
+	rc.fields = make([]*ast.ResultField, 12)
 
 	// 序号
 	rc.CreateFiled("order_id", mysql.TypeLong)
@@ -217,6 +220,7 @@ func NewRecordSets() *MyRecordSets {
 	// 备份库的库名
 	rc.CreateFiled("backup_dbname", mysql.TypeString)
 	rc.CreateFiled("execute_time", mysql.TypeString)
+	rc.CreateFiled("backup_time", mysql.TypeString)
 	// sql的hash值,osc使用
 	rc.CreateFiled("sqlsha1", mysql.TypeString)
 
@@ -235,26 +239,6 @@ func (r *recordSet) CreateFiled(name string, tp uint8) {
 	}
 	r.fieldCount++
 }
-
-// func (s *MyRecordSets) AppendRow(sql string, ErrLevel int) {
-
-// 	row := make([]types.Datum, s.rc.fieldCount)
-
-// 	row[0].SetInt64(int64(s.rc.count + 1))
-// 	row[1].SetString("error")
-// 	row[2].SetInt64(int64(ErrLevel))
-// 	row[3].SetString("1")
-// 	row[4].SetString("testadadsf")
-// 	row[5].SetString(sql)
-// 	row[6].SetInt64(int64(1))
-// 	row[7].SetString("")
-// 	row[8].SetString("")
-// 	row[9].SetMysqlTime(types.CurrentTime(mysql.TypeTimestamp))
-// 	row[10].SetString("")
-
-// 	s.rc.data[s.rc.count] = row
-// 	s.rc.count++
-// }
 
 func (s *MyRecordSets) Append(r *Record) {
 	s.MaxLevel = uint8(Max(int(s.MaxLevel), int(r.ErrLevel)))
@@ -303,12 +287,17 @@ func (s *MyRecordSets) setFields(r *Record) {
 	} else {
 		row[9].SetString(r.ExecTime)
 	}
-	// row[9].SetMysqlTime(types.CurrentTime(mysql.TypeTimestamp))
+
+	if r.BackupCostTime == "" {
+		row[10].SetString("0")
+	} else {
+		row[10].SetString(r.BackupCostTime)
+	}
 
 	if r.Sqlsha1 == "" {
-		row[10].SetNull()
+		row[11].SetNull()
 	} else {
-		row[10].SetString(r.Sqlsha1)
+		row[11].SetString(r.Sqlsha1)
 	}
 
 	s.rc.data[s.rc.count] = row

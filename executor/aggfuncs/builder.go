@@ -25,7 +25,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx/variable"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // Build is used to build a specific AggFunc implementation according to the

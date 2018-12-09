@@ -20,15 +20,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/sessionctx/binloginfo"
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/tidb/tablecodec"
 	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/pingcap/errors"
+	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	binlog "github.com/pingcap/tipb/go-binlog"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

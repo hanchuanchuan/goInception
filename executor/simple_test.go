@@ -14,7 +14,6 @@
 package executor_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/model"
@@ -24,6 +23,7 @@ import (
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

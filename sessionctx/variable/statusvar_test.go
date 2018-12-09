@@ -14,8 +14,8 @@
 package variable
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testStatusVarSuite{})

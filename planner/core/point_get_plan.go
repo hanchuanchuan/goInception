@@ -26,8 +26,8 @@ import (
 	"github.com/hanchuanchuan/tidb/privilege"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/types"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
 // PointGetPlan is a fast plan for simple point get.

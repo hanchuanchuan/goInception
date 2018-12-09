@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -32,6 +31,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/hanchuanchuan/tidb/util/mock"
+	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

@@ -27,7 +27,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"github.com/twinj/uuid"
 )
 

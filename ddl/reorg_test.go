@@ -16,11 +16,11 @@ package ddl
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/meta"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/types"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

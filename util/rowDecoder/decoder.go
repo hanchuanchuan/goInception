@@ -24,7 +24,7 @@ import (
 	"github.com/hanchuanchuan/tidb/tablecodec"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // Column contains the info and generated expr of column.

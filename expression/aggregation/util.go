@@ -18,7 +18,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/mvmap"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // distinctChecker stores existing keys and checks if given data is distinct.

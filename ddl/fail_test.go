@@ -15,10 +15,10 @@ package ddl
 
 import (
 	gofail "github.com/etcd-io/gofail/runtime"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/types"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

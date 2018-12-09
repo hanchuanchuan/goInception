@@ -28,7 +28,7 @@ import (
 	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

@@ -23,7 +23,7 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/table/tables"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 

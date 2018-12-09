@@ -22,7 +22,7 @@ import (
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/set"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 type baseGroupConcat4String struct {

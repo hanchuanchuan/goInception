@@ -20,7 +20,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/set"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // All the following avg function implementations return the decimal result,

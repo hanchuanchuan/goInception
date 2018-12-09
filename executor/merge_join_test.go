@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/pingcap/check"
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 const plan1 = `[[TableScan_12 {

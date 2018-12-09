@@ -14,12 +14,12 @@
 package expression
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 func (s *testEvaluatorSuite) TestColumn(c *C) {

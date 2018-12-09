@@ -28,7 +28,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/charset"
 	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // EncodeHandle encodes handle in data.

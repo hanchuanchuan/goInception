@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
-	"github.com/ngaut/pools"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/ddl/util"
 	"github.com/hanchuanchuan/tidb/infoschema"
@@ -39,7 +38,8 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/terror"
 	tidbutil "github.com/hanchuanchuan/tidb/util"
-	"github.com/pkg/errors"
+	"github.com/ngaut/pools"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/twinj/uuid"
 	"golang.org/x/net/context"

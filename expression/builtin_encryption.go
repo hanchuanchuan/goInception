@@ -35,7 +35,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/encrypt"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 var (

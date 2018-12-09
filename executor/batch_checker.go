@@ -21,7 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/table/tables"
 	"github.com/hanchuanchuan/tidb/tablecodec"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 type keyValue struct {

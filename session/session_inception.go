@@ -29,7 +29,7 @@ import (
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
 	// "github.com/hanchuanchuan/tidb/table"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
@@ -109,6 +109,10 @@ type TableInfo struct {
 	NewCached bool
 	// 列是否为新增
 	NewColumnCached bool
+
+	// 主键信息,用以备份
+	hasPrimary bool
+	primarys   map[int]bool
 }
 
 type IndexInfo struct {
@@ -386,7 +390,6 @@ func (s *session) executeCommit() {
 		// s.myRecord = s.recordSets.All()[0]
 
 		for _, record := range s.recordSets.All() {
-
 			if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
 				s.myRecord = record
 
@@ -552,6 +555,30 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 		return 0
 	}
 
+	// var primarys map[int]bool
+	primarys := make(map[int]bool)
+
+	// var uniques map[int]bool
+	uniques := make(map[int]bool)
+	for i, r := range record.TableInfo.Fields {
+		if r.Key == "PRI" {
+			primarys[i] = true
+		}
+		if r.Key == "UNI" {
+			uniques[i] = true
+		}
+	}
+
+	if len(primarys) > 0 {
+		record.TableInfo.primarys = primarys
+		record.TableInfo.hasPrimary = true
+	} else if len(uniques) > 0 {
+		record.TableInfo.primarys = uniques
+		record.TableInfo.hasPrimary = true
+	} else {
+		record.TableInfo.hasPrimary = false
+	}
+
 	backupDBName := s.getRemoteBackupDBName(record)
 	if backupDBName == "" {
 		return 2
@@ -697,7 +724,7 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 func (s *session) executeAllStatement() {
 
 	log.Info("")
-	log.Info("审核通过,开始执行...")
+	log.Info("审核通过,开始执行")
 	log.Info("")
 	for _, record := range s.recordSets.All() {
 		errno := s.executeRemoteCommand(record)

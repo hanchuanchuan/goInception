@@ -21,11 +21,10 @@ import (
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/tablecodec"
 	"github.com/hanchuanchuan/tidb/util/ranger"
+	"github.com/pingcap/errors" // ToPB implements PhysicalPlan ToPB interface.
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
-// ToPB implements PhysicalPlan ToPB interface.
 func (p *basePhysicalPlan) ToPB(_ sessionctx.Context) (*tipb.Executor, error) {
 	return nil, errors.Errorf("plan %s fails converts to PB", p.basePlan.ExplainID())
 }

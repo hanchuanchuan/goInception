@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/codec"
 	"github.com/hanchuanchuan/tidb/util/set"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	"github.com/spaolacci/murmur3"
 	"golang.org/x/net/context"
 )

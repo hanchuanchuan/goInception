@@ -21,11 +21,10 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
+	"github.com/pingcap/errors" // JSONTable is used for dumping statistics.
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
-// JSONTable is used for dumping statistics.
 type JSONTable struct {
 	DatabaseName string                 `json:"database_name"`
 	TableName    string                 `json:"table_name"`

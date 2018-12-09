@@ -40,7 +40,7 @@ import (
 
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 const defaultWriterSize = 16 * 1024

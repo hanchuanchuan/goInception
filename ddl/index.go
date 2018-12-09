@@ -37,7 +37,7 @@ import (
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/rowDecoder"
 	"github.com/hanchuanchuan/tidb/util/timeutil"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 

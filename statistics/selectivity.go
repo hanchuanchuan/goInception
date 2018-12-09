@@ -21,7 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/util/ranger"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // If one condition can't be calculated, we will assume that the selectivity of this condition is 0.8.

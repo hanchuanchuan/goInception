@@ -17,14 +17,14 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/pingcap/check"
-	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/pd/client"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/store/mockoracle"
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
+	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
+	"github.com/pingcap/kvproto/pkg/metapb"
+	"github.com/pingcap/pd/client"
 	"golang.org/x/net/context"
 )
 

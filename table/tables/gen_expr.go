@@ -19,7 +19,7 @@ import (
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/parser"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // getDefaultCharsetAndCollate is copyed from ddl/ddl_api.go.

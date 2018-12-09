@@ -28,8 +28,8 @@ import (
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/kvcache"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
+	"github.com/pingcap/errors"
 	binlog "github.com/pingcap/tipb/go-binlog"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 

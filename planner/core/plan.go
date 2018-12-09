@@ -21,8 +21,8 @@ import (
 	"github.com/hanchuanchuan/tidb/expression"
 	"github.com/hanchuanchuan/tidb/planner/property"
 	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
-	"github.com/pkg/errors"
 )
 
 // Plan is the description of an execution flow.

@@ -15,9 +15,9 @@ package tikv
 
 import (
 	gofail "github.com/etcd-io/gofail/runtime"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/pkg/errors"
+	. "github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

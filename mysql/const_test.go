@@ -17,7 +17,6 @@ import (
 	"flag"
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/mysql"
@@ -27,6 +26,7 @@ import (
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

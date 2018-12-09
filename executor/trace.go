@@ -16,14 +16,14 @@ package executor
 import (
 	"time"
 
-	"github.com/opentracing/basictracer-go"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/planner"
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	"github.com/hanchuanchuan/tidb/util/tracing"
-	"github.com/pkg/errors"
+	"github.com/opentracing/basictracer-go"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

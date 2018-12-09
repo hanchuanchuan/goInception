@@ -16,7 +16,6 @@ package session_test
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/session"
@@ -24,6 +23,7 @@ import (
 	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testIsolationSuite{})

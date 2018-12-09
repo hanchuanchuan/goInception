@@ -16,7 +16,6 @@ package executor
 import (
 	"fmt"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/infoschema"
@@ -24,7 +23,8 @@ import (
 	"github.com/hanchuanchuan/tidb/planner"
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/pkg/errors"
+	"github.com/opentracing/opentracing-go"
+	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

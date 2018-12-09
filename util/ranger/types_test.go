@@ -14,10 +14,10 @@
 package ranger_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/ranger"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testRangeSuite{})

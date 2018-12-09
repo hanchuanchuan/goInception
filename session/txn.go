@@ -21,8 +21,8 @@ import (
 	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/types"
+	"github.com/pingcap/errors"
 	binlog "github.com/pingcap/tipb/go-binlog"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

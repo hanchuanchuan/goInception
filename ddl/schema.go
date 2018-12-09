@@ -17,7 +17,7 @@ import (
 	"github.com/hanchuanchuan/tidb/infoschema"
 	"github.com/hanchuanchuan/tidb/meta"
 	"github.com/hanchuanchuan/tidb/model"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 func onCreateSchema(t *meta.Meta, job *model.Job) (ver int64, _ error) {

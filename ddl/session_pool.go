@@ -16,11 +16,11 @@ package ddl
 import (
 	"sync"
 
-	"github.com/ngaut/pools"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/pkg/errors"
+	"github.com/ngaut/pools"
+	"github.com/pingcap/errors"
 )
 
 // sessionPool is used to new session.

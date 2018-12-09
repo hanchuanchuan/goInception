@@ -21,7 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/parser/opcode"
 	"github.com/hanchuanchuan/tidb/sessionctx"
 	"github.com/hanchuanchuan/tidb/types"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 type simpleRewriter struct {

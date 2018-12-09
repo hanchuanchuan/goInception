@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/model"
@@ -29,6 +28,7 @@ import (
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/mock"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

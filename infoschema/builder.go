@@ -23,7 +23,7 @@ import (
 	"github.com/hanchuanchuan/tidb/perfschema"
 	"github.com/hanchuanchuan/tidb/table"
 	"github.com/hanchuanchuan/tidb/table/tables"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // Builder builds a new InfoSchema.

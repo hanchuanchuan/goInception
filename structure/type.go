@@ -18,7 +18,7 @@ import (
 
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // TypeFlag is for data structure meta/data flag.

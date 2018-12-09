@@ -16,8 +16,8 @@ package domain
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/terror"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestSchemaCheckerSimple(c *C) {

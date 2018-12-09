@@ -14,13 +14,13 @@
 package privileges_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/privilege/privileges"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/store/mockstore"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testCacheSuite{})

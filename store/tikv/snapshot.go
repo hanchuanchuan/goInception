@@ -20,12 +20,12 @@ import (
 	"time"
 	"unsafe"
 
-	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/tidb/tablecodec"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
+	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

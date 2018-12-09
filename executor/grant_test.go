@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestGrantGlobal(c *C) {

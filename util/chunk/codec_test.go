@@ -17,11 +17,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/hack"
+	"github.com/pingcap/check"
 )
 
 var _ = check.Suite(&testCodecSuite{})

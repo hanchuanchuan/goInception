@@ -1,0 +1,22 @@
+export http_proxy=10.0.2.2:1080
+export https_proxy=10.0.2.2:1080
+env DEPNOLOCK=1 dep init -v
+
+
+
+export http_proxy=10.0.2.2:1080
+export https_proxy=10.0.2.2:1080
+env DEPNOLOCK=1 dep ensure -v
+
+
+export http_proxy=10.0.2.2:1080
+export https_proxy=10.0.2.2:1080
+env DEPNOLOCK=1 dep prune -v
+
+
+export http_proxy=10.0.2.2:1080
+export https_proxy=10.0.2.2:1080
+go mod vendor -v
+
+# gofmt修改依赖包名
+gofmt -d -r '"github.com/pkg/errors" -> "github.com/pingcap/errors"'  -w /root/hcc/github.com/hanchuanchuan/tidb/owner/*.go

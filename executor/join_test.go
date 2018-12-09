@@ -16,10 +16,10 @@ package executor_test
 import (
 	"time"
 
-	. "github.com/pingcap/check"
 	plannercore "github.com/hanchuanchuan/tidb/planner/core"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
 

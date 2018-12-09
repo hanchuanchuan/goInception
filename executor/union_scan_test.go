@@ -14,8 +14,8 @@
 package executor_test
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/util/testkit"
+	. "github.com/pingcap/check"
 )
 
 func (s *testSuite) TestDirtyTransaction(c *C) {

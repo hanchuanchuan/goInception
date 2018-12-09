@@ -19,12 +19,12 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/kv"
 	"github.com/hanchuanchuan/tidb/session"
 	"github.com/hanchuanchuan/tidb/util/testutil"
-	"github.com/pkg/errors"
+	"github.com/pingcap/check"
+	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 

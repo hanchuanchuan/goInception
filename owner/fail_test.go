@@ -22,10 +22,10 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	gofail "github.com/etcd-io/gofail/runtime"
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/hanchuanchuan/tidb/util/testleak"
+	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )

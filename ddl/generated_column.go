@@ -16,7 +16,7 @@ package ddl
 import (
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/table"
-	"github.com/pkg/errors"
+	"github.com/pingcap/errors"
 )
 
 // columnGenerationInDDL is a struct for validating generated columns in DDL.
