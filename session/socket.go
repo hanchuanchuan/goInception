@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/imroc/req"
 	log "github.com/sirupsen/logrus"
-	ini "gopkg.in/ini.v1"
 	"time"
 )
 
@@ -24,14 +23,7 @@ var header = req.Header{"Accept": "application/json"}
 
 func init() {
 
-	cnf, err := ini.Load("../cnf/config.ini")
-	if err != nil {
-		log.Error("加载配置文件失败!")
-		// return
-	} else {
-		addr := cnf.Section("Bingo").Key("socketAddr").String()
-		URL = fmt.Sprintf("http://%s/socket", addr)
-	}
+	log.Info("socket init")
 
 	req.SetTimeout(5 * time.Second)
 }

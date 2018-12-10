@@ -290,6 +290,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				case *ast.CreateViewStmt:
 					s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
+				case *ast.ShowStmt:
+					log.Infof("%#v", node)
+					s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+
 				default:
 					log.Info("无匹配类型...")
 					log.Infof("%T\n", stmtNode)

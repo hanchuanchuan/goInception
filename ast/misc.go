@@ -877,6 +877,21 @@ func (n *TableOptimizerHint) Accept(v Visitor) (Node, bool) {
 // See https://dev.mysql.com/doc/refman/5.7/en/commit.html
 type InceptionStmt struct {
 	stmtNode
+
+	resultSetNode
+
+	Tp     ShowStmtType // Databases/Tables/Columns/....
+	DBName string
+	Table  *TableName  // Used for showing columns.
+	Column *ColumnName // Used for `desc table column`.
+	Flag   int         // Some flag parsed from sql, such as FULL.
+	Full   bool
+	User   *auth.UserIdentity // Used for show grants.
+
+	// GlobalScope is used by show variables
+	GlobalScope bool
+	Pattern     *PatternLikeExpr
+	Where       ExprNode
 }
 
 // Accept implements Node Accept interface.
@@ -886,6 +901,42 @@ func (n *InceptionStmt) Accept(v Visitor) (Node, bool) {
 		return v.Leave(newNode)
 	}
 	n = newNode.(*InceptionStmt)
+	if n.Table != nil {
+		node, ok := n.Table.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Table = node.(*TableName)
+	}
+	if n.Column != nil {
+		node, ok := n.Column.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Column = node.(*ColumnName)
+	}
+	if n.Pattern != nil {
+		node, ok := n.Pattern.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Pattern = node.(*PatternLikeExpr)
+	}
+
+	switch n.Tp {
+	case ShowTriggers, ShowProcedureStatus, ShowProcessList, ShowEvents:
+		// We don't have any data to return for those types,
+		// but visiting Where may cause resolving error, so return here to avoid error.
+		return v.Leave(n)
+	}
+
+	if n.Where != nil {
+		node, ok := n.Where.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Where = node.(ExprNode)
+	}
 	return v.Leave(n)
 }
 
