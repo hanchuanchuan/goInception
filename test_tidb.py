@@ -43,7 +43,8 @@ inception_magic_commit;
 
 # drop table if exists ttt1 ;
 
-# create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
+# create table ttt1(id int,c1 varchar(20) not null,c11
+# varchar(1000),primary key(id));
 
 # insert into ttt1(id,c1) values(1,'test');
 # insert into ttt1(id,c1) values(2,'test'),(3,'test');
