@@ -19,7 +19,7 @@ package session
 
 import (
 	"bytes"
-	// "database/sql/driver"
+	"database/sql/driver"
 	"fmt"
 	// "text/template"
 	"time"
@@ -213,20 +213,17 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				// log.Info("当前语句: ", stmtNode)
 				// log.Infof("%T\n", stmtNode)
 
-				currentSql := stmtNode.Text()
-
 				// var checkResult *Record = nil
 				s.myRecord = &Record{
-					Sql:   currentSql,
+					Sql:   stmtNode.Text(),
 					Buf:   new(bytes.Buffer),
 					Type:  stmtNode,
 					Stage: StageCheck,
 				}
 
-				switch node := stmtNode.(type) {
+				switch stmtNode.(type) {
 				case *ast.InceptionStartStmt:
 					s.haveBegin = true
-
 					s.parseOptions(sql)
 
 					if s.db != nil {
@@ -239,65 +236,29 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					if s.myRecord.ErrLevel == 2 {
 						s.myRecord.Sql = ""
 						s.recordSets.Append(s.myRecord)
+						return s.recordSets.Rows(), nil
+					}
+					continue
+				case *ast.InceptionCommitStmt:
 
+					if !s.haveBegin {
+						s.AppendErrorMessage("Must start as begin statement.")
+						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
 					}
 
-					continue
-				case *ast.InceptionCommitStmt:
 					s.haveCommit = true
-
 					s.executeCommit()
-
 					return s.recordSets.Rows(), nil
-
-				case *ast.InsertStmt:
-					s.checkInsert(node, currentSql)
-				case *ast.DeleteStmt:
-					s.checkDelete(node, currentSql)
-				case *ast.UpdateStmt:
-					s.checkUpdate(node, currentSql)
-
-				case *ast.UseStmt:
-					s.checkChangeDB(node)
-
-				case *ast.CreateDatabaseStmt:
-					s.checkCreateDB(node)
-				case *ast.DropDatabaseStmt:
-					s.checkDropDB(node)
-
-				case *ast.CreateTableStmt:
-					s.checkCreateTable(node, currentSql)
-				case *ast.AlterTableStmt:
-					s.checkAlterTable(node, currentSql)
-				case *ast.DropTableStmt:
-					s.checkDropTable(node, currentSql)
-				case *ast.RenameTableStmt:
-					s.checkRenameTable(node, currentSql)
-				case *ast.TruncateTableStmt:
-					s.checkTruncateTable(node, currentSql)
-
-				case *ast.CreateIndexStmt:
-					// s.checkCreateIndex(node, currentSql)
-					// table *ast.TableName, IndexName string,
-					// IndexColNames []*ast.IndexColName, IndexOption *ast.IndexOption
-					s.checkCreateIndex(node.Table, node.IndexName,
-						node.IndexColNames, node.IndexOption, nil, node.Unique)
-
-				case *ast.DropIndexStmt:
-					s.checkDropIndex(node, currentSql)
-
-				case *ast.CreateViewStmt:
-					s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
-
-				case *ast.ShowStmt:
-					log.Infof("%#v", node)
-					s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-
 				default:
-					log.Info("无匹配类型...")
-					log.Infof("%T\n", stmtNode)
-					s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+
+					if !s.haveBegin {
+						s.AppendErrorMessage("Must start as begin statement.")
+						s.recordSets.Append(s.myRecord)
+						return s.recordSets.Rows(), nil
+					}
+
+					s.processCommand(stmtNode)
 				}
 
 				// log.Info(stmtNode.Text())
@@ -306,11 +267,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				if !s.haveBegin {
 					s.AppendErrorMessage("Must start as begin statement.")
 					s.recordSets.Append(s.myRecord)
-					// s.recordSets.Append(&Record{
-					// 	Sql:          currentSql,
-					// 	ErrLevel:     2,
-					// 	ErrorMessage: "Must start as begin statement.",
-					// })
 					return s.recordSets.Rows(), nil
 				}
 
@@ -348,6 +304,57 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	// t := &testStatisticsSuite{}
 
 	return recordSets, nil
+}
+
+func (s *session) processCommand(stmtNode ast.StmtNode) {
+
+	currentSql := stmtNode.Text()
+
+	switch node := stmtNode.(type) {
+	case *ast.InsertStmt:
+		s.checkInsert(node, currentSql)
+	case *ast.DeleteStmt:
+		s.checkDelete(node, currentSql)
+	case *ast.UpdateStmt:
+		s.checkUpdate(node, currentSql)
+
+	case *ast.UseStmt:
+		s.checkChangeDB(node)
+
+	case *ast.CreateDatabaseStmt:
+		s.checkCreateDB(node)
+	case *ast.DropDatabaseStmt:
+		s.checkDropDB(node)
+
+	case *ast.CreateTableStmt:
+		s.checkCreateTable(node, currentSql)
+	case *ast.AlterTableStmt:
+		s.checkAlterTable(node, currentSql)
+	case *ast.DropTableStmt:
+		s.checkDropTable(node, currentSql)
+	case *ast.RenameTableStmt:
+		s.checkRenameTable(node, currentSql)
+	case *ast.TruncateTableStmt:
+		s.checkTruncateTable(node, currentSql)
+
+	case *ast.CreateIndexStmt:
+		s.checkCreateIndex(node.Table, node.IndexName,
+			node.IndexColNames, node.IndexOption, nil, node.Unique)
+
+	case *ast.DropIndexStmt:
+		s.checkDropIndex(node, currentSql)
+
+	case *ast.CreateViewStmt:
+		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
+
+	case *ast.ShowStmt:
+		s.executeInceptionShow(node, currentSql)
+
+	default:
+		log.Info("无匹配类型...")
+		log.Infof("%T\n", stmtNode)
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+	}
 }
 
 func (s *session) executeCommit() {
@@ -731,6 +738,13 @@ func (s *session) executeAllStatement() {
 	log.Info("审核通过,开始执行")
 	log.Info("")
 	for _, record := range s.recordSets.All() {
+
+		// 忽略不需要备份的类型
+		switch record.Type.(type) {
+		case *ast.ShowStmt:
+			continue
+		}
+
 		errno := s.executeRemoteCommand(record)
 		if errno == 2 {
 			break
@@ -2264,6 +2278,73 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 	// log.Infof("%#v \n", node)
 
 	s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法删除数据库'%s'.", node.Name))
+}
+
+func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
+	log.Info("executeInceptionShow")
+	// log.Infof("%+v", node)
+
+	if node.IsInception {
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+	} else {
+
+		rows, err := s.db.Raw(sql).Rows()
+		if rows != nil {
+			defer rows.Close()
+		}
+
+		if err != nil {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.AppendErrorMessage(myErr.Message)
+			}
+		} else if rows != nil {
+
+			log.Infof("%#v", rows)
+
+			cols, _ := rows.Columns()
+			colLength := len(cols)
+
+			var buf strings.Builder
+			buf.WriteString(sql)
+			buf.WriteString(":\n")
+
+			paramValues := strings.Repeat("? | ", colLength)
+			paramValues = strings.TrimRight(paramValues, " | ")
+
+			for rows.Next() {
+				// https://kylewbanks.com/blog/query-result-to-map-in-golang
+				// Create a slice of interface{}'s to represent each column,
+				// and a second slice to contain pointers to each item in the columns slice.
+				columns := make([]interface{}, colLength)
+				columnPointers := make([]interface{}, colLength)
+				for i, _ := range columns {
+					columnPointers[i] = &columns[i]
+				}
+
+				// Scan the result into the column pointers...
+				if err := rows.Scan(columnPointers...); err != nil {
+					s.AppendErrorMessage(err.Error())
+					return
+				}
+
+				var vv []driver.Value
+				for i, _ := range cols {
+					val := columnPointers[i].(*interface{})
+					vv = append(vv, *val)
+				}
+
+				res, err := InterpolateParams(paramValues, vv)
+				if err != nil {
+					s.AppendErrorMessage(err.Error())
+					return
+				}
+
+				buf.Write(res)
+				buf.WriteString("\n")
+			}
+			s.myRecord.Sql = strings.TrimSpace(buf.String())
+		}
+	}
 }
 
 func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {

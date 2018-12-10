@@ -63,9 +63,11 @@ inception_magic_commit;
 # delete from ttt1;
 
 sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
---execute=1;--backup=1;--port=3306;--ignore-warnings=1;*/
+--check=1;--backup=1;--port=3306;--ignore-warnings=1;*/
 inception_magic_start;
 use `test`;
+
+show variables like 'log%';
 
 # drop table if exists ttt1 ;
 
@@ -87,7 +89,8 @@ use `test`;
 
 # delete from ttt1;
 
-delete from t1 where id > 0;
+# delete from t1 where id > 0;
+
 
 inception_magic_commit;
 '''
