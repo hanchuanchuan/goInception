@@ -14,25 +14,15 @@
 package session
 
 import (
-	// "math"
-	// "testing"
-	// "time"
 	"bytes"
 	"strings"
-	// "fmt"
-	// . "github.com/pingcap/check"
+
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
-	// "github.com/hanchuanchuan/tidb/sessionctx"
-	// "github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/tidb/types"
-	// "github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/chunk"
-	// "github.com/hanchuanchuan/tidb/util/codec"
-	// "github.com/hanchuanchuan/tidb/util/mock"
-	// "github.com/hanchuanchuan/tidb/util/ranger"
-	// "github.com/pkg/errors"
+	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -300,6 +290,9 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[11].SetString(r.Sqlsha1)
 	}
 
+	// log.Info(s.rc.count)
+	// log.Info(len(s.rc.data))
+
 	s.rc.data[s.rc.count] = row
 	s.rc.count++
 }
@@ -316,6 +309,7 @@ func (s *MyRecordSets) setFields(r *Record) {
 
 func (s *MyRecordSets) Rows() []ast.RecordSet {
 
+	s.rc.count = 0
 	s.rc.data = make([][]types.Datum, len(s.records))
 
 	for _, r := range s.records {

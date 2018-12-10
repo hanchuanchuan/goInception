@@ -988,6 +988,8 @@ type ShowStmt struct {
 	GlobalScope bool
 	Pattern     *PatternLikeExpr
 	Where       ExprNode
+
+	IsInception bool // is inception prefix.  by hcc at 2018-12-10
 }
 
 // Accept implements Node Accept interface.

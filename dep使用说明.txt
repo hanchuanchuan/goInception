@@ -20,3 +20,8 @@ go mod vendor -v
 
 # gofmt修改依赖包名
 gofmt -d -r '"github.com/pkg/errors" -> "github.com/pingcap/errors"'  -w /root/hcc/github.com/hanchuanchuan/tidb/owner/*.go
+
+
+bin/goyacc -o /dev/null parser/parser.y
+bin/goyacc -o parser/parser.go parser/parser.y 2>&1 | egrep "(shift|reduce)/reduce" | awk '{print} END {if (NR > 0) {print "Find conflict in parser.y. Please check y.output for more information."; exit 1;}}'
+rm -f y.output

@@ -28,13 +28,13 @@ package parser
 import (
 	"strings"
 
-	"github.com/pingcap/tidb/mysql"
-	"github.com/pingcap/tidb/ast"
-	"github.com/pingcap/tidb/model"
-	"github.com/pingcap/tidb/parser/opcode"
-	"github.com/pingcap/tidb/util/auth"
-	"github.com/pingcap/tidb/util/charset"
-	"github.com/pingcap/tidb/types"
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/tidb/parser/opcode"
+	"github.com/hanchuanchuan/tidb/util/auth"
+	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/tidb/types"
 )
 
 %}
@@ -1413,9 +1413,140 @@ CommitStmt:
 	}
 
 InceptionStmt:
-	"INCEPTION"
+	"INCEPTION" "SHOW" ShowTargetFilterable ShowLikeOrWhereOpt
 	{
-		$$ = &ast.CommitStmt{}
+		stmt := $3.(*ast.ShowStmt)
+		if $4 != nil {
+			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+				stmt.Pattern = x
+			} else {
+				stmt.Where = $4.(ast.ExprNode)
+			}
+		}
+		stmt.IsInception = true
+		$$ = stmt
+	}
+|	"INCEPTION" "SHOW" "CREATE" "TABLE" TableName
+	{
+		$$ = &ast.ShowStmt{
+			Tp:	ast.ShowCreateTable,
+			Table:	$5.(*ast.TableName),
+			IsInception: true,
+		}
+	}
+|	"INCEPTION" "SHOW" "CREATE" "DATABASE" DBName
+	{
+		$$ = &ast.ShowStmt{
+			Tp:	ast.ShowCreateDatabase,
+			DBName:	$5.(string),
+			IsInception: true,
+		}
+	}
+|	"INCEPTION" "SHOW" "GRANTS"
+	{
+		// See https://dev.mysql.com/doc/refman/5.7/en/show-grants.html
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowGrants,
+			IsInception: true,
+			}
+	}
+|	"INCEPTION" "SHOW" "GRANTS" "FOR" Username
+	{
+		// See https://dev.mysql.com/doc/refman/5.7/en/show-grants.html
+		$$ = &ast.ShowStmt{
+			Tp:	ast.ShowGrants,
+			User:	$5.(*auth.UserIdentity),
+			IsInception: true,
+		}
+	}
+|	"INCEPTION" "SHOW" "MASTER" "STATUS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp:	ast.ShowMasterStatus,
+			IsInception: true,
+		}
+	}
+|	"INCEPTION" "SHOW" OptFull "PROCESSLIST"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowProcessList,
+			Full:	$3.(bool),
+			IsInception: true,
+		}
+	}
+|	"INCEPTION" "SHOW" "STATS_META" ShowLikeOrWhereOpt
+	{
+		stmt := &ast.ShowStmt{
+			Tp: ast.ShowStatsMeta,
+			IsInception: true,
+		}
+		if $4 != nil {
+			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+				stmt.Pattern = x
+			} else {
+				stmt.Where = $4.(ast.ExprNode)
+			}
+		}
+		$$ = stmt
+	}
+|	"INCEPTION" "SHOW" "STATS_HISTOGRAMS" ShowLikeOrWhereOpt
+	{
+		stmt := &ast.ShowStmt{
+			Tp: ast.ShowStatsHistograms,
+			IsInception: true,
+		}
+		if $4 != nil {
+			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+				stmt.Pattern = x
+			} else {
+				stmt.Where = $4.(ast.ExprNode)
+			}
+		}
+		$$ = stmt
+	}
+|	"INCEPTION" "SHOW" "STATS_BUCKETS" ShowLikeOrWhereOpt
+	{
+		stmt := &ast.ShowStmt{
+			Tp: ast.ShowStatsBuckets,
+			IsInception: true,
+		}
+		if $4 != nil {
+			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+				stmt.Pattern = x
+			} else {
+				stmt.Where = $4.(ast.ExprNode)
+			}
+		}
+		$$ = stmt
+	}
+|	"INCEPTION" "SHOW" "STATS_HEALTHY" ShowLikeOrWhereOpt
+	{
+		stmt := &ast.ShowStmt{
+			Tp: ast.ShowStatsHealthy,
+			IsInception: true,
+		}
+		if $4 != nil {
+			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+				stmt.Pattern = x
+			} else {
+				stmt.Where = $4.(ast.ExprNode)
+			}
+		}
+		$$ = stmt
+	}
+|	"INCEPTION" "SHOW" "PROFILES"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowProfiles,
+			IsInception: true,
+		}
+	}
+|	"INCEPTION" "SHOW" "PRIVILEGES"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowPrivileges,
+			IsInception: true,
+		}
 	}
 
 InceptionStartStmt:
