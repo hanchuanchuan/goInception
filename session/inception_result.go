@@ -26,21 +26,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-type MyRecordSets struct {
-	count   int
-	samples []types.Datum
-	rc      *recordSet
-	pk      ast.RecordSet
-
-	records  []*Record
-	MaxLevel uint8
-
-	SeqNo int
-
-	// 作为record的游标
-	cursor int
-}
-
 const (
 	StageOK byte = iota
 	StageCheck
@@ -60,15 +45,6 @@ var (
 	statusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully",
 		"Execute Successfully\nBackup failed", "Execute Successfully\nBackup Successfully"}
 )
-
-type recordSet struct {
-	firstIsID  bool
-	data       [][]types.Datum
-	count      int
-	cursor     int
-	fields     []*ast.ResultField
-	fieldCount int
-}
 
 type Record struct {
 	// 阶段   RERUN EXECUTED CHECKED
@@ -127,6 +103,21 @@ type Record struct {
 	OPID        string
 }
 
+func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
+	if len(rows) > 0 {
+		r.AffectedRows = rows[0].Rows
+	}
+}
+
+type recordSet struct {
+	firstIsID  bool
+	data       [][]types.Datum
+	count      int
+	cursor     int
+	fields     []*ast.ResultField
+	fieldCount int
+}
+
 func (r *recordSet) Fields() []*ast.ResultField {
 	return r.fields
 }
@@ -178,6 +169,33 @@ func (r *recordSet) Close() error {
 	return nil
 }
 
+func (r *recordSet) CreateFiled(name string, tp uint8) {
+	n := model.NewCIStr(name)
+	r.fields[r.fieldCount] = &ast.ResultField{
+		Column: &model.ColumnInfo{
+			FieldType: *types.NewFieldType(tp),
+			Name:      n,
+		},
+		ColumnAsName: n,
+	}
+	r.fieldCount++
+}
+
+type MyRecordSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+
+	records  []*Record
+	MaxLevel uint8
+
+	SeqNo int
+
+	// 作为record的游标
+	cursor int
+}
+
 func NewRecordSets() *MyRecordSets {
 	t := &MyRecordSets{
 		records: []*Record{},
@@ -218,18 +236,6 @@ func NewRecordSets() *MyRecordSets {
 	return t
 }
 
-func (r *recordSet) CreateFiled(name string, tp uint8) {
-	n := model.NewCIStr(name)
-	r.fields[r.fieldCount] = &ast.ResultField{
-		Column: &model.ColumnInfo{
-			FieldType: *types.NewFieldType(tp),
-			Name:      n,
-		},
-		ColumnAsName: n,
-	}
-	r.fieldCount++
-}
-
 func (s *MyRecordSets) Append(r *Record) {
 	s.MaxLevel = uint8(Max(int(s.MaxLevel), int(r.ErrLevel)))
 
@@ -262,14 +268,14 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[7].SetString(r.OPID)
 	}
 
-	if r.StageStatus == StatusBackupOK {
-		row[8].SetString(r.BackupDBName)
+	// if r.StageStatus == StatusBackupOK {
+	// 	row[8].SetString(r.BackupDBName)
+	// }
 
-		// if r.BackupDBName == "" {
-		// 	row[8].SetNull()
-		// } else {
-		// 	row[8].SetString(r.BackupDBName)
-		// }
+	if r.BackupDBName == "" {
+		row[8].SetNull()
+	} else {
+		row[8].SetString(r.BackupDBName)
 	}
 
 	if r.ExecTime == "" {
@@ -290,22 +296,9 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[11].SetString(r.Sqlsha1)
 	}
 
-	// log.Info(s.rc.count)
-	// log.Info(len(s.rc.data))
-
 	s.rc.data[s.rc.count] = row
 	s.rc.count++
 }
-
-// func (s *MyRecordSets) AppentRows() []ast.RecordSet {
-
-// 	s.Append(&Record{
-// 		Sql:      "insert into t1 select 1",
-// 		ErrLevel: 1,
-// 	})
-
-// 	return []ast.RecordSet{s.rc}
-// }
 
 func (s *MyRecordSets) Rows() []ast.RecordSet {
 
@@ -321,12 +314,6 @@ func (s *MyRecordSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }
 
-func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
-	if len(rows) > 0 {
-		r.AffectedRows = rows[0].Rows
-	}
-}
-
 func (s *MyRecordSets) All() []*Record {
 	return s.records
 }
@@ -338,4 +325,44 @@ func (s *MyRecordSets) Next() *Record {
 		s.cursor++
 	}
 	return s.records[s.cursor-1]
+}
+
+type VariableSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+}
+
+func NewVariableSets() *VariableSets {
+	t := &VariableSets{}
+
+	rc := &recordSet{
+		data:       make([][]types.Datum, 0),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 2)
+
+	rc.CreateFiled("Variable_name", mysql.TypeString)
+	rc.CreateFiled("Value", mysql.TypeString)
+	t.rc = rc
+
+	return t
+}
+
+func (s *VariableSets) Append(name string, value string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetString(name)
+	row[1].SetString(value)
+
+	s.rc.data = append(s.rc.data, row)
+	// s.rc.count++
+}
+
+func (s *VariableSets) Rows() []ast.RecordSet {
+	return []ast.RecordSet{s.rc}
 }
