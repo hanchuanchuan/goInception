@@ -17,11 +17,11 @@ if __name__ == '__main__':
 #     i = i + 1
 #     print("第%s次循环" % i)
 
-# with open("demo.txt", "w") as f:
-#     f.write("中文")
+with open("demo.txt", "w", encoding='utf-8') as f:
+    f.write("中文")
 
 try:
-    with open("demo.txt") as f:
+    with open("demo.txt", encoding='utf-8') as f:
         print(f.read())
 
     with open("demo.txt12") as f:
