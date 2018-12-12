@@ -20,29 +20,24 @@ package session
 import (
 	"bytes"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
-	// "text/template"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
-	// "github.com/hanchuanchuan/tidb/table"
+	"github.com/jinzhu/gorm"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
-	"regexp"
-	"strconv"
-	"strings"
-
-	// "database/sql/driver"
-	mysqlDriver "github.com/go-sql-driver/mysql"
-
-	// "github.com/hanchuanchuan/tidb/config"
-	"github.com/jinzhu/gorm"
-	// _ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 type MasterStatus struct {
@@ -252,7 +247,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					return s.recordSets.Rows(), nil
 				default:
 
-					if !s.haveBegin {
+					if !s.haveBegin && s.needDataSource(stmtNode) {
 						s.AppendErrorMessage("Must start as begin statement.")
 						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
@@ -261,10 +256,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					s.processCommand(stmtNode)
 				}
 
-				// log.Info(stmtNode.Text())
-				// log.Info("---")
-
-				if !s.haveBegin {
+				if !s.haveBegin && s.needDataSource(stmtNode) {
 					s.AppendErrorMessage("Must start as begin statement.")
 					s.recordSets.Append(s.myRecord)
 					return s.recordSets.Rows(), nil
@@ -304,6 +296,17 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	// t := &testStatisticsSuite{}
 
 	return recordSets, nil
+}
+
+func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
+	switch node := stmtNode.(type) {
+	case *ast.ShowStmt:
+		if node.IsInception {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *session) processCommand(stmtNode ast.StmtNode) {
@@ -2285,7 +2288,31 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
 	// log.Infof("%+v", node)
 
 	if node.IsInception {
-		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+		// s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+
+		switch node.Tp {
+		case ast.ShowVariables:
+			jsonBytes, err := json.Marshal(config.GetGlobalConfig().Inc)
+			if err != nil {
+				log.Error(err)
+			} else {
+				log.Infof("转换为 json 串打印结果:%s", string(jsonBytes))
+
+				m := make(map[string]interface{})
+				err := json.Unmarshal(jsonBytes, &m)
+				if err != nil {
+					log.Error(err)
+				} else {
+					log.Info(m)
+				}
+			}
+		default:
+			log.Info(node.Tp)
+			log.Infof("%+v", node)
+			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+		}
+		log.Infof("%+v", node)
+
 	} else {
 
 		rows, err := s.db.Raw(sql).Rows()
