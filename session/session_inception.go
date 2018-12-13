@@ -22,7 +22,9 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -248,12 +250,19 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				default:
 
 					if !s.haveBegin && s.needDataSource(stmtNode) {
+						log.Error(stmtNode)
 						s.AppendErrorMessage("Must start as begin statement.")
 						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
 					}
 
-					s.processCommand(stmtNode)
+					result, err := s.processCommand(stmtNode)
+					if err != nil {
+						return nil, err
+					}
+					if result != nil {
+						return result, nil
+					}
 				}
 
 				if !s.haveBegin && s.needDataSource(stmtNode) {
@@ -304,12 +313,14 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 		if node.IsInception {
 			return false
 		}
+	case *ast.InceptionSetStmt:
+		return false
 	}
 
 	return true
 }
 
-func (s *session) processCommand(stmtNode ast.StmtNode) {
+func (s *session) processCommand(stmtNode ast.StmtNode) ([]ast.RecordSet, error) {
 
 	currentSql := stmtNode.Text()
 
@@ -351,13 +362,18 @@ func (s *session) processCommand(stmtNode ast.StmtNode) {
 		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
 	case *ast.ShowStmt:
-		s.executeInceptionShow(node, currentSql)
+		return s.executeInceptionShow(node, currentSql)
+
+	case *ast.InceptionSetStmt:
+		return s.executeInceptionSet(node, currentSql)
 
 	default:
 		log.Info("无匹配类型...")
 		log.Infof("%T\n", stmtNode)
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
+
+	return nil, nil
 }
 
 func (s *session) executeCommit() {
@@ -2283,7 +2299,43 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 	s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法删除数据库'%s'.", node.Name))
 }
 
-func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
+func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([]ast.RecordSet, error) {
+
+	log.Info("executeInceptionSet")
+
+	// Name     string
+	// Value    ExprNode
+	// IsGlobal bool
+	// IsSystem bool
+	for _, v := range node.Variables {
+		log.Infof("%#v", v)
+
+		if !v.IsSystem {
+			return nil, errors.New("无效参数")
+		}
+
+		inc := config.GetGlobalConfig().Inc
+
+		s := reflect.ValueOf(&inc).Elem()
+
+		item := s.FieldByName(v.Name)
+		log.Info(item)
+		log.Info(item.IsValid())
+
+		// if item == nil {
+		return nil, errors.New("无效参数")
+		// }
+
+		// s.Field(0).SetInt(123) // 内置常用类型的设值方法
+		// sliceValue := reflect.ValueOf([]int{1, 2, 3}) // 这里将slice转成reflect.Value类型
+		// s.FieldByName("Children").Set(sliceValue)
+
+	}
+
+	return nil, nil
+}
+
+func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) ([]ast.RecordSet, error) {
 	log.Info("executeInceptionShow")
 	// log.Infof("%+v", node)
 
@@ -2303,7 +2355,19 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
 				if err != nil {
 					log.Error(err)
 				} else {
-					log.Info(m)
+					res := NewVariableSets(len(m))
+
+					var keys []string
+					for k := range m {
+						keys = append(keys, k)
+					}
+					sort.Strings(keys)
+
+					for _, k := range keys {
+						res.Append(k, fmt.Sprintf("%v", m[k]))
+					}
+
+					return res.Rows(), nil
 				}
 			}
 		default:
@@ -2351,7 +2415,7 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
 				// Scan the result into the column pointers...
 				if err := rows.Scan(columnPointers...); err != nil {
 					s.AppendErrorMessage(err.Error())
-					return
+					return nil, nil
 				}
 
 				var vv []driver.Value
@@ -2363,7 +2427,7 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
 				res, err := InterpolateParams(paramValues, vv)
 				if err != nil {
 					s.AppendErrorMessage(err.Error())
-					return
+					return nil, nil
 				}
 
 				buf.Write(res)
@@ -2372,6 +2436,8 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) {
 			s.myRecord.Sql = strings.TrimSpace(buf.String())
 		}
 	}
+
+	return nil, nil
 }
 
 func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {

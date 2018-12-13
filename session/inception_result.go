@@ -334,11 +334,11 @@ type VariableSets struct {
 	pk      ast.RecordSet
 }
 
-func NewVariableSets() *VariableSets {
+func NewVariableSets(count int) *VariableSets {
 	t := &VariableSets{}
 
 	rc := &recordSet{
-		data:       make([][]types.Datum, 0),
+		data:       make([][]types.Datum, count),
 		count:      0,
 		cursor:     0,
 		fieldCount: 0,
@@ -359,8 +359,9 @@ func (s *VariableSets) Append(name string, value string) {
 	row[0].SetString(name)
 	row[1].SetString(value)
 
-	s.rc.data = append(s.rc.data, row)
-	// s.rc.count++
+	// s.rc.data = append(s.rc.data, row)
+	s.rc.data[s.rc.count] = row
+	s.rc.count++
 }
 
 func (s *VariableSets) Rows() []ast.RecordSet {

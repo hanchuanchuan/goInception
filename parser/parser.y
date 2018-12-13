@@ -1548,6 +1548,10 @@ InceptionStmt:
 			IsInception: true,
 		}
 	}
+|	"INCEPTION" "SET" VariableAssignmentList
+	{
+		$$ = &ast.InceptionSetStmt{Variables: $3.([]*ast.VariableAssignment)}
+	}
 
 InceptionStartStmt:
 	"INCEPTION_MAGIC_START"
