@@ -46,6 +46,7 @@ var (
 	_ StmtNode = &InceptionStartStmt{}
 	_ StmtNode = &InceptionCommitStmt{}
 	_ StmtNode = &InceptionStmt{}
+	_ StmtNode = &InceptionSetStmt{}
 
 	_ Node = &PrivElem{}
 	_ Node = &VariableAssignment{}
@@ -870,6 +871,30 @@ func (n *TableOptimizerHint) Accept(v Visitor) (Node, bool) {
 		return v.Leave(newNode)
 	}
 	n = newNode.(*TableOptimizerHint)
+	return v.Leave(n)
+}
+
+// InceptionSetStmt is the statement to set variables.
+type InceptionSetStmt struct {
+	stmtNode
+	// Variables is the list of variable assignment.
+	Variables []*VariableAssignment
+}
+
+// Accept implements Node Accept interface.
+func (n *InceptionSetStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*InceptionSetStmt)
+	for i, val := range n.Variables {
+		node, ok := val.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Variables[i] = node.(*VariableAssignment)
+	}
 	return v.Leave(n)
 }
 
