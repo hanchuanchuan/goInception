@@ -20,11 +20,10 @@ package session
 import (
 	"bytes"
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
+	// "io"
 	"reflect"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -35,6 +34,7 @@ import (
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/types"
 	"github.com/jinzhu/gorm"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
@@ -163,6 +163,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	if !s.haveBegin && sql == "SET AUTOCOMMIT = 0" {
 		return s.Execute(ctx, sql)
 	}
+	// log.Info(sql)
+	if !s.haveBegin && sql == "show warnings" {
+		return s.Execute(ctx, sql)
+	}
 
 	s.PrepareTxnCtx(ctx)
 	connID := s.sessionVars.ConnectionID
@@ -248,20 +252,38 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					s.executeCommit()
 					return s.recordSets.Rows(), nil
 				default:
+					need := s.needDataSource(stmtNode)
 
-					if !s.haveBegin && s.needDataSource(stmtNode) {
+					if !s.haveBegin && need {
 						log.Error(stmtNode)
 						s.AppendErrorMessage("Must start as begin statement.")
 						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
 					}
 
-					result, err := s.processCommand(stmtNode)
-					if err != nil {
-						return nil, err
-					}
-					if result != nil {
-						return result, nil
+					// 交互式命令行
+					if !need {
+
+						if s.opt != nil {
+							log.Error(s.opt)
+							return nil, errors.New("无效操作!不支持本地操作和远程操作混用!")
+						}
+
+						return s.processCommand(ctx, stmtNode)
+						// if err != nil {
+						// 	return nil, err
+						// }
+						// if result != nil {
+						// 	return result, nil
+						// }
+					} else {
+						result, err := s.processCommand(ctx, stmtNode)
+						if err != nil {
+							return nil, err
+						}
+						if result != nil {
+							return result, nil
+						}
 					}
 				}
 
@@ -320,7 +342,7 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 	return true
 }
 
-func (s *session) processCommand(stmtNode ast.StmtNode) ([]ast.RecordSet, error) {
+func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]ast.RecordSet, error) {
 
 	currentSql := stmtNode.Text()
 
@@ -362,7 +384,7 @@ func (s *session) processCommand(stmtNode ast.StmtNode) ([]ast.RecordSet, error)
 		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
 	case *ast.ShowStmt:
-		return s.executeInceptionShow(node, currentSql)
+		return s.executeInceptionShow(ctx, node, currentSql)
 
 	case *ast.InceptionSetStmt:
 		return s.executeInceptionSet(node, currentSql)
@@ -2303,8 +2325,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 
 	log.Info("executeInceptionSet")
 
-	// Name     string
-	// Value    ExprNode
 	// IsGlobal bool
 	// IsSystem bool
 	for _, v := range node.Variables {
@@ -2314,25 +2334,51 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			return nil, errors.New("无效参数")
 		}
 
-		inc := config.GetGlobalConfig().Inc
+		cnf := config.GetGlobalConfig()
 
-		s := reflect.ValueOf(&inc).Elem()
+		t := reflect.TypeOf(cnf.Inc)
+		values := reflect.ValueOf(&(cnf.Inc)).Elem()
 
-		item := s.FieldByName(v.Name)
-		log.Info(item)
-		log.Info(item.IsValid())
+		value, ok := v.Value.(*ast.ValueExpr)
+		if !ok {
+			return nil, errors.New("参数值无效")
+		}
 
-		// if item == nil {
-		return nil, errors.New("无效参数")
-		// }
+		found := false
+		for i := 0; i < values.NumField(); i++ {
+			if values.Field(i).CanInterface() { //判断是否为可导出字段
+				if k := t.Field(i).Tag.Get("json"); strings.EqualFold(k, v.Name) {
+					setConfigValue(values.Field(i), &(value.Datum))
 
-		// s.Field(0).SetInt(123) // 内置常用类型的设值方法
-		// sliceValue := reflect.ValueOf([]int{1, 2, 3}) // 这里将slice转成reflect.Value类型
-		// s.FieldByName("Children").Set(sliceValue)
+					found = true
+					break
+				} else if strings.EqualFold(t.Field(i).Name, v.Name) {
+					setConfigValue(values.Field(i), &(value.Datum))
 
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return nil, errors.New("无效参数")
+		}
 	}
 
 	return nil, nil
+}
+
+func setConfigValue(field reflect.Value, value *types.Datum) {
+	switch field.Type().String() {
+	case reflect.String.String():
+		field.SetString(value.GetString())
+	case reflect.Uint.String():
+		field.SetUint(value.GetUint64())
+	case reflect.Bool.String():
+		field.SetBool(value.GetInt64() == 1)
+	default:
+		field.SetString(value.GetString())
+	}
 }
 
 func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) ([]ast.RecordSet, error) {
@@ -2342,34 +2388,39 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) ([]ast.Re
 	if node.IsInception {
 		// s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 
+		log.Infof("%+v", node)
+
 		switch node.Tp {
 		case ast.ShowVariables:
-			jsonBytes, err := json.Marshal(config.GetGlobalConfig().Inc)
-			if err != nil {
-				log.Error(err)
-			} else {
-				log.Infof("转换为 json 串打印结果:%s", string(jsonBytes))
 
-				m := make(map[string]interface{})
-				err := json.Unmarshal(jsonBytes, &m)
-				if err != nil {
-					log.Error(err)
-				} else {
-					res := NewVariableSets(len(m))
+			inc := config.GetGlobalConfig().Inc
 
-					var keys []string
-					for k := range m {
-						keys = append(keys, k)
+			t := reflect.TypeOf(inc)
+			v := reflect.ValueOf(inc)
+
+			res := NewVariableSets(v.NumField())
+
+			var like string
+			if node.Pattern != nil {
+				log.Infof("%+v", node.Pattern)
+				like = node.Pattern.Datum.GetString()
+			}
+
+			for i := 0; i < v.NumField(); i++ {
+				if v.Field(i).CanInterface() { //判断是否为可导出字段
+					if len(like) == 0 {
+						if k := t.Field(i).Tag.Get("json"); k != "" {
+							res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+						}
+					} else {
+
+						opFunc, err := expression.NewFunction(er.ctx, op, tp, args...)
+
 					}
-					sort.Strings(keys)
-
-					for _, k := range keys {
-						res.Append(k, fmt.Sprintf("%v", m[k]))
-					}
-
-					return res.Rows(), nil
 				}
 			}
+			return res.Rows(), nil
+
 		default:
 			log.Info(node.Tp)
 			log.Infof("%+v", node)
@@ -2408,7 +2459,7 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) ([]ast.Re
 				// and a second slice to contain pointers to each item in the columns slice.
 				columns := make([]interface{}, colLength)
 				columnPointers := make([]interface{}, colLength)
-				for i, _ := range columns {
+				for i := range columns {
 					columnPointers[i] = &columns[i]
 				}
 
@@ -2419,7 +2470,7 @@ func (s *session) executeInceptionShow(node *ast.ShowStmt, sql string) ([]ast.Re
 				}
 
 				var vv []driver.Value
-				for i, _ := range cols {
+				for i := range cols {
 					val := columnPointers[i].(*interface{})
 					vv = append(vv, *val)
 				}
