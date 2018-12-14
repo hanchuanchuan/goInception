@@ -4,23 +4,23 @@
 host = "0.0.0.0"
 
 # tidb server advertise IP.
-advertise-address = ""
+advertise_address = ""
 
 # TiDB server port.
 port = 4000
 
 [inc]
-enable-nullable = true
-enable-drop-table = true
-max-primary-key-parts = 3
-max-keys = 3
-check-table-comment = false
-check-column-comment = false
+enable_nullable = true
+enable_drop_table = true
+max_primary_key_parts = 3
+max_keys = 3
+check_table_comment = false
+check_column_comment = false
 
-backup-host = "127.0.0.1"
-backup-port = 20001
-backup-user = "inception"
-backup-password = "inception"
+backup_host = "127.0.0.1"
+backup_port = 20001
+backup_user = "inception"
+backup_password = "inception"
 
 [log]
 # Log level: debug, info, warn, error, fatal.

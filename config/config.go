@@ -279,22 +279,22 @@ type Inc struct {
 	// inception_remote_system_password = inception
 
 	// 允许空列
-	EnableNullable bool `toml:"enable-nullable" json:"enable-nullable"`
+	EnableNullable bool `toml:"enable_nullable" json:"enable_nullable"`
 	// 允许删除表
-	EnableDropTable bool `toml:"enable-drop-table" json:"enable-drop-table"`
+	EnableDropTable bool `toml:"enable_drop_table" json:"enable_drop_table"`
 	// 主键最多允许有几列组合
-	MaxPrimaryKeyParts uint `toml:"max-primary-key-parts" json:"max-primary-key-parts"`
+	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"`
 
-	MaxKeys uint `toml:"max-keys" json:"max-keys"`
+	MaxKeys uint `toml:"max_keys" json:"max_keys"`
 
-	CheckTableComment  bool `toml:"check-table-comment" json:"check-table-comment"`
-	CheckColumnComment bool `toml:"check-column-comment" json:"check-column-comment"`
+	CheckTableComment  bool `toml:"check_table_comment" json:"check_table_comment"`
+	CheckColumnComment bool `toml:"check_column_comment" json:"check_column_comment"`
 
 	// 远程备份库信息
-	BackupHost     string `toml:"backup-host" json:"backup-host"`
-	BackupPort     uint   `toml:"backup-port" json:"backup-port"`
-	BackupUser     string `toml:"backup-user" json:"backup-user"`
-	BackupPassword string `toml:"backup-password" json:"backup-password"`
+	BackupHost     string `toml:"backup_host" json:"backup_host"`
+	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
+	BackupUser     string `toml:"backup_user" json:"backup_user"`
+	BackupPassword string `toml:"backup_password" json:"backup_password"`
 }
 
 var defaultConf = Config{
