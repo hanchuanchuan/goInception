@@ -74,7 +74,12 @@ func (s *session) GetNextBackupRecord() *Record {
 			return nil
 		}
 
-		if s.checkSqlIsDML(r) && r.TableInfo != nil {
+		if r.AffectedRows > 0 && s.checkSqlIsDML(r) && r.TableInfo != nil {
+			// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
+			// if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
+			// 	continue
+			// }
+
 			// 先置默认值为备份失败,在备份完成后置为成功
 			r.StageStatus = StatusBackupFail
 			return r
@@ -92,7 +97,7 @@ func (s *session) Parser() {
 
 	s.myRecord = record
 
-	log.Info("Parser")
+	log.Debug("Parser")
 
 	var err error
 	var wg sync.WaitGroup
@@ -270,14 +275,17 @@ func (s *session) flush(table string, record *Record) {
 		sql := "insert into %s(rollback_statement,opid_time) values%s"
 		values := strings.TrimRight(strings.Repeat(rowSQL, len(s.insertBuffer)/2), ",")
 
-		if err := s.backupdb.Exec(fmt.Sprintf(sql, table, values),
-			s.insertBuffer...).Error; err != nil {
+		err := s.backupdb.Exec(fmt.Sprintf(sql, table, values),
+			s.insertBuffer...).Error
+		if err != nil {
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				record.StageStatus = StatusBackupFail
 				record.AppendErrorMessage(myErr.Message)
 				log.Error(myErr)
 			}
 		}
+		s.BackupTotalRows += len(s.insertBuffer) / 2
+		s.SetMyProcessInfo(record.Sql, time.Now(), s.BackupTotalRows*100/s.TotalChangeRows)
 	}
 	s.insertBuffer = nil
 }

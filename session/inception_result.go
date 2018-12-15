@@ -21,6 +21,7 @@ import (
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/tidb/types/json"
 	"github.com/hanchuanchuan/tidb/util/chunk"
 	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -101,6 +102,8 @@ type Record struct {
 	// ddl回滚
 	DDLRollback string
 	OPID        string
+
+	ExecComplete bool
 }
 
 func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
@@ -365,5 +368,99 @@ func (s *VariableSets) Append(name string, value string) {
 }
 
 func (s *VariableSets) Rows() []ast.RecordSet {
+	return []ast.RecordSet{s.rc}
+}
+
+type ProcessListSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+}
+
+func NewProcessListSets(count int) *ProcessListSets {
+	t := &ProcessListSets{}
+
+	rc := &recordSet{
+		data:       make([][]types.Datum, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 10)
+
+	rc.CreateFiled("Id", mysql.TypeLonglong)
+	//目标数据库用户名
+	rc.CreateFiled("Dest_User", mysql.TypeString)
+	//目标主机
+	rc.CreateFiled("Dest_Host", mysql.TypeString)
+	//目标端口
+	rc.CreateFiled("Dest_Port", mysql.TypeLong)
+	//连接来源主机
+	rc.CreateFiled("From_Host", mysql.TypeString)
+	//操作类型
+	rc.CreateFiled("Command", mysql.TypeString)
+	//操作类型
+	rc.CreateFiled("STATE", mysql.TypeString)
+	rc.CreateFiled("Time", mysql.TypeLonglong)
+	rc.CreateFiled("Info", mysql.TypeString)
+	// rc.CreateFiled("Current_Execute", mysql.TypeString)
+	rc.CreateFiled("Percent", mysql.TypeString)
+
+	t.rc = rc
+
+	return t
+}
+
+func (s *ProcessListSets) appendRow(fields []interface{}) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	for i, col := range fields {
+		if col == nil {
+			row[i].SetNull()
+			continue
+		}
+		switch x := col.(type) {
+		case nil:
+			row[i].SetNull()
+		case int:
+			row[i].SetInt64(int64(x))
+		case int64:
+			row[i].SetInt64(x)
+		case uint64:
+			row[i].SetUint64(x)
+		case float64:
+			row[i].SetFloat64(x)
+		case float32:
+			row[i].SetFloat32(x)
+		case string:
+			row[i].SetString(x)
+		case []byte:
+			row[i].SetBytes(x)
+		case types.BinaryLiteral:
+			row[i].SetBytes(x)
+		case *types.MyDecimal:
+			row[i].SetMysqlDecimal(x)
+		case types.Time:
+			row[i].SetMysqlTime(x)
+		case json.BinaryJSON:
+			row[i].SetMysqlJSON(x)
+		case types.Duration:
+			row[i].SetMysqlDuration(x)
+		case types.Enum:
+			row[i].SetMysqlEnum(x)
+		case types.Set:
+			row[i].SetMysqlSet(x)
+		default:
+			row[i].SetNull()
+		}
+	}
+
+	s.rc.data[s.rc.count] = row
+	s.rc.count++
+}
+
+func (s *ProcessListSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }

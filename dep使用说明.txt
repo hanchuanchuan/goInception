@@ -25,3 +25,9 @@ gofmt -d -r '"github.com/pkg/errors" -> "github.com/pingcap/errors"'  -w /root/h
 bin/goyacc -o /dev/null parser/parser.y
 bin/goyacc -o parser/parser.go parser/parser.y 2>&1 | egrep "(shift|reduce)/reduce" | awk '{print} END {if (NR > 0) {print "Find conflict in parser.y. Please check y.output for more information."; exit 1;}}'
 rm -f y.output
+
+清除缓存方式:
+free -h
+sync # 使用sync命令以确保文件系统的完整性，sync 命令运行 sync 子例程，将所有未写的系统缓冲区写到磁盘中，包含已修改的 i-node、已延迟的块 I/O 和读写映射文件。
+echo 3 > /proc/sys/vm/drop_caches
+free -h

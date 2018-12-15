@@ -188,6 +188,10 @@ type session struct {
 
 	// 记录上次的备份表名,如果表名改变时,刷新insert缓存
 	lastBackupTable string
+
+	// 总的操作行数,当备份时用以计算备份进度
+	TotalChangeRows int
+	BackupTotalRows int
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
@@ -763,18 +767,32 @@ func (s *session) ParseSQL(ctx context.Context, sql, charset, collation string) 
 
 func (s *session) SetProcessInfo(sql string, t time.Time, command byte) {
 	pi := util.ProcessInfo{
-		ID:      s.sessionVars.ConnectionID,
-		DB:      s.sessionVars.CurrentDB,
-		Command: mysql.Command2Str[command],
-		Time:    t,
-		State:   s.Status(),
-		Info:    sql,
+		ID:        s.sessionVars.ConnectionID,
+		DB:        s.sessionVars.CurrentDB,
+		Command:   "",
+		Time:      t,
+		State:     s.Status(),
+		Info:      sql,
+		OperState: "INIT",
 	}
 	if s.sessionVars.User != nil {
 		pi.User = s.sessionVars.User.Username
 		pi.Host = s.sessionVars.User.Hostname
 	}
 	s.processInfo.Store(pi)
+}
+
+func (s *session) SetMyProcessInfo(sql string, t time.Time, percent int) {
+
+	tmp := s.processInfo.Load()
+	if tmp != nil {
+		pi := tmp.(util.ProcessInfo)
+
+		pi.Info = sql
+		pi.Time = t
+		pi.Percent = percent
+		s.processInfo.Store(pi)
+	}
 }
 
 func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode ast.StmtNode, stmt ast.Statement, recordSets []ast.RecordSet) ([]ast.RecordSet, error) {
@@ -1474,7 +1492,7 @@ func (s *session) ShowProcess() util.ProcessInfo {
 	tmp := s.processInfo.Load()
 	if tmp != nil {
 		pi = tmp.(util.ProcessInfo)
-		pi.Mem = s.GetSessionVars().StmtCtx.MemTracker.BytesConsumed()
+		// pi.Mem = s.GetSessionVars().StmtCtx.MemTracker.BytesConsumed()
 	}
 	return pi
 }
