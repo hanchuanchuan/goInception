@@ -278,23 +278,42 @@ type Inc struct {
 	// inception_remote_system_user = inception
 	// inception_remote_system_password = inception
 
-	// 允许空列
-	EnableNullable bool `toml:"enable_nullable" json:"enable_nullable"`
-	// 允许删除表
-	EnableDropTable bool `toml:"enable_drop_table" json:"enable_drop_table"`
-	// 主键最多允许有几列组合
-	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"`
-
-	MaxKeys uint `toml:"max_keys" json:"max_keys"`
-
-	CheckTableComment  bool `toml:"check_table_comment" json:"check_table_comment"`
-	CheckColumnComment bool `toml:"check_column_comment" json:"check_column_comment"`
-
-	// 远程备份库信息
-	BackupHost     string `toml:"backup_host" json:"backup_host"`
+	BackupHost     string `toml:"backup_host" json:"backup_host"` // 远程备份库信息
+	BackupPassword string `toml:"backup_password" json:"backup_password"`
 	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
 	BackupUser     string `toml:"backup_user" json:"backup_user"`
-	BackupPassword string `toml:"backup_password" json:"backup_password"`
+
+	CheckAutoIncrementDataType  bool `toml:"check_autoincrement_datatype" json:"check_autoincrement_datatype"`
+	CheckAutoIncrementInitValue bool `toml:"check_autoincrement_init_value" json:"check_autoincrement_init_value"`
+	CheckAutoIncrementName      bool `toml:"check_autoincrement_name" json:"check_autoincrement_name"`
+	CheckColumnComment          bool `toml:"check_column_comment" json:"check_column_comment"`
+	CheckColumnDefaultValue     bool `toml:"check_column_default_value" json:"check_column_default_value"`
+	CheckDMLLimit               bool `toml:"check_dml_limit" json:"check_dml_limit"`
+	CheckDMLOrderBy             bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
+	CheckDMLWhere               bool `toml:"check_dml_where" json:"check_dml_where"`
+	CheckIdentifier             bool `toml:"check_identifier" json:"check_identifier"`
+	CheckIndexPrefix            bool `toml:"check_index_prefix" json:"check_index_prefix"`
+	CheckInsertField            bool `toml:"check_insert_field" json:"check_insert_field"`
+	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
+	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
+	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
+
+	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
+	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
+	EnableColumnCharset         bool `toml:"enable_column_charset" json:"enable_column_charset"`
+	EnableDropTable             bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
+	EnableEnumSetBit            bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
+	EnableForeignKey            bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
+	EnableIdentiferKeyword      bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
+	EnableNotInnodb             bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
+	EnableNullable              bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
+	EnableOrderByRand           bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
+	EnablePartitionTable        bool `toml:"enable_partition_table" json:"enable_partition_table"`
+	EnablePKColumnsOnlyInt      bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
+	EnableSelectStar            bool `toml:"enable_select_star" json:"enable_select_star"`
+	MaxKeys                     uint `toml:"max_keys" json:"max_keys"`
+	MaxPrimaryKeyParts          uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
+	MergeAlterTable             bool `toml:"merge_alter_table" json:"merge_alter_table"`
 }
 
 var defaultConf = Config{

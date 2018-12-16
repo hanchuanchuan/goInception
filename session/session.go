@@ -769,7 +769,7 @@ func (s *session) SetProcessInfo(sql string, t time.Time, command byte) {
 	pi := util.ProcessInfo{
 		ID:        s.sessionVars.ConnectionID,
 		DB:        s.sessionVars.CurrentDB,
-		Command:   "",
+		Command:   "LOCAL",
 		Time:      t,
 		State:     s.Status(),
 		Info:      sql,
@@ -782,7 +782,7 @@ func (s *session) SetProcessInfo(sql string, t time.Time, command byte) {
 	s.processInfo.Store(pi)
 }
 
-func (s *session) SetMyProcessInfo(sql string, t time.Time, percent int) {
+func (s *session) SetMyProcessInfo(sql string, t time.Time, percent float64) {
 
 	tmp := s.processInfo.Load()
 	if tmp != nil {

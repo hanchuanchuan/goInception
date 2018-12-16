@@ -36,7 +36,7 @@ type ProcessInfo struct {
 	// 当前操作状态
 	OperState string
 	// 操作进度. 审核/执行/备份时自动计算
-	Percent int
+	Percent float64
 }
 
 // SessionManager is an interface for session manage. Show processlist and
