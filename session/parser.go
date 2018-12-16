@@ -285,7 +285,8 @@ func (s *session) flush(table string, record *Record) {
 			}
 		}
 		s.BackupTotalRows += len(s.insertBuffer) / 2
-		s.SetMyProcessInfo(record.Sql, time.Now(), s.BackupTotalRows*100/s.TotalChangeRows)
+		s.SetMyProcessInfo(record.Sql, time.Now(),
+			float64(s.BackupTotalRows)/float64(s.TotalChangeRows))
 	}
 	s.insertBuffer = nil
 }

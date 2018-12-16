@@ -266,7 +266,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						return s.recordSets.Rows(), nil
 					}
 
-					s.SetMyProcessInfo(stmtNode.Text(), time.Now(), i*100/(lineCount+1))
+					s.SetMyProcessInfo(stmtNode.Text(), time.Now(), float64(i)/float64(lineCount+1))
 
 					// 交互式命令行
 					if !need {
@@ -826,7 +826,7 @@ func (s *session) executeAllStatement() {
 			continue
 		}
 
-		s.SetMyProcessInfo(record.Sql, time.Now(), i*100/count)
+		s.SetMyProcessInfo(record.Sql, time.Now(), float64(i)/float64(count))
 
 		errno := s.executeRemoteCommand(record)
 		if errno == 2 {
@@ -858,7 +858,6 @@ func (s *session) executeRemoteCommand(record *Record) int {
 
 		*ast.CreateIndexStmt,
 		*ast.DropIndexStmt:
-		// s.SetMyProcessInfo(record.Sql, time.Now())
 
 		s.executeRemoteStatement(record)
 
@@ -1135,8 +1134,6 @@ func (s *session) parseOptions(sql string) {
 			pi.Command = "CHECK"
 		} else if s.opt.execute {
 			pi.Command = "EXECUTE"
-		} else {
-			pi.Command = "LOCAL"
 		}
 		s.processInfo.Store(pi)
 	}
@@ -1413,7 +1410,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			s.AppendErrorNo(ER_TABLE_MUST_HAVE_PK, node.Table.Name.O)
 		}
 
-		if !hasComment && s.Inc.CheckTableComment {
+		if !hasComment {
 			s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
 		}
 
@@ -1813,14 +1810,14 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			}
 		}
 	}
-	if !hasComment && s.Inc.CheckColumnComment {
+	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
 
 	if mysqlFiledIsBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
-		if !notNullFlag && !s.Inc.EnableNullable {
+		if !notNullFlag {
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
 		}
 	}
@@ -2289,6 +2286,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			// log.Infof("%#v", sel.SelectStmtOpts)
 			// log.Infof("%#v", sel.From)
+			log.Infof("%#v", sel)
 			// log.Infof("%#v", sel.Fields)
 
 			// 只考虑insert select单表时,表不存在的情况
@@ -2304,6 +2302,10 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				if f.WildCard != nil {
 					checkWildCard = true
 				}
+			}
+
+			if checkWildCard {
+				s.AppendErrorNo(ER_SELECT_ONLY_STAR)
 			}
 
 			// 判断字段数是否匹配, *星号时跳过
@@ -2335,6 +2337,25 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 				rows := s.getExplainInfo(strings.Join(explain, ""))
 				s.myRecord.AnlyzeExplain(rows)
+			}
+
+			if sel.Where == nil {
+				s.AppendErrorNo(ER_NO_WHERE_CONDITION)
+			}
+
+			if sel.Limit != nil {
+				s.AppendErrorNo(ER_WITH_LIMIT_CONDITION)
+			}
+
+			if sel.OrderBy != nil {
+				for _, item := range sel.OrderBy.Items {
+					// log.Infof("%#v", item)
+					if f, ok := item.Expr.(*ast.FuncCallExpr); ok {
+						if f.FnName.L == "rand" {
+							s.AppendErrorNo(ER_ORDERY_BY_RAND)
+						}
+					}
+				}
 			}
 		}
 	}
@@ -2505,7 +2526,7 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordS
 			info,
 		}
 		if pi.Percent > 0 {
-			data = append(data, fmt.Sprintf("%d%%", pi.Percent))
+			data = append(data, fmt.Sprintf("%.2f%%", pi.Percent*100))
 		}
 		res.appendRow(data)
 	}
@@ -2693,6 +2714,18 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	if !catchError {
 		s.explainOrAnalyzeSql(sql)
 	}
+
+	if node.Where == nil {
+		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
+	}
+
+	if node.Limit != nil {
+		s.AppendErrorNo(ER_WITH_LIMIT_CONDITION)
+	}
+
+	if node.Order != nil {
+		s.AppendErrorNo(ER_WITH_ORDERBY_CONDITION)
+	}
 }
 
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
@@ -2715,6 +2748,18 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 		}
 	}
 	s.explainOrAnalyzeSql(sql)
+
+	if node.Where == nil {
+		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
+	}
+
+	if node.Limit != nil {
+		s.AppendErrorNo(ER_WITH_LIMIT_CONDITION)
+	}
+
+	if node.Order != nil {
+		s.AppendErrorNo(ER_WITH_ORDERBY_CONDITION)
+	}
 }
 
 func (s *session) checkFieldsValid(columns []*ast.ColumnName, table *TableInfo) {
@@ -2785,8 +2830,128 @@ func (s *session) AppendErrorMessage(msg string) {
 }
 
 func (s *session) AppendErrorNo(number int, values ...interface{}) {
-	s.myRecord.AppendErrorNo(number, values...)
-	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+	if s.checkInceptionVariables(number) {
+		s.myRecord.AppendErrorNo(number, values...)
+		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+	}
+}
+
+func (s *session) checkInceptionVariables(number int) bool {
+	switch number {
+	case ER_WITH_INSERT_FIELD:
+		if s.Inc.CheckInsertField {
+			return true
+		}
+	case ER_NO_WHERE_CONDITION:
+		if s.Inc.CheckDMLWhere {
+			return true
+		}
+	case ER_WITH_LIMIT_CONDITION:
+		if s.Inc.CheckDMLLimit {
+			return true
+		}
+	case ER_WITH_ORDERBY_CONDITION:
+		if s.Inc.CheckDMLOrderBy {
+			return true
+		}
+	case ER_SELECT_ONLY_STAR:
+		if s.Inc.EnableSelectStar {
+			return false
+		}
+	case ER_ORDERY_BY_RAND:
+		if s.Inc.EnableOrderByRand {
+			return false
+		}
+	case ER_NOT_ALLOWED_NULLABLE:
+		if s.Inc.EnableNullable {
+			return false
+		}
+
+		// ----------
+	case ER_FOREIGN_KEY:
+		if s.Inc.EnableForeignKey {
+			return false
+		}
+	case ER_USE_TEXT_OR_BLOB:
+		if s.Inc.EnableBlobType {
+			return false
+		}
+	case ER_TABLE_MUST_INNODB:
+		if s.Inc.EnableNotInnodb {
+			return false
+		}
+	case ER_PK_COLS_NOT_INT:
+		if s.Inc.EnablePKColumnsOnlyInt {
+			return true
+		}
+	case ER_TABLE_MUST_HAVE_COMMENT:
+		if s.Inc.CheckTableComment {
+			return true
+		}
+	case ER_COLUMN_HAVE_NO_COMMENT:
+		if s.Inc.CheckColumnComment {
+			return true
+		}
+	case ER_TABLE_MUST_HAVE_PK:
+		if s.Inc.CheckPrimaryKey {
+			return true
+		}
+	case ER_PARTITION_NOT_ALLOWED:
+		if s.Inc.EnablePartitionTable {
+			return false
+		}
+	case ER_USE_ENUM, ER_INVALID_DATA_TYPE:
+		if s.Inc.EnableEnumSetBit {
+			return false
+		}
+	case ER_INDEX_NAME_IDX_PREFIX, ER_INDEX_NAME_UNIQ_PREFIX:
+		if s.Inc.CheckIndexPrefix {
+			return true
+		}
+	case ER_AUTOINC_UNSIGNED:
+		if s.Inc.EnableAutoIncrementUnsigned {
+			return true
+		}
+	case ER_INC_INIT_ERR:
+		if s.Inc.CheckAutoIncrementInitValue {
+			return true
+		}
+	case ER_INVALID_IDENT:
+		if s.Inc.CheckIdentifier {
+			return true
+		}
+	case ER_SET_DATA_TYPE_INT_BIGINT:
+		if s.Inc.CheckAutoIncrementDataType {
+			return true
+		}
+	case ER_TIMESTAMP_DEFAULT:
+		if s.Inc.CheckTimestampDefault {
+			return true
+		}
+
+	case ER_CHARSET_ON_COLUMN:
+		if s.Inc.EnableColumnCharset {
+			return false
+		}
+	case ER_IDENT_USE_KEYWORD:
+		if s.Inc.EnableIdentiferKeyword {
+			return false
+		}
+	case ER_AUTO_INCR_ID_WARNING:
+		if s.Inc.CheckAutoIncrementName {
+			return true
+		}
+	case ER_ALTER_TABLE_ONCE:
+		if s.Inc.MergeAlterTable {
+			return true
+		}
+	case ER_WITH_DEFAULT_ADD_COLUMN:
+		if s.Inc.CheckColumnDefaultValue {
+			return true
+		}
+	}
+
+	return true
 }
 
 func extractTableList(node ast.ResultSetNode, input []*ast.TableName) []*ast.TableName {
