@@ -48,9 +48,9 @@ use `test`;
 
 # insert into ttt1(id,c1) values(1,'test');
 # insert into ttt1(id,c1) values(2,'test'),(3,'test');
-insert into ttt1(id,c1) select id+3,c1 from ttt1 order by rand();
+#insert into ttt1(id,c1) select id+3,c1 from ttt1 order by rand();
 
-insert into ttt1(id,c1) select id+3,c1 from ttt1 where id = 1 order by 1;
+#insert into ttt1(id,c1) select id+3,c1 from ttt1 where id = 1 order by 1;
 
 # insert into ttt1(id,c1) select 8,'123';
 
@@ -79,8 +79,10 @@ insert into ttt1(id,c1) select id+3,c1 from ttt1 where id = 1 order by 1;
 
 # delete from t1 where id > 0;
 
+#create table tt33(id varchar(10) primary key,c1 int,index idx_1 (c1));
+# create table tt34(id varchar(10) ,c1 int,primary key(id));
 
-
+create table `table`(id varchar(10) ,`column` int);
 
 inception_magic_commit;
 '''

@@ -37,6 +37,7 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	// "github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/tidb/parser"
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/stringutil"
 	"github.com/jinzhu/gorm"
@@ -114,6 +115,8 @@ type TableInfo struct {
 	// 主键信息,用以备份
 	hasPrimary bool
 	primarys   map[int]bool
+
+	AlterCount int
 }
 
 type IndexInfo struct {
@@ -127,8 +130,13 @@ type IndexInfo struct {
 	IndexType  string `gorm:"Column:Index_type"`
 }
 
-var reg *regexp.Regexp
-var regFieldLength *regexp.Regexp
+var (
+	reg            *regexp.Regexp
+	regFieldLength *regexp.Regexp
+	regIdentified  *regexp.Regexp
+)
+
+var Keywords map[string]int = parser.GetKeywords()
 
 const (
 	MaxKeyLength      = 767
@@ -141,6 +149,8 @@ func init() {
 	reg = regexp.MustCompile(`^\/\*(.*?)\*\/`)
 
 	regFieldLength = regexp.MustCompile(`^.*?\((\d)`)
+
+	regIdentified = regexp.MustCompile(`^[0-9a-zA-Z\_]*$`)
 
 }
 
@@ -381,7 +391,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 
 	case *ast.CreateIndexStmt:
 		s.checkCreateIndex(node.Table, node.IndexName,
-			node.IndexColNames, node.IndexOption, nil, node.Unique)
+			node.IndexColNames, node.IndexOption, nil, node.Unique, ast.ConstraintIndex)
 
 	case *ast.DropIndexStmt:
 		s.checkDropIndex(node, currentSql)
@@ -1274,6 +1284,8 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.NewTable.Name.O)
 	}
 
+	s.checkKeyWords(node.NewTable.Schema.O)
+
 	// 旧表存在,新建不存在时
 	if originTable != nil && table == nil {
 		table = copyTableInfo(originTable)
@@ -1313,6 +1325,9 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	// Partition   *PartitionOptions
 	// OnDuplicate OnDuplicateCreateTableSelectType
 	// Select      ResultSetNode
+	if node.Table.Schema.O == "" {
+		node.Table.Schema = model.NewCIStr(s.DBName)
+	}
 
 	s.checkDBExists(node.Table.Schema.O, true)
 
@@ -1323,11 +1338,10 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		return
 	}
 
-	if node.Table.Schema.O == "" {
-		s.myRecord.DBName = s.DBName
-	} else {
-		s.myRecord.DBName = node.Table.Schema.O
-	}
+	s.checkKeyWords(node.Table.Name.O)
+
+	s.myRecord.DBName = node.Table.Schema.O
+
 	s.myRecord.TableName = node.Table.Name.O
 
 	// 缓存表结构 CREATE TABLE LIKE
@@ -1337,11 +1351,8 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			table = copyTableInfo(originTable)
 
 			table.Name = node.Table.Name.O
-			if node.Table.Schema.O == "" {
-				table.Schema = s.DBName
-			} else {
-				table.Schema = node.Table.Schema.O
-			}
+			table.Schema = node.Table.Schema.O
+
 			s.cacheNewTable(table)
 			s.myRecord.TableInfo = table
 		}
@@ -1397,6 +1408,15 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				for _, op := range field.Options {
 					if op.Tp == ast.ColumnOptionPrimaryKey {
 						hasPrimary = true
+
+						if field.Tp.Tp != mysql.TypeInt24 &&
+							field.Tp.Tp != mysql.TypeLong &&
+							field.Tp.Tp != mysql.TypeLonglong {
+							s.AppendErrorNo(ER_PK_COLS_NOT_INT,
+								field.Name.Name.O,
+								node.Table.Schema, node.Table.Name)
+						}
+
 						break
 					}
 				}
@@ -1422,6 +1442,11 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 		s.cacheNewTable(table)
 		s.myRecord.TableInfo = table
+	}
+
+	for _, ct := range node.Constraints {
+		s.checkCreateIndex(nil, ct.Name,
+			ct.Keys, ct.Option, table, false, ct.Tp)
 	}
 
 	if node.Partition != nil {
@@ -1450,6 +1475,20 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 
 	for _, field := range node.Cols {
 		s.buildNewColumnToCache(table, field)
+	}
+
+	autoIncrement := 0
+	for _, field := range node.Cols {
+		for _, op := range field.Options {
+			switch op.Tp {
+			case ast.ColumnOptionAutoIncrement:
+				autoIncrement += 1
+			}
+		}
+	}
+
+	if autoIncrement > 1 {
+		s.AppendErrorNo(ER_WRONG_AUTO_KEY)
 	}
 
 	return table
@@ -1500,6 +1539,36 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	if table == nil {
 		return
+	}
+
+	table.AlterCount += 1
+
+	if table.AlterCount > 1 {
+		s.AppendErrorNo(ER_ALTER_TABLE_ONCE, node.Table.Name.O)
+	}
+
+	for _, sepc := range node.Specs {
+		if sepc.Options != nil {
+			hasComment := false
+			for _, opt := range sepc.Options {
+				// log.Infof("%#v", opt)
+				switch opt.Tp {
+				case ast.TableOptionEngine:
+					if !strings.EqualFold(opt.StrValue, "innodb") {
+						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
+					}
+				case ast.TableOptionCharset, ast.TableOptionCollate:
+					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+				case ast.TableOptionComment:
+					if opt.StrValue != "" {
+						hasComment = true
+					}
+				}
+			}
+			if !hasComment {
+				s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
+			}
+		}
 	}
 
 	s.mysqlShowTableStatus(table)
@@ -1651,6 +1720,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
 			}
 
+			s.checkKeyWords(nc.Name.Name.O)
+
 			// log.Info(c.OldColumnName, nc.Name, foundField.Field)
 			if !newFound && oldFound && s.opt.execute {
 				buf := bytes.NewBufferString("CHANGE COLUMN `")
@@ -1785,12 +1856,16 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
 	}
 
+	s.checkKeyWords(field.Name.Name.O)
+
 	// notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)
 	// autoIncrement := mysql.HasAutoIncrementFlag(field.Tp.Flag)
 
 	hasComment := false
 	notNullFlag := false
 	autoIncrement := false
+	hasDefaultValue := false
+	isPrimary := false
 
 	if len(field.Options) > 0 {
 		for _, op := range field.Options {
@@ -1807,9 +1882,14 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 				notNullFlag = false
 			case ast.ColumnOptionAutoIncrement:
 				autoIncrement = true
+			case ast.ColumnOptionDefaultValue:
+				hasDefaultValue = true
+			case ast.ColumnOptionPrimaryKey:
+				isPrimary = true
 			}
 		}
 	}
+
 	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
@@ -1846,6 +1926,68 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
 			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, tableName)
 		}
+	}
+
+	if !hasDefaultValue && field.Tp.Tp != mysql.TypeTimestamp &&
+		!mysqlFiledIsBlob(field.Tp.Tp) && !autoIncrement && !isPrimary {
+		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name, tableName)
+	}
+
+	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
+	//        is_timestamp_type(field->sql_type) && !field->def &&
+	//        (field->flags & NOT_NULL_FLAG) &&
+	//        (field->unireg_check == Field::NONE ||
+	//         field->unireg_check == Field::TIMESTAMP_UN_FIELD))
+	//    {
+	//        my_error(ER_INVALID_DEFAULT, MYF(0), field->field_name);
+	//        mysql_errmsg_append(thd);
+	//    }
+}
+
+func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
+	keys []*ast.IndexColName, table *TableInfo) {
+
+	if tp == ast.ConstraintPrimaryKey {
+		return
+	}
+
+	if name == "" {
+		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, "NULL", table.Name)
+	} else {
+		found := false
+		for _, field := range table.Fields {
+			if strings.EqualFold(field.Field, name) {
+				found = true
+				break
+			}
+		}
+		if found {
+			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
+		}
+
+	}
+
+	if name == "PRIMARY" {
+		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
+	}
+
+	switch tp {
+	case ast.ConstraintForeignKey:
+		s.AppendErrorNo(ER_FOREIGN_KEY, table.Name)
+
+	case ast.ConstraintUniq:
+		if !strings.HasPrefix(name, "uniq_") {
+			s.AppendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, table.Name)
+		}
+
+	default:
+		if !strings.HasPrefix(name, "idx_") {
+			s.AppendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name)
+		}
+	}
+
+	if s.Inc.MaxKeys > 0 && len(keys) > int(s.Inc.MaxKeys) {
+		s.AppendErrorNo(ER_TOO_MANY_KEYS, table.Name, s.Inc.MaxKeys)
 	}
 
 }
@@ -2015,7 +2157,7 @@ func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 
 func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	IndexColNames []*ast.IndexColName, IndexOption *ast.IndexOption,
-	t *TableInfo, unique bool) {
+	t *TableInfo, unique bool, tp ast.ConstraintType) {
 	log.Debug("checkCreateIndex")
 
 	if t == nil {
@@ -2024,6 +2166,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			return
 		}
 	}
+
+	s.checkKeyWords(IndexName)
+
+	s.checkIndexAttr(tp, IndexName, IndexColNames, t)
 
 	keyMaxLen := 0
 	for _, col := range IndexColNames {
@@ -2040,9 +2186,14 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		if !found {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
 		} else {
-			tp := foundField.Type
-			if strings.Index(tp, "bolb") > -1 {
+			if strings.Index(foundField.Type, "bolb") > -1 {
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
+			}
+
+			if tp == ast.ConstraintPrimaryKey {
+				if strings.Index(foundField.Type, "int") == -1 {
+					s.AppendErrorNo(ER_PK_COLS_NOT_INT, foundField.Field, t.Schema, t.Name)
+				}
 			}
 		}
 	}
@@ -2081,38 +2232,18 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			}
 		}
 
-		if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
-			s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
-		}
+		// if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
+		// 	s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+		// }
 	}
 
-	if s.opt.execute {
+	if !t.NewCached && s.opt.execute {
 		if IndexName == "PRIMARY" {
 			s.myRecord.DDLRollback += fmt.Sprintf("DROP PRIMARY KEY,")
 		} else {
 			s.myRecord.DDLRollback += fmt.Sprintf("DROP INDEX `%s`,", IndexName)
 		}
 	}
-}
-
-func (s *session) checkAddIndex(t *TableInfo, ct *ast.Constraint) {
-	log.Debug("checkAddIndex")
-
-	// log.Infof("%#v \n", ct)
-
-	for _, col := range ct.Keys {
-		found := false
-		for _, field := range t.Fields {
-			if strings.EqualFold(field.Field, col.Column.Name.O) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
-		}
-	}
-
 }
 
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
@@ -2123,15 +2254,17 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 
 	switch c.Constraint.Tp {
 	case ast.ConstraintIndex:
-		// s.checkAddIndex(t, c.Constraint)
 		s.checkCreateIndex(nil, c.Constraint.Name,
-			c.Constraint.Keys, c.Constraint.Option, t, false)
+			c.Constraint.Keys, c.Constraint.Option, t, false, c.Constraint.Tp)
+
 	case ast.ConstraintUniq:
 		s.checkCreateIndex(nil, c.Constraint.Name,
-			c.Constraint.Keys, c.Constraint.Option, t, true)
+			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
+
 	case ast.ConstraintPrimaryKey:
 		s.checkCreateIndex(nil, "PRIMARY",
-			c.Constraint.Keys, c.Constraint.Option, t, true)
+			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
+
 	// case ast.ConstraintForeignKey:
 	// 	s.checkDropColumn(table, alter)
 	// case ast.AlterTableAddConstraint:
@@ -2262,10 +2395,24 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	table := s.getTableFromCache(t.Schema.O, t.Name.O, true)
-	// log.Infof("%#v", table)
+	if table == nil {
+		return
+	}
+
 	s.myRecord.TableInfo = table
 
-	s.checkFieldsValid(x.Columns, table)
+	for _, c := range x.Columns {
+		found := false
+		for _, field := range table.Fields {
+			if strings.EqualFold(field.Field, c.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
+		}
+	}
 
 	if len(x.Lists) > 0 {
 		if fieldCount == 0 {
@@ -2394,7 +2541,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 	// IsGlobal bool
 	// IsSystem bool
 	for _, v := range node.Variables {
-		log.Infof("%#v", v)
 
 		if !v.IsSystem {
 			return nil, errors.New("无效参数")
@@ -2762,26 +2908,6 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	}
 }
 
-func (s *session) checkFieldsValid(columns []*ast.ColumnName, table *TableInfo) {
-
-	if table == nil {
-		return
-	}
-	for _, c := range columns {
-		found := false
-		for _, field := range table.Fields {
-			if strings.EqualFold(field.Field, c.Name.O) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
-		}
-	}
-
-}
-
 func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists bool) []FieldInfo {
 	if db == "" {
 		db = s.DBName
@@ -2836,6 +2962,22 @@ func (s *session) AppendErrorNo(number int, values ...interface{}) {
 	}
 }
 
+func (s *session) checkKeyWords(name string) {
+
+	if !regIdentified.MatchString(name) {
+		s.AppendErrorNo(ER_INVALID_IDENT, name)
+	} else {
+
+		if _, ok := Keywords[strings.ToUpper(name)]; ok {
+			s.AppendErrorNo(ER_IDENT_USE_KEYWORD, name)
+		}
+	}
+
+	if len(name) > mysql.MaxTableNameLength {
+		s.AppendErrorNo(ER_TOO_LONG_IDENT, name)
+	}
+}
+
 func (s *session) checkInceptionVariables(number int) bool {
 	switch number {
 	case ER_WITH_INSERT_FIELD:
@@ -2867,7 +3009,6 @@ func (s *session) checkInceptionVariables(number int) bool {
 			return false
 		}
 
-		// ----------
 	case ER_FOREIGN_KEY:
 		if s.Inc.EnableForeignKey {
 			return false
@@ -3043,6 +3184,10 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) {
 			c.Key = "PRI"
 		case ast.ColumnOptionDefaultValue:
 			c.Default = op.Expr.GetDatum().GetString()
+		case ast.ColumnOptionAutoIncrement:
+			if strings.ToLower(c.Field) != "id" {
+				s.AppendErrorNo(ER_AUTO_INCR_ID_WARNING, c.Field)
+			}
 		}
 	}
 

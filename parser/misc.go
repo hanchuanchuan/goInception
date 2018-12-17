@@ -622,3 +622,8 @@ func handleIdent(lval *yySymType) int {
 	lval.ident = cs
 	return underscoreCS
 }
+
+// GetKeywords is 自定义函数,返回所有的关键字
+func GetKeywords() map[string]int {
+	return tokenMap
+}
