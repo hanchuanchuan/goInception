@@ -42,23 +42,24 @@ use `test`;
 
 # show variables like 'log%';
 
-# drop table if exists ttt1 ;
+drop table if exists ttt1 ;
 
-# create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
+create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
 
-# insert into ttt1(id,c1) values(1,'test');
+insert into ttt1(id,c1) values(1,null);
+insert into ttt1(id,c1) values(1,'null');
 # insert into ttt1(id,c1) values(2,'test'),(3,'test');
 #insert into ttt1(id,c1) select id+3,c1 from ttt1 order by rand();
 
 #insert into ttt1(id,c1) select id+3,c1 from ttt1 where id = 1 order by 1;
 
-# insert into ttt1(id,c1) select 8,'123';
+# insert into ttt1(id,c1,c1) select 8,'123';
 
-# drop table if exists ttt2;
+#drop table if exists ttt2;
 
-# create table ttt2(id int primary key,pid int );
+#create table ttt2(id int primary key,c1 int );
 
-# insert into ttt2 select 1,1;
+#insert into ttt2(id,c1,c1) select 1,1,1;
 # insert into ttt2 select 2,2;
 
 # update ttt1 set c11 = c1 ;
@@ -82,7 +83,7 @@ use `test`;
 #create table tt33(id varchar(10) primary key,c1 int,index idx_1 (c1));
 # create table tt34(id varchar(10) ,c1 int,primary key(id));
 
-create table `table`(id varchar(10) ,`column` int);
+# create table `table`(id varchar(10) ,`column` int);
 
 inception_magic_commit;
 '''

@@ -2399,13 +2399,30 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		return
 	}
 
+	// 校验列是否重复指定
+	if fieldCount > 0 {
+		checkDup := map[string]bool{}
+		for _, c := range x.Columns {
+			if _, ok := checkDup[c.Name.L]; ok {
+				s.AppendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.Name, c.Table)
+			}
+			checkDup[c.Name.L] = true
+		}
+	}
+
 	s.myRecord.TableInfo = table
+
+	columnsCannotNull := map[string]bool{}
 
 	for _, c := range x.Columns {
 		found := false
 		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, c.Name.O) {
 				found = true
+
+				if field.Null == "NO" {
+					columnsCannotNull[c.Name.L] = true
+				}
 				break
 			}
 		}
@@ -2414,17 +2431,49 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 	}
 
+	// log.Info(sql)
+	// log.Infof("%#v", x.Lists)
+	// log.Info(len(x.Lists))
+
 	if len(x.Lists) > 0 {
 		if fieldCount == 0 {
-			fieldCount = len(x.Lists[0])
+			fieldCount = len(table.Fields)
 		}
 		for i, list := range x.Lists {
-			if len(list) != fieldCount {
+			if len(list) == 0 {
+				s.AppendErrorNo(ER_WITH_INSERT_VALUES)
+			} else if len(list) != fieldCount {
 				s.AppendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, i+1)
+			} else if len(x.Columns) > 0 {
+				for colIndex, vv := range list {
+					if v, ok := vv.(*ast.ValueExpr); ok {
+						log.Infof("%#v", v)
+						name := x.Columns[colIndex].Name.L
+						if _, ok := columnsCannotNull[name]; ok && v.Type.Tp == mysql.TypeNull {
+							s.AppendErrorNo(ER_BAD_NULL_ERROR, x.Columns[colIndex], i+1)
+						}
+					}
+				}
+				// if i == 0 {
+
+				// 	for _, c := range x.Columns {
+				// 		found := false
+				// 		for _, field := range table.Fields {
+				// 			if strings.EqualFold(field.Field, c.Name.O) {
+				// 				found = true
+				// 				break
+				// 			}
+				// 		}
+				// 		if !found {
+				// 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
+				// 		}
+				// 	}
+				// }
 			}
 		}
-
 		s.myRecord.AffectedRows = len(x.Lists)
+	} else if x.Select == nil {
+		s.AppendErrorNo(ER_WITH_INSERT_VALUES)
 	}
 
 	// insert select 语句
@@ -2433,7 +2482,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			// log.Infof("%#v", sel.SelectStmtOpts)
 			// log.Infof("%#v", sel.From)
-			log.Infof("%#v", sel)
+			// log.Infof("%#v", sel)
 			// log.Infof("%#v", sel.Fields)
 
 			// 只考虑insert select单表时,表不存在的情况
