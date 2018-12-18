@@ -106,12 +106,6 @@ type Record struct {
 	ExecComplete bool
 }
 
-func (r *Record) AnlyzeExplain(rows []ExplainInfo) {
-	if len(rows) > 0 {
-		r.AffectedRows = rows[0].Rows
-	}
-}
-
 type recordSet struct {
 	firstIsID  bool
 	data       [][]types.Datum
