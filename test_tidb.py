@@ -42,12 +42,16 @@ use `test`;
 
 # show variables like 'log%';
 
-drop table if exists ttt1 ;
+drop table if exists t2 ;
 
-create table ttt1(id int,c1 varchar(20) not null,c11 varchar(1000),primary key(id));
+create table t2(id int primary key,c1 int,c2 int,index(c1),index c1 (c2));
 
-insert into ttt1(id,c1) values(1,null);
-insert into ttt1(id,c1) values(1,'null');
+#create table ttt1(id int primary key,c1 int auto_increment );
+
+#delete from t1 where id > 0;
+
+#insert into ttt1(id,c1) values(1,null);
+#insert into ttt1(id,c1) values(1,'null');
 # insert into ttt1(id,c1) values(2,'test'),(3,'test');
 #insert into ttt1(id,c1) select id+3,c1 from ttt1 order by rand();
 

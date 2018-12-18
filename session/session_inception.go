@@ -125,7 +125,7 @@ type IndexInfo struct {
 	Table      string `gorm:"Column:Table"`
 	NonUnique  int    `gorm:"Column:Non_unique"`
 	IndexName  string `gorm:"Column:Key_name"`
-	Seq        string `gorm:"Column:Seq_in_index"`
+	Seq        int    `gorm:"Column:Seq_in_index"`
 	ColumnName string `gorm:"Column:Column_name"`
 	IndexType  string `gorm:"Column:Index_type"`
 }
@@ -139,8 +139,12 @@ var (
 var Keywords map[string]int = parser.GetKeywords()
 
 const (
-	MaxKeyLength      = 767
-	RemoteBackupTable = "$_$Inception_backup_information$_$"
+	MaxKeyLength                   = 767
+	RemoteBackupTable              = "$_$Inception_backup_information$_$"
+	TABLE_COMMENT_MAXLEN           = 2048
+	COLUMN_COMMENT_MAXLEN          = 1024
+	INDEX_COMMENT_MAXLEN           = 1024
+	TABLE_PARTITION_COMMENT_MAXLEN = 1024
 )
 
 func init() {
@@ -1358,6 +1362,15 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		}
 	} else {
 
+		// 校验列是否重复指定
+		checkDup := map[string]bool{}
+		for _, c := range node.Cols {
+			if _, ok := checkDup[c.Name.Name.L]; ok {
+				s.AppendErrorNo(ER_DUP_FIELDNAME, c.Name.Name)
+			}
+			checkDup[c.Name.Name.L] = true
+		}
+
 		hasComment := false
 		for _, opt := range node.Options {
 			// log.Infof("%#v", opt)
@@ -1444,9 +1457,23 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		s.myRecord.TableInfo = table
 	}
 
+	dupIndexes := map[string]bool{}
 	for _, ct := range node.Constraints {
 		s.checkCreateIndex(nil, ct.Name,
 			ct.Keys, ct.Option, table, false, ct.Tp)
+
+		switch ct.Tp {
+		case ast.ConstraintKey, ast.ConstraintUniq,
+			ast.ConstraintIndex, ast.ConstraintUniqKey,
+			ast.ConstraintUniqIndex:
+			if ct.Name == "" {
+				ct.Name = ct.Keys[0].Column.Name.O
+			}
+			if _, ok := dupIndexes[strings.ToLower(ct.Name)]; ok {
+				s.AppendErrorNo(ER_DUP_KEYNAME, ct.Name)
+			}
+			dupIndexes[strings.ToLower(ct.Name)] = true
+		}
 	}
 
 	if node.Partition != nil {
@@ -1478,13 +1505,36 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 	}
 
 	autoIncrement := 0
+	primaryKey := 0
 	for _, field := range node.Cols {
+		isKey := false
+		isAutoIncrement := false
 		for _, op := range field.Options {
 			switch op.Tp {
 			case ast.ColumnOptionAutoIncrement:
 				autoIncrement += 1
+				isAutoIncrement = true
+			case ast.ColumnOptionPrimaryKey:
+				primaryKey += 1
+				isKey = true
+			case ast.ColumnOptionUniqKey:
+				isKey = true
 			}
 		}
+		// 自增列必须是key
+		if isAutoIncrement && !isKey {
+			s.AppendErrorNo(ER_WRONG_AUTO_KEY)
+		}
+	}
+
+	for _, ct := range node.Constraints {
+		if ct.Tp == ast.ConstraintPrimaryKey {
+			primaryKey += 1
+		}
+	}
+
+	if primaryKey > 1 {
+		s.AppendErrorNo(ER_MULTIPLE_PRI_KEY)
 	}
 
 	if autoIncrement > 1 {
@@ -1963,8 +2013,9 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		}
 		if found {
 			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
+		} else {
+			s.checkKeyWords(name)
 		}
-
 	}
 
 	if name == "PRIMARY" {
@@ -1986,8 +2037,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		}
 	}
 
-	if s.Inc.MaxKeys > 0 && len(keys) > int(s.Inc.MaxKeys) {
-		s.AppendErrorNo(ER_TOO_MANY_KEYS, table.Name, s.Inc.MaxKeys)
+	if s.Inc.MaxKeyParts > 0 && len(keys) > int(s.Inc.MaxKeyParts) {
+		s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, table.Name, s.Inc.MaxKeyParts)
 	}
 
 }
@@ -2232,9 +2283,16 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			}
 		}
 
-		// if s.Inc.MaxKeys > 0 && len(rows) > int(s.Inc.MaxKeys) {
-		// 	s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
-		// }
+		key_count := 0
+		for _, row := range rows {
+			if row.Seq == 1 {
+				key_count += 1
+			}
+		}
+
+		if s.Inc.MaxKeys > 0 && key_count >= int(s.Inc.MaxKeys) {
+			s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+		}
 	}
 
 	if !t.NewCached && s.opt.execute {
@@ -2532,7 +2590,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				explain = append(explain, selectSql)
 
 				rows := s.getExplainInfo(strings.Join(explain, ""))
-				s.myRecord.AnlyzeExplain(rows)
+				s.AnlyzeExplain(rows)
 			}
 
 			if sel.Where == nil {
@@ -2859,8 +2917,20 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 
 	rows := s.getExplainInfo(strings.Join(explain, ""))
 
-	s.myRecord.AnlyzeExplain(rows)
+	s.AnlyzeExplain(rows)
+}
 
+func (s *session) AnlyzeExplain(rows []ExplainInfo) {
+	r := s.myRecord
+	if len(rows) > 0 {
+		r.AffectedRows = rows[0].Rows
+	}
+	if r.AffectedRows >= s.Inc.MaxUpdateRows {
+		switch r.Type.(type) {
+		case *ast.DeleteStmt, *ast.UpdateStmt:
+			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
+		}
+	}
 }
 
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
