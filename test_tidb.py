@@ -44,7 +44,7 @@ use `test`;
 
 drop table if exists t2 ;
 
-create table t2(id int primary key,c1 int,c2 int,index(c1),index c1 (c2));
+create table t2(id int auto_increment primary key)AUTO_INCREMENT=10 ;
 
 #create table ttt1(id int primary key,c1 int auto_increment );
 
