@@ -243,6 +243,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 				switch stmtNode.(type) {
 				case *ast.InceptionStartStmt:
+					if s.haveBegin {
+						s.AppendErrorNo(ER_HAVE_BEGIN)
+						s.myRecord.Sql = ""
+						s.recordSets.Append(s.myRecord)
+						return s.recordSets.Rows(), nil
+					}
 					s.haveBegin = true
 					s.parseOptions(sql)
 
@@ -1385,19 +1391,24 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				if opt.StrValue != "" {
 					hasComment = true
 				}
+				if len(opt.StrValue) > TABLE_COMMENT_MAXLEN {
+					s.AppendErrorMessage(fmt.Sprintf("Comment for table '%s' is too long (max = %d)",
+						node.Table.Name.O, TABLE_COMMENT_MAXLEN))
+				}
+			case ast.TableOptionAutoIncrement:
+				// log.Infof("%#v", opt)
+				if opt.UintValue > 1 {
+					s.AppendErrorNo(ER_INC_INIT_ERR)
+				}
 			}
 		}
 
 		hasPrimary := false
 		for _, ct := range node.Constraints {
 			// log.Infof("%#v", ct)
-
 			switch ct.Tp {
 			case ast.ConstraintPrimaryKey:
-				// log.Infof("%#v", ct)
-
 				hasPrimary = len(ct.Keys) > 0
-
 				for _, col := range ct.Keys {
 					found := false
 					for _, field := range node.Cols {
@@ -1411,7 +1422,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 							fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
 					}
 				}
-
 				break
 			}
 		}
@@ -1635,13 +1645,15 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
 		case ast.AlterTableDropColumn:
-			s.checkDropColumn(table, alter)
+			s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
+			// s.checkDropColumn(table, alter)
 
 		case ast.AlterTableAddConstraint:
 			s.checkAddConstraint(table, alter)
 
 		case ast.AlterTableDropPrimaryKey:
-			s.checkDropPrimaryKey(table, alter)
+			s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
+			// s.checkDropPrimaryKey(table, alter)
 		case ast.AlterTableDropIndex:
 			s.checkAlterTableDropIndex(table, alter.Name)
 
@@ -1898,7 +1910,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
-	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > 10 {
+	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > s.Inc.MaxCharLength {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
 
@@ -1915,6 +1927,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	notNullFlag := false
 	autoIncrement := false
 	hasDefaultValue := false
+	var defaultValue string
 	isPrimary := false
 
 	if len(field.Options) > 0 {
@@ -1933,6 +1946,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionAutoIncrement:
 				autoIncrement = true
 			case ast.ColumnOptionDefaultValue:
+				defaultValue = op.Expr.GetDatum().GetString()
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
@@ -1942,6 +1956,16 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 
 	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
+	}
+
+	if hasDefaultValue && len(defaultValue) == 0 {
+		switch field.Tp.Tp {
+		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
+			mysql.TypeLong, mysql.TypeLonglong,
+			mysql.TypeBit, mysql.TypeYear,
+			mysql.TypeFloat, mysql.TypeDouble, mysql.TypeNewDecimal:
+			s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+		}
 	}
 
 	if mysqlFiledIsBlob(field.Tp.Tp) {
@@ -2255,6 +2279,13 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 
 	if keyMaxLen > MaxKeyLength {
 		s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
+	}
+
+	if IndexOption != nil {
+		// 注释长度校验
+		if len(IndexOption.Comment) > INDEX_COMMENT_MAXLEN {
+			s.AppendErrorNo(ER_TOO_LONG_INDEX_COMMENT, IndexName, INDEX_COMMENT_MAXLEN)
+		}
 	}
 
 	// if len(IndexColNames) > s.Inc.MaxPrimaryKeyParts {
