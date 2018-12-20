@@ -1459,8 +1459,26 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 		table = s.buildTableInfo(node)
 
-		for _, nc := range node.Cols {
-			s.mysqlCheckField(table, nc)
+		timestampCount := 0
+		for _, field := range node.Cols {
+			s.mysqlCheckField(table, field)
+
+			if field.Tp.Tp == mysql.TypeTimestamp {
+				// log.Infof("%#v", field)
+				for _, op := range field.Options {
+					if op.Tp == ast.ColumnOptionDefaultValue {
+						timestampCount += 1
+						// if _,ok := op.Expr(*ast.FuncCallExpr);ok{
+						// }
+						// defaultValue := op.Expr.GetDatum().GetString()
+						// log.Info(defaultValue)
+					}
+				}
+			}
+		}
+
+		if timestampCount > 1 {
+			s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
 		}
 
 		s.cacheNewTable(table)
@@ -1871,8 +1889,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 // hasError is return current sql has errors or warnings
 func (s *session) hasError() bool {
-	// || (s.myRecord.ErrLevel == 1 && !s.opt.ignoreWarnings)
-	if s.myRecord.ErrLevel == 2 {
+	if s.myRecord.ErrLevel == 2 ||
+		(s.myRecord.ErrLevel == 1 && !s.opt.ignoreWarnings) {
 		return true
 	}
 
@@ -2022,6 +2040,11 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	keys []*ast.IndexColName, table *TableInfo) {
 
 	if tp == ast.ConstraintPrimaryKey {
+
+		if s.Inc.MaxPrimaryKeyParts > 0 && len(keys) > int(s.Inc.MaxPrimaryKeyParts) {
+			s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, table.Schema, table.Name, s.Inc.MaxPrimaryKeyParts)
+		}
+
 		return
 	}
 
@@ -2287,10 +2310,6 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			s.AppendErrorNo(ER_TOO_LONG_INDEX_COMMENT, IndexName, INDEX_COMMENT_MAXLEN)
 		}
 	}
-
-	// if len(IndexColNames) > s.Inc.MaxPrimaryKeyParts {
-	// 	s.AppendErrorNo(ER_PK_TOO_MANY_PARTS, t.Name, col.Column.Name.O, s.Inc.MaxPrimaryKeyParts)
-	// }
 
 	if !t.NewCached {
 		querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
@@ -3131,21 +3150,17 @@ func (s *session) checkKeyWords(name string) {
 func (s *session) checkInceptionVariables(number int) bool {
 	switch number {
 	case ER_WITH_INSERT_FIELD:
-		if s.Inc.CheckInsertField {
-			return true
-		}
+		return s.Inc.CheckInsertField
+
 	case ER_NO_WHERE_CONDITION:
-		if s.Inc.CheckDMLWhere {
-			return true
-		}
+		return s.Inc.CheckDMLWhere
+
 	case ER_WITH_LIMIT_CONDITION:
-		if s.Inc.CheckDMLLimit {
-			return true
-		}
+		return s.Inc.CheckDMLLimit
+
 	case ER_WITH_ORDERBY_CONDITION:
-		if s.Inc.CheckDMLOrderBy {
-			return true
-		}
+		return s.Inc.CheckDMLOrderBy
+
 	case ER_SELECT_ONLY_STAR:
 		if s.Inc.EnableSelectStar {
 			return false
@@ -3172,21 +3187,17 @@ func (s *session) checkInceptionVariables(number int) bool {
 			return false
 		}
 	case ER_PK_COLS_NOT_INT:
-		if s.Inc.EnablePKColumnsOnlyInt {
-			return true
-		}
+		return s.Inc.EnablePKColumnsOnlyInt
+
 	case ER_TABLE_MUST_HAVE_COMMENT:
-		if s.Inc.CheckTableComment {
-			return true
-		}
+		return s.Inc.CheckTableComment
+
 	case ER_COLUMN_HAVE_NO_COMMENT:
-		if s.Inc.CheckColumnComment {
-			return true
-		}
+		return s.Inc.CheckColumnComment
+
 	case ER_TABLE_MUST_HAVE_PK:
-		if s.Inc.CheckPrimaryKey {
-			return true
-		}
+		return s.Inc.CheckPrimaryKey
+
 	case ER_PARTITION_NOT_ALLOWED:
 		if s.Inc.EnablePartitionTable {
 			return false
@@ -3196,29 +3207,22 @@ func (s *session) checkInceptionVariables(number int) bool {
 			return false
 		}
 	case ER_INDEX_NAME_IDX_PREFIX, ER_INDEX_NAME_UNIQ_PREFIX:
-		if s.Inc.CheckIndexPrefix {
-			return true
-		}
+		return s.Inc.CheckIndexPrefix
+
 	case ER_AUTOINC_UNSIGNED:
-		if s.Inc.EnableAutoIncrementUnsigned {
-			return true
-		}
+		return s.Inc.EnableAutoIncrementUnsigned
+
 	case ER_INC_INIT_ERR:
-		if s.Inc.CheckAutoIncrementInitValue {
-			return true
-		}
+		return s.Inc.CheckAutoIncrementInitValue
+
 	case ER_INVALID_IDENT:
-		if s.Inc.CheckIdentifier {
-			return true
-		}
+		return s.Inc.CheckIdentifier
+
 	case ER_SET_DATA_TYPE_INT_BIGINT:
-		if s.Inc.CheckAutoIncrementDataType {
-			return true
-		}
+		return s.Inc.CheckAutoIncrementDataType
+
 	case ER_TIMESTAMP_DEFAULT:
-		if s.Inc.CheckTimestampDefault {
-			return true
-		}
+		return s.Inc.CheckTimestampDefault
 
 	case ER_CHARSET_ON_COLUMN:
 		if s.Inc.EnableColumnCharset {
@@ -3229,17 +3233,14 @@ func (s *session) checkInceptionVariables(number int) bool {
 			return false
 		}
 	case ER_AUTO_INCR_ID_WARNING:
-		if s.Inc.CheckAutoIncrementName {
-			return true
-		}
+		return s.Inc.CheckAutoIncrementName
+
 	case ER_ALTER_TABLE_ONCE:
-		if s.Inc.MergeAlterTable {
-			return true
-		}
+		return s.Inc.MergeAlterTable
+
 	case ER_WITH_DEFAULT_ADD_COLUMN:
-		if s.Inc.CheckColumnDefaultValue {
-			return true
-		}
+		return s.Inc.CheckColumnDefaultValue
+
 	}
 
 	return true
