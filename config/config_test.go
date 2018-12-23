@@ -14,7 +14,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"runtime"
