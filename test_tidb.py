@@ -40,13 +40,15 @@ sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
 inception_magic_start;
 use `test`;
 
-
+update t1 set c1 = 1 where id = 1;
+update t1 set c1 = 1 where id > (select max(1) from t1);
+update t1 set c1 = 1 where id > all (select 1 from t1);
 
 # show variables like 'log%';
 
-drop table if exists t2 ;
+# drop table if exists t2 ;
 
-create table t2(id int auto_increment primary key,t1 timestamp  NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,t2 timestamp);
+# create table t2(id int auto_increment primary key,t1 timestamp  NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,t2 timestamp);
 
 #create table ttt1(id int primary key,c1 int auto_increment );
 

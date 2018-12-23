@@ -37,7 +37,7 @@ func (s *testConfigSuite) TestConfig(c *C) {
 	conf.Binlog.IgnoreError = true
 	conf.TiKVClient.CommitTimeout = "10s"
 
-	configFile := "config.toml"
+	configFile := "config.test.toml"
 	_, localFile, _, _ := runtime.Caller(0)
 	configFile = path.Join(path.Dir(localFile), configFile)
 
