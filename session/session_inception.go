@@ -37,7 +37,7 @@ import (
 	"github.com/hanchuanchuan/tidb/mysql"
 	"github.com/hanchuanchuan/tidb/types"
 	// "github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/parser"
+	// "github.com/hanchuanchuan/tidb/parser"
 	"github.com/hanchuanchuan/tidb/util"
 	"github.com/hanchuanchuan/tidb/util/stringutil"
 	"github.com/jinzhu/gorm"
@@ -136,7 +136,7 @@ var (
 	regIdentified  *regexp.Regexp
 )
 
-var Keywords map[string]int = parser.GetKeywords()
+// var Keywords map[string]int = parser.GetKeywords()
 
 const (
 	MaxKeyLength                   = 767
