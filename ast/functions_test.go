@@ -14,8 +14,8 @@
 package ast_test
 
 import (
-	. "github.com/hanchuanchuan/tidb/ast"
 	. "github.com/pingcap/check"
+	. "github.com/hanchuanchuan/tidb/ast"
 )
 
 var _ = Suite(&testFunctionsSuite{})

@@ -12,6 +12,8 @@ port = 4000
 [inc]
 enable_nullable = true
 enable_drop_table = true
+enable_column_charset = false
+
 max_primary_key_parts = 3
 max_keys = 3
 max_key_parts = 3
@@ -19,6 +21,7 @@ max_update_rows = 5000
 
 check_table_comment = false
 check_column_comment = false
+check_index_prefix = false
 
 
 backup_host = "127.0.0.1"
