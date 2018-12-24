@@ -65,6 +65,8 @@ type sourceOptions struct {
 	execute        bool
 	backup         bool
 	ignoreWarnings bool
+
+	remoteBackup bool
 }
 
 type ExplainInfo struct {
@@ -1070,14 +1072,32 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	options := strings.Replace(strings.Replace(firsts[1], "-", "", -1), "_", "", -1)
-	options = strings.Replace(options, ";", "\n", -1)
 	options = strings.Replace(options, "=", ": ", -1)
+	options = strings.Replace(options, "remote", "", -1)
+	// options = strings.Replace(options, ";", "\n", -1)
 
-	// log.Info(options)
-	// viper.SetConfigType("toml")
+	// list := []string{}
+
+	var buf strings.Builder
+
+	for _, line := range strings.Split(options, ";") {
+		if strings.HasPrefix(line, "enable") {
+			buf.WriteString(line[6:])
+			buf.WriteString(": true")
+		} else if strings.HasPrefix(line, "disable") {
+			buf.WriteString(line[7:])
+			buf.WriteString(": false")
+		} else {
+			buf.WriteString(line)
+		}
+		buf.WriteString("\n")
+	}
+
+	opt := buf.String()
+	log.Info(opt)
 	viper.SetConfigType("yaml")
 
-	viper.ReadConfig(bytes.NewBuffer([]byte(options)))
+	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
 
 	s.opt = &sourceOptions{
 		host:           viper.GetString("host"),
@@ -1088,6 +1108,7 @@ func (s *session) parseOptions(sql string) {
 		execute:        viper.GetBool("execute"),
 		backup:         viper.GetBool("backup"),
 		ignoreWarnings: viper.GetBool("ignoreWarnings"),
+		// remoteBackup:   viper.GetBool("remotebackup"),
 	}
 
 	if s.opt.check {
