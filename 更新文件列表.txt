@@ -1,0 +1,34 @@
+
+ast/
+    # 添加inception语法
+    dml.go
+    misc.go
+config/
+    # 添加inception配置项
+    config.go
+    config.toml
+parser/
+    # 添加inception语法解析
+    parser.y
+    # 返回关键字列表
+    misc.go
+server/
+    # 限定支持的操作类型
+    conn.go
+session/
+    session.go
+    + session_inception.go
+    + inception_result.go
+    + errors.go
+    + parser.go
+    + socket.go
+tidb-server/
+    # 启动时默认指定配置文件
+    main.go
+util/
+    # 添加额外的进程信息
+    processinfo.go
+
+ddl/
+    # 关闭ddl的worker
+    ddl_worker.go

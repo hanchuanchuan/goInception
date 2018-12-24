@@ -273,10 +273,6 @@ type Inc struct {
 	// inception_enable_nullable = 'ON'
 	// inception_enable_column_charset = 0
 	// inception_support_charset = utf8mb4
-	// inception_remote_backup_host = 127.0.0.1
-	// inception_remote_backup_port = 20001
-	// inception_remote_system_user = inception
-	// inception_remote_system_password = inception
 
 	BackupHost     string `toml:"backup_host" json:"backup_host"` // 远程备份库信息
 	BackupPassword string `toml:"backup_password" json:"backup_password"`
@@ -327,7 +323,7 @@ var defaultConf = Config{
 	Port:             4000,
 	Store:            "mocktikv",
 	Path:             "/tmp/tidb",
-	RunDDL:           true,
+	RunDDL:           false,
 	SplitTable:       true,
 	Lease:            "45s",
 	TokenLimit:       1000,
@@ -351,12 +347,12 @@ var defaultConf = Config{
 		QueryLogMaxLen:     2048,
 	},
 	Status: Status{
-		ReportStatus:    true,
+		ReportStatus:    false,
 		StatusPort:      10080,
 		MetricsInterval: 15,
 	},
 	Performance: Performance{
-		TCPKeepAlive:        true,
+		TCPKeepAlive:        false,
 		CrossJoin:           true,
 		StatsLease:          "3s",
 		RunAutoAnalyze:      true,
