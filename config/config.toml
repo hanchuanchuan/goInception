@@ -31,3 +31,7 @@ backup_password = "inception"
 level = "info"
 # Log format, one of json, text, console.
 format = "console"
+
+
+[security]
+skip-grant-table = true
