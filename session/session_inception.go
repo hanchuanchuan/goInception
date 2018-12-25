@@ -39,6 +39,7 @@ import (
 	// "github.com/hanchuanchuan/tidb/util/mock"
 	// "github.com/hanchuanchuan/tidb/parser"
 	"github.com/hanchuanchuan/tidb/util"
+	"github.com/hanchuanchuan/tidb/util/auth"
 	"github.com/hanchuanchuan/tidb/util/stringutil"
 	"github.com/jinzhu/gorm"
 	"github.com/pingcap/errors"
@@ -133,7 +134,7 @@ type IndexInfo struct {
 }
 
 var (
-	reg            *regexp.Regexp
+	regParseOption *regexp.Regexp
 	regFieldLength *regexp.Regexp
 	regIdentified  *regexp.Regexp
 )
@@ -152,7 +153,7 @@ const (
 func init() {
 
 	// 正则匹配sql的option设置
-	reg = regexp.MustCompile(`^\/\*(.*?)\*\/`)
+	regParseOption = regexp.MustCompile(`^\/\*(.*?)\*\/`)
 
 	regFieldLength = regexp.MustCompile(`^.*?\((\d)`)
 
@@ -184,6 +185,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 		return s.Execute(ctx, sql)
 	}
 
+	defer logQuery(sql, s.sessionVars)
+
 	s.PrepareTxnCtx(ctx)
 	connID := s.sessionVars.ConnectionID
 	err = s.loadCommonGlobalVariablesIfNeeded()
@@ -210,7 +213,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			// log.Info("语句数", len(stmtNodes))
 
 			if err != nil {
-				log.Info(fmt.Sprintf("解析失败! %s", err))
+				log.Error(s1)
+				log.Error(fmt.Sprintf("解析失败! %s", err))
 				s.recordSets.Append(&Record{
 					Sql:          s1,
 					ErrLevel:     2,
@@ -232,12 +236,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 			for i, stmtNode := range stmtNodes {
 
-				// log.Info("当前语句: ", stmtNode)
-				// log.Infof("%T\n", stmtNode)
+				currentSql := strings.TrimSpace(stmtNode.Text())
 
-				// var checkResult *Record = nil
 				s.myRecord = &Record{
-					Sql:   stmtNode.Text(),
+					Sql:   currentSql,
 					Buf:   new(bytes.Buffer),
 					Type:  stmtNode,
 					Stage: StageCheck,
@@ -252,7 +254,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						return s.recordSets.Rows(), nil
 					}
 					s.haveBegin = true
-					s.parseOptions(sql)
+					s.parseOptions(currentSql)
 
 					if s.db != nil {
 						defer s.db.Close()
@@ -288,7 +290,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						return s.recordSets.Rows(), nil
 					}
 
-					s.SetMyProcessInfo(stmtNode.Text(), time.Now(), float64(i)/float64(lineCount+1))
+					s.SetMyProcessInfo(currentSql, time.Now(), float64(i)/float64(lineCount+1))
 
 					// 交互式命令行
 					if !need {
@@ -372,7 +374,7 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]ast.RecordSet, error) {
 	log.Debug("processCommand")
 
-	currentSql := stmtNode.Text()
+	currentSql := strings.TrimSpace(stmtNode.Text())
 
 	switch node := stmtNode.(type) {
 	case *ast.InsertStmt:
@@ -474,13 +476,15 @@ func (s *session) executeCommit() {
 
 	s.executeAllStatement()
 
-	if s.recordSets.MaxLevel == 2 ||
-		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
-		return
-	}
+	// 只要有执行成功的,就添加备份
+	// if s.recordSets.MaxLevel == 2 ||
+	// 	(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+	// 	return
+	// }
 
 	if s.opt.backup {
 
+		log.Info("开始备份")
 		// 如果有错误时,把错误输出放在第一行
 		// s.myRecord = s.recordSets.All()[0]
 
@@ -492,6 +496,7 @@ func (s *session) executeCommit() {
 		}
 
 		for _, record := range s.recordSets.All() {
+
 			if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
 				s.myRecord = record
 
@@ -919,6 +924,8 @@ func (s *session) executeRemoteStatement(record *Record) {
 		record.StageStatus = StatusExecOK
 		record.ThreadId = s.fetchThreadID()
 
+		record.ExecComplete = true
+
 		switch record.Type.(type) {
 		case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
 			s.TotalChangeRows += record.AffectedRows
@@ -1065,8 +1072,9 @@ func (s *session) checkBinlogIsOn() bool {
 
 func (s *session) parseOptions(sql string) {
 
-	firsts := reg.FindStringSubmatch(sql)
+	firsts := regParseOption.FindStringSubmatch(sql)
 	if len(firsts) < 2 {
+		log.Warning(sql)
 		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
 		return
 	}
@@ -1094,7 +1102,7 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	opt := buf.String()
-	log.Info(opt)
+	// log.Info(opt)
 	viper.SetConfigType("yaml")
 
 	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
@@ -1118,7 +1126,7 @@ func (s *session) parseOptions(sql string) {
 
 	if s.opt.host == "" || s.opt.port == 0 ||
 		s.opt.user == "" || s.opt.password == "" {
-		log.Info(s.opt)
+		log.Warning(s.opt)
 		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
 		return
 	}
@@ -1178,6 +1186,8 @@ func (s *session) parseOptions(sql string) {
 		}
 		s.processInfo.Store(pi)
 	}
+
+	// log.Warningf("%#v", s.opt)
 }
 
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
@@ -1372,7 +1382,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	s.checkKeyWords(node.Table.Name.O)
 
 	s.myRecord.DBName = node.Table.Schema.O
-
 	s.myRecord.TableName = node.Table.Name.O
 
 	// 缓存表结构 CREATE TABLE LIKE
@@ -1532,7 +1541,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	if s.opt.execute {
 		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
 	}
-
 }
 
 func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
@@ -2576,7 +2584,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			} else if len(x.Columns) > 0 {
 				for colIndex, vv := range list {
 					if v, ok := vv.(*ast.ValueExpr); ok {
-						log.Infof("%#v", v)
 						name := x.Columns[colIndex].Name.L
 						if _, ok := columnsCannotNull[name]; ok && v.Type.Tp == mysql.TypeNull {
 							s.AppendErrorNo(ER_BAD_NULL_ERROR, x.Columns[colIndex], i+1)
@@ -2799,15 +2806,33 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 		if v.Field(i).CanInterface() { //判断是否为可导出字段
 			if len(like) == 0 {
 				if k := t.Field(i).Tag.Get("json"); k != "" {
-					res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+					if k == "backup_password" {
+						p := auth.EncodePassword(
+							fmt.Sprintf("%v", v.Field(i).Interface()))
+						res.Append(k, p)
+					} else {
+						res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+					}
 				}
 			} else {
 				if k := t.Field(i).Tag.Get("json"); k != "" {
 					match := stringutil.DoMatch(k, patChars, patTypes)
 					if match && !node.Pattern.Not {
-						res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+						if k == "backup_password" {
+							p := auth.EncodePassword(
+								fmt.Sprintf("%v", v.Field(i).Interface()))
+							res.Append(k, p)
+						} else {
+							res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+						}
 					} else if !match && node.Pattern.Not {
-						res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+						if k == "backup_password" {
+							p := auth.EncodePassword(
+								fmt.Sprintf("%v", v.Field(i).Interface()))
+							res.Append(k, p)
+						} else {
+							res.Append(k, fmt.Sprintf("%v", v.Field(i).Interface()))
+						}
 					}
 				}
 			}
