@@ -274,6 +274,7 @@ var tokenMap = map[string]int{
 	"FULLTEXT":                 fulltext,
 	"FUNCTION":                 function,
 	"GENERATED":                generated,
+	"GET":                      show,
 	"GET_FORMAT":               getFormat,
 	"GLOBAL":                   global,
 	"GRANT":                    grant,
@@ -566,6 +567,7 @@ var aliases = map[string]string{
 	"SCHEMAS": "DATABASES",
 	"DEC":     "DECIMAL",
 	"SUBSTR":  "SUBSTRING",
+	"GET":     "SHOW",
 }
 
 func (s *Scanner) isTokenIdentifier(lit string, offset int) int {

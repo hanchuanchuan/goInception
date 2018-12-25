@@ -204,6 +204,7 @@ import (
 	selectKwd		"SELECT"
 	set			"SET"
 	show			"SHOW"
+	get				"GET"
 	smallIntType		"SMALLINT"
 	sql			"SQL"
 	sqlCalcFoundRows	"SQL_CALC_FOUND_ROWS"
@@ -1414,6 +1415,19 @@ CommitStmt:
 
 InceptionStmt:
 	"INCEPTION" "SHOW" ShowTargetFilterable ShowLikeOrWhereOpt
+	{
+		stmt := $3.(*ast.ShowStmt)
+		if $4 != nil {
+			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+				stmt.Pattern = x
+			} else {
+				stmt.Where = $4.(ast.ExprNode)
+			}
+		}
+		stmt.IsInception = true
+		$$ = stmt
+	}
+|	"INCEPTION" "GET" ShowTargetFilterable ShowLikeOrWhereOpt
 	{
 		stmt := $3.(*ast.ShowStmt)
 		if $4 != nil {

@@ -355,7 +355,7 @@ var defaultConf = Config{
 		TCPKeepAlive:        false,
 		CrossJoin:           true,
 		StatsLease:          "3s",
-		RunAutoAnalyze:      true,
+		RunAutoAnalyze:      false,
 		StmtCountLimit:      5000,
 		FeedbackProbability: 0.05,
 		QueryFeedbackLimit:  1024,

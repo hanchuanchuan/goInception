@@ -106,7 +106,7 @@ func (s *session) Parser() {
 	// s.backupdb.LogMode(true)
 
 	cfg := replication.BinlogSyncerConfig{
-		ServerID: 2000000112,
+		ServerID: 2000111111,
 		// Flavor:   p.cfg.Flavor,
 
 		Host:     s.opt.host,
