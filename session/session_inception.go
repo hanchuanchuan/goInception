@@ -98,12 +98,16 @@ type FieldInfo struct {
 	Extra      string `gorm:"Column:Extra"`
 	Privileges string `gorm:"Column:Privileges"`
 	Comment    string `gorm:"Column:Comment"`
+	IsDeleted  bool   `gorm:"-"`
 }
 
 type TableInfo struct {
 	Schema string
 	Name   string
 	Fields []FieldInfo
+
+	// 索引
+	Indexes []*IndexInfo
 
 	// 是否已删除
 	IsDeleted bool
@@ -131,6 +135,7 @@ type IndexInfo struct {
 	Seq        int    `gorm:"Column:Seq_in_index"`
 	ColumnName string `gorm:"Column:Column_name"`
 	IndexType  string `gorm:"Column:Index_type"`
+	IsDeleted  bool   `gorm:"-"`
 }
 
 var (
@@ -1329,7 +1334,7 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	// 旧表存在,新建不存在时
 	if originTable != nil && table == nil {
-		table = copyTableInfo(originTable)
+		table = s.copyTableInfo(originTable)
 
 		table.Name = node.NewTable.Name.O
 		if node.NewTable.Schema.O == "" {
@@ -1345,7 +1350,6 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 				table.Schema, table.Name, originTable.Schema, originTable.Name)
 		}
 	}
-
 }
 
 func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
@@ -1388,7 +1392,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	if node.ReferTable != nil {
 		originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
 		if originTable != nil {
-			table = copyTableInfo(originTable)
+			table = s.copyTableInfo(originTable)
 
 			table.Name = node.Table.Name.O
 			table.Schema = node.Table.Schema.O
@@ -1692,15 +1696,16 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
 		case ast.AlterTableDropColumn:
-			s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
-			// s.checkDropColumn(table, alter)
+			// log.Infof("%#v", alter)
+			// s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
+			s.checkDropColumn(table, alter)
 
 		case ast.AlterTableAddConstraint:
 			s.checkAddConstraint(table, alter)
 
 		case ast.AlterTableDropPrimaryKey:
-			s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
-			// s.checkDropPrimaryKey(table, alter)
+			// s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
+			s.checkDropPrimaryKey(table, alter)
 		case ast.AlterTableDropIndex:
 			s.checkAlterTableDropIndex(table, alter.Name)
 
@@ -1738,7 +1743,7 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 	} else {
 		// 旧表存在,新建不存在时
 
-		table = copyTableInfo(t)
+		table = s.copyTableInfo(t)
 
 		t.IsDeleted = true
 		table.Name = c.NewTable.Name.O
@@ -2130,49 +2135,61 @@ func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool {
 	log.Debug("checkAlterTableDropIndex")
 
-	// 删除索引时回库查询
-	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
+	// var rows []*IndexInfo
 
-	var rows []IndexInfo
-
-	if err := s.db.Raw(sql, indexName).Scan(&rows).Error; err != nil {
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
+	// if !t.NewCached {
+	// 	// 删除索引时回库查询
+	// 	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
+	// 	if err := s.db.Raw(sql, indexName).Scan(&rows).Error; err != nil {
+	// 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 			s.AppendErrorMessage(myErr.Message)
+	// 		} else {
+	// 			s.AppendErrorMessage(err.Error())
+	// 		}
+	// 		return false
+	// 	}
+	// } else {
+	// 	rows = t.Indexes
+	// }
+	if len(t.Indexes) == 0 {
+		s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
 		return false
-	} else {
-
-		if len(rows) == 0 {
-			s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
-			return false
-		}
-
-		if s.opt.execute {
-
-			for i, row := range rows {
-				if i == 0 {
-					if indexName == "PRIMARY" {
-						s.myRecord.DDLRollback += "ADD PRIMARY KEY("
-					} else {
-						if row.NonUnique == 0 {
-							s.myRecord.DDLRollback += fmt.Sprintf("ADD UNIQUE INDEX `%s`(", indexName)
-						} else {
-							s.myRecord.DDLRollback += fmt.Sprintf("ADD INDEX `%s`(", indexName)
-						}
-					}
-
-					s.myRecord.DDLRollback += fmt.Sprintf("`%s`", row.ColumnName)
-				} else {
-					s.myRecord.DDLRollback += fmt.Sprintf(",`%s`", row.ColumnName)
-				}
-			}
-			s.myRecord.DDLRollback += "),"
-		}
-		return true
 	}
 
+	var foundRows []*IndexInfo
+	for _, row := range t.Indexes {
+		if row.IndexName == indexName && !row.IsDeleted {
+			foundRows = append(foundRows, row)
+			row.IsDeleted = true
+		}
+	}
+
+	if len(foundRows) == 0 {
+		s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
+		return false
+	}
+
+	if s.opt.execute {
+		for i, row := range foundRows {
+			if i == 0 {
+				if indexName == "PRIMARY" {
+					s.myRecord.DDLRollback += "ADD PRIMARY KEY("
+				} else {
+					if row.NonUnique == 0 {
+						s.myRecord.DDLRollback += fmt.Sprintf("ADD UNIQUE INDEX `%s`(", indexName)
+					} else {
+						s.myRecord.DDLRollback += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+					}
+				}
+
+				s.myRecord.DDLRollback += fmt.Sprintf("`%s`", row.ColumnName)
+			} else {
+				s.myRecord.DDLRollback += fmt.Sprintf(",`%s`", row.ColumnName)
+			}
+		}
+		s.myRecord.DDLRollback += "),"
+	}
+	return true
 }
 
 func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
@@ -2189,7 +2206,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// log.Infof("%s \n", nc)
 		found := false
 		for _, field := range t.Fields {
-			if strings.EqualFold(field.Field, nc.Name.Name.O) {
+			if strings.EqualFold(field.Field, nc.Name.Name.O) && !field.IsDeleted {
 				found = true
 				break
 			}
@@ -2228,10 +2245,11 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	// log.Infof("%s \n", c.NewColumns)
 
 	found := false
-	for _, field := range t.Fields {
-		if strings.EqualFold(field.Field, c.OldColumnName.Name.O) {
+	for i, field := range t.Fields {
+		if strings.EqualFold(field.Field, c.OldColumnName.Name.O) && !field.IsDeleted {
 			found = true
 			s.mysqlDropColumnRollback(field)
+			(&(t.Fields[i])).IsDeleted = true
 			break
 		}
 	}
@@ -2340,38 +2358,60 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		}
 	}
 
-	if !t.NewCached {
-		querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
+	// if !t.NewCached {
+	// querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
 
-		var rows []IndexInfo
-		// log.Info("++++++++")
-		if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
-			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				s.AppendErrorMessage(myErr.Message)
-			} else {
-				s.AppendErrorMessage(err.Error())
-			}
-		}
+	// var rows []*IndexInfo
+	// // log.Info("++++++++")
+	// if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
+	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 		s.AppendErrorMessage(myErr.Message)
+	// 	} else {
+	// 		s.AppendErrorMessage(err.Error())
+	// 	}
+	// }
 
-		if len(rows) > 0 {
-			for _, row := range rows {
-				if strings.EqualFold(row.IndexName, IndexName) {
-					s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
-					break
-				}
-			}
-		}
+	rows := t.Indexes
 
-		key_count := 0
+	if len(rows) > 0 {
 		for _, row := range rows {
-			if row.Seq == 1 {
-				key_count += 1
+			if strings.EqualFold(row.IndexName, IndexName) && !row.IsDeleted {
+				s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
+				break
 			}
 		}
+	}
 
-		if s.Inc.MaxKeys > 0 && key_count >= int(s.Inc.MaxKeys) {
-			s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+	key_count := 0
+	for _, row := range rows {
+		if row.Seq == 1 && !row.IsDeleted {
+			key_count += 1
 		}
+	}
+
+	if s.Inc.MaxKeys > 0 && key_count >= int(s.Inc.MaxKeys) {
+		s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+	}
+	// }
+
+	if s.hasError() {
+		return
+	}
+
+	// cache new index
+	for i, col := range IndexColNames {
+		index := &IndexInfo{
+			Table: t.Name,
+			// NonUnique:  unique  ,
+			IndexName:  IndexName,
+			Seq:        i + 1,
+			ColumnName: col.Column.Name.O,
+			IndexType:  "BTREE",
+		}
+		if unique {
+			index.NonUnique = 1
+		}
+		t.Indexes = append(t.Indexes, index)
 	}
 
 	if !t.NewCached && s.opt.execute {
@@ -3127,9 +3167,8 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	if db == "" {
 		db = s.DBName
 	}
-	sql := fmt.Sprintf("SHOW FULL FIELDS FROM `%s`.`%s`", db, tableName)
-
 	var rows []FieldInfo
+	sql := fmt.Sprintf("SHOW FULL FIELDS FROM `%s`.`%s`", db, tableName)
 
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -3139,11 +3178,28 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 		} else {
 			s.AppendErrorMessage(err.Error() + ".")
 		}
-
 		return nil
 	}
-	// errs := a.GetErrors()
+	return rows
+}
 
+func (s *session) QueryIndexFromDB(db string, tableName string, reportNotExists bool) []*IndexInfo {
+	if db == "" {
+		db = s.DBName
+	}
+	var rows []*IndexInfo
+	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", db, tableName)
+
+	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			if myErr.Number != 1146 || reportNotExists {
+				s.AppendErrorMessage(myErr.Message + ".")
+			}
+		} else {
+			s.AppendErrorMessage(err.Error() + ".")
+		}
+		return nil
+	}
 	return rows
 }
 
@@ -3329,14 +3385,15 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 		return t
 	} else {
 		rows := s.QueryTableFromDB(db, tableName, reportNotExists)
-
 		if rows != nil {
 			newT := &TableInfo{
 				Schema: db,
 				Name:   tableName,
 				Fields: rows,
 			}
-
+			if rows := s.QueryIndexFromDB(db, tableName, reportNotExists); rows != nil {
+				newT.Indexes = rows
+			}
 			s.tableCacheList[key] = newT
 
 			return newT
@@ -3438,13 +3495,42 @@ func Min(x, y int) int {
 	return y
 }
 
-func copyTableInfo(t *TableInfo) *TableInfo {
+func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 	p := &TableInfo{}
 
 	p.Schema = t.Schema
 	p.Name = t.Name
 	p.Fields = make([]FieldInfo, len(t.Fields))
 	copy(p.Fields, t.Fields)
+
+	if len(t.Indexes) > 0 {
+		originIndexes := make([]IndexInfo, 0, len(t.Indexes))
+		p.Indexes = make([]*IndexInfo, 0, len(t.Indexes))
+
+		for i, _ := range t.Indexes {
+			originIndexes = append(originIndexes, *(t.Indexes[i]))
+		}
+
+		newIndexes := make([]IndexInfo, len(t.Indexes))
+		copy(newIndexes, originIndexes)
+
+		for i, r := range newIndexes {
+			if !r.IsDeleted {
+				p.Indexes = append(p.Indexes, &newIndexes[i])
+			}
+		}
+	}
+
+	// querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
+	// var rows []*IndexInfo
+	// if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
+	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 		s.AppendErrorMessage(myErr.Message)
+	// 	} else {
+	// 		s.AppendErrorMessage(err.Error())
+	// 	}
+	// }
+	// p.Indexes = rows
 
 	return p
 }

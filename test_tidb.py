@@ -36,11 +36,26 @@ inception_magic_commit;
 
 
 sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
---execute=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use `test`;
 
-create table tttt17(id int );
+create table tt1 like t1;
+
+alter table tt1 drop column table_name;
+alter table tt1 add column table_name varchar(20);
+alter table tt1 drop column table_name;
+alter table tt1 add column table_name varchar(20);
+alter table tt1 drop column table_name;
+alter table tt1 add column table_name varchar(20);
+alter table tt1 drop column table_name;
+alter table tt1 add column table_name varchar(20);
+alter table tt1 drop column table_name;
+alter table tt1 add column table_name varchar(20);
+alter table tt1 drop column table_name;
+alter table tt1 add column table_name varchar(20);
+
+# alter table tt1 add index ix1(c2);
 
 # show variables like 'log%';
 
