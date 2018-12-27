@@ -82,9 +82,56 @@ func (s *session) GetNextBackupRecord() *Record {
 
 			// 先置默认值为备份失败,在备份完成后置为成功
 			r.StageStatus = StatusBackupFail
+			clearDeleteColumns(r.TableInfo)
 			return r
 		}
 	}
+}
+
+func configPrimaryKey(t *TableInfo) {
+	// var primarys map[int]bool
+	primarys := make(map[int]bool)
+	// var uniques map[int]bool
+	uniques := make(map[int]bool)
+
+	for i, r := range t.Fields {
+		if r.Key == "PRI" {
+			primarys[i] = true
+		}
+		if r.Key == "UNI" {
+			uniques[i] = true
+		}
+	}
+
+	if len(primarys) > 0 {
+		t.primarys = primarys
+		t.hasPrimary = true
+	} else if len(uniques) > 0 {
+		t.primarys = uniques
+		t.hasPrimary = true
+	} else {
+		t.hasPrimary = false
+	}
+}
+
+func clearDeleteColumns(t *TableInfo) {
+	if t == nil || t.IsClear {
+		return
+	}
+
+	fields := t.Fields
+	fs := make([]FieldInfo, 0, len(t.Fields))
+	for _, f := range fields {
+		if !f.IsDeleted {
+			fs = append(fs, f)
+		}
+	}
+
+	t.Fields = fs
+
+	configPrimaryKey(t)
+
+	t.IsClear = true
 }
 
 func (s *session) Parser() {
@@ -192,7 +239,7 @@ func (s *session) Parser() {
 				if record.ThreadId != currentThreadID {
 					goto ENDCHECK
 				}
-
+				log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateDeleteSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
@@ -206,6 +253,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
+				log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateInsertSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
@@ -219,6 +267,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
+				log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateUpdateSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}

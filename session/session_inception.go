@@ -99,6 +99,7 @@ type FieldInfo struct {
 	Privileges string `gorm:"Column:Privileges"`
 	Comment    string `gorm:"Column:Comment"`
 	IsDeleted  bool   `gorm:"-"`
+	IsNew      bool   `gorm:"-"`
 }
 
 type TableInfo struct {
@@ -115,15 +116,18 @@ type TableInfo struct {
 	IsCreated bool
 
 	// 表是否为新增
-	NewCached bool
+	IsNew bool
 	// 列是否为新增
-	NewColumnCached bool
+	IsNewColumns bool
 
 	// 主键信息,用以备份
 	hasPrimary bool
 	primarys   map[int]bool
 
 	AlterCount int
+
+	// 是否已清除已删除的列[用以解析binlog]
+	IsClear bool
 }
 
 type IndexInfo struct {
@@ -670,29 +674,7 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 		return 0
 	}
 
-	// var primarys map[int]bool
-	primarys := make(map[int]bool)
-
-	// var uniques map[int]bool
-	uniques := make(map[int]bool)
-	for i, r := range record.TableInfo.Fields {
-		if r.Key == "PRI" {
-			primarys[i] = true
-		}
-		if r.Key == "UNI" {
-			uniques[i] = true
-		}
-	}
-
-	if len(primarys) > 0 {
-		record.TableInfo.primarys = primarys
-		record.TableInfo.hasPrimary = true
-	} else if len(uniques) > 0 {
-		record.TableInfo.primarys = uniques
-		record.TableInfo.hasPrimary = true
-	} else {
-		record.TableInfo.hasPrimary = false
-	}
+	// configPrimaryKey(record.TableInfo)
 
 	backupDBName := s.getRemoteBackupDBName(record)
 	if backupDBName == "" {
@@ -1254,7 +1236,7 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 // mysqlShowTableStatus is 获取表估计的受影响行数
 func (s *session) mysqlShowTableStatus(t *TableInfo) {
 
-	if t.NewCached {
+	if t.IsNew {
 		return
 	}
 
@@ -1285,7 +1267,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 // mysqlShowCreateTable is 生成回滚语句
 func (s *session) mysqlShowCreateTable(t *TableInfo) {
 
-	if t.NewCached {
+	if t.IsNew {
 		return
 	}
 
@@ -1562,7 +1544,8 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 	table.Fields = make([]FieldInfo, 0, len(node.Cols))
 
 	for _, field := range node.Cols {
-		s.buildNewColumnToCache(table, field)
+		c := s.buildNewColumnToCache(table, field)
+		table.Fields = append(table.Fields, *c)
 	}
 
 	autoIncrement := 0
@@ -1696,8 +1679,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
 		case ast.AlterTableDropColumn:
-			// log.Infof("%#v", alter)
-			// s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
+			// s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.OldColumnName.Name.O)
 			s.checkDropColumn(table, alter)
 
 		case ast.AlterTableAddConstraint:
@@ -2137,7 +2119,7 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 
 	// var rows []*IndexInfo
 
-	// if !t.NewCached {
+	// if !t.IsNew {
 	// 	// 删除索引时回库查询
 	// 	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s` where key_name=?", t.Schema, t.Name)
 	// 	if err := s.db.Raw(sql, indexName).Scan(&rows).Error; err != nil {
@@ -2216,7 +2198,41 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		} else {
 			s.mysqlCheckField(t, nc)
 
-			s.buildNewColumnToCache(t, nc)
+			newColumn := s.buildNewColumnToCache(t, nc)
+
+			// 在新的快照上变更表结构
+			t := s.cacheTableSnapshot(t)
+
+			if c.Position.Tp == ast.ColumnPositionFirst {
+				tmp := make([]FieldInfo, 0, len(t.Fields)+1)
+				tmp = append(tmp, *newColumn)
+				tmp = append(tmp, t.Fields...)
+				t.Fields = tmp
+
+			} else if c.Position.Tp == ast.ColumnPositionAfter {
+				foundIndex := -1
+				for i, field := range t.Fields {
+					if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
+						foundIndex = i
+						break
+					}
+				}
+				if foundIndex == -1 {
+					s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+						fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
+				} else if foundIndex == len(t.Fields)-1 {
+					t.Fields = append(t.Fields, *newColumn)
+				} else {
+					tmp := make([]FieldInfo, 0, len(t.Fields)+1)
+					tmp = append(tmp, t.Fields[:foundIndex+1]...)
+					tmp = append(tmp, *newColumn)
+					tmp = append(tmp, t.Fields[foundIndex+1:]...)
+					t.Fields = tmp
+					// log.Infof("%#v", t.Fields)
+				}
+			} else {
+				t.Fields = append(t.Fields, *newColumn)
+			}
 
 			if s.opt.execute {
 				s.myRecord.DDLRollback += fmt.Sprintf("DROP COLUMN `%s`,",
@@ -2225,19 +2241,6 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		}
 	}
 
-	if c.Position.Tp != ast.ColumnPositionNone {
-		found := false
-		for _, field := range t.Fields {
-			if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-				fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
-		}
-	}
 }
 
 func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
@@ -2249,7 +2252,11 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		if strings.EqualFold(field.Field, c.OldColumnName.Name.O) && !field.IsDeleted {
 			found = true
 			s.mysqlDropColumnRollback(field)
-			(&(t.Fields[i])).IsDeleted = true
+
+			// 在新的快照上删除字段
+			newTable := s.cacheTableSnapshot(t)
+			(&(newTable.Fields[i])).IsDeleted = true
+
 			break
 		}
 	}
@@ -2257,6 +2264,18 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 			fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
 	}
+}
+
+// cacheTableSnapshot 保存表快照,用以解析binlog
+// 当删除列,变更列顺序时, 重新保存表结构
+func (s *session) cacheTableSnapshot(t *TableInfo) *TableInfo {
+	newT := s.copyTableInfo(t)
+
+	s.cacheNewTable(newT)
+
+	newT.IsNew = t.IsNew
+
+	return newT
 }
 
 func (s *session) mysqlDropColumnRollback(field FieldInfo) {
@@ -2358,7 +2377,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		}
 	}
 
-	// if !t.NewCached {
+	// if !t.IsNew {
 	// querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
 
 	// var rows []*IndexInfo
@@ -2414,7 +2433,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		t.Indexes = append(t.Indexes, index)
 	}
 
-	if !t.NewCached && s.opt.execute {
+	if !t.IsNew && s.opt.execute {
 		if IndexName == "PRIMARY" {
 			s.myRecord.DDLRollback += fmt.Sprintf("DROP PRIMARY KEY,")
 		} else {
@@ -2442,10 +2461,6 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 		s.checkCreateIndex(nil, "PRIMARY",
 			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 
-	// case ast.ConstraintForeignKey:
-	// 	s.checkDropColumn(table, alter)
-	// case ast.AlterTableAddConstraint:
-	// 	s.checkAddConstraint(table, alter)
 	default:
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		log.Info("未定义的解析: ", c.Constraint.Tp)
@@ -2594,7 +2609,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	for _, c := range x.Columns {
 		found := false
 		for _, field := range table.Fields {
-			if strings.EqualFold(field.Field, c.Name.O) {
+			if strings.EqualFold(field.Field, c.Name.O) && !field.IsDeleted {
 				found = true
 
 				if field.Null == "NO" {
@@ -2699,16 +2714,18 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			// 	}
 			// }
 
-			if from == nil || (fromTable != nil && !fromTable.NewCached) {
+			if from == nil || (fromTable != nil && !fromTable.IsNew) {
 				i := strings.Index(strings.ToLower(sql), "select")
 				selectSql := sql[i:]
-				var explain []string
+				// var explain []string
 
-				explain = append(explain, "EXPLAIN ")
-				explain = append(explain, selectSql)
+				// explain = append(explain, "EXPLAIN ")
+				// explain = append(explain, selectSql)
 
-				rows := s.getExplainInfo(strings.Join(explain, ""))
-				s.AnlyzeExplain(rows)
+				// rows := s.getExplainInfo(strings.Join(explain, ""))
+				// s.AnlyzeExplain(rows)
+
+				s.explainOrAnalyzeSql(selectSql)
 			}
 
 			if sel.Where == nil {
@@ -3046,6 +3063,12 @@ func (s *session) getExplainInfo(sql string) []ExplainInfo {
 
 func (s *session) explainOrAnalyzeSql(sql string) {
 
+	// 如果没有表结构,或者新增表 or 新增列时,不做explain
+	if s.myRecord.TableInfo == nil || s.myRecord.TableInfo.IsNew ||
+		s.myRecord.TableInfo.IsNewColumns {
+		return
+	}
+
 	var explain []string
 
 	explain = append(explain, "EXPLAIN ")
@@ -3078,7 +3101,6 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	var firstColumnName string
 	if node.List != nil {
 		for _, l := range node.List {
-			// log.Infof("%#v", l.Column)
 			originTable = l.Column.Table.L
 			firstColumnName = l.Column.Name.L
 		}
@@ -3148,6 +3170,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 			s.myRecord.TableInfo = t
 		}
 	}
+
 	s.explainOrAnalyzeSql(sql)
 
 	if node.Where == nil {
@@ -3409,7 +3432,7 @@ func (s *session) cacheNewTable(t *TableInfo) {
 	}
 	key := fmt.Sprintf("%s.%s", t.Schema, t.Name)
 
-	t.NewCached = true
+	t.IsNew = true
 	// 如果表删除后新建,直接覆盖即可
 	s.tableCacheList[key] = t
 
@@ -3418,9 +3441,7 @@ func (s *session) cacheNewTable(t *TableInfo) {
 	// }
 }
 
-func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) {
-
-	t.NewColumnCached = true
+func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *FieldInfo {
 
 	c := &FieldInfo{}
 
@@ -3445,8 +3466,9 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) {
 		}
 	}
 
-	t.Fields = append(t.Fields, *c)
-
+	c.IsNew = true
+	t.IsNewColumns = true
+	return c
 }
 
 func FieldLengthWithType(tp string) int {
@@ -3500,8 +3522,19 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 
 	p.Schema = t.Schema
 	p.Name = t.Name
+
 	p.Fields = make([]FieldInfo, len(t.Fields))
 	copy(p.Fields, t.Fields)
+
+	// 移除已删除的列
+	// newFields := make([]FieldInfo, len(t.Fields))
+	// copy(newFields, t.Fields)
+
+	// for _, f := range newFields {
+	// 	if !f.IsDeleted {
+	// 		p.Fields = append(p.Fields, f)
+	// 	}
+	// }
 
 	if len(t.Indexes) > 0 {
 		originIndexes := make([]IndexInfo, 0, len(t.Indexes))
