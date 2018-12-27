@@ -36,24 +36,24 @@ inception_magic_commit;
 
 
 sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
---check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+--execute=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use `test`;
 
-create table tt1 like t1;
+create table tt2 like tt1;
 
-alter table tt1 drop column table_name;
-alter table tt1 add column table_name varchar(20);
-alter table tt1 drop column table_name;
-alter table tt1 add column table_name varchar(20);
-alter table tt1 drop column table_name;
-alter table tt1 add column table_name varchar(20);
-alter table tt1 drop column table_name;
-alter table tt1 add column table_name varchar(20);
-alter table tt1 drop column table_name;
-alter table tt1 add column table_name varchar(20);
-alter table tt1 drop column table_name;
-alter table tt1 add column table_name varchar(20);
+alter table tt2 add column c1 int first;
+insert into tt2(id,c1) values(1,10);
+delete from tt2;
+alter table tt2 drop column c1;
+
+alter table tt2 add column c2 int after id;
+insert into tt2(id,c2,c3) values(1,100,"test");
+update tt2 set c2 = 20,c3="aaa" where id = 1;
+delete from tt2;
+
+alter table tt2 drop column c2;
+
 
 # alter table tt1 add index ix1(c2);
 
