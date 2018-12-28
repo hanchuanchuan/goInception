@@ -29,6 +29,13 @@ backup_port = 20001
 backup_user = "inception"
 backup_password = "inception"
 
+
+# 安全更新是否开启.
+# -1 表示不做操作,基于远端数据库 [默认值]
+# 0  表示关闭安全更新
+# 1  表示开启安全更新
+sql_safe_updates = 0
+
 [log]
 # Log level: debug, info, warn, error, fatal.
 level = "info"

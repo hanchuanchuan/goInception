@@ -530,7 +530,7 @@ func (s *session) mysqlBackupSql(record *Record) {
 	if s.checkSqlIsDDL(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
 
-		s.mysqlExecuteBackupSqlForDDL(record)
+		// s.mysqlExecuteBackupSqlForDDL(record)
 	} else if s.checkSqlIsDML(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
 	}
@@ -1032,6 +1032,30 @@ func (s *session) modifyBinlogFormatRow() {
 	}
 }
 
+func (s *session) setSqlSafeUpdates() {
+	log.Debug("setSqlSafeUpdates")
+
+	var sql string
+	if s.Inc.SqlSafeUpdates == 1 {
+		sql = "set session sql_safe_updates=1;"
+	} else if s.Inc.SqlSafeUpdates == 0 {
+		sql = "set session sql_safe_updates=0;"
+	} else {
+		return
+	}
+
+	res := s.db.Exec(sql)
+
+	if err := res.Error; err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+		log.Error(err)
+	}
+}
+
 func (s *session) checkBinlogIsOn() bool {
 	log.Debug("checkBinlogIsOn")
 
@@ -1174,7 +1198,7 @@ func (s *session) parseOptions(sql string) {
 		s.processInfo.Store(pi)
 	}
 
-	// log.Warningf("%#v", s.opt)
+	s.setSqlSafeUpdates()
 }
 
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
@@ -1523,7 +1547,10 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	if node.Partition != nil {
 		s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
 	}
-
+	if table == nil {
+		s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.Table.Name.O)
+		return
+	}
 	if s.opt.execute {
 		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
 	}
@@ -1547,6 +1574,7 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 		c := s.buildNewColumnToCache(table, field)
 		table.Fields = append(table.Fields, *c)
 	}
+	table.IsNewColumns = true
 
 	autoIncrement := 0
 	primaryKey := 0
@@ -1751,21 +1779,30 @@ func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	s.checkModifyColumn(t, c)
 }
 
+func testShowFieldInfo(t *TableInfo) {
+	log.Info(t.Name, " , 总列数: ", len(t.Fields))
+	for i, r := range t.Fields {
+		log.Info(i+1, " , ", r.Field)
+	}
+}
+
 func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkModifyColumn")
 
 	for _, nc := range c.NewColumns {
 
-		log.Infof("%s --- %s \n", nc.Name, c.OldColumnName)
+		// log.Infof("%s --- %s \n", nc.Name, c.OldColumnName)
 		found := false
+		foundIndexOld := -1
 		var foundField FieldInfo
 
 		// 列名未变
 		if c.OldColumnName == nil || c.OldColumnName.Name.L == nc.Name.Name.L {
 
-			for _, field := range t.Fields {
+			for i, field := range t.Fields {
 				if strings.EqualFold(field.Field, nc.Name.Name.O) {
 					found = true
+					foundIndexOld = i
 					foundField = field
 					break
 				}
@@ -1773,35 +1810,94 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 			if !found {
 				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
-			} else if s.opt.execute {
-				buf := bytes.NewBufferString("MODIFY COLUMN `")
-				buf.WriteString(foundField.Field)
-				buf.WriteString("` ")
-				buf.WriteString(foundField.Type)
-				if foundField.Null == "NO" {
-					buf.WriteString(" NOT NULL")
-				}
-				if foundField.Default != "" {
-					buf.WriteString(" DEFALUT '")
-					buf.WriteString(foundField.Default)
-					buf.WriteString("'")
-				}
-				if foundField.Comment != "" {
-					buf.WriteString(" COMMENT '")
-					buf.WriteString(foundField.Comment)
-					buf.WriteString("'")
-				}
-				buf.WriteString(",")
+			} else {
 
-				s.myRecord.DDLRollback += buf.String()
+				if c.Position.Tp != ast.ColumnPositionNone {
+
+					// 在新的快照上变更表结构
+					t := s.cacheTableSnapshot(t)
+
+					if c.Position.Tp == ast.ColumnPositionFirst {
+						tmp := make([]FieldInfo, 0, len(t.Fields))
+						tmp = append(tmp, foundField)
+						if foundIndexOld > 0 {
+							tmp = append(tmp, t.Fields[:foundIndexOld]...)
+						}
+						tmp = append(tmp, t.Fields[foundIndexOld+1:]...)
+
+						t.Fields = tmp
+					} else if c.Position.Tp == ast.ColumnPositionAfter {
+						foundIndex := -1
+						for i, field := range t.Fields {
+							if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) && !field.IsDeleted {
+								foundIndex = i
+								break
+							}
+						}
+						if foundIndex == -1 {
+							s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+								fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
+						} else if foundIndex == foundIndexOld-1 {
+							// 原位置和新位置一样,不做操作
+						} else {
+
+							tmp := make([]FieldInfo, 0, len(t.Fields)+3)
+							// 先把列移除
+							// tmp = append(t.Fields[:foundIndexOld], t.Fields[foundIndexOld+1:]...)
+
+							// log.Info("new: ", foundIndex)
+							// log.Info("old: ", foundIndexOld)
+							if foundIndex > foundIndexOld {
+								tmp = append(tmp, t.Fields[:foundIndexOld]...)
+								tmp = append(tmp, t.Fields[foundIndexOld+1:foundIndex+1]...)
+								tmp = append(tmp, foundField)
+								tmp = append(tmp, t.Fields[foundIndex+1:]...)
+							} else {
+								tmp = append(tmp, t.Fields[:foundIndex+1]...)
+								tmp = append(tmp, foundField)
+								tmp = append(tmp, t.Fields[foundIndex+1:foundIndexOld]...)
+								tmp = append(tmp, t.Fields[foundIndexOld+1:]...)
+							}
+
+							t.Fields = tmp
+						}
+					}
+
+					// testShowFieldInfo(t)
+				}
+
+				if s.opt.execute {
+					buf := bytes.NewBufferString("MODIFY COLUMN `")
+					buf.WriteString(foundField.Field)
+					buf.WriteString("` ")
+					buf.WriteString(foundField.Type)
+					if foundField.Null == "NO" {
+						buf.WriteString(" NOT NULL")
+					}
+					if foundField.Default != "" {
+						buf.WriteString(" DEFALUT '")
+						buf.WriteString(foundField.Default)
+						buf.WriteString("'")
+					}
+					if foundField.Comment != "" {
+						buf.WriteString(" COMMENT '")
+						buf.WriteString(foundField.Comment)
+						buf.WriteString("'")
+					}
+					buf.WriteString(",")
+
+					s.myRecord.DDLRollback += buf.String()
+				}
 			}
 		} else { // 列名改变
 
 			oldFound := false
 			newFound := false
-			for _, field := range t.Fields {
+			foundIndexOld := -1
+			for i, field := range t.Fields {
 				if strings.EqualFold(field.Field, c.OldColumnName.Name.L) {
 					oldFound = true
+					foundIndexOld = i
 					foundField = field
 				}
 				if strings.EqualFold(field.Field, nc.Name.Name.L) {
@@ -1818,30 +1914,88 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 			s.checkKeyWords(nc.Name.Name.O)
 
-			// log.Info(c.OldColumnName, nc.Name, foundField.Field)
-			if !newFound && oldFound && s.opt.execute {
-				buf := bytes.NewBufferString("CHANGE COLUMN `")
-				buf.WriteString(nc.Name.Name.O)
-				buf.WriteString("` `")
-				buf.WriteString(foundField.Field)
-				buf.WriteString("` ")
-				buf.WriteString(foundField.Type)
-				if foundField.Null == "NO" {
-					buf.WriteString(" NOT NULL")
-				}
-				if foundField.Default != "" {
-					buf.WriteString(" DEFALUT '")
-					buf.WriteString(foundField.Default)
-					buf.WriteString("'")
-				}
-				if foundField.Comment != "" {
-					buf.WriteString(" COMMENT '")
-					buf.WriteString(foundField.Comment)
-					buf.WriteString("'")
-				}
-				buf.WriteString(",")
+			if !s.hasError() {
 
-				s.myRecord.DDLRollback += buf.String()
+				// 在新的快照上变更表结构
+				t := s.cacheTableSnapshot(t)
+
+				t.Fields[foundIndexOld].Field = nc.Name.Name.O
+
+				if c.Position.Tp != ast.ColumnPositionNone {
+
+					if c.Position.Tp == ast.ColumnPositionFirst {
+						tmp := make([]FieldInfo, 0, len(t.Fields))
+						tmp = append(tmp, foundField)
+						if foundIndexOld > 0 {
+							tmp = append(tmp, t.Fields[:foundIndexOld]...)
+						}
+						tmp = append(tmp, t.Fields[foundIndexOld+1:]...)
+
+						t.Fields = tmp
+					} else if c.Position.Tp == ast.ColumnPositionAfter {
+						foundIndex := -1
+						for i, field := range t.Fields {
+							if strings.EqualFold(field.Field, c.Position.RelativeColumn.Name.O) && !field.IsDeleted {
+								foundIndex = i
+								break
+							}
+						}
+						if foundIndex == -1 {
+							s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+								fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
+						} else if foundIndex == foundIndexOld-1 {
+							// 原位置和新位置一样,不做操作
+						} else {
+
+							tmp := make([]FieldInfo, 0, len(t.Fields)+3)
+							// 先把列移除
+							// tmp = append(t.Fields[:foundIndexOld], t.Fields[foundIndexOld+1:]...)
+
+							// log.Info("new: ", foundIndex)
+							// log.Info("old: ", foundIndexOld)
+							if foundIndex > foundIndexOld {
+								tmp = append(tmp, t.Fields[:foundIndexOld]...)
+								tmp = append(tmp, t.Fields[foundIndexOld+1:foundIndex+1]...)
+								tmp = append(tmp, foundField)
+								tmp = append(tmp, t.Fields[foundIndex+1:]...)
+							} else {
+								tmp = append(tmp, t.Fields[:foundIndex+1]...)
+								tmp = append(tmp, foundField)
+								tmp = append(tmp, t.Fields[foundIndex+1:foundIndexOld]...)
+								tmp = append(tmp, t.Fields[foundIndexOld+1:]...)
+							}
+
+							t.Fields = tmp
+						}
+					}
+
+					// testShowFieldInfo(t)
+				}
+
+				if s.opt.execute {
+					buf := bytes.NewBufferString("CHANGE COLUMN `")
+					buf.WriteString(nc.Name.Name.O)
+					buf.WriteString("` `")
+					buf.WriteString(foundField.Field)
+					buf.WriteString("` ")
+					buf.WriteString(foundField.Type)
+					if foundField.Null == "NO" {
+						buf.WriteString(" NOT NULL")
+					}
+					if foundField.Default != "" {
+						buf.WriteString(" DEFALUT '")
+						buf.WriteString(foundField.Default)
+						buf.WriteString("'")
+					}
+					if foundField.Comment != "" {
+						buf.WriteString(" COMMENT '")
+						buf.WriteString(foundField.Comment)
+						buf.WriteString("'")
+					}
+					buf.WriteString(",")
+
+					s.myRecord.DDLRollback += buf.String()
+				}
 			}
 		}
 
@@ -2202,6 +2356,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 			// 在新的快照上变更表结构
 			t := s.cacheTableSnapshot(t)
+			t.IsNewColumns = true
 
 			if c.Position.Tp == ast.ColumnPositionFirst {
 				tmp := make([]FieldInfo, 0, len(t.Fields)+1)
@@ -2823,11 +2978,16 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 }
 
 func setConfigValue(field reflect.Value, value *types.Datum) {
+
 	switch field.Type().String() {
 	case reflect.String.String():
 		field.SetString(value.GetString())
+
 	case reflect.Uint.String():
 		field.SetUint(value.GetUint64())
+	case reflect.Int.String(), reflect.Int64.String():
+		field.SetInt(value.GetInt64())
+
 	case reflect.Bool.String():
 		field.SetBool(value.GetInt64() == 1)
 	default:
@@ -3467,7 +3627,6 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 	}
 
 	c.IsNew = true
-	t.IsNewColumns = true
 	return c
 }
 
@@ -3540,7 +3699,7 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 		originIndexes := make([]IndexInfo, 0, len(t.Indexes))
 		p.Indexes = make([]*IndexInfo, 0, len(t.Indexes))
 
-		for i, _ := range t.Indexes {
+		for i := range t.Indexes {
 			originIndexes = append(originIndexes, *(t.Indexes[i]))
 		}
 

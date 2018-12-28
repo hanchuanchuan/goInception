@@ -626,8 +626,8 @@ func NewRecordSets() *MyRecordSets {
 func (s *MyRecordSets) Append(r *Record) {
 	s.MaxLevel = uint8(Max(int(s.MaxLevel), int(r.ErrLevel)))
 
-	s.SeqNo++
 	r.SeqNo = s.SeqNo
+	s.SeqNo++
 	s.records = append(s.records, r)
 	s.count++
 }
@@ -650,7 +650,10 @@ func (s *MyRecordSets) setFields(r *Record) {
 	row[5].SetString(r.Sql)
 	row[6].SetInt64(int64(r.AffectedRows))
 	if r.OPID == "" {
-		row[7].SetNull()
+		// record.OPID =
+		// row[7].SetNull()
+		row[7].SetString(makeOPIDByTime(r.ExecTimestamp,
+			r.ThreadId, r.SeqNo))
 	} else {
 		row[7].SetString(r.OPID)
 	}

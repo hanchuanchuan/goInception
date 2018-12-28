@@ -315,6 +315,12 @@ type Inc struct {
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
+
+	// 安全更新是否开启.
+	// -1 表示不做操作,基于远端数据库 [默认值]
+	// 0  表示关闭安全更新
+	// 1  表示开启安全更新
+	SqlSafeUpdates int `toml:"sql_safe_updates" json:"sql_safe_updates"`
 }
 
 var defaultConf = Config{
@@ -396,6 +402,7 @@ var defaultConf = Config{
 		EnableDropTable:    false,
 		CheckTableComment:  false,
 		CheckColumnComment: false,
+		SqlSafeUpdates:     -1,
 	},
 }
 

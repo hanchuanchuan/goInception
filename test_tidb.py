@@ -40,19 +40,50 @@ sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
 inception_magic_start;
 use `test`;
 
-create table tt2 like tt1;
 
-alter table tt2 add column c1 int first;
-insert into tt2(id,c1) values(1,10);
-delete from tt2;
-alter table tt2 drop column c1;
+alter table tt1 modify column c1 int after c2;
+insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+delete from tt1;
 
-alter table tt2 add column c2 int after id;
-insert into tt2(id,c2,c3) values(1,100,"test");
-update tt2 set c2 = 20,c3="aaa" where id = 1;
-delete from tt2;
+alter table tt1 modify column c2 int after id;
+insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+delete from tt1;
 
-alter table tt2 drop column c2;
+alter table tt1 modify column id int not null after c2;
+
+insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+delete from tt1;
+
+alter table tt1 modify column c3 varchar(10) first;
+insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+update tt1 set c2 = "21",c3="aaa" where id = 2;
+delete from tt1;
+
+
+# alter table tt1 modify column c2 int after id;
+# insert into tt1(id,c1,c2,c3) values(3,30,"300","3000");
+
+# alter table tt1 modify column id int not null after c2;
+
+# insert into tt1(id,c1,c2,c3) values(4,40,"400","4000");
+
+# alter table tt1 modify column c3 varchar(10) first;
+# insert into tt1(id,c1,c2,c3) values(5,50,"500","5000");
+
+
+# create table tt2 like tt1;
+
+# alter table tt2 add column c1 int first;
+# insert into tt2(id,c1) values(1,10);
+# delete from tt2;
+# alter table tt2 drop column c1;
+
+# alter table tt2 add column c2 int after id;
+# insert into tt2(id,c2,c3) values(1,100,"test");
+# update tt2 set c2 = 20,c3="aaa" where id = 1;
+# delete from tt2;
+
+# alter table tt2 drop column c2;
 
 
 # alter table tt1 add index ix1(c2);
