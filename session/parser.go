@@ -38,7 +38,8 @@ type Table struct {
 }
 
 type ChanData struct {
-	sql    []byte
+	sql    []byte // dml动态解析的语句
+	sqlStr string // ddl回滚语句
 	e      *replication.BinlogEvent
 	gtid   []byte
 	opid   string
@@ -49,6 +50,7 @@ type ChanData struct {
 func (s *session) ProcessChan(wg *sync.WaitGroup) {
 	for {
 		r := <-s.ch
+
 		if r == nil {
 			// log.Info("剩余ch", len(s.ch), "cap ch", cap(s.ch), "通道关闭,跳出循环")
 			// log.Info("ProcessChan,close")
@@ -58,7 +60,10 @@ func (s *session) ProcessChan(wg *sync.WaitGroup) {
 		}
 		// flush标志. 不能在外面调用flush函数,会导致线程并发操作,写入数据错误
 		// 如数据尚未进入到ch通道,此时调用flush,数据无法正确入库
-		if len(r.sql) == 0 {
+
+		if len(r.sqlStr) > 0 {
+			s.myWriteDDL(r.sqlStr, r.opid, r.table, r.record)
+		} else if len(r.sql) == 0 {
 			// log.Info("flush标志")
 			s.flush(r.table, r.record)
 		} else {
@@ -74,16 +79,46 @@ func (s *session) GetNextBackupRecord() *Record {
 			return nil
 		}
 
-		if r.AffectedRows > 0 && s.checkSqlIsDML(r) && r.TableInfo != nil {
+		if r.TableInfo != nil {
+
 			// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
 			// if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
 			// 	continue
 			// }
 
-			// 先置默认值为备份失败,在备份完成后置为成功
-			r.StageStatus = StatusBackupFail
-			clearDeleteColumns(r.TableInfo)
-			return r
+			lastBackupTable := fmt.Sprintf("`%s`.`%s`", r.BackupDBName, r.TableInfo.Name)
+
+			if s.lastBackupTable == "" {
+				s.lastBackupTable = lastBackupTable
+			}
+
+			if s.checkSqlIsDDL(r) {
+				if s.lastBackupTable != lastBackupTable {
+					s.ch <- &ChanData{sql: nil, table: s.lastBackupTable, record: s.myRecord}
+					s.lastBackupTable = lastBackupTable
+				}
+
+				s.ch <- &ChanData{sqlStr: r.DDLRollback, opid: r.OPID,
+					table: s.lastBackupTable, record: r}
+
+				r.StageStatus = StatusBackupOK
+
+				continue
+
+			} else if r.AffectedRows > 0 && s.checkSqlIsDML(r) {
+
+				if s.lastBackupTable != lastBackupTable {
+					s.ch <- &ChanData{sql: nil, table: s.lastBackupTable, record: s.myRecord}
+					s.lastBackupTable = lastBackupTable
+				}
+
+				// 先置默认值为备份失败,在备份完成后置为成功
+				r.StageStatus = StatusBackupFail
+				clearDeleteColumns(r.TableInfo)
+
+				return r
+			}
+
 		}
 	}
 }
@@ -136,6 +171,23 @@ func clearDeleteColumns(t *TableInfo) {
 
 func (s *session) Parser() {
 
+	// var err error
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	s.ch = make(chan *ChanData, 50)
+	go s.ProcessChan(&wg)
+
+	// 最终关闭和返回
+	defer func() {
+		close(s.ch)
+		wg.Wait()
+
+		// log.Info("操作完成", "rows", i)
+		// kwargs := map[string]interface{}{"ok": "1"}
+		// sendMsg(p.cfg.SocketUser, "rollback_binlog_parse_complete", "binlog解析进度", "", kwargs)
+	}()
+
 	// 获取binlog解析起点
 	record := s.GetNextBackupRecord()
 	if record == nil {
@@ -145,9 +197,6 @@ func (s *session) Parser() {
 	s.myRecord = record
 
 	log.Debug("Parser")
-
-	var err error
-	var wg sync.WaitGroup
 
 	// 启用Logger，显示详细日志
 	// s.backupdb.LogMode(true)
@@ -177,20 +226,6 @@ func (s *session) Parser() {
 		log.Infof("Start sync error: %v\n", errors.ErrorStack(err))
 		return
 	}
-
-	wg.Add(1)
-	s.ch = make(chan *ChanData, 50)
-	go s.ProcessChan(&wg)
-
-	// 最终关闭和返回
-	defer func() {
-		close(s.ch)
-		wg.Wait()
-
-		// log.Info("操作完成", "rows", i)
-		// kwargs := map[string]interface{}{"ok": "1"}
-		// sendMsg(p.cfg.SocketUser, "rollback_binlog_parse_complete", "binlog解析进度", "", kwargs)
-	}()
 
 	currentPosition := startPosition
 	var currentThreadID uint32
@@ -239,7 +274,7 @@ func (s *session) Parser() {
 				if record.ThreadId != currentThreadID {
 					goto ENDCHECK
 				}
-				log.Infof("%#v", record.TableInfo.Fields)
+				// log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateDeleteSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
@@ -253,7 +288,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				log.Infof("%#v", record.TableInfo.Fields)
+				// log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateInsertSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
@@ -267,7 +302,7 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				log.Infof("%#v", record.TableInfo.Fields)
+				// log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateUpdateSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
@@ -283,19 +318,11 @@ func (s *session) Parser() {
 			if next != nil {
 				startPosition = mysql.Position{next.StartFile, uint32(next.StartPosition)}
 				stopPosition = mysql.Position{next.EndFile, uint32(next.EndPosition)}
-				lastBackupTable := fmt.Sprintf("`%s`.`%s`", next.BackupDBName, next.TableInfo.Name)
 				startTime = time.Now()
 
-				if s.lastBackupTable != lastBackupTable {
-					// log.Info(s.lastBackupTable, " >>> ", lastBackupTable)
-					s.ch <- &ChanData{sql: nil, table: s.lastBackupTable, record: record}
-					s.lastBackupTable = lastBackupTable
-				}
 				s.myRecord = next
 				record = next
-
 			} else {
-				// log.Info("备份已全部解析,操作结束")
 				break
 			}
 		}
@@ -305,10 +332,22 @@ func (s *session) Parser() {
 // 解析的sql写入缓存,并定期入库
 func (s *session) myWrite(b []byte, binEvent *replication.BinlogEvent,
 	opid string, table string, record *Record) {
-	// log.Info("myWrite")
+	log.Debug("myWrite")
+
 	b = append(b, ";"...)
 
 	s.insertBuffer = append(s.insertBuffer, string(b), opid)
+
+	if len(s.insertBuffer) >= 1000 {
+		s.flush(table, record)
+	}
+}
+
+// 解析的sql写入缓存,并定期入库
+func (s *session) myWriteDDL(sql string, opid string, table string, record *Record) {
+	log.Debug("myWriteDDL")
+
+	s.insertBuffer = append(s.insertBuffer, sql, opid)
 
 	if len(s.insertBuffer) >= 1000 {
 		s.flush(table, record)
