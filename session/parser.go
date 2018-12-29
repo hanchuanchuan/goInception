@@ -81,11 +81,6 @@ func (s *session) GetNextBackupRecord() *Record {
 
 		if r.TableInfo != nil {
 
-			// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
-			// if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
-			// 	continue
-			// }
-
 			lastBackupTable := fmt.Sprintf("`%s`.`%s`", r.BackupDBName, r.TableInfo.Name)
 
 			if s.lastBackupTable == "" {
@@ -106,6 +101,11 @@ func (s *session) GetNextBackupRecord() *Record {
 				continue
 
 			} else if r.AffectedRows > 0 && s.checkSqlIsDML(r) {
+
+				// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
+				if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
+					continue
+				}
 
 				if s.lastBackupTable != lastBackupTable {
 					s.ch <- &ChanData{sql: nil, table: s.lastBackupTable, record: s.myRecord}
