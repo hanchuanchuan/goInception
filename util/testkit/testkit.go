@@ -120,6 +120,14 @@ func NewTestKitWithInit(c *check.C, store kv.Storage) *TestKit {
 	return tk
 }
 
+// NewTestKitWithInit returns a new *TestKit and creates a session.
+func NewTestKitWithInitINC(c *check.C, store kv.Storage) *TestKit {
+	tk := NewTestKit(c, store)
+	// Use test and prepare a session.
+	// tk.MustExec("use test")
+	return tk
+}
+
 var connectionID uint64
 
 // Exec executes a sql statement.
@@ -135,6 +143,39 @@ func (tk *TestKit) Exec(sql string, args ...interface{}) (ast.RecordSet, error) 
 	if len(args) == 0 {
 		var rss []ast.RecordSet
 		rss, err = tk.Se.Execute(ctx, sql)
+		if err == nil && len(rss) > 0 {
+			return rss[0], nil
+		}
+		return nil, errors.Trace(err)
+	}
+	stmtID, _, _, err := tk.Se.PrepareStmt(sql)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	rs, err := tk.Se.ExecutePreparedStmt(ctx, stmtID, args...)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	err = tk.Se.DropPreparedStmt(stmtID)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	return rs, nil
+}
+
+// Exec executes a sql statement.
+func (tk *TestKit) ExecInc(sql string, args ...interface{}) (ast.RecordSet, error) {
+	var err error
+	if tk.Se == nil {
+		tk.Se, err = session.CreateSession4Test(tk.store)
+		tk.c.Assert(err, check.IsNil)
+		id := atomic.AddUint64(&connectionID, 1)
+		tk.Se.SetConnectionID(id)
+	}
+	ctx := context.Background()
+	if len(args) == 0 {
+		var rss []ast.RecordSet
+		rss, err = tk.Se.ExecuteInc(ctx, sql)
 		if err == nil && len(rss) > 0 {
 			return rss[0], nil
 		}
@@ -175,6 +216,16 @@ func (tk *TestKit) MustExec(sql string, args ...interface{}) {
 func (tk *TestKit) MustQuery(sql string, args ...interface{}) *Result {
 	comment := check.Commentf("sql:%s, args:%v", sql, args)
 	rs, err := tk.Exec(sql, args...)
+	tk.c.Assert(errors.ErrorStack(err), check.Equals, "", comment)
+	tk.c.Assert(rs, check.NotNil, comment)
+	return tk.ResultSetToResult(rs, comment)
+}
+
+// MustQuery query the statements and returns result rows.
+// If expected result is set it asserts the query result equals expected result.
+func (tk *TestKit) MustQueryInc(sql string, args ...interface{}) *Result {
+	comment := check.Commentf("sql:%s, args:%v", sql, args)
+	rs, err := tk.ExecInc(sql, args...)
 	tk.c.Assert(errors.ErrorStack(err), check.Equals, "", comment)
 	tk.c.Assert(rs, check.NotNil, comment)
 	return tk.ResultSetToResult(rs, comment)
