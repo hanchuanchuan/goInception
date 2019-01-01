@@ -15,8 +15,10 @@ package session_test
 
 import (
 	"fmt"
+	// "os"
 	"sync"
 	"sync/atomic"
+	"testing"
 	"time"
 
 	"github.com/hanchuanchuan/tidb/config"
@@ -37,6 +39,7 @@ import (
 	"github.com/hanchuanchuan/tidb/terror"
 	"github.com/hanchuanchuan/tidb/types"
 	"github.com/hanchuanchuan/tidb/util/auth"
+	// "github.com/hanchuanchuan/tidb/util/logutil"
 	"github.com/hanchuanchuan/tidb/util/sqlexec"
 	"github.com/hanchuanchuan/tidb/util/testkit"
 	"github.com/hanchuanchuan/tidb/util/testleak"
@@ -48,6 +51,8 @@ import (
 )
 
 var _ = Suite(&testSessionSuite{})
+
+func Test(t *testing.T) { TestingT(t) }
 
 type testSessionSuite struct {
 	cluster   *mocktikv.Cluster

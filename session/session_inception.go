@@ -171,10 +171,18 @@ func init() {
 }
 
 func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
+	s.sessionVars.ResetPrevAffectedRows()
+	s.DBName = ""
 	if recordSets, err = s.executeInc(ctx, sql); err != nil {
 		err = errors.Trace(err)
 		s.sessionVars.StmtCtx.AppendError(err)
 	}
+	// else {
+	// 	fmt.Println("---------------")
+	// 	fmt.Println(len(recordSets))
+	// 	fmt.Printf("%#v", recordSets)
+	// 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(len(recordSets)))
+	// }
 	return
 }
 
@@ -184,15 +192,29 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	// for i, a := range sqlList {
 	// 	log.Info(i, a)
 	// }
-	if !s.haveBegin && sql == "select @@version_comment limit 1" {
-		return s.Execute(ctx, sql)
+
+	if !s.haveBegin {
+		if sql == "select @@version_comment limit 1" {
+			return s.execute(ctx, sql)
+		} else if sql == "SET AUTOCOMMIT = 0" {
+			return s.execute(ctx, sql)
+		} else if sql == "show warnings" {
+			return s.execute(ctx, sql)
+		} else if strings.HasPrefix(sql, "select HIGH_PRIORITY") {
+			return s.execute(ctx, sql)
+		} else if strings.HasPrefix(sql,
+			`select variable_value from mysql.tidb where variable_name = "system_tz"`) {
+			return s.execute(ctx, sql)
+		} else if strings.HasPrefix(sql, "SELECT HIGH_PRIORITY") {
+			return s.execute(ctx, sql)
+		}
 	}
-	if !s.haveBegin && sql == "SET AUTOCOMMIT = 0" {
-		return s.Execute(ctx, sql)
-	}
-	if !s.haveBegin && sql == "show warnings" {
-		return s.Execute(ctx, sql)
-	}
+
+	defer func() {
+		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
+			s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
+		}
+	}()
 
 	defer logQuery(sql, s.sessionVars)
 
@@ -1380,7 +1402,9 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		node.Table.Schema = model.NewCIStr(s.DBName)
 	}
 
-	s.checkDBExists(node.Table.Schema.O, true)
+	if !s.checkDBExists(node.Table.Schema.O, true) {
+		return
+	}
 
 	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, false)
 
@@ -1655,7 +1679,9 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	// AlterTableAddPartitions = 16
 	// AlterTableDropPartition = 17
 
-	s.checkDBExists(node.Table.Schema.O, true)
+	if !s.checkDBExists(node.Table.Schema.O, true) {
+		return
+	}
 
 	// table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
@@ -2675,6 +2701,11 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		db = s.DBName
 	}
 
+	if db == "" {
+		s.AppendErrorNo(ER_WRONG_DB_NAME, "")
+		return false
+	}
+
 	if _, ok := s.dbCacheList[db]; ok {
 		return true
 	}
@@ -3055,6 +3086,9 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 			}
 		}
 	}
+
+	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
+
 	return res.Rows(), nil
 
 }
@@ -3097,6 +3131,7 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordS
 		res.appendRow(data)
 	}
 
+	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 	return res.Rows(), nil
 }
 
@@ -3555,6 +3590,12 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 	if db == "" {
 		db = s.DBName
 	}
+
+	if db == "" {
+		s.AppendErrorNo(ER_WRONG_DB_NAME, "")
+		return nil
+	}
+
 	key := fmt.Sprintf("%s.%s", db, tableName)
 
 	if t, ok := s.tableCacheList[key]; ok {
