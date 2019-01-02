@@ -31,7 +31,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/config"
-	// "github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
@@ -171,12 +171,49 @@ func init() {
 }
 
 func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
-	s.sessionVars.ResetPrevAffectedRows()
+
 	s.DBName = ""
+	s.haveBegin = false
+	s.haveCommit = false
+
+	s.tableCacheList = make(map[string]*TableInfo)
+	s.dbCacheList = make(map[string]bool)
+
+	s.backupDBCacheList = make(map[string]bool)
+	s.backupTableCacheList = make(map[string]bool)
+
+	s.Inc = config.GetGlobalConfig().Inc
+
+	s.recordSets = NewRecordSets()
+
+	// 	s := &session{
+	// 	store:           store,
+	// 	parser:          parser.New(),
+	// 	sessionVars:     variable.NewSessionVars(),
+	// 	ddlOwnerChecker: dom.DDL().OwnerManager(),
+
+	// 	haveBegin:  false,
+	// 	haveCommit: false,
+
+	// 	tableCacheList: make(map[string]*TableInfo),
+	// 	dbCacheList:    make(map[string]bool),
+
+	// 	backupDBCacheList:    make(map[string]bool),
+	// 	backupTableCacheList: make(map[string]bool),
+
+	// 	Inc: config.GetGlobalConfig().Inc,
+	// }
+
 	if recordSets, err = s.executeInc(ctx, sql); err != nil {
 		err = errors.Trace(err)
 		s.sessionVars.StmtCtx.AppendError(err)
 	}
+	// else {
+	// 	if s.sessionVars.StmtCtx.AffectedRows() == 0 {
+	// 		log.Info(s.recordSets.rc.count)
+	// 		s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
+	// 	}
+	// }
 	// else {
 	// 	fmt.Println("---------------")
 	// 	fmt.Println(len(recordSets))
@@ -212,6 +249,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 	defer func() {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
+			// log.Info(s.recordSets.rc.count)
 			s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
 		}
 	}()
@@ -282,8 +320,16 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorNo(ER_HAVE_BEGIN)
 						s.myRecord.Sql = ""
 						s.recordSets.Append(s.myRecord)
+
+						log.Error(sql)
 						return s.recordSets.Rows(), nil
 					}
+
+					// 操作前重设上下文
+					if err := executor.ResetContextOfStmt(s, stmtNode); err != nil {
+						return nil, errors.Trace(err)
+					}
+
 					s.haveBegin = true
 					s.parseOptions(currentSql)
 
@@ -329,6 +375,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 							log.Error(s.opt)
 							return nil, errors.New("无效操作!不支持本地操作和远程操作混用!")
 						}
+
+						// 操作前重设上下文
+						if err := executor.ResetContextOfStmt(s, stmtNode); err != nil {
+							return nil, errors.Trace(err)
+						}
+
 						return s.processCommand(ctx, stmtNode)
 						// if err != nil {
 						// 	return nil, err
