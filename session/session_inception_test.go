@@ -21,7 +21,7 @@ import (
 	"testing"
 	// "time"
 
-	// "github.com/hanchuanchuan/tidb/config"
+	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	// "github.com/hanchuanchuan/tidb/executor"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -104,7 +104,7 @@ func (s *testSessionIncSuite) TearDownTest(c *C) {
 func makeSql(tk *testkit.TestKit, sql string) *testkit.Result {
 	a := `/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
-use test;
+use test_inc;
 %s;
 inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
@@ -150,7 +150,7 @@ inception_magic_start;create table t1(id int);inception_magic_commit;`)
 func (s *testSessionIncSuite) TestEnd(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	res := tk.MustQueryInc(`/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;use test;create table t1(id int);`)
+inception_magic_start;use test_inc;create table t1(id int);`)
 
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
 
@@ -168,4 +168,60 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 't1' already exists.")
+}
+
+func (s *testSessionIncSuite) TestDropTable(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.EnableDropTable = false
+
+	res := makeSql(tk, "create table t1(id int);drop table t1;")
+
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "禁用【DROP】|【TRUNCATE】删除/清空表 't1', 请改用RENAME重写.")
+
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	res = makeSql(tk, "create table t1(id int);drop table t1;")
+
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+}
+
+func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	// saved := config.GetGlobalConfig().Inc
+	// defer func() {
+	// 	config.GetGlobalConfig().Inc = saved
+	// }()
+
+	res := makeSql(tk, "create table t1(id int);alter table t1 add column c1 int;")
+
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 int;alter table t1 add column c1 int;")
+	fmt.Println(res)
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 4)
+
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't1.c1' have existed.")
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 int first;alter table t1 add column c2 int after c1;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 4)
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2")
+	}
 }

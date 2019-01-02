@@ -1253,19 +1253,17 @@ func createSession(store kv.Storage) (*session, error) {
 		sessionVars:     variable.NewSessionVars(),
 		ddlOwnerChecker: dom.DDL().OwnerManager(),
 
-		haveBegin:  false,
-		haveCommit: false,
+		// haveBegin:  false,
+		// haveCommit: false,
 
-		tableCacheList: make(map[string]*TableInfo),
-		dbCacheList:    make(map[string]bool),
+		// tableCacheList: make(map[string]*TableInfo),
+		// dbCacheList:    make(map[string]bool),
 
-		backupDBCacheList:    make(map[string]bool),
-		backupTableCacheList: make(map[string]bool),
+		// backupDBCacheList:    make(map[string]bool),
+		// backupTableCacheList: make(map[string]bool),
 
-		Inc: config.GetGlobalConfig().Inc,
+		// Inc: config.GetGlobalConfig().Inc,
 	}
-
-	s.recordSets = NewRecordSets()
 
 	if plannercore.PreparedPlanCacheEnabled() {
 		s.preparedPlanCache = kvcache.NewSimpleLRUCache(plannercore.PreparedPlanCacheCapacity)
