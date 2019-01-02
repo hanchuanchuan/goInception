@@ -199,20 +199,20 @@ func (s *testSessionIncSuite) TestDropTable(c *C) {
 
 func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
-	// saved := config.GetGlobalConfig().Inc
-	// defer func() {
-	// 	config.GetGlobalConfig().Inc = saved
-	// }()
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
 
 	res := makeSql(tk, "create table t1(id int);alter table t1 add column c1 int;")
-
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
 	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 int;alter table t1 add column c1 int;")
-	fmt.Println(res)
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 4)
 
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -224,4 +224,77 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2")
 	}
+
+	// after 不存在的列
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c2 int after c1;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't1.c1' not existed.")
+
+	// 数据类型 警告
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c2 bit;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c2 enum('red', 'blue', 'black');")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c2 set('red', 'blue', 'black');")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
+
+	// char列建议
+	config.GetGlobalConfig().Inc.MaxCharLength = 100
+	res = makeSql(tk, `create table t1(id int);
+		alter table t1 add column c1 char(200);
+		alter table t1 add column c2 varchar(200);`)
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 4)
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
+
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "0")
+
+	// 字符集
+	res = makeSql(tk, `create table t1(id int);
+		alter table t1 add column c1 varchar(20) character set utf8;
+		alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`)
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 列 'c2' 禁止设置字符集!")
+
+	// 关键字
+	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
+	config.GetGlobalConfig().Inc.CheckIdentifier = true
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t1 add column `c1$` varchar(20);alter table t1 add column c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.")
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Identifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].")
+	row = res.Rows()[4]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Identifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
+
+	// 列注释
+	config.GetGlobalConfig().Inc.CheckColumnComment = true
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 varchar(20);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
 }
