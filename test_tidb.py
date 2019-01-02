@@ -40,24 +40,26 @@ sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;\
 inception_magic_start;
 use `test`;
 
+create table t1(id int);
+alter table t1 add column db varchar(20);
 
-alter table tt1 modify column c1 int after c2;
-insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
-delete from tt1;
-
-alter table tt1 modify column c2 int after id;
-insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
-delete from tt1;
-
-alter table tt1 modify column id int not null after c2;
-
-insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
-delete from tt1;
-
-alter table tt1 modify column c3 varchar(10) first;
-insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
-update tt1 set c2 = "21",c3="aaa" where id = 2;
-delete from tt1;
+# alter table tt1 modify column c1 int after c2;
+# insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+# delete from tt1;
+#
+# alter table tt1 modify column c2 int after id;
+# insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+# delete from tt1;
+#
+# alter table tt1 modify column id int not null after c2;
+#
+# insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+# delete from tt1;
+#
+# alter table tt1 modify column c3 varchar(10) first;
+# insert into tt1(id,c1,c2,c3) values(2,20,"200","2000");
+# update tt1 set c2 = "21",c3="aaa" where id = 2;
+# delete from tt1;
 
 
 # alter table tt1 modify column c2 int after id;
@@ -141,7 +143,10 @@ inception_magic_commit;
 '''
 
 sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;use test;create table t1(id int);'''
+inception_magic_start;
+use test;
+create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t2 add column `c1$` varchar(20);
+inception_magic_commit;'''
 
 # alter table t1 add column c2 int;
 # alter table t1 add column c3 int after c7,add column c4 int;

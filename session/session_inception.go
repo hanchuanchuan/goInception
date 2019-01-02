@@ -2242,9 +2242,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		}
 	}
 
-	if len(field.Name.Name.O) > mysql.MaxColumnNameLength {
-		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
-	}
+	// if len(field.Name.Name.O) > mysql.MaxColumnNameLength {
+	// 	s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
+	// }
 
 	if mysqlFiledIsBlob(field.Tp.Tp) && notNullFlag {
 		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
