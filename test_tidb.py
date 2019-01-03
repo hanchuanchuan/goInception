@@ -145,7 +145,7 @@ inception_magic_commit;
 sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test;
-create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t2 add column `c1$` varchar(20);
+create table t1(id int);alter table t1 add column c1 blob;
 inception_magic_commit;'''
 
 # alter table t1 add column c2 int;

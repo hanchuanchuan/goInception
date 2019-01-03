@@ -20,6 +20,7 @@ import (
 	// "sync/atomic"
 	"testing"
 	// "time"
+	// log "github.com/sirupsen/logrus"
 
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
@@ -297,4 +298,50 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	row = res.Rows()[2]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+
+	// 无效默认值
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 int default '';")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
+
+	// blob/text字段
+	config.GetGlobalConfig().Inc.EnableBlobType = false
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 blob;alter table t1 add column c2 text;")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
+
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Type blob/text is used in column 'c2'.")
+
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 blob not null;")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
+
+	// 变更类型
+	res = makeSql(tk, "create table t1(c1 int);alter table t1 modify column c1 varchar(10);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "类型转换警告: 列 't1.c1' int(11) -> varchar(10).")
+
+	res = makeSql(tk, "create table t1(c1 char(100));alter table t1 modify column c1 char(20);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "0")
+
+	res = makeSql(tk, "create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(10);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "0")
+
+	// 检查默认值
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 varchar(10);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 }
