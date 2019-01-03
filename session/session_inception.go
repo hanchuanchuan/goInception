@@ -2086,7 +2086,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 	s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, foundField.Field))
 		// }
 
-		if nc.Tp.Charset != "" || nc.Tp.Collate != "" {
+		if !mysqlFiledIsBlob(nc.Tp.Tp) && (nc.Tp.Charset != "" || nc.Tp.Collate != "") {
 			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
 		}
 
@@ -2101,9 +2101,15 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		switch nc.Tp.Tp {
 		case mysql.TypeDecimal, mysql.TypeNewDecimal,
 			mysql.TypeVarchar,
-			mysql.TypeVarString, mysql.TypeString:
-
+			mysql.TypeVarString:
 			str := string([]byte(foundField.Type)[:7])
+			if strings.Index(fieldType, str) == -1 {
+				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+					foundField.Type, fieldType)
+			}
+		case mysql.TypeString:
+			str := string([]byte(foundField.Type)[:4])
 			if strings.Index(fieldType, str) == -1 {
 				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
 					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
@@ -2180,9 +2186,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
 
-	if field.Tp.Charset != "" || field.Tp.Collate != "" {
-		s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
-	}
+	// log.Info(field.Tp.Charset, ",", field.Tp.Collate)
 
 	s.checkKeyWords(field.Name.Name.O)
 
@@ -2239,6 +2243,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	} else {
 		if !notNullFlag {
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
+		}
+
+		if field.Tp.Charset != "" || field.Tp.Collate != "" {
+			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
 		}
 	}
 
