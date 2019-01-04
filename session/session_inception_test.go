@@ -344,4 +344,10 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	row = res.Rows()[2]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
+
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
+	res = makeSql(tk, "create table t1(id int);alter table t1 alter column id set default '';")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 }

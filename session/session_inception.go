@@ -1808,6 +1808,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableRenameTable:
 			s.checkAlterTableRenameTable(table, alter)
 
+		case ast.AlterTableAlterColumn:
+			s.checkAlterTableAlterColumn(table, alter)
 		default:
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 			log.Info("未定义的解析: ", alter.Tp)
@@ -1817,6 +1819,40 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	if s.opt.execute {
 		if strings.HasSuffix(s.myRecord.DDLRollback, ",") {
 			s.myRecord.DDLRollback = strings.TrimSuffix(s.myRecord.DDLRollback, ",") + ";"
+		}
+	}
+
+}
+
+func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	log.Info("checkAlterTableAlterColumn")
+
+	log.Infof("%#v", c)
+
+	for _, nc := range c.NewColumns {
+
+		log.Infof("%#v", nc)
+
+		for _, op := range nc.Options {
+			log.Infof("%#v", op)
+
+			// switch op.Tp {
+			// case ast.ColumnOptionComment:
+			// 	if op.Expr.GetDatum().GetString() != "" {
+			// 		hasComment = true
+			// 	}
+			// case ast.ColumnOptionNotNull:
+			// 	notNullFlag = true
+			// case ast.ColumnOptionNull:
+			// 	notNullFlag = false
+			// case ast.ColumnOptionAutoIncrement:
+			// 	autoIncrement = true
+			// case ast.ColumnOptionDefaultValue:
+			// 	defaultValue = op.Expr.GetDatum().GetString()
+			// 	hasDefaultValue = true
+			// case ast.ColumnOptionPrimaryKey:
+			// 	isPrimary = true
+			// }
 		}
 	}
 
