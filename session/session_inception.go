@@ -1825,34 +1825,38 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 }
 
 func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec) {
-	log.Info("checkAlterTableAlterColumn")
-
-	log.Infof("%#v", c)
+	// log.Info("checkAlterTableAlterColumn")
 
 	for _, nc := range c.NewColumns {
+		found := false
+		var foundField FieldInfo
+		for _, field := range t.Fields {
+			if strings.EqualFold(field.Field, nc.Name.Name.O) {
+				found = true
+				foundField = field
+				break
+			}
+		}
 
-		log.Infof("%#v", nc)
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+		} else {
+			if nc.Options == nil {
+				// drop default . 不需要判断,可以删除本身为null的默认值
+			} else {
+				// "SET" "DEFAULT" SignedLiteral
+				for _, op := range nc.Options {
+					defaultValue := (op.Expr.GetDatum().GetString())
 
-		for _, op := range nc.Options {
-			log.Infof("%#v", op)
-
-			// switch op.Tp {
-			// case ast.ColumnOptionComment:
-			// 	if op.Expr.GetDatum().GetString() != "" {
-			// 		hasComment = true
-			// 	}
-			// case ast.ColumnOptionNotNull:
-			// 	notNullFlag = true
-			// case ast.ColumnOptionNull:
-			// 	notNullFlag = false
-			// case ast.ColumnOptionAutoIncrement:
-			// 	autoIncrement = true
-			// case ast.ColumnOptionDefaultValue:
-			// 	defaultValue = op.Expr.GetDatum().GetString()
-			// 	hasDefaultValue = true
-			// case ast.ColumnOptionPrimaryKey:
-			// 	isPrimary = true
-			// }
+					if len(defaultValue) == 0 {
+						switch strings.Split(foundField.Type, "(")[0] {
+						case "bit", "smallint", "mediumint", "int",
+							"bigint", "decimal", "float", "double", "year":
+							s.AppendErrorNo(ER_INVALID_DEFAULT, nc.Name.Name)
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1912,7 +1916,6 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 		// 列名未变
 		if c.OldColumnName == nil || c.OldColumnName.Name.L == nc.Name.Name.L {
-
 			for i, field := range t.Fields {
 				if strings.EqualFold(field.Field, nc.Name.Name.O) {
 					found = true
@@ -2019,6 +2022,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				}
 			}
 
+			// 未变更列名时,列需要存在
+			// 变更列名后,新列名不能存在
 			if newFound {
 				s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name.O))
 			}
@@ -2122,9 +2127,11 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 	s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, foundField.Field))
 		// }
 
-		if !mysqlFiledIsBlob(nc.Tp.Tp) && (nc.Tp.Charset != "" || nc.Tp.Collate != "") {
-			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
-		}
+		// if !mysqlFiledIsBlob(nc.Tp.Tp) && (nc.Tp.Charset != "" || nc.Tp.Collate != "") {
+		// 	s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
+		// }
+
+		s.mysqlCheckField(t, nc)
 
 		// 列(或旧列)未找到时结束
 		if s.hasError() {
@@ -2139,27 +2146,32 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			mysql.TypeVarchar,
 			mysql.TypeVarString:
 			str := string([]byte(foundField.Type)[:7])
-			if strings.Index(fieldType, str) == -1 {
+			if !strings.Contains(fieldType, str) {
 				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
 					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 					foundField.Type, fieldType)
 			}
 		case mysql.TypeString:
 			str := string([]byte(foundField.Type)[:4])
-			if strings.Index(fieldType, str) == -1 {
+			if !strings.Contains(fieldType, str) {
 				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
 					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 					foundField.Type, fieldType)
 			}
 		default:
-			if fieldType != foundField.Type {
+			if strings.Contains(fieldType, "(") && strings.Contains(foundField.Type, "(") {
+				if fieldType[:strings.Index(fieldType, "(")] !=
+					foundField.Type[:strings.Index(foundField.Type, "(")] {
+					s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+						foundField.Type, fieldType)
+				}
+			} else if fieldType != foundField.Type {
 				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
 					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 					foundField.Type, fieldType)
 			}
 		}
-
-		s.mysqlCheckField(t, nc)
 	}
 
 	// if c.Position.Tp != ast.ColumnPositionNone {
@@ -2627,12 +2639,12 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		if !found {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
 		} else {
-			if strings.Index(foundField.Type, "bolb") > -1 {
+			if strings.Contains(foundField.Type, "bolb") {
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
 			if tp == ast.ConstraintPrimaryKey {
-				if strings.Index(foundField.Type, "int") == -1 {
+				if strings.Contains(foundField.Type, "int") {
 					s.AppendErrorNo(ER_PK_COLS_NOT_INT, foundField.Field, t.Schema, t.Name)
 				}
 			}
@@ -2840,15 +2852,7 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	log.Debug("checkInsert")
-	// IsReplace   bool
-	// IgnoreErr   bool
-	// Table       *TableRefsClause
-	// Columns     []*ColumnName
-	// Lists       [][]ExprNode
-	// Setlist     []*Assignment
-	// Priority    mysql.PriorityEnum
-	// OnDuplicate []*Assignment
-	// Select      ResultSetNode
+
 	x := node
 
 	fieldCount := len(x.Columns)
@@ -2907,6 +2911,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	// log.Info(sql)
 	// log.Infof("%#v", x.Lists)
+
 	// log.Info(len(x.Lists))
 
 	if len(x.Lists) > 0 {
@@ -2955,7 +2960,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			// log.Infof("%#v", sel.SelectStmtOpts)
 			// log.Infof("%#v", sel.From)
-			// log.Infof("%#v", sel)
+			log.Infof("%#v", sel)
 			// log.Infof("%#v", sel.Fields)
 
 			// 只考虑insert select单表时,表不存在的情况
@@ -2965,20 +2970,20 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				fromTable = s.getTableFromCache(from.Schema.O, from.Name.O, true)
 			}
 
-			checkWildCard := false
+			isWildCard := false
 			if len(sel.Fields.Fields) > 0 {
 				f := sel.Fields.Fields[0]
 				if f.WildCard != nil {
-					checkWildCard = true
+					isWildCard = true
 				}
 			}
 
-			if checkWildCard {
+			if isWildCard {
 				s.AppendErrorNo(ER_SELECT_ONLY_STAR)
 			}
 
 			// 判断字段数是否匹配, *星号时跳过
-			if fieldCount > 0 && !checkWildCard && len(sel.Fields.Fields) != fieldCount {
+			if fieldCount > 0 && !isWildCard && len(sel.Fields.Fields) != fieldCount {
 				s.AppendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, 1)
 			}
 
@@ -3008,6 +3013,10 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				// s.AnlyzeExplain(rows)
 
 				s.explainOrAnalyzeSql(selectSql)
+
+				if from == nil && s.myRecord.AffectedRows == 0 {
+					s.myRecord.AffectedRows = 1
+				}
 			}
 
 			if sel.Where == nil {
@@ -3770,7 +3779,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 func FieldLengthWithType(tp string) int {
 
 	var p string
-	if strings.Index(tp, "(") > -1 {
+	if strings.Contains(tp, "(") {
 		p = tp[0:strings.Index(tp, "(")]
 	} else {
 		p = tp

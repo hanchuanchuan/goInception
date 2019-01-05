@@ -162,13 +162,133 @@ inception_magic_start;use test_inc;create table t1(id int);`)
 
 func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := makeSql(tk, "create table t1(id int);create table t1(id int);")
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	res := makeSql(tk, "create table t1(id int);create table t1(id int);")
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
 
+	// 表存在
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 't1' already exists.")
+
+	// 重复列
+	res = makeSql(tk, "create table t1(c1 int,c1 int);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Duplicate column name 'c1'.")
+
+	// 主键
+	config.GetGlobalConfig().Inc.CheckPrimaryKey = true
+	res = makeSql(tk, "create table t1(id int);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set a primary key for table 't1'.")
+	config.GetGlobalConfig().Inc.CheckPrimaryKey = false
+
+	// 数据类型 警告
+	res = makeSql(tk, "create table t1(id int,c1 bit);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
+
+	res = makeSql(tk, "create table t1(id int,c1 enum('red', 'blue', 'black'));")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
+
+	res = makeSql(tk, "create table t1(id int,c1 set('red', 'blue', 'black'));")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
+
+	// char列建议
+	config.GetGlobalConfig().Inc.MaxCharLength = 100
+	res = makeSql(tk, `create table t1(id int,c1 char(200));`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
+
+	// 字符集
+	res = makeSql(tk, `create table t1(id int,c1 varchar(20) character set utf8,
+		c2 varchar(20) COLLATE utf8_bin);`)
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!\n表 't1' 列 'c2' 禁止设置字符集!")
+
+	res = makeSql(tk, `create table t1(id int,c1 varchar(20)) character set utf8;`)
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 禁止设置字符集!")
+
+	res = makeSql(tk, `create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`)
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 禁止设置字符集!")
+
+	// 关键字
+	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
+	config.GetGlobalConfig().Inc.CheckIdentifier = true
+
+	res = makeSql(tk, "create table t1(id int, TABLES varchar(20),`c1$` varchar(20),c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20));")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\nIdentifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
+
+	// 列注释
+	config.GetGlobalConfig().Inc.CheckColumnComment = true
+	res = makeSql(tk, "create table t1(c1 varchar(20));")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+
+	// 表注释
+	config.GetGlobalConfig().Inc.CheckTableComment = true
+	res = makeSql(tk, "create table t1(c1 varchar(20));")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set comments for table 't1'.")
+
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	res = makeSql(tk, "create table t1(c1 varchar(20));")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "0")
+
+	// 无效默认值
+	res = makeSql(tk, "create table t1(id int,c1 int default '');")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
+
+	// blob/text字段
+	config.GetGlobalConfig().Inc.EnableBlobType = false
+	res = makeSql(tk, "create table t1(id int,c1 blob, c2 text);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.\nType blob/text is used in column 'c2'.")
+
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	res = makeSql(tk, "create table t1(id int,c1 blob not null);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
+
+	// 检查默认值
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
+	res = makeSql(tk, "create table t1(c1 varchar(10));")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
+
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
@@ -324,8 +444,155 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
 
+	// 检查默认值
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
+	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 varchar(10);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
+
+}
+
+func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	res := makeSql(tk, "create table t1(id int);alter table t1 alter column id set default '';")
+	row := res.Rows()[2]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Invalid default value for column 'id'.")
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 alter column id set default '1';")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "0")
+
+	res = makeSql(tk, "create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "0")
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "0")
+}
+
+func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	res := makeSql(tk, "create table t1(id int,c1 int);alter table t1 modify column c1 int first;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2")
+	}
+
+	res = makeSql(tk, "create table t1(id int,c1 int);alter table t1 modify column id int after c1;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2")
+	}
+
+	// after 不存在的列
+	res = makeSql(tk, "create table t1(id int);alter table t1 modify column c1 int after id;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't1.c1' not existed.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int);alter table t1 modify column c1 int after id1;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't1.id1' not existed.")
+
+	// 数据类型 警告
+	res = makeSql(tk, "create table t1(id bit);alter table t1 modify column id bit;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+
+	res = makeSql(tk, "create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+
+	res = makeSql(tk, "create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+
+	// char列建议
+	config.GetGlobalConfig().Inc.MaxCharLength = 100
+	res = makeSql(tk, `create table t1(id int,c1 char(10));
+		alter table t1 modify column c1 char(200);`)
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
+
+	// 字符集
+	res = makeSql(tk, `create table t1(id int,c1 varchar(20));
+		alter table t1 modify column c1 varchar(20) character set utf8;
+		alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;`)
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+
+	// 列注释
+	config.GetGlobalConfig().Inc.CheckColumnComment = true
+	res = makeSql(tk, "create table t1(id int,c1 varchar(10));alter table t1 modify column c1 varchar(20);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+
+	// 无效默认值
+	res = makeSql(tk, "create table t1(id int,c1 int);alter table t1 modify column c1 int default '';")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
+
+	// blob/text字段
+	config.GetGlobalConfig().Inc.EnableBlobType = false
+	res = makeSql(tk, "create table t1(id int,c1 varchar(10));alter table t1 modify column c1 blob;alter table t1 modify column c1 text;")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
+
+	row = res.Rows()[3]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
+
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	res = makeSql(tk, "create table t1(id int,c1 blob);alter table t1 modify column c1 blob not null;")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
+
+	// 检查默认值
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
+	res = makeSql(tk, "create table t1(id int,c1 varchar(5));alter table t1 modify column c1 varchar(10);")
+	row = res.Rows()[2]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
+	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
+
 	// 变更类型
-	res = makeSql(tk, "create table t1(c1 int);alter table t1 modify column c1 varchar(10);")
+	res = makeSql(tk, "create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);")
 	row = res.Rows()[2]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "类型转换警告: 列 't1.c1' int(11) -> varchar(10).")
@@ -337,17 +604,128 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	res = makeSql(tk, "create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(10);")
 	row = res.Rows()[2]
 	c.Assert(row[2], Equals, "0")
+}
 
-	// 检查默认值
-	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
-	res = makeSql(tk, "create table t1(id int);alter table t1 add column c1 varchar(10);")
-	row = res.Rows()[2]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
+func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
-	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
-	res = makeSql(tk, "create table t1(id int);alter table t1 alter column id set default '';")
-	row = res.Rows()[2]
+	res := makeSql(tk, "create table t1(id int,c1 int);alter table t1 drop column c2;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't1.c2' not existed.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int);alter table t1 drop column c1;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+}
+
+func (s *testSessionIncSuite) TestInsert(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckInsertField = false
+
+	// 表不存在
+	res := makeSql(tk, "insert into t1 values(1,1);")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
+
+	// 列数不匹配
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id) values(1,1);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column count doesn't match value count at row 1.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id) values(1),(2,1);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column count doesn't match value count at row 2.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int not null);insert into t1(id,c1) select 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column count doesn't match value count at row 1.")
+
+	// 列重复
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id,id) values(1,1);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 'id' specified twice in table 't1'.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id,id) select 1,1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 'id' specified twice in table 't1'.")
+
+	// 字段警告
+	config.GetGlobalConfig().Inc.CheckInsertField = true
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1 values(1,1);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
+	c.Assert(row[4], Equals, "insert语句需要指定字段列表.")
+	config.GetGlobalConfig().Inc.CheckInsertField = false
+
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id) values();")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "insert语句需要指定值列表.")
+
+	// 列不允许为空
+	res = makeSql(tk, "create table t1(id int,c1 int not null);insert into t1(id,c1) values(1,null);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 'test_inc.t1.c1' cannot be null in 1 row.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int not null default 1);insert into t1(id,c1) values(1,null);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 'test_inc.t1.c1' cannot be null in 1 row.")
+
+	// insert select 表不存在
+	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t2;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Table 'test_inc.t2' doesn't exist.")
+
+	// select where
+	config.GetGlobalConfig().Inc.CheckDMLWhere = true
+	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "selete语句请指定where条件.")
+	config.GetGlobalConfig().Inc.CheckDMLWhere = false
+
+	// limit
+	config.GetGlobalConfig().Inc.CheckDMLLimit = true
+	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 limit 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
+	config.GetGlobalConfig().Inc.CheckDMLLimit = false
+
+	// order by rand()
+	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 order by rand();")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Order by rand is not allowed in select statement.")
+
+	// 受影响行数
+	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "2")
+
+	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "1")
 }
