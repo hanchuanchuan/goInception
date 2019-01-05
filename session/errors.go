@@ -438,7 +438,7 @@ var (
 func GetErrorLevel(errorNo int) uint8 {
 	switch errorNo {
 	case ER_WITH_INSERT_FIELD,
-		ER_BAD_NULL_ERROR,
+		// ER_BAD_NULL_ERROR,
 		ER_NO_WHERE_CONDITION,
 		ER_WITH_ORDERBY_CONDITION,
 		ER_SELECT_ONLY_STAR,
