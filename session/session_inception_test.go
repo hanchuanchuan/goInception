@@ -713,10 +713,12 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
+	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = true
 	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 order by rand();")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Order by rand is not allowed in select statement.")
+	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
 	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
@@ -728,4 +730,60 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "1")
+}
+
+func (s *testSessionIncSuite) TestUpdate(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckInsertField = false
+
+	// 表不存在
+	res := makeSql(tk, "update t1 set c1 = 1;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
+
+	res = makeSql(tk, "create table t1(id int);update t1 set c1 = 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 'c1' not existed.")
+
+	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1,c2 = 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't1.c2' not existed.")
+
+	// where
+	config.GetGlobalConfig().Inc.CheckDMLWhere = true
+	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "selete语句请指定where条件.")
+	config.GetGlobalConfig().Inc.CheckDMLWhere = false
+
+	// limit
+	config.GetGlobalConfig().Inc.CheckDMLLimit = true
+	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1 limit 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
+	config.GetGlobalConfig().Inc.CheckDMLLimit = false
+
+	// order by rand()
+	config.GetGlobalConfig().Inc.CheckDMLOrderBy = true
+	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1 order by rand();")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Order by is not allowed in update/delete statement.")
+	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
+
+	// 受影响行数
+	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "0")
 }
