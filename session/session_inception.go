@@ -3384,7 +3384,7 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 	if len(rows) > 0 {
 		r.AffectedRows = rows[0].Rows
 	}
-	if r.AffectedRows >= s.Inc.MaxUpdateRows {
+	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= s.Inc.MaxUpdateRows {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
@@ -3402,7 +3402,8 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	if node.List != nil {
 		for _, l := range node.List {
 			originTable = l.Column.Table.L
-			firstColumnName = l.Column.Name.L
+			firstColumnName = l.Column.Name.O
+			break
 		}
 	}
 
@@ -3413,11 +3414,9 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	for _, tblName := range tableList {
 
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
-
 		if t == nil {
 			catchError = true
 		} else if s.myRecord.TableInfo == nil {
-
 			// 如果set没有指定列名,则需要根据列名遍历所有访问表的列,看操作的表是哪一个
 			if originTable == "" {
 				for _, field := range t.Fields {
@@ -3432,9 +3431,36 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				}
 			}
 		}
+
+		// if i == len(tableList) - 1 && s.myRecord.TableInfo == nil {
+		// 	s.myRecord.TableInfo = t
+		// }
 	}
 
-	if !catchError {
+	// log.Info(catchError, s.myRecord.TableInfo, s.myRecord.TableInfo.IsNew, s.myRecord.TableInfo.IsNewColumns)
+
+	if !catchError && s.myRecord.TableInfo == nil {
+		if originTable == "" {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, firstColumnName)
+		} else {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+				fmt.Sprintf("%s.%s", originTable, firstColumnName))
+		}
+	} else if !catchError && (s.myRecord.TableInfo.IsNew || s.myRecord.TableInfo.IsNewColumns) {
+		for _, l := range node.List {
+			found := false
+			for _, field := range s.myRecord.TableInfo.Fields {
+				if strings.EqualFold(field.Field, l.Column.Name.L) && !field.IsDeleted {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+					fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
+			}
+		}
+	} else if !catchError {
 		s.explainOrAnalyzeSql(sql)
 	}
 
