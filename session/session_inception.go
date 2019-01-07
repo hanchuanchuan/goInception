@@ -2960,7 +2960,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			// log.Infof("%#v", sel.SelectStmtOpts)
 			// log.Infof("%#v", sel.From)
-			log.Infof("%#v", sel)
+			// log.Infof("%#v", sel)
 			// log.Infof("%#v", sel.Fields)
 
 			// 只考虑insert select单表时,表不存在的情况
@@ -3484,6 +3484,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
 			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
+			break
 		}
 	}
 
