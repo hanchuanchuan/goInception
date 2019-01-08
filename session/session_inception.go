@@ -1221,7 +1221,7 @@ func (s *session) parseOptions(sql string) {
 	db, err := gorm.Open("mysql", addr)
 
 	// 禁用日志记录器，不显示任何日志
-	// db.LogMode(false)
+	db.LogMode(false)
 
 	if err != nil {
 		log.Info(err)
@@ -3477,13 +3477,62 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	}
 }
 
+func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
+
+	if expr == nil {
+		return true
+	}
+
+	switch e := expr.(type) {
+	case *ast.BinaryOperationExpr:
+		return s.checkItem(e.L, tables) && s.checkItem(e.R, tables)
+	case *ast.ColumnNameExpr:
+		found := false
+
+		db := e.Name.Schema.L
+		if db == "" {
+			db = s.DBName
+		}
+		for _, t := range tables {
+			if e.Name.Table.L != "" && strings.EqualFold(t.Schema, db) &&
+				strings.EqualFold(t.Name, e.Name.Table.L) ||
+				e.Name.Table.L == "" {
+				for _, field := range t.Fields {
+					if strings.EqualFold(field.Field, e.Name.Name.L) && !field.IsDeleted {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+		}
+		if found {
+			return true
+		} else {
+			if e.Name.Table.L == "" {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.Name.O)
+			} else {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+					fmt.Sprintf("%s.%s", e.Name.Table.O, e.Name.Name.O))
+			}
+			return false
+		}
+	default:
+		log.Infof("%#v", e)
+		return true
+	}
+}
+
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
 	log.Debug("checkDelete")
-
+	// log.Info("IsMultiTable:  ", node.IsMultiTable)
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
 			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
+			log.Infof("--- %#v", a.Name.O)
 			break
 		}
 	}
@@ -3491,12 +3540,29 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	var tableList []*ast.TableName
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
+	var tableInfoList []*TableInfo
 	for _, tblName := range tableList {
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
-		if s.myRecord.TableInfo == nil {
-			s.myRecord.TableInfo = t
+		if t != nil {
+			log.Infof(":: %#v", t.Name)
+			tableInfoList = append(tableInfoList, t)
+
+			if s.myRecord.TableInfo == nil {
+				s.myRecord.TableInfo = t
+			}
 		}
 	}
+
+	// log.Infof("%#v", node.Where)
+	if node.TableRefs.TableRefs.On != nil {
+		s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
+	}
+	// if node.BeforeFrom {
+	// 	s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
+	// }
+	s.checkItem(node.Where, tableInfoList)
+	// log.Info("BeforeFrom: ", node.BeforeFrom)
+	// log.Infof("%#v", node.TableRefs.TableRefs)
 
 	s.explainOrAnalyzeSql(sql)
 
