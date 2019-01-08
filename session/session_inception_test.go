@@ -801,7 +801,7 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	res := makeSql(tk, "delete from t1 where c1 = 1;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
+	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.\nColumn 'c1' not existed.")
 
 	// res = makeSql(tk, "create table t1(id int);delete from t1 where c1 = 1;")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -836,6 +836,28 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Order by is not allowed in update/delete statement.")
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
+
+	// 表不存在
+	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+		create table t2(id int primary key,c1 int,c2 int);
+		delete from t3 where id1 =1;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Table 'test_inc.t3' doesn't exist.\nColumn 'id1' not existed.")
+
+	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+		create table t2(id int primary key,c1 int,c2 int);
+		delete from t1 where id1 =1;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 'id1' not existed.")
+
+	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+		create table t2(id int primary key,c1 int,c2 int);
+		delete t2 from t1 inner join t2 on t1.id=t2.id2 where c11=1;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
 
 	// 受影响行数
 	res = makeSql(tk, "create table t1(id int,c1 int);delete from t1 where id = 1;")
