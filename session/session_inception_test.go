@@ -757,6 +757,27 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't1.c2' not existed.")
 
+	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+		create table t2(id int primary key,c1 int,c2 int);
+		update t1 inner join t2 on t1.id=t2.id2  set t1.c1=t2.c1 where c11=1;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
+
+	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+		create table t2(id int primary key,c1 int,c2 int);
+		update t1,t2 t3 set t1.c1=t2.c3 where t1.id=t3.id;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't2.c3' not existed.")
+
+	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+		create table t2(id int primary key,c1 int,c2 int);
+		update t1,t2 t3 set t1.c1=t2.c3 where t1.id=t3.id;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Column 't2.c3' not existed.")
+
 	// where
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
 	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1;")
