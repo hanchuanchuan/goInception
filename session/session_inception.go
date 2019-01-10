@@ -105,6 +105,8 @@ type FieldInfo struct {
 type TableInfo struct {
 	Schema string
 	Name   string
+	// 表别名,仅用于update,delete多表
+	AsName string
 	Fields []FieldInfo
 
 	// 索引
@@ -3393,7 +3395,6 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 }
 
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
-
 	log.Debug("checkUpdate")
 
 	// 从set列表读取要更新的表
@@ -3407,12 +3408,19 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		}
 	}
 
-	var tableList []*ast.TableName
+	var tableList []*ast.TableSource
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
-	catchError := false
-	for _, tblName := range tableList {
+	var tableInfoList []*TableInfo
 
+	catchError := false
+	for _, tblSource := range tableList {
+		log.Info(tblSource.Source)
+		log.Infof("%#v", tblSource.Source)
+		tblName, ok := tblSource.Source.(*ast.TableName)
+		if !ok {
+			continue
+		}
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 		if t == nil {
 			catchError = true
@@ -3430,6 +3438,13 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 					s.myRecord.TableInfo = t
 				}
 			}
+		}
+
+		if t != nil {
+			if tblSource.AsName.L != "" {
+				t.AsName = tblSource.AsName.O
+			}
+			tableInfoList = append(tableInfoList, t)
 		}
 
 		// if i == len(tableList) - 1 && s.myRecord.TableInfo == nil {
@@ -3459,10 +3474,18 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 					fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
 			}
+
+			s.checkItem(l.Expr, tableInfoList)
 		}
 	} else if !catchError {
 		s.explainOrAnalyzeSql(sql)
 	}
+
+	if node.TableRefs.TableRefs.On != nil {
+		s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
+	}
+
+	s.checkItem(node.Where, tableInfoList)
 
 	if node.Where == nil {
 		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
@@ -3493,9 +3516,17 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		if db == "" {
 			db = s.DBName
 		}
+
 		for _, t := range tables {
+			var tName string
+			if t.AsName != "" {
+				tName = t.AsName
+			} else {
+				tName = t.Name
+			}
+
 			if e.Name.Table.L != "" && strings.EqualFold(t.Schema, db) &&
-				strings.EqualFold(t.Name, e.Name.Table.L) ||
+				(strings.EqualFold(tName, e.Name.Table.L)) ||
 				e.Name.Table.L == "" {
 				for _, field := range t.Fields {
 					if strings.EqualFold(field.Field, e.Name.Name.L) && !field.IsDeleted {
@@ -3537,14 +3568,19 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 		}
 	}
 
-	var tableList []*ast.TableName
+	var tableList []*ast.TableSource
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
 	var tableInfoList []*TableInfo
-	for _, tblName := range tableList {
+	for _, tblSource := range tableList {
+		tblName, _ := tblSource.Source.(*ast.TableName)
+
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 		if t != nil {
 			log.Infof(":: %#v", t.Name)
+			if tblSource.AsName.L != "" {
+				t.AsName = tblSource.AsName.O
+			}
 			tableInfoList = append(tableInfoList, t)
 
 			if s.myRecord.TableInfo == nil {
@@ -3764,22 +3800,23 @@ func (s *session) checkInceptionVariables(number int) bool {
 	return true
 }
 
-func extractTableList(node ast.ResultSetNode, input []*ast.TableName) []*ast.TableName {
+func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.TableSource {
 	switch x := node.(type) {
 	case *ast.Join:
 		input = extractTableList(x.Left, input)
 		input = extractTableList(x.Right, input)
 	case *ast.TableSource:
-		if s, ok := x.Source.(*ast.TableName); ok {
-			if x.AsName.L != "" {
-				newTableName := *s
-				newTableName.Name = x.AsName
-				s.Name = x.AsName
-				input = append(input, &newTableName)
-			} else {
-				input = append(input, s)
-			}
-		}
+		// if s, ok := x.Source.(*ast.TableName); ok {
+		// 	if x.AsName.L != "" {
+		// 		newTableName := *s
+		// 		newTableName.Name = x.AsName
+		// 		s.Name = x.AsName
+		// 		input = append(input, &newTableName)
+		// 	} else {
+		// 		input = append(input, s)
+		// 	}
+		// }
+		input = append(input, x)
 	}
 	return input
 }
@@ -3804,6 +3841,7 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 			}
 			return nil
 		}
+		t.AsName = ""
 		return t
 	} else {
 		rows := s.QueryTableFromDB(db, tableName, reportNotExists)
@@ -3964,4 +4002,53 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 	// p.Indexes = rows
 
 	return p
+}
+
+func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
+	log.Debug("checkSubSelectItem")
+
+	var tableList []*ast.TableSource
+	tableList = extractTableList(node.From.TableRefs, tableList)
+
+	var tableInfoList []*TableInfo
+	for _, tblSource := range tableList {
+		tblName, _ := tblSource.Source.(*ast.TableName)
+		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+		if t != nil {
+			if tblSource.AsName.L != "" {
+				t.AsName = tblSource.AsName.O
+			}
+			tableInfoList = append(tableInfoList, t)
+		}
+	}
+
+	if len(tableInfoList) == 0 {
+		return false
+	}
+
+	if node.Fields != nil {
+		for _, field := range node.Fields.Fields {
+			if field.WildCard == nil {
+				s.checkItem(field.Expr, tableInfoList)
+			}
+		}
+	}
+
+	if node.GroupBy != nil {
+		for _, item := range node.GroupBy.Items {
+			s.checkItem(item.Expr, tableInfoList)
+		}
+	}
+
+	if node.Having != nil {
+		s.checkItem(node.Having.Expr, tableInfoList)
+	}
+
+	if node.Order != nil {
+		for _, item := range node.Order.Items {
+			s.checkItem(item.Expr, tableInfoList)
+		}
+	}
+
+	return !s.hasError()
 }

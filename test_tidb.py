@@ -149,13 +149,9 @@ inception_magic_start;
 use test_inc;
 create table t1(id int primary key,c1 int);
 create table t2(id int primary key,c1 int,c2 int);
-delete from t1 where c1 = 1;
-delete from t1 where id1 =1;
-DELETE FROM t1 USING t1,t2 WHERE t1.id=t2.id ;
-delete t1 from t1 left join t2 on t1.id=t2.id where t1.id >1 and t2.c1<>1;
-delete t1 from t1 where id =1;
-delete t1 from t1 inner join t2 on t1.id=t2.id where c2=1;
-delete t2 from t1 inner join t2 on t1.id=t2.id2 where c21=1;
+# update t1 set c1=1;
+# update t1 set c2=1;
+update t1,(select * from t2)as t3 set t1.c1=t3.c3 where t1.id=t3.id;
 inception_magic_commit;'''
 
 # alter table t1 add column c2 int;
