@@ -1472,6 +1472,9 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	s.myRecord.DBName = node.Table.Schema.O
 	s.myRecord.TableName = node.Table.Name.O
 
+	s.checkAutoIncrement(node)
+	s.checkContainDotColumn(node)
+
 	// 缓存表结构 CREATE TABLE LIKE
 	if node.ReferTable != nil {
 		originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
@@ -2960,6 +2963,8 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	if x.Select != nil {
 		if sel, ok := x.Select.(*ast.SelectStmt); ok {
 
+			// s.checkSubSelectItem(sel)
+
 			// log.Infof("%#v", sel.SelectStmtOpts)
 			// log.Infof("%#v", sel.From)
 			// log.Infof("%#v", sel)
@@ -4008,7 +4013,9 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 	log.Debug("checkSubSelectItem")
 
 	var tableList []*ast.TableSource
-	tableList = extractTableList(node.From.TableRefs, tableList)
+	if node.From != nil {
+		tableList = extractTableList(node.From.TableRefs, tableList)
+	}
 
 	var tableInfoList []*TableInfo
 	for _, tblSource := range tableList {
@@ -4022,9 +4029,9 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 		}
 	}
 
-	if len(tableInfoList) == 0 {
-		return false
-	}
+	// if len(tableInfoList) == 0 {
+	// 	return false
+	// }
 
 	if node.Fields != nil {
 		for _, field := range node.Fields.Fields {
@@ -4044,8 +4051,8 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 		s.checkItem(node.Having.Expr, tableInfoList)
 	}
 
-	if node.Order != nil {
-		for _, item := range node.Order.Items {
+	if node.OrderBy != nil {
+		for _, item := range node.OrderBy.Items {
 			s.checkItem(item.Expr, tableInfoList)
 		}
 	}
