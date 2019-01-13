@@ -153,11 +153,12 @@ const (
 	ER_REMOVED_SPACES
 	ER_CHANGE_COLUMN_TYPE
 	ER_CANT_DROP_TABLE
+	ER_WRONG_TABLE_NAME
 	ER_ERROR_LAST
 )
 
 var (
-	MyErrors = [136]string{
+	MyErrors = [...]string{
 		"HelloWorld",
 		"不支持的语法类型.",
 		"sql没有源信息.",
@@ -293,6 +294,7 @@ var (
 		"Leading spaces are removed from name '%s'",
 		"类型转换警告: 列 '%s' %s -> %s.",
 		"禁用【DROP】|【TRUNCATE】删除/清空表 '%s', 请改用RENAME重写.",
+		"Incorrect table name '%-.100s'",
 		"TheLastError,ByeBye",
 	}
 )
