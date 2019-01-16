@@ -2354,6 +2354,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 			s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, table.Schema, table.Name, s.Inc.MaxPrimaryKeyParts)
 		}
 
+		s.checkDuplicateColumnName(keys)
+
 		return
 	}
 
@@ -2377,6 +2379,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	if name == "PRIMARY" {
 		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 	}
+
+	s.checkDuplicateColumnName(keys)
 
 	switch tp {
 	case ast.ConstraintForeignKey:
@@ -2743,13 +2747,14 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	// log.Infof("%s \n", c.Constraint.Keys)
 
 	switch c.Constraint.Tp {
-	case ast.ConstraintIndex:
+	case ast.ConstraintKey, ast.ConstraintIndex, ast.ConstraintUniq, ast.ConstraintUniqIndex,
+		ast.ConstraintUniqKey:
 		s.checkCreateIndex(nil, c.Constraint.Name,
 			c.Constraint.Keys, c.Constraint.Option, t, false, c.Constraint.Tp)
 
-	case ast.ConstraintUniq:
-		s.checkCreateIndex(nil, c.Constraint.Name,
-			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
+	// case ast.ConstraintUniq:
+	// 	s.checkCreateIndex(nil, c.Constraint.Name,
+	// 		c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 
 	case ast.ConstraintPrimaryKey:
 		s.checkCreateIndex(nil, "PRIMARY",

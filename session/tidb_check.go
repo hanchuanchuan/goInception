@@ -23,7 +23,6 @@ import (
 
 	"github.com/hanchuanchuan/tidb/ast"
 	"github.com/hanchuanchuan/tidb/mysql"
-	// "github.com/hanchuanchuan/tidb/ddl"
 	"github.com/pingcap/errors"
 	// log "github.com/sirupsen/logrus"
 )
@@ -144,4 +143,30 @@ func checkAutoIncrementOp(colDef *ast.ColumnDef, num int) (bool, error) {
 	}
 
 	return hasAutoIncrement, nil
+}
+
+func (s *session) checkDuplicateColumnName(indexColNames []*ast.IndexColName) error {
+	colNames := make(map[string]struct{}, len(indexColNames))
+	for _, indexColName := range indexColNames {
+		name := indexColName.Column.Name
+		if _, ok := colNames[name.L]; ok {
+			s.AppendErrorNo(ER_DUP_FIELDNAME, name)
+			return errors.New("")
+		}
+		colNames[name.L] = struct{}{}
+	}
+	return nil
+}
+
+// checkIndexInfo checks index name and index column names.
+func (s *session) checkIndexInfo(indexName string, indexColNames []*ast.IndexColName) error {
+	if strings.EqualFold(indexName, mysql.PrimaryKeyName) {
+		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, indexName, "")
+		return errors.New("")
+	}
+	if s.Inc.MaxKeyParts > 0 && len(indexColNames) > int(s.Inc.MaxKeyParts) {
+		s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, indexName, "", s.Inc.MaxKeyParts)
+		return errors.New("")
+	}
+	return s.checkDuplicateColumnName(indexColNames)
 }
