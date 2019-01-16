@@ -14,4 +14,4 @@
 - **TiDB**: https://github.com/pingcap/tidb
 
 ### 联系方式
-- 邮箱： chanchuanhan@gmail.com
+- 邮箱： chuanchuanhan@gmail.com
