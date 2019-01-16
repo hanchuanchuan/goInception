@@ -10,8 +10,8 @@
 
 ## 引用
 
-- **inception**: https://github.com/hanchuanchuan/inception
-- **TiDB**: https://github.com/pingcap/tidb
+- **inception**：https://github.com/hanchuanchuan/inception
+- **TiDB**：https://github.com/pingcap/tidb
 
 ### 联系方式
-- 邮箱： chuanchuanhan@gmail.com
+- 邮箱：chuanchuanhan@gmail.com
