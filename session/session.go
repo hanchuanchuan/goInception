@@ -802,11 +802,15 @@ func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode 
 	} else {
 		s.ClearValue(sessionctx.LastExecuteDDL)
 	}
-	logStmt(stmtNode, s.sessionVars)
+
+	if s.Value(sessionctx.Initing) == nil {
+		logStmt(stmtNode, s.sessionVars)
+	}
+
 	startTime := time.Now()
 	recordSet, err := runStmt(ctx, s, stmt)
 	if err != nil {
-		if !kv.ErrKeyExists.Equal(err) {
+		if !kv.ErrKeyExists.Equal(err) && s.Value(sessionctx.Initing) == nil {
 			log.Warnf("con:%d schema_ver:%d session error:\n%v\n%s",
 				connID, s.sessionVars.TxnCtx.SchemaVersion, errors.ErrorStack(err), s)
 		}
@@ -869,7 +873,9 @@ func (s *session) execute(ctx context.Context, sql string) (recordSets []ast.Rec
 		stmt, err := compiler.Compile(ctx, stmtNode)
 		if err != nil {
 			s.rollbackOnError(ctx)
-			log.Warnf("con:%d compile error:\n%v\n%s", connID, err, sql)
+			if s.Value(sessionctx.Initing) == nil {
+				log.Warnf("con:%d compile error:\n%v\n%s", connID, err, sql)
+			}
 			return nil, errors.Trace(err)
 		}
 		metrics.SessionExecuteCompileDuration.WithLabelValues(label).Observe(time.Since(startTS).Seconds())
@@ -1193,15 +1199,14 @@ func BootstrapSession(store kv.Storage) (*domain.Domain, error) {
 		return nil, errors.Trace(err)
 	}
 
-	// se1, err := createSession(store)
-	_, err = createSession(store)
+	se1, err := createSession(store)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	// err = dom.UpdateTableStatsLoop(se1)
-	// if err != nil {
-	// 	return nil, errors.Trace(err)
-	// }
+	err = dom.UpdateTableStatsLoop(se1)
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
 
 	if raw, ok := store.(domain.EtcdBackend); ok {
 		err = raw.StartGCWorker()
@@ -1233,13 +1238,19 @@ func runInBootstrapSession(store kv.Storage, bootstrap func(Session)) {
 	schemaLease = saveLease
 
 	s.SetValue(sessionctx.Initing, true)
+
+	// 调整日志级别,忽略初始化时的info日志
+	level := log.GetLevel()
+	log.SetLevel(log.WarnLevel)
 	bootstrap(s)
 	finishBootstrap(store)
+
 	s.ClearValue(sessionctx.Initing)
 
 	dom := domain.GetDomain(s)
 	dom.Close()
 	domap.Delete(store)
+	log.SetLevel(level)
 }
 
 func createSession(store kv.Storage) (*session, error) {

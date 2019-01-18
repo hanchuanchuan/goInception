@@ -191,7 +191,7 @@ func (s *Server) loadTLSCertificates() {
 			variable.SysVars["ssl_cert"].Value = s.cfg.Security.SSLCert
 			variable.SysVars["ssl_key"].Value = s.cfg.Security.SSLKey
 		} else {
-			log.Warn("Secure connection is NOT ENABLED")
+			log.Info("Secure connection is NOT ENABLED")
 		}
 	}()
 

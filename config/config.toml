@@ -9,6 +9,8 @@ advertise_address = ""
 # TiDB server port.
 port = 4000
 
+# path = ""
+
 [inc]
 enable_nullable = true
 enable_drop_table = true
