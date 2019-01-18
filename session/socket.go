@@ -22,9 +22,6 @@ var URL string
 var header = req.Header{"Accept": "application/json"}
 
 func init() {
-
-	log.Info("socket init")
-
 	req.SetTimeout(5 * time.Second)
 }
 

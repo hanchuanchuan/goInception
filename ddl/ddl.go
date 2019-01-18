@@ -490,7 +490,8 @@ func (d *ddl) doDDLJob(ctx sessionctx.Context, job *model.Job) error {
 
 	// Notice worker that we push a new job and wait the job done.
 	d.asyncNotifyWorker(job.Type)
-	log.Infof("[ddl] start DDL job %s, Query:%s", job, job.Query)
+
+	// log.Infof("[ddl] start DDL job %s, Query:%s", job, job.Query)
 
 	var historyJob *model.Job
 	jobID := job.ID
@@ -522,7 +523,7 @@ func (d *ddl) doDDLJob(ctx sessionctx.Context, job *model.Job) error {
 
 		// If a job is a history job, the state must be JobSynced or JobCancel.
 		if historyJob.IsSynced() {
-			log.Infof("[ddl] DDL job ID:%d is finished", jobID)
+			// log.Infof("[ddl] DDL job ID:%d is finished", jobID)
 			return nil
 		}
 

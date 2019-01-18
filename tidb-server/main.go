@@ -416,7 +416,7 @@ func printInfo() {
 	// Make sure the TiDB info is always printed.
 	level := log.GetLevel()
 	log.SetLevel(log.InfoLevel)
-	printer.PrintTiDBInfo()
+	// printer.PrintTiDBInfo()
 	log.SetLevel(level)
 }
 
