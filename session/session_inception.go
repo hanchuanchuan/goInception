@@ -402,6 +402,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				}
 
 				if !s.haveBegin && s.needDataSource(stmtNode) {
+					log.Error(stmtNode)
+					log.Errorf("%#v", stmtNode)
 					s.AppendErrorMessage("Must start as begin statement.")
 					s.recordSets.Append(s.myRecord)
 					return s.recordSets.Rows(), nil
