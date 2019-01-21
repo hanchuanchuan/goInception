@@ -17,4 +17,3 @@ explain_test
 cmd/explaintest/explain-test.out
 _tools/
 *.fail.go
-1.vendor-new
