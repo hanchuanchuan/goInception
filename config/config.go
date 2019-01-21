@@ -329,7 +329,7 @@ var defaultConf = Config{
 	Port:             4000,
 	Store:            "mocktikv",
 	Path:             "/tmp/tidb",
-	RunDDL:           false,
+	RunDDL:           true,
 	SplitTable:       true,
 	Lease:            "45s",
 	TokenLimit:       1000,
