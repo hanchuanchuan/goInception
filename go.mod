@@ -1,13 +1,5 @@
 module github.com/hanchuanchuan/tidb
 
-replace github.com/siddontang/go-mysql => ../go-mysql
-
-replace github.com/siddontang/go-mysql/mysql => ../go-mysql/mysql
-
-replace github.com/siddontang/go-mysql/replication => ../go-mysql/replication
-
-replace github.com/pingcap/check => ../check
-
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/StackExchange/wmi v0.0.0-20180725035823-b12b22c5341f // indirect
@@ -43,6 +35,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.5.1 // indirect
+	github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect

@@ -71,6 +71,10 @@ github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgf
 github.com/grpc-ecosystem/grpc-gateway v1.5.1/go.mod h1:RSKVYQBd5MCa4OVpNdGskqpgL2+G+NZTnrVHpWWfpdw=
 github.com/hanchuanchuan/go-mysql v0.0.0-20180917011345-0f2e7f60ec93 h1:j+dI68ppUt7o3s56NoOFMTiFvz0TZbtNwI3XTT1vAgk=
 github.com/hanchuanchuan/go-mysql v0.0.0-20180917011345-0f2e7f60ec93/go.mod h1:GnphXWxOlfjZrXgnfj+AH5s1fNkKemdc+3udkCAKl6M=
+github.com/hanchuanchuan/go-mysql v0.0.0-20190121013412-21ce2da16093 h1:qQWfzyp6k+T7IoXNJz449u58Ask+9H3t12ha5EpFuJU=
+github.com/hanchuanchuan/go-mysql v0.0.0-20190121013412-21ce2da16093/go.mod h1:nzKLAw7EZz2i/B12qvbTmRM5+d+iIIDGqu6/2XWXH0U=
+github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff h1:QQJzMLDLwtJCZd4tJ25I0Am/gJxSOak2PoPFxRkG48c=
+github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff/go.mod h1:nzKLAw7EZz2i/B12qvbTmRM5+d+iIIDGqu6/2XWXH0U=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
