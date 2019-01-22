@@ -16,12 +16,8 @@ package server
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"os"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/gorilla/mux"
 	"github.com/hanchuanchuan/tidb/config"
 	"github.com/hanchuanchuan/tidb/domain"
 	"github.com/hanchuanchuan/tidb/kv"
@@ -78,33 +74,6 @@ func (ds *testDumpStatsSuite) stopServer(c *C) {
 	if ds.server != nil {
 		ds.server.Close()
 	}
-}
-
-func (ds *testDumpStatsSuite) TestDumpStatsAPI(c *C) {
-	ds.startServer(c)
-	ds.prepareData(c)
-	defer ds.server.Close()
-
-	router := mux.NewRouter()
-	router.Handle("/stats/dump/{db}/{table}", ds.sh)
-
-	resp, err := http.Get("http://127.0.0.1:10090/stats/dump/tidb/test")
-	c.Assert(err, IsNil)
-	defer resp.Body.Close()
-
-	path := "/tmp/stats.json"
-	fp, err := os.Create(path)
-	c.Assert(err, IsNil)
-	c.Assert(fp, NotNil)
-	defer func() {
-		c.Assert(fp.Close(), IsNil)
-		c.Assert(os.Remove(path), IsNil)
-	}()
-
-	js, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
-	fp.Write(js)
-	ds.checkData(c, path)
 }
 
 func (ds *testDumpStatsSuite) prepareData(c *C) {
