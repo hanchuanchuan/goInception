@@ -53,7 +53,7 @@ import (
 
 var _ = Suite(&testSessionIncSuite{})
 
-func Test(t *testing.T) { TestingT(t) }
+func Test1(t *testing.T) { TestingT(t) }
 
 // func TestT(t *testing.T) {
 // 	logutil.InitLogger(&logutil.LogConfig{

@@ -233,7 +233,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	// }
 
 	if !s.haveBegin {
-		if sql == "select @@version_comment limit 1" {
+		if sql == "select @@version_comment limit 1" || sql == "SELECT @@max_allowed_packet" {
 			return s.execute(ctx, sql)
 		} else if sql == "SET AUTOCOMMIT = 0" {
 			return s.execute(ctx, sql)
