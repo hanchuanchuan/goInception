@@ -2,7 +2,6 @@ module github.com/hanchuanchuan/tidb
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/StackExchange/wmi v0.0.0-20180725035823-b12b22c5341f // indirect
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/blacktear23/go-proxyprotocol v0.0.0-20171102103907-62e368e1c470
 	github.com/boltdb/bolt v1.3.1 // indirect
@@ -17,13 +16,15 @@ require (
 	github.com/cznic/sortutil v0.0.0-20150617083342-4c7342852e65
 	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537
 	github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b
+	github.com/denisenkom/go-mssqldb v0.0.0-20190121005146-b04fd42d9952 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
+	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/go-sql-driver/mysql v0.0.0-20170715192408-3955978caca4
+	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
 	github.com/golang/protobuf v1.2.0
@@ -39,9 +40,14 @@ require (
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
+	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 // indirect
 	github.com/jonboulle/clockwork v0.1.0 // indirect
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5
+	github.com/juju/loggo v0.0.0-20180524022052-584905176618 // indirect
+	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/klauspost/cpuid v0.0.0-20170728055534-ae7887de9fa5
+	github.com/lib/pq v1.0.0 // indirect
+	github.com/mattn/go-sqlite3 v1.10.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/montanaflynn/stats v0.0.0-20180911141734-db72e6cae808 // indirect
 	github.com/myesui/uuid v1.0.0 // indirect
@@ -57,7 +63,7 @@ require (
 	github.com/pingcap/kvproto v0.0.0-20181206061346-54cf0a0dfe55
 	github.com/pingcap/pd v2.1.0+incompatible
 	github.com/pingcap/tipb v0.0.0-20181126132056-a7fd2aaa9719
-	github.com/pkg/errors v0.8.0
+	github.com/pkg/errors v0.8.0 // indirect
 	github.com/prometheus/client_golang v0.9.0
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
 	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39 // indirect
@@ -65,19 +71,13 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446 // indirect
 	github.com/rs/zerolog v1.11.0
 	github.com/satori/go.uuid v1.2.0 // indirect
-	github.com/shirou/gopsutil v2.18.10+incompatible // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24 // indirect
-	github.com/shurcooL/httpfs v0.0.0-20171119174359-809beceb2371 // indirect
-	github.com/shurcooL/vfsgen v0.0.0-20181020040650-a97a25d856ca // indirect
 	github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726 // indirect
 	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07 // indirect
-	github.com/siddontang/go-mysql v0.0.0-20181208060317-a193cab76115
 	github.com/sirupsen/logrus v1.2.0
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/spf13/viper v1.3.1
-	github.com/struCoder/pidusage v0.1.2 // indirect
-	github.com/tiancaiamao/appdash v0.0.0-20181126055449-889f96f722a2 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
 	github.com/twinj/uuid v1.0.0
 	github.com/uber-go/atomic v1.3.2 // indirect
@@ -92,9 +92,7 @@ require (
 	golang.org/x/text v0.3.0
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
 	google.golang.org/grpc v1.16.0
-	gopkg.in/ini.v1 v1.39.2
+	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
-	sourcegraph.com/sourcegraph/appdash v0.0.0-20180531100431-4c381bd170b4 // indirect
-	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
 )
