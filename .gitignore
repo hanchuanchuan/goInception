@@ -18,5 +18,5 @@ cmd/explaintest/explain-test.out
 _tools/
 *.fail.go
 *.go.tmp
-
 site/
+util/logutil/slow_query
