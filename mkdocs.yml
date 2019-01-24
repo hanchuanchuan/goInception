@@ -1,0 +1,13 @@
+site_name: goInception使用文档
+# theme: mkdocs,readthedocs
+theme: readthedocs
+dev_addr: 0.0.0.0:8000
+# pages:
+# - ['index.md', 'index']
+# # - ['docs/QUICKSTART.md', '快速开始']
+pages:
+    # - 索引: index.md
+    - 介绍: index.md
+    - 安装: install.md
+    - 审核参数: options.md
+    # - About: about.md

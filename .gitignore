@@ -18,3 +18,5 @@ cmd/explaintest/explain-test.out
 _tools/
 *.fail.go
 *.go.tmp
+
+site/
