@@ -4,7 +4,7 @@
 [![TiDB](https://img.shields.io/badge/TiDB-v2.1.1-brightgreen.svg)](https://github.com/pingcap/tidb)
 
 
-***使用go mod做依赖管理***
+**说明：使用go mod做依赖管理**
 
 
 ### 安装说明
