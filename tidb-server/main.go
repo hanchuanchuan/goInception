@@ -84,11 +84,11 @@ const (
 var (
 	version = flagBoolean(nmVersion, false, "print version information and exit")
 	// 添加config文件的默认值
-	configPath = flag.String(nmConfig, "config/config.toml", "config file path")
+	configPath = flag.String(nmConfig, "", "config file path")
 
 	// Base
 	store            = flag.String(nmStore, "mocktikv", "registered store name, [tikv, mocktikv]")
-	storePath        = flag.String(nmStorePath, "/tmp/tidb", "tidb storage path")
+	storePath        = flag.String(nmStorePath, "", "tidb storage path")
 	host             = flag.String(nmHost, "0.0.0.0", "tidb server host")
 	advertiseAddress = flag.String(nmAdvertiseAddress, "", "tidb server advertise IP")
 	port             = flag.String(nmPort, "4000", "tidb server port")
@@ -339,10 +339,10 @@ func overrideConfig() {
 }
 
 func validateConfig() {
-	if cfg.Security.SkipGrantTable && !hasRootPrivilege() {
-		log.Error("TiDB run with skip-grant-table need root privilege.")
-		os.Exit(-1)
-	}
+	// if cfg.Security.SkipGrantTable && !hasRootPrivilege() {
+	// 	log.Error("TiDB run with skip-grant-table need root privilege.")
+	// 	os.Exit(-1)
+	// }
 	if _, ok := config.ValidStorage[cfg.Store]; !ok {
 		nameList := make([]string, 0, len(config.ValidStorage))
 		for k, v := range config.ValidStorage {
