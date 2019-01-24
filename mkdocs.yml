@@ -1,5 +1,9 @@
 site_name: goInception使用文档
-# theme: mkdocs,readthedocs
+site_url: https://github.com/hanchuanchuan/goInception/
+repo_url: https://github.com/hanchuanchuan/goInception/
+repo_name: GitHub
+site_description: goInception使用文档
+site_author: hanchuanchuan
 theme: readthedocs
 dev_addr: 0.0.0.0:8000
 # pages:
@@ -9,5 +13,6 @@ pages:
     # - 索引: index.md
     - 介绍: index.md
     - 安装: install.md
+    - 使用示例: demo.md
     - 审核参数: options.md
     # - About: about.md

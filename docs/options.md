@@ -26,32 +26,40 @@ inception set check_dml_limit = true;
 
 参数  |  默认值  |  可选范围 | 说明
 ------------ | ------------- | ------------ | ------------
-check_autoincrement_datatype   |  false    |   true/false     |   当建表时自增列的类型不为int或者bigint时报错
-check_autoincrement_init_value   |  false    |   true/false     |     当建表时自增列的值指定的不为1，则报错
-check_autoincrement_name   |  false    |   true/false     |   建表时，如果指定的自增列的名字不为ID，则报错，说明是有意义的，给提示
-check_column_comment   |  false    |   true/false     |   建表时，列没有注释时报错
-check_column_default_value   |  false    |   true/false     |     检查在建表、修改列、新增列时，新的列属性是不是要有默认值
-check_dml_limit   |  false    |   true/false     |    在DML语句中使用了LIMIT时，是不是要报错
-check_dml_orderby   |  false    |   true/false     |  在DML语句中使用了Order By时，是不是要报错
-check_dml_where   |  false    |   true/false     |    在DML语句中没有WHERE条件时，是不是要报错
-check_index_prefix   |  false    |   true/false     |     是不是要检查索引名字前缀为"idx_"，检查唯一索引前缀是不是"uniq_"
-check_insert_field   |  false    |   true/false     |     是不是要检查插入语句中的列链表的存在性
-check_primary_key   |  false    |   true/false     |  建表时，如果没有主键，则报错
-check_table_comment   |  false    |   true/false     |    建表时，表没有注释时报错
-check_timestamp_default   |  false    |   true/false     |    建表时，如果没有为timestamp类型指定默认值，则报错
-enable_autoincrement_unsigned   |  false    |   true/false     |  自增列是不是要为无符号型
-enable_blob_type   |  false    |   true/false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
-enable_column_charset   |  false    |   true/false     |  允许列自己设置字符集
-enable_enum_set_bit   |  false    |   true/false     |    是不是支持enum,set,bit数据类型
-enable_foreign_key   |  false    |   true/false     |     是不是支持外键
-enable_identifer_keyword   |  false    |   true/false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
-enable_not_innodb   |  false    |   true/false     |  建表指定的存储引擎不为Innodb，不报错
-enable_nullable   |  false    |   true/false     |    创建或者新增列时如果列为NULL，是不是报错
-enable_orderby_rand   |  false    |   true/false     |    order by rand时是不是报错
-enable_partition_table   |  false    |   true/false     |     是不是支持分区表
-enable_select_star   |  false    |   true/false     |     Select*时是不是要报错
-merge_alter_table   |  false    |   true/false     |  在多个改同一个表的语句出现是，报错，提示合成一个
-
+check_autoincrement_datatype   |  false    |   true,false     |   当建表时自增列的类型不为int或者bigint时报错
+check_autoincrement_init_value   |  false    |   true,false     |     当建表时自增列的值指定的不为1，则报错
+check_autoincrement_name   |  false    |   true,false     |   建表时，如果指定的自增列的名字不为ID，则报错，说明是有意义的，给提示
+check_column_comment   |  false    |   true,false     |   建表时，列没有注释时报错
+check_column_default_value   |  false    |   true,false     |     检查在建表、修改列、新增列时，新的列属性是不是要有默认值
+check_dml_limit   |  false    |   true,false     |    在DML语句中使用了LIMIT时，是不是要报错
+check_dml_orderby   |  false    |   true,false     |  在DML语句中使用了Order By时，是不是要报错
+check_dml_where   |  false    |   true,false     |    在DML语句中没有WHERE条件时，是不是要报错
+check_identifier  |  false    |   true,false     |    检查标识符是否正确,规则是[a-z,A-Z,0-9,_]
+check_index_prefix   |  false    |   true,false     |     是不是要检查索引名字前缀为"idx_"，检查唯一索引前缀是不是"uniq_"
+check_insert_field   |  false    |   true,false     |     是不是要检查插入语句中的列链表的存在性
+check_primary_key   |  false    |   true,false     |  建表时，如果没有主键，则报错
+check_table_comment   |  false    |   true,false     |    建表时，表没有注释时报错
+check_timestamp_default   |  false    |   true,false     |    建表时，如果没有为timestamp类型指定默认值，则报错
+enable_autoincrement_unsigned   |  false    |   true,false     |  自增列是不是要为无符号型
+enable_blob_type   |  false    |   true,false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
+enable_column_charset   |  false    |   true,false     |  允许列自己设置字符集
+enable_drop_table   |  false    |   true,false     |  是否允许删除表
+enable_enum_set_bit   |  false    |   true,false     |    是不是支持enum,set,bit数据类型
+enable_foreign_key   |  false    |   true,false     |     是不是支持外键
+enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
+enable_not_innodb   |  false    |   true,false     |  建表指定的存储引擎不为Innodb，不报错
+enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
+enable_orderby_rand   |  false    |   true,false     |    order by rand时是不是报错
+enable_partition_table   |  false    |   true,false     |     是不是支持分区表
+enable_pk_columns_only_int  |  false    |   true,false     |     是否强制主键列必须是int
+enable_select_star   |  false    |   true,false     |     Select*时是不是要报错
+merge_alter_table   |  false    |   true,false     |  在多个改同一个表的语句出现是，报错，提示合成一个
+max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
+max_keys                       | 3              | int | 单表允许的最大索引数
+max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
+max_update_rows                | 5000           | int  | 当update/delete预估受影响行数超出设置值时警告
+max_primary_key_parts          | 3              | int | 主键最多可指定的列数
+sql_safe_updates               | 0              |  -1,0,1  | 安全更新.-1表示不做操作,基于远端数据库,0表示关闭安全更新,1表示开启安全更新
 
 <!--
 auto_commit     这个参数的作用是为了匹配Python客户端每次自动设置auto_commit=0的，如果取消则会报错，针对Inception本身没有实际意义
