@@ -21,3 +21,10 @@ go build -o goInception tidb-server/main.go
 # 启动服务
 ./goInception -config=config/config.toml
 ```
+
+启动
+```bash
+goInception -config=config/config.toml
+```
+
+

@@ -192,11 +192,11 @@ func NewRecordSets() *MyRecordSets {
 	// 阶段   RERUN EXECUTED CHECKED
 	rc.CreateFiled("stage", mysql.TypeString)
 	// 审核级别,0为成功,1为警告,2为错误
-	rc.CreateFiled("ErrLevel", mysql.TypeShort)
+	rc.CreateFiled("error_level", mysql.TypeShort)
 	// 阶段说明 Execute Successfully / 审核完成 / 失败...
-	rc.CreateFiled("stagestatus", mysql.TypeString)
+	rc.CreateFiled("stage_status", mysql.TypeString)
 	// 错误/警告信息
-	rc.CreateFiled("errormessage", mysql.TypeString)
+	rc.CreateFiled("error_message", mysql.TypeString)
 	rc.CreateFiled("sql", mysql.TypeString)
 	// 受影响行
 	rc.CreateFiled("affected_rows", mysql.TypeLong)
