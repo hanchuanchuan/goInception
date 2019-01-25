@@ -1,6 +1,6 @@
 # inception的go语言重构
 
-![](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)
+[![GitHub release](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)](https://github.com/hanchuanchuan/goInception/releases)
 ![](https://img.shields.io/badge/go-1.11-brightgreen.svg) 
 [![TiDB](https://img.shields.io/badge/TiDB-v2.1.1-brightgreen.svg)](https://github.com/pingcap/tidb)
 
