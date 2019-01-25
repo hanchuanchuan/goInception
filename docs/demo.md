@@ -1,8 +1,4 @@
 
-启动
-```bash
-goInception -config=config/config.toml
-```
 
 ### python调用
 
@@ -19,7 +15,7 @@ import pymysql
 import prettytable as pt
 tb = pt.PrettyTable()
 
-sql = '''/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--port=3306;*/
+sql = '''/*--user=root;--password=root;--host=127.0.0.1;--check=1;--port=3306;*/
 inception_magic_start;
 use test_inc;
 create table t1(id int primary key,c1 int);
@@ -42,7 +38,7 @@ print(tb)
 
 返回结果：
 
-order_id |  stage  | ErrLevel |   stagestatus   |         errormessage        |                    sql                     | affected_rows |   sequence   | backup_dbname | execute_time | backup_time | sqlsha1
+order_id |  stage  | error_level |   stage_status   |         error_message        |                    sql                     | affected_rows |   sequence   | backup_dbname | execute_time | backup_time | sqlsha1
 ----------|---------|----------|-----------------|-----------------------------|--------------------------------------------|---------------|--------------|---------------|--------------|-------------|---------
 1     | CHECKED |    0     | Audit Completed |                             |                use test_inc                |       0       | 0_0_00000000 |      None     |      0       |      0      |   None
 2     | CHECKED |    0     | Audit Completed |                             | create table t1(id int primary key,c1 int) |       0       | 0_0_00000001 |      None     |      0       |      0      |   None
