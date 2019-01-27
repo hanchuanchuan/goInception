@@ -397,6 +397,10 @@ var defaultConf = Config{
 	Binlog: Binlog{
 		WriteTimeout: "15s",
 	},
+	// 默认跳过权限校验 2019-1-26
+	Security: Security{
+		SkipGrantTable: true,
+	},
 	Inc: Inc{
 		EnableNullable:     true,
 		EnableDropTable:    false,
