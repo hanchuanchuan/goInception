@@ -308,10 +308,10 @@ type Inc struct {
 	EnablePKColumnsOnlyInt      bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
 	EnableSelectStar            bool `toml:"enable_select_star" json:"enable_select_star"`
 
-	MaxCharLength int  `toml:"max_char_length" json:"max_char_length"`
+	MaxCharLength uint `toml:"max_char_length" json:"max_char_length"`
 	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
 	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
-	MaxUpdateRows int  `toml:"max_update_rows" json:"max_update_rows"`
+	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`

@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"sort"
@@ -35,6 +36,7 @@ import (
 	"github.com/hanchuanchuan/tidb/metrics"
 	"github.com/hanchuanchuan/tidb/model"
 	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/parser/opcode"
 	"github.com/hanchuanchuan/tidb/types"
 	// "github.com/hanchuanchuan/tidb/util/mock"
 	// "github.com/hanchuanchuan/tidb/parser"
@@ -2237,7 +2239,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
-	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > s.Inc.MaxCharLength {
+	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > int(s.Inc.MaxCharLength) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
 
@@ -3098,8 +3100,17 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		t := reflect.TypeOf(cnf.Inc)
 		values := reflect.ValueOf(&(cnf.Inc)).Elem()
 
-		value, ok := v.Value.(*ast.ValueExpr)
-		if !ok {
+		var value *ast.ValueExpr
+
+		switch expr := v.Value.(type) {
+		case *ast.ValueExpr:
+			value = expr
+		case *ast.UnaryOperationExpr:
+			value, _ = expr.V.(*ast.ValueExpr)
+			if expr.Op == opcode.Minus {
+				value.Datum = types.NewIntDatum(value.GetInt64() * -1)
+			}
+		default:
 			return nil, errors.New("参数值无效")
 		}
 
@@ -3107,13 +3118,17 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		for i := 0; i < values.NumField(); i++ {
 			if values.Field(i).CanInterface() { //判断是否为可导出字段
 				if k := t.Field(i).Tag.Get("json"); strings.EqualFold(k, v.Name) {
-					setConfigValue(values.Field(i), &(value.Datum))
-
+					err := s.setConfigValue(v.Name, values.Field(i), &(value.Datum))
+					if err != nil {
+						return nil, err
+					}
 					found = true
 					break
 				} else if strings.EqualFold(t.Field(i).Name, v.Name) {
-					setConfigValue(values.Field(i), &(value.Datum))
-
+					err := s.setConfigValue(v.Name, values.Field(i), &(value.Datum))
+					if err != nil {
+						return nil, err
+					}
 					found = true
 					break
 				}
@@ -3127,22 +3142,98 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 	return nil, nil
 }
 
-func setConfigValue(field reflect.Value, value *types.Datum) {
+func (s *session) checkUInt64SystemVar(name, value string, min, max uint64) (string, error) {
+	if value[0] == '-' {
+		_, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return value, ErrWrongTypeForVar.GenWithStackByArgs(name)
+		}
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%d", min), nil
+	}
+	val, err := strconv.ParseUint(value, 10, 64)
+	if err != nil {
+		return value, ErrWrongTypeForVar.GenWithStackByArgs(name)
+	}
+	if val < min {
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%d", min), nil
+	}
+	if val > max {
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%d", max), nil
+	}
+	return value, nil
+}
+
+func (s *session) checkInt64SystemVar(name, value string, min, max int64) (string, error) {
+	val, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return value, ErrWrongTypeForVar.GenWithStackByArgs(name)
+	}
+	if val < min {
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%d", min), nil
+	}
+	if val > max {
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%d", max), nil
+	}
+	return value, nil
+}
+
+func (s *session) setConfigValue(name string, field reflect.Value, value *types.Datum) error {
+
+	sVal := ""
+	var err error
+	if !value.IsNull() {
+		sVal, err = value.ToString()
+	}
+	if err != nil {
+		return err
+	}
 
 	switch field.Type().String() {
 	case reflect.String.String():
-		field.SetString(value.GetString())
+		field.SetString(sVal)
 
 	case reflect.Uint.String():
-		field.SetUint(value.GetUint64())
+		// field.SetUint(value.GetUint64())
+		v, err := s.checkUInt64SystemVar(name, sVal, 0, math.MaxUint64)
+		if err != nil {
+			return err
+		}
+
+		v1, _ := strconv.ParseUint(v, 10, 64)
+		field.SetUint(v1)
+
 	case reflect.Int.String(), reflect.Int64.String():
-		field.SetInt(value.GetInt64())
+		// field.SetInt(value.GetInt64())
+		v, err := s.checkInt64SystemVar(name, sVal, math.MinInt64, math.MaxInt64)
+		if err != nil {
+			return err
+		}
+
+		v1, _ := strconv.ParseInt(v, 10, 64)
+		field.SetInt(v1)
 
 	case reflect.Bool.String():
-		field.SetBool(value.GetInt64() == 1)
+		if strings.EqualFold(sVal, "ON") || sVal == "1" ||
+			strings.EqualFold(sVal, "OFF") || sVal == "0" ||
+			strings.EqualFold(sVal, "TRUE") || strings.EqualFold(sVal, "FALSE") {
+			if strings.EqualFold(sVal, "ON") || sVal == "1" || strings.EqualFold(sVal, "TRUE") {
+				field.SetBool(true)
+			} else {
+				field.SetBool(false)
+			}
+		} else {
+			// s.sessionVars.StmtCtx.AppendError(ErrWrongValueForVar.GenWithStackByArgs(name, sVal))
+			return ErrWrongValueForVar.GenWithStackByArgs(name, sVal)
+		}
 	default:
-		field.SetString(value.GetString())
+		field.SetString(sVal)
 	}
+	return nil
 }
 
 func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet, error) {
@@ -3398,7 +3489,7 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 	if len(rows) > 0 {
 		r.AffectedRows = rows[0].Rows
 	}
-	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= s.Inc.MaxUpdateRows {
+	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= int(s.Inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)

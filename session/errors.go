@@ -17,6 +17,20 @@
 
 package session
 
+import (
+	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/tidb/terror"
+)
+
+var (
+	ErrWrongValueForVar = terror.ClassVariable.New(mysql.ErrWrongValueForVar,
+		mysql.MySQLErrName[mysql.ErrWrongValueForVar])
+	ErrTruncatedWrongValue = terror.ClassVariable.New(mysql.ErrTruncatedWrongValue,
+		mysql.MySQLErrName[mysql.ErrTruncatedWrongValue])
+	ErrWrongTypeForVar = terror.ClassVariable.New(mysql.ErrWrongTypeForVar,
+		mysql.MySQLErrName[mysql.ErrWrongTypeForVar])
+)
+
 const (
 	ER_ERROR_FIRST = iota
 	ER_NOT_SUPPORTED_YET
