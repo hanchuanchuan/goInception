@@ -14,6 +14,7 @@ before_install:
   - sudo touch /logs/unit-test
   # See https://github.com/golang/go/issues/12933
   - bash gitcookie.sh
+  - sudo chmod +x cmd/explaintest/run-tests.sh
 script:
   - rm -f go.sum
   - make dev

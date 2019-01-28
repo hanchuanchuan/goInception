@@ -164,7 +164,7 @@ func (s *testGCWorkerSuite) TestDoGCForOneRegion(c *C) {
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr, IsNil)
 	c.Assert(err, NotNil)
-	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult")
 
 	gofail.Enable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult", `return("GCNotLeader")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)

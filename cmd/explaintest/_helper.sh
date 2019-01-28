@@ -5,10 +5,10 @@ set -uea
 
 OLD_GOPATH=$GOPATH
 PINGCAP_PATH="$(dirname $PWD)"
-while [ "$(basename $PINGCAP_PATH)" != "pingcap" ]; do
+while [ "$(basename $PINGCAP_PATH)" != "hanchuanchuan" ]; do
     PINGCAP_PATH="$(dirname $PINGCAP_PATH)"
 done
-TIDB_VENDOR_PATH=$PINGCAP_PATH/tidb/vendor
+TIDB_VENDOR_PATH=$PINGCAP_PATH/goInception/vendor
 
 function prepare_env {
     export GOPATH=$GOPATH:$TIDB_VENDOR_PATH
@@ -21,7 +21,7 @@ function recover_env {
 function kill_proc_by_port() {
     if [ ! -z $1 ]; then
         kill $(lsof -t -i:$1)
-    else 
+    else
         echo "please specify port number"
     fi
 }
