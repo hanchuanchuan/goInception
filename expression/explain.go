@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 )
 
 // ExplainInfo implements the Expression interface.

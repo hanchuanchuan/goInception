@@ -17,9 +17,9 @@ import (
 	"fmt"
 
 	gofail "github.com/etcd-io/gofail/runtime"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
@@ -33,15 +33,15 @@ func (s *testStateChangeSuite) TestInitializeOffsetAndState(c *C) {
 	c.Assert(err, IsNil)
 	defer s.se.Execute(context.Background(), "drop table t")
 
-	gofail.Enable("github.com/hanchuanchuan/tidb/ddl/uninitializedOffsetAndState", `return(true)`)
+	gofail.Enable("github.com/hanchuanchuan/goInception/ddl/uninitializedOffsetAndState", `return(true)`)
 	_, err = s.se.Execute(context.Background(), "ALTER TABLE t MODIFY COLUMN b int FIRST;")
 	c.Assert(err, IsNil)
-	gofail.Disable("github.com/hanchuanchuan/tidb/ddl/uninitializedOffsetAndState")
+	gofail.Disable("github.com/hanchuanchuan/goInception/ddl/uninitializedOffsetAndState")
 }
 
 func (s *testDBSuite) TestUpdateHandleFailed(c *C) {
-	gofail.Enable("github.com/hanchuanchuan/tidb/ddl/errorUpdateReorgHandle", `return(true)`)
-	defer gofail.Disable("github.com/hanchuanchuan/tidb/ddl/errorUpdateReorgHandle")
+	gofail.Enable("github.com/hanchuanchuan/goInception/ddl/errorUpdateReorgHandle", `return(true)`)
+	defer gofail.Disable("github.com/hanchuanchuan/goInception/ddl/errorUpdateReorgHandle")
 	tk := testkit.NewTestKit(c, s.store)
 	tk.MustExec("create database if not exists test_handle_failed")
 	defer tk.MustExec("drop database test_handle_failed")
@@ -55,8 +55,8 @@ func (s *testDBSuite) TestUpdateHandleFailed(c *C) {
 }
 
 func (s *testDBSuite) TestAddIndexFailed(c *C) {
-	gofail.Enable("github.com/hanchuanchuan/tidb/ddl/mockAddIndexErr", `return(true)`)
-	defer gofail.Disable("github.com/hanchuanchuan/tidb/ddl/mockAddIndexErr")
+	gofail.Enable("github.com/hanchuanchuan/goInception/ddl/mockAddIndexErr", `return(true)`)
+	defer gofail.Disable("github.com/hanchuanchuan/goInception/ddl/mockAddIndexErr")
 	tk := testkit.NewTestKit(c, s.store)
 	tk.MustExec("create database if not exists test_add_index_failed")
 	defer tk.MustExec("drop database test_add_index_failed")

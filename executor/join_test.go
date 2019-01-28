@@ -16,9 +16,9 @@ package executor_test
 import (
 	"time"
 
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

@@ -16,12 +16,12 @@ package core
 import (
 	"math"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/planner/property"
-	"github.com/hanchuanchuan/tidb/privilege"
-	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/planner/property"
+	"github.com/hanchuanchuan/goInception/privilege"
+	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/pingcap/errors"
 )
 

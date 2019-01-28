@@ -16,9 +16,9 @@ package tikv
 import (
 	"time"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/pingcap/pd/client"
 )
 

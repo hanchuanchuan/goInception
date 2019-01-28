@@ -14,8 +14,8 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/model"
 )
 
 // ResolveIndices implements Plan interface.

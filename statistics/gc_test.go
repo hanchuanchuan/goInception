@@ -17,7 +17,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
 

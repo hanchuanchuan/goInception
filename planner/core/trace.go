@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/goInception/ast"
 )
 
 // Trace represents a trace plan.

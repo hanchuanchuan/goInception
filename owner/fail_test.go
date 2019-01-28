@@ -22,9 +22,9 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	gofail "github.com/etcd-io/gofail/runtime"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/logutil"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/util/logutil"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -76,7 +76,7 @@ func (s *testSuite) TestFailNewSession(c *C) {
 				cli.Close()
 			}
 		}()
-		gofail.Enable("github.com/hanchuanchuan/tidb/owner/closeClient", `return(true)`)
+		gofail.Enable("github.com/hanchuanchuan/goInception/owner/closeClient", `return(true)`)
 		_, err = NewSession(context.Background(), "fail_new_serssion", cli, retryCnt, ManagerSessionTTL)
 		isContextDone := terror.ErrorEqual(grpc.ErrClientConnClosing, err) || terror.ErrorEqual(context.Canceled, err)
 		c.Assert(isContextDone, IsTrue, Commentf("err %v", err))
@@ -92,7 +92,7 @@ func (s *testSuite) TestFailNewSession(c *C) {
 				cli.Close()
 			}
 		}()
-		gofail.Enable("github.com/hanchuanchuan/tidb/owner/closeGrpc", `return(true)`)
+		gofail.Enable("github.com/hanchuanchuan/goInception/owner/closeGrpc", `return(true)`)
 		_, err = NewSession(context.Background(), "fail_new_serssion", cli, retryCnt, ManagerSessionTTL)
 		isContextDone := terror.ErrorEqual(grpc.ErrClientConnClosing, err) || terror.ErrorEqual(context.Canceled, err)
 		c.Assert(isContextDone, IsTrue, Commentf("err %v", err))

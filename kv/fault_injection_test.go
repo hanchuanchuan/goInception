@@ -14,7 +14,7 @@
 package kv_test
 
 import (
-	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/goInception/kv"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )

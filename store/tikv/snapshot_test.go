@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/goInception/kv"
 	. "github.com/pingcap/check"
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	log "github.com/sirupsen/logrus"

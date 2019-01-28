@@ -24,9 +24,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/store/tikv"
+	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"

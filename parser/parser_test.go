@@ -19,11 +19,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/charset"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/util/charset"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )
@@ -118,7 +118,7 @@ func (s *testParserSuite) TestSimple(c *C) {
 
 	// Testcase for /*! xx */
 	// See http://dev.mysql.com/doc/refman/5.7/en/comments.html
-	// Fix: https://github.com/hanchuanchuan/tidb/issues/971
+	// Fix: https://github.com/hanchuanchuan/goInception/issues/971
 	src = "/*!40101 SET character_set_client = utf8 */;"
 	stmts, err = parser.Parse(src, "", "")
 	c.Assert(err, IsNil)
@@ -477,10 +477,10 @@ func (s *testParserSuite) TestDMLStmt(c *C) {
 		{"select 1 as a from dual where 1 < any (select 2) order by a", true},
 		{"select 1 order by 1", true},
 
-		// for https://github.com/hanchuanchuan/tidb/issues/320
+		// for https://github.com/hanchuanchuan/goInception/issues/320
 		{`(select 1);`, true},
 
-		// for https://github.com/hanchuanchuan/tidb/issues/1050
+		// for https://github.com/hanchuanchuan/goInception/issues/1050
 		{`SELECT /*!40001 SQL_NO_CACHE */ * FROM test WHERE 1 limit 0, 2000;`, true},
 
 		{`ANALYZE TABLE t`, true},

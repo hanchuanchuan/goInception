@@ -16,12 +16,12 @@ package executor_test
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/executor"
-	"github.com/hanchuanchuan/tidb/parser"
-	"github.com/hanchuanchuan/tidb/planner"
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/executor"
+	"github.com/hanchuanchuan/goInception/parser"
+	"github.com/hanchuanchuan/goInception/planner"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
 

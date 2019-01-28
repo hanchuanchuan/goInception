@@ -17,7 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/goInception/metrics"
 )
 
 // SchemaChecker is used for checking schema-validity.

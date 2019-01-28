@@ -15,18 +15,18 @@ package session_test
 
 import (
 	gofail "github.com/etcd-io/gofail/runtime"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
 
 func (s *testSessionSuite) TestFailStatementCommit(c *C) {
-	defer gofail.Disable("github.com/hanchuanchuan/tidb/session/mockStmtCommitError")
+	defer gofail.Disable("github.com/hanchuanchuan/goInception/session/mockStmtCommitError")
 
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	tk.MustExec("create table t (id int)")
 	tk.MustExec("begin")
 	tk.MustExec("insert into t values (1)")
-	gofail.Enable("github.com/hanchuanchuan/tidb/session/mockStmtCommitError", `return(true)`)
+	gofail.Enable("github.com/hanchuanchuan/goInception/session/mockStmtCommitError", `return(true)`)
 	tk.MustExec("insert into t values (2)")
 	_, err := tk.Exec("commit")
 	c.Assert(err, NotNil)

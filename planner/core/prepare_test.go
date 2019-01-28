@@ -14,9 +14,9 @@
 package core_test
 
 import (
-	"github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/util/testkit"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/util/testkit"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 

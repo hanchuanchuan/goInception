@@ -18,8 +18,8 @@ import (
 	"unsafe"
 
 	"github.com/cznic/mathutil"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/types/json"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/types/json"
 )
 
 // Chunk stores multiple rows of data in Apache Arrow format.

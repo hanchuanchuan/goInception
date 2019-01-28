@@ -14,8 +14,8 @@
 package perfschema
 
 import (
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/table"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/table"
 )
 
 // perfSchema is used for tables in performance_schema.

@@ -13,7 +13,7 @@
 
 package ast
 
-import "github.com/hanchuanchuan/tidb/model"
+import "github.com/hanchuanchuan/goInception/model"
 
 var (
 	_ StmtNode = &AnalyzeTableStmt{}

@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/goInception/types"
 	"github.com/pingcap/check"
 )
 

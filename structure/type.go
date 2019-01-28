@@ -16,8 +16,8 @@ package structure
 import (
 	"bytes"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/util/codec"
 	"github.com/pingcap/errors"
 )
 

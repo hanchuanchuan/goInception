@@ -18,7 +18,7 @@ import (
 	"encoding/binary"
 	"strconv"
 
-	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/pingcap/errors"
 )
 

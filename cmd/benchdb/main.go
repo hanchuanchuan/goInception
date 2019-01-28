@@ -21,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/logutil"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/store/tikv"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/util/logutil"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

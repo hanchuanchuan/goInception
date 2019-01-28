@@ -14,7 +14,7 @@
 package tikv
 
 import (
-	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/pd/client"
 	"github.com/twinj/uuid"

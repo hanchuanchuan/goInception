@@ -21,7 +21,7 @@ import (
 	"sort"
 
 	"github.com/google/btree"
-	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/goInception/util/codec"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 )

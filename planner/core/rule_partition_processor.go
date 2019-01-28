@@ -13,10 +13,10 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/table/tables"
-	"github.com/hanchuanchuan/tidb/util/ranger"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/table/tables"
+	"github.com/hanchuanchuan/goInception/util/ranger"
 	"github.com/pingcap/errors"
 )
 

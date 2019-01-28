@@ -18,9 +18,9 @@ package ast
 import (
 	"io"
 
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	"golang.org/x/net/context"
 )
 

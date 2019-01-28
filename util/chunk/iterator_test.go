@@ -14,8 +14,8 @@
 package chunk
 
 import (
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/types"
 	"github.com/pingcap/check"
 )
 

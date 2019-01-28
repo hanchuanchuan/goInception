@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )

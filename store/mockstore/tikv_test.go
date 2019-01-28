@@ -16,7 +16,7 @@ package mockstore
 import (
 	"testing"
 
-	"github.com/hanchuanchuan/tidb/config"
+	"github.com/hanchuanchuan/goInception/config"
 	. "github.com/pingcap/check"
 )
 

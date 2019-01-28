@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/cznic/mathutil"
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/hanchuanchuan/tidb/util/sqlexec"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )

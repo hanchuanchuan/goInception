@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/util/execdetails"
-	"github.com/hanchuanchuan/tidb/util/memory"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/util/execdetails"
+	"github.com/hanchuanchuan/goInception/util/memory"
 )
 
 const (

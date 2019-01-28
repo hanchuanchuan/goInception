@@ -19,11 +19,11 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/model"
-	stats "github.com/hanchuanchuan/tidb/statistics"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/goInception/model"
+	stats "github.com/hanchuanchuan/goInception/statistics"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/codec"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )

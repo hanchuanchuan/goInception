@@ -16,9 +16,9 @@ package ddl
 import (
 	"sync"
 
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/util/mock"
 	"github.com/ngaut/pools"
 	"github.com/pingcap/errors"
 )

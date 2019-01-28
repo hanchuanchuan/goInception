@@ -37,7 +37,7 @@ func interestingGoroutines() (gs []string) {
 		}
 		stack := strings.TrimSpace(sl[1])
 		if stack == "" ||
-			strings.Contains(stack, "created by github.com/hanchuanchuan/tidb.init") ||
+			strings.Contains(stack, "created by github.com/hanchuanchuan/goInception.init") ||
 			strings.Contains(stack, "testing.RunTests") ||
 			strings.Contains(stack, "check.(*resultTracker).start") ||
 			strings.Contains(stack, "check.(*suiteRunner).runFunc") ||

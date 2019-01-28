@@ -14,8 +14,8 @@
 package tikv
 
 import (
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
 )
 

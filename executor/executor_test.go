@@ -27,38 +27,38 @@ import (
 
 	gofail "github.com/etcd-io/gofail/runtime"
 	"github.com/golang/protobuf/proto"
-	"github.com/hanchuanchuan/tidb/config"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/executor"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/meta/autoid"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/parser"
-	"github.com/hanchuanchuan/tidb/planner"
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/hanchuanchuan/tidb/sessionctx/variable"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
-	"github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/table/tables"
-	"github.com/hanchuanchuan/tidb/tablecodec"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/admin"
-	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/hanchuanchuan/tidb/util/logutil"
-	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/util/testkit"
-	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/hanchuanchuan/tidb/util/testutil"
-	"github.com/hanchuanchuan/tidb/util/timeutil"
+	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/executor"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/meta/autoid"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/parser"
+	"github.com/hanchuanchuan/goInception/planner"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/goInception/store/tikv"
+	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/table/tables"
+	"github.com/hanchuanchuan/goInception/tablecodec"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/admin"
+	"github.com/hanchuanchuan/goInception/util/codec"
+	"github.com/hanchuanchuan/goInception/util/logutil"
+	"github.com/hanchuanchuan/goInception/util/mock"
+	"github.com/hanchuanchuan/goInception/util/testkit"
+	"github.com/hanchuanchuan/goInception/util/testleak"
+	"github.com/hanchuanchuan/goInception/util/testutil"
+	"github.com/hanchuanchuan/goInception/util/timeutil"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
@@ -779,7 +779,7 @@ func (s *testSuite) TestOrderBy(c *C) {
 	tk.MustExec("create table t (c1 int, c2 int, c3 varchar(20))")
 	tk.MustExec("insert into t values (1, 2, 'abc'), (2, 1, 'bcd')")
 
-	// Fix issue https://github.com/hanchuanchuan/tidb/issues/337
+	// Fix issue https://github.com/hanchuanchuan/goInception/issues/337
 	tk.MustQuery("select c1 as a, c1 as b from t order by c1").Check(testkit.Rows("1 1", "2 2"))
 
 	tk.MustQuery("select c1 as a, t.c1 as a from t order by a desc").Check(testkit.Rows("2 2", "1 1"))
@@ -825,7 +825,7 @@ func (s *testSuite) TestSelectErrorRow(c *C) {
 	c.Assert(err, NotNil)
 }
 
-// TestIssue2612 is related with https://github.com/hanchuanchuan/tidb/issues/2612
+// TestIssue2612 is related with https://github.com/hanchuanchuan/goInception/issues/2612
 func (s *testSuite) TestIssue2612(c *C) {
 	tk := testkit.NewTestKit(c, s.store)
 	tk.MustExec("use test")
@@ -842,7 +842,7 @@ func (s *testSuite) TestIssue2612(c *C) {
 	c.Assert(chk.GetRow(0).GetDuration(0, 0).String(), Equals, "-46:09:02")
 }
 
-// TestIssue345 is related with https://github.com/hanchuanchuan/tidb/issues/345
+// TestIssue345 is related with https://github.com/hanchuanchuan/goInception/issues/345
 func (s *testSuite) TestIssue345(c *C) {
 	tk := testkit.NewTestKit(c, s.store)
 	tk.MustExec("use test")
@@ -1999,7 +1999,7 @@ func (s *testSuite) TestTimestampTimeZone(c *C) {
 		tk.MustQuery("select * from t").Check(testkit.Rows(tt.expect))
 	}
 
-	// For issue https://github.com/hanchuanchuan/tidb/issues/3467
+	// For issue https://github.com/hanchuanchuan/goInception/issues/3467
 	tk.MustExec("drop table if exists t1")
 	tk.MustExec(`CREATE TABLE t1 (
  	      id bigint(20) NOT NULL AUTO_INCREMENT,
@@ -2018,7 +2018,7 @@ func (s *testSuite) TestTimestampTimeZone(c *C) {
 	r = tk.MustQuery("select * from t1 where datetime='2014-03-31 08:57:10';")
 	r.Check(testkit.Rows("123381351 1734 2014-03-31 08:57:10 127.0.0.1")) // Cover IndexLookupExec
 
-	// For issue https://github.com/hanchuanchuan/tidb/issues/3485
+	// For issue https://github.com/hanchuanchuan/goInception/issues/3485
 	tk.MustExec("set time_zone = 'Asia/Shanghai'")
 	tk.MustExec("drop table if exists t1")
 	tk.MustExec(`CREATE TABLE t1 (
@@ -2150,7 +2150,7 @@ func (s *testSuite) TestEmptyEnum(c *C) {
 	tk.MustQuery("select * from t").Check(testkit.Rows("", "", "<nil>"))
 }
 
-// TestIssue4024 This tests https://github.com/hanchuanchuan/tidb/issues/4024
+// TestIssue4024 This tests https://github.com/hanchuanchuan/goInception/issues/4024
 func (s *testSuite) TestIssue4024(c *C) {
 	tk := testkit.NewTestKit(c, s.store)
 	tk.MustExec("create database test2")
@@ -2688,8 +2688,8 @@ func (s *testSuite) TestEarlyClose(c *C) {
 	}
 
 	// Goroutine should not leak when error happen.
-	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/handleTaskOnceError", `return(true)`)
-	defer gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/handleTaskOnceError")
+	gofail.Enable("github.com/hanchuanchuan/goInception/store/tikv/handleTaskOnceError", `return(true)`)
+	defer gofail.Disable("github.com/hanchuanchuan/goInception/store/tikv/handleTaskOnceError")
 	rss, err := tk.Se.Execute(ctx, "select * from earlyclose")
 	c.Assert(err, IsNil)
 	rs := rss[0]

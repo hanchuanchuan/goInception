@@ -14,7 +14,7 @@
 package set
 
 import (
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/types"
 )
 
 // DecimalSet is a decimal set.

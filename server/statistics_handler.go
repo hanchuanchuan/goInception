@@ -17,9 +17,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/session"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/session"
 )
 
 // StatsHandler is the handler for dumping statistics.

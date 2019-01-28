@@ -16,8 +16,8 @@ package property
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/util/codec"
 )
 
 // PhysicalProperty stands for the required physical property by parents.

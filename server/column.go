@@ -14,7 +14,7 @@
 package server
 
 import (
-	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/goInception/mysql"
 )
 
 // ColumnInfo contains information of a column

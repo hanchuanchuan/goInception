@@ -15,7 +15,7 @@ package types
 
 import (
 	"github.com/cznic/mathutil"
-	"github.com/hanchuanchuan/tidb/parser/opcode"
+	"github.com/hanchuanchuan/goInception/parser/opcode"
 	"github.com/pingcap/errors"
 )
 

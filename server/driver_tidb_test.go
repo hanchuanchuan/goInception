@@ -14,11 +14,11 @@
 package server
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/charset"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/charset"
 	. "github.com/pingcap/check"
 )
 
@@ -43,7 +43,7 @@ func createColumnByTypeAndLen(tp byte, len uint32) *ColumnInfo {
 	}
 }
 func (ts tidbResultSetTestSuite) TestConvertColumnInfo(c *C) {
-	// Test "mysql.TypeBit", for: https://github.com/hanchuanchuan/tidb/issues/5405.
+	// Test "mysql.TypeBit", for: https://github.com/hanchuanchuan/goInception/issues/5405.
 	resultField := ast.ResultField{
 		Column: &model.ColumnInfo{
 			Name:   model.NewCIStr("a"),
@@ -66,7 +66,7 @@ func (ts tidbResultSetTestSuite) TestConvertColumnInfo(c *C) {
 	colInfo := convertColumnInfo(&resultField)
 	c.Assert(colInfo, DeepEquals, createColumnByTypeAndLen(mysql.TypeBit, 1))
 
-	// Test "mysql.TypeTiny", for: https://github.com/hanchuanchuan/tidb/issues/5405.
+	// Test "mysql.TypeTiny", for: https://github.com/hanchuanchuan/goInception/issues/5405.
 	resultField = ast.ResultField{
 		Column: &model.ColumnInfo{
 			Name:   model.NewCIStr("a"),

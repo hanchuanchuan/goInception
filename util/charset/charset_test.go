@@ -16,7 +16,7 @@ package charset
 import (
 	"testing"
 
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 

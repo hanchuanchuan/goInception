@@ -17,11 +17,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx/variable"
-	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/hanchuanchuan/tidb/util/hack"
-	"github.com/hanchuanchuan/tidb/util/kvcache"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
+	"github.com/hanchuanchuan/goInception/util/codec"
+	"github.com/hanchuanchuan/goInception/util/hack"
+	"github.com/hanchuanchuan/goInception/util/kvcache"
 )
 
 var (

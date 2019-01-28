@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/pingcap/errors"
 	// log "github.com/sirupsen/logrus"
 )
