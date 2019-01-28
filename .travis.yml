@@ -8,6 +8,7 @@ go:
 env:
     - TRAVIS_COVERAGE=0
     - GO111MODULE=on
+    - SHORT=1
 
 before_install:
   # create /logs/unit-test for unit test.

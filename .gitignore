@@ -19,4 +19,4 @@ _tools/
 *.fail.go
 *.go.tmp
 site/
-#util/logutil/slow_query
+util/logutil/slow_query

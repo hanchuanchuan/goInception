@@ -1907,7 +1907,7 @@ func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
 }
 
 func testShowFieldInfo(t *TableInfo) {
-	log.Info(t.Name, " , 总列数: ", len(t.Fields))
+	// log.Info(t.Name, " , 总列数: ", len(t.Fields))
 	for i, r := range t.Fields {
 		log.Info(i+1, " , ", r.Field)
 	}
@@ -3518,8 +3518,8 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 	catchError := false
 	for _, tblSource := range tableList {
-		log.Info(tblSource.Source)
-		log.Infof("%#v", tblSource.Source)
+		// log.Info(tblSource.Source)
+		// log.Infof("%#v", tblSource.Source)
 		tblName, ok := tblSource.Source.(*ast.TableName)
 		if !ok {
 			continue
@@ -3654,7 +3654,7 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 			return false
 		}
 	default:
-		log.Infof("%#v", e)
+		// log.Infof("checkItem: %#v", e)
 		return true
 	}
 }
@@ -3666,7 +3666,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
 			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
-			log.Infof("--- %#v", a.Name.O)
+			// log.Infof("--- %#v", a.Name.O)
 			break
 		}
 	}
@@ -3680,7 +3680,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 		if t != nil {
-			log.Infof(":: %#v", t.Name)
+			// log.Infof(":: %#v", t.Name)
 			if tblSource.AsName.L != "" {
 				t.AsName = tblSource.AsName.O
 			}

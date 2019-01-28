@@ -2696,8 +2696,8 @@ func (s *testSuite) TestEarlyClose(c *C) {
 	chk := rs.NewChunk()
 	err = rs.Next(ctx, chk)
 	// hcc 2019-1-21 下面go test报错,调整之
-	// c.Assert(err, NotNil)
-	c.Assert(err, IsNil)
+	c.Assert(err, NotNil)
+	// c.Assert(err, IsNil)
 	rs.Close()
 }
 
