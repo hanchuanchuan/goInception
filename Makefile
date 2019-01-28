@@ -13,7 +13,14 @@ export PATH := $(path_to_add):$(PATH)
 
 GO        := go
 GOBUILD   := CGO_ENABLED=0 $(GO) build $(BUILD_FLAG)
-GOTEST    := CGO_ENABLED=1 $(GO) test -p 3
+
+# 指定部分单元测试跳过
+ifeq ("$(SHORT)", "1")
+	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3 -short
+else
+	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3
+endif
+
 OVERALLS  := CGO_ENABLED=1 overalls
 GOVERALLS := goveralls
 

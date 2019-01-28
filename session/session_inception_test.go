@@ -53,7 +53,9 @@ import (
 
 var _ = Suite(&testSessionIncSuite{})
 
-func Test1(t *testing.T) { TestingT(t) }
+func Test1(t *testing.T) {
+	TestingT(t)
+}
 
 // func TestT(t *testing.T) {
 // 	logutil.InitLogger(&logutil.LogConfig{
@@ -71,6 +73,11 @@ type testSessionIncSuite struct {
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
+
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
 	testleak.BeforeTest()
 	s.cluster = mocktikv.NewCluster()
 	mocktikv.BootstrapWithSingleStore(s.cluster)
@@ -88,12 +95,20 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 }
 
 func (s *testSessionIncSuite) TearDownSuite(c *C) {
-	s.dom.Close()
-	s.store.Close()
-	testleak.AfterTest(c)()
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	} else {
+		s.dom.Close()
+		s.store.Close()
+		testleak.AfterTest(c)()
+	}
 }
 
 func (s *testSessionIncSuite) TearDownTest(c *C) {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	r := tk.MustQuery("show tables")
 	for _, tb := range r.Rows() {
@@ -112,6 +127,10 @@ inception_magic_commit;`
 }
 
 func (s *testSessionIncSuite) TestBegin(c *C) {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	res := tk.MustQueryInc("create table t1(id int);")
 
