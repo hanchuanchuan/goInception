@@ -4,6 +4,7 @@
 ![](https://img.shields.io/badge/go-1.11-brightgreen.svg) 
 [![TiDB](https://img.shields.io/badge/TiDB-v2.1.1-brightgreen.svg)](https://github.com/pingcap/tidb)
 ![](https://img.shields.io/github/downloads/hanchuanchuan/goInception/total.svg)
+![](https://img.shields.io/github/license/hanchuanchuan/goInception.svg)
 
 **说明：使用go mod做依赖管理**
 
