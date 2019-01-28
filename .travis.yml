@@ -1,6 +1,6 @@
 language: go
 
-go_import_path: github.com/hanchuanchuan/tidb
+go_import_path: github.com/hanchuanchuan/goInception
 
 go:
   - "1.11"

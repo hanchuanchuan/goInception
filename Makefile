@@ -28,13 +28,13 @@ FILES     := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go" | grep -vE "vendor"
 GOFAIL_ENABLE  := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail enable)
 GOFAIL_DISABLE := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail disable)
 
-LDFLAGS += -X "github.com/hanchuanchuan/tidb/mysql.TiDBReleaseVersion=$(shell git describe --tags --dirty)"
-LDFLAGS += -X "github.com/hanchuanchuan/tidb/util/printer.TiDBBuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
-LDFLAGS += -X "github.com/hanchuanchuan/tidb/util/printer.TiDBGitHash=$(shell git rev-parse HEAD)"
-LDFLAGS += -X "github.com/hanchuanchuan/tidb/util/printer.TiDBGitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
-LDFLAGS += -X "github.com/hanchuanchuan/tidb/util/printer.GoVersion=$(shell go version)"
+LDFLAGS += -X "github.com/hanchuanchuan/goInception/mysql.TiDBReleaseVersion=$(shell git describe --tags --dirty)"
+LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBBuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
+LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBGitHash=$(shell git rev-parse HEAD)"
+LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBGitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
+LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.GoVersion=$(shell go version)"
 
-TEST_LDFLAGS =  -X "github.com/hanchuanchuan/tidb/config.checkBeforeDropLDFlag=1"
+TEST_LDFLAGS =  -X "github.com/hanchuanchuan/goInception/config.checkBeforeDropLDFlag=1"
 
 CHECK_LDFLAGS += $(LDFLAGS) ${TEST_LDFLAGS}
 
@@ -142,7 +142,7 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 	@export log_level=error; \
 	go get github.com/go-playground/overalls
 	go get github.com/mattn/goveralls
-	$(OVERALLS) -project=github.com/hanchuanchuan/tidb -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
+	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
 	$(GOVERALLS) -service=travis-ci -coverprofile=overalls.coverprofile || { $(GOFAIL_DISABLE); exit 1; }
 else
 	@echo "Running in native mode."
