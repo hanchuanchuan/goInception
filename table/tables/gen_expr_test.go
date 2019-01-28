@@ -14,7 +14,7 @@
 package tables
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
+	"github.com/hanchuanchuan/goInception/ast"
 	. "github.com/pingcap/check"
 )
 

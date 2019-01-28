@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 

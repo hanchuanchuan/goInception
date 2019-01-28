@@ -17,12 +17,12 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/types/json"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/types/json"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

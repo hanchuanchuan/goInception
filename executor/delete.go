@@ -14,12 +14,12 @@
 package executor
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )

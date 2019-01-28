@@ -4,12 +4,12 @@ import (
 	"encoding/binary"
 	"unsafe"
 
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/types/json"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/set"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/types/json"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/set"
 	"github.com/pingcap/errors"
 )
 

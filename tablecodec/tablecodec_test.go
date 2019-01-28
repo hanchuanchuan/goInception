@@ -20,12 +20,12 @@ import (
 	"time"
 
 	gofail "github.com/etcd-io/gofail/runtime"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/codec"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 
@@ -282,8 +282,8 @@ func (s *testTableCodecSuite) TestCutKey(c *C) {
 }
 
 func (s *testTableCodecSuite) TestDecodeBadDecical(c *C) {
-	gofail.Enable("github.com/hanchuanchuan/tidb/util/codec/errorInDecodeDecimal", `return(true)`)
-	defer gofail.Disable("github.com/hanchuanchuan/tidb/util/codec/errorInDecodeDecimal")
+	gofail.Enable("github.com/hanchuanchuan/goInception/util/codec/errorInDecodeDecimal", `return(true)`)
+	defer gofail.Disable("github.com/hanchuanchuan/goInception/util/codec/errorInDecodeDecimal")
 	dec := types.NewDecFromStringForTest("0.111")
 	b, err := codec.EncodeDecimal(nil, dec, 0, 0)
 	c.Assert(err, IsNil)

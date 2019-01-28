@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hanchuanchuan/tidb/parser"
+	"github.com/hanchuanchuan/goInception/parser"
 	. "github.com/pingcap/check"
 )
 

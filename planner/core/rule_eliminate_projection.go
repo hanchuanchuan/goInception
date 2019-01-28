@@ -14,7 +14,7 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/goInception/expression"
 )
 
 // canProjectionBeEliminatedLoose checks whether a projection can be eliminated,

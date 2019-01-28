@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/config"
-	"github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/store/tikv"
+	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )

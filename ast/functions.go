@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/types"
 )
 
 var (

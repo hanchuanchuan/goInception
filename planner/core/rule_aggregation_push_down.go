@@ -15,13 +15,13 @@ package core
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/expression/aggregation"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/expression/aggregation"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/types"
 )
 
 type aggregationPushDownSolver struct {

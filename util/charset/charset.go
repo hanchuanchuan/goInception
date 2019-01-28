@@ -16,7 +16,7 @@ package charset
 import (
 	"strings"
 
-	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/pingcap/errors"
 )
 

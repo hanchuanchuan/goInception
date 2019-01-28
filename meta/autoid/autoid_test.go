@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/meta"
-	"github.com/hanchuanchuan/tidb/meta/autoid"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/meta"
+	"github.com/hanchuanchuan/goInception/meta/autoid"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )

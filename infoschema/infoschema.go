@@ -17,12 +17,12 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/meta/autoid"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/meta/autoid"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/terror"
 )
 
 var (

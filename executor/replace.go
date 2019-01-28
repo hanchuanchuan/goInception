@@ -14,10 +14,10 @@
 package executor
 
 import (
-	"github.com/hanchuanchuan/tidb/table/tables"
-	"github.com/hanchuanchuan/tidb/tablecodec"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/table/tables"
+	"github.com/hanchuanchuan/goInception/tablecodec"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"

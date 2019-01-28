@@ -16,12 +16,12 @@ package sessionctx
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/owner"
-	"github.com/hanchuanchuan/tidb/sessionctx/variable"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util"
-	"github.com/hanchuanchuan/tidb/util/kvcache"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/owner"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util"
+	"github.com/hanchuanchuan/goInception/util/kvcache"
 	binlog "github.com/pingcap/tipb/go-binlog"
 	"golang.org/x/net/context"
 )

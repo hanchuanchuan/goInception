@@ -16,14 +16,14 @@ package executor
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/sqlexec"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )

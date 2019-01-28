@@ -17,7 +17,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/hanchuanchuan/tidb/util/hack"
+	"github.com/hanchuanchuan/goInception/util/hack"
 	"github.com/pingcap/errors"
 )
 

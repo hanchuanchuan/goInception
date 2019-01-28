@@ -19,18 +19,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/hanchuanchuan/tidb/sessionctx/variable"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/charset"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/util/testleak"
-	"github.com/hanchuanchuan/tidb/util/testutil"
-	"github.com/hanchuanchuan/tidb/util/timeutil"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/charset"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/mock"
+	"github.com/hanchuanchuan/goInception/util/testleak"
+	"github.com/hanchuanchuan/goInception/util/testutil"
+	"github.com/hanchuanchuan/goInception/util/timeutil"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )
@@ -545,7 +545,7 @@ func (s *testEvaluatorSuite) TestDayOfYear(c *C) {
 func (s *testEvaluatorSuite) TestDateFormat(c *C) {
 	defer testleak.AfterTest(c)()
 
-	// Test case for https://github.com/hanchuanchuan/tidb/issues/2908
+	// Test case for https://github.com/hanchuanchuan/goInception/issues/2908
 	// SELECT DATE_FORMAT(null,'%Y-%M-%D')
 	args := []types.Datum{types.NewDatum(nil), types.NewStringDatum("%Y-%M-%D")}
 	fc := funcs[ast.DateFormat]
@@ -1534,7 +1534,7 @@ func (s *testEvaluatorSuite) TestUnixTimestamp(c *C) {
 	c.Assert(d.GetInt64()-time.Now().Unix(), GreaterEqual, int64(-1))
 	c.Assert(d.GetInt64()-time.Now().Unix(), LessEqual, int64(1))
 
-	// https://github.com/hanchuanchuan/tidb/issues/2496
+	// https://github.com/hanchuanchuan/goInception/issues/2496
 	// Test UNIX_TIMESTAMP(NOW()).
 	now, isNull, err := evalNowWithFsp(s.ctx, 0)
 	c.Assert(err, IsNil)
@@ -1550,7 +1550,7 @@ func (s *testEvaluatorSuite) TestUnixTimestamp(c *C) {
 	c.Assert(val-time.Now().Unix(), GreaterEqual, int64(-1))
 	c.Assert(val-time.Now().Unix(), LessEqual, int64(1))
 
-	// https://github.com/hanchuanchuan/tidb/issues/2852
+	// https://github.com/hanchuanchuan/goInception/issues/2852
 	// Test UNIX_TIMESTAMP(NULL).
 	args = []types.Datum{types.NewDatum(nil)}
 	f, err = fc.getFunction(s.ctx, s.datumsToConstants(args))

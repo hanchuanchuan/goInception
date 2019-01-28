@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/metrics"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/structure"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/metrics"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/structure"
+	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )

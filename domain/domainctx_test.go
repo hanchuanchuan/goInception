@@ -14,8 +14,8 @@
 package domain
 
 import (
-	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/util/mock"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 

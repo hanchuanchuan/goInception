@@ -14,9 +14,9 @@
 package executor_test
 
 import (
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/statistics"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/statistics"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
 

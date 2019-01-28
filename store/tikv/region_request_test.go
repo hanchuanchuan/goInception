@@ -19,9 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/config"
-	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
-	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/coprocessor"

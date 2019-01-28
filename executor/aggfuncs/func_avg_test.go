@@ -14,13 +14,13 @@
 package aggfuncs_test
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/executor/aggfuncs"
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/expression/aggregation"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/executor/aggfuncs"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/expression/aggregation"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	. "github.com/pingcap/check"
 )
 

@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/sessionctx/variable"
-	"github.com/hanchuanchuan/tidb/util"
-	"github.com/hanchuanchuan/tidb/util/auth"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
+	"github.com/hanchuanchuan/goInception/util"
+	"github.com/hanchuanchuan/goInception/util/auth"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	"golang.org/x/net/context"
 )
 

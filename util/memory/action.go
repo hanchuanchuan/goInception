@@ -16,8 +16,8 @@ package memory
 import (
 	"sync"
 
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/terror"
 	log "github.com/sirupsen/logrus"
 )
 

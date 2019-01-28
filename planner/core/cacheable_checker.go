@@ -14,8 +14,8 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/expression"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
 )
 
 // Cacheable checks whether the input ast is cacheable.

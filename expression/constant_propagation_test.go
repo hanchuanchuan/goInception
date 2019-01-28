@@ -16,12 +16,12 @@ package expression_test
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/util/testkit"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/util/mock"
+	"github.com/hanchuanchuan/goInception/util/testkit"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 

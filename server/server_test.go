@@ -26,10 +26,10 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/tidb/kv"
-	tmysql "github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/util/logutil"
-	"github.com/hanchuanchuan/tidb/util/printer"
+	"github.com/hanchuanchuan/goInception/kv"
+	tmysql "github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/util/logutil"
+	"github.com/hanchuanchuan/goInception/util/printer"
 	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 )

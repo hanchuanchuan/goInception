@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/google/btree"
-	"github.com/hanchuanchuan/tidb/metrics"
+	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"

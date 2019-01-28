@@ -14,13 +14,13 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/expression/aggregation"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/tablecodec"
-	"github.com/hanchuanchuan/tidb/util/ranger"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/expression/aggregation"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/tablecodec"
+	"github.com/hanchuanchuan/goInception/util/ranger"
 	"github.com/pingcap/errors" // ToPB implements PhysicalPlan ToPB interface.
 	"github.com/pingcap/tipb/go-tipb"
 )

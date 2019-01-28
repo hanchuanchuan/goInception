@@ -15,11 +15,11 @@ package aggfuncs
 
 import (
 	"github.com/cznic/mathutil"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/set"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/set"
 	"github.com/pingcap/errors"
 )
 

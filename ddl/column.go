@@ -14,11 +14,11 @@
 package ddl
 
 import (
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/ddl/util"
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/meta"
-	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/ddl/util"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/meta"
+	"github.com/hanchuanchuan/goInception/model"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )

@@ -21,10 +21,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/hanchuanchuan/tidb/util/logutil"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/goInception/util/logutil"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

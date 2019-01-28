@@ -16,12 +16,12 @@ package executor_test
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/executor"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/table/tables"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/executor"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/table/tables"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/mock"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

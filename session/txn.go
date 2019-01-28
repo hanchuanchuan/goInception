@@ -14,13 +14,13 @@
 package session
 
 import (
-	"github.com/hanchuanchuan/tidb/executor"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/sessionctx/binloginfo"
-	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/executor"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/sessionctx/binloginfo"
+	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/types"
 	"github.com/pingcap/errors"
 	binlog "github.com/pingcap/tipb/go-binlog"
 	log "github.com/sirupsen/logrus"

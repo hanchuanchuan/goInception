@@ -14,11 +14,11 @@
 package distsql
 
 import (
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/metrics"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/statistics"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/metrics"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/statistics"
+	"github.com/hanchuanchuan/goInception/types"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )

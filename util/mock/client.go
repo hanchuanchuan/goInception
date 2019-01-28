@@ -14,7 +14,7 @@
 package mock
 
 import (
-	"github.com/hanchuanchuan/tidb/kv"
+	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/pingcap/tipb/go-tipb"
 	"golang.org/x/net/context"
 )

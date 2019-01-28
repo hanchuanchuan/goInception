@@ -14,7 +14,7 @@
 package variable_test
 
 import (
-	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/goInception/util/mock"
 	. "github.com/pingcap/check"
 )
 

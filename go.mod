@@ -1,4 +1,4 @@
-module github.com/hanchuanchuan/tidb
+module github.com/hanchuanchuan/goInception
 
 require (
 	github.com/BurntSushi/toml v0.3.1

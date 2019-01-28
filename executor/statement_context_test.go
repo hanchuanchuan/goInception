@@ -17,9 +17,9 @@ import (
 	"fmt"
 	"unicode/utf8"
 
-	"github.com/hanchuanchuan/tidb/table"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/table"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
 

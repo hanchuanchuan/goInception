@@ -14,9 +14,9 @@
 package ast
 
 import (
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/util/auth"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/util/auth"
 )
 
 var (

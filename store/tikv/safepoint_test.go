@@ -17,8 +17,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/terror"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"

@@ -18,11 +18,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/expression"
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/memory"
+	"github.com/hanchuanchuan/goInception/expression"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/memory"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )

@@ -18,13 +18,13 @@ import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/tidb/config"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/statistics"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/hanchuanchuan/tidb/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/statistics"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
 	. "github.com/pingcap/check"
 )
 

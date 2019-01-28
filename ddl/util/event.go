@@ -16,7 +16,7 @@ package util
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/goInception/model"
 )
 
 // Event is an event that a ddl operation happened.

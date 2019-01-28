@@ -24,12 +24,12 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/codec"
-	"github.com/hanchuanchuan/tidb/util/filesort"
-	"github.com/hanchuanchuan/tidb/util/logutil"
+	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/codec"
+	"github.com/hanchuanchuan/goInception/util/filesort"
+	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )

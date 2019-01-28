@@ -14,8 +14,8 @@
 package kv
 
 import (
-	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/hanchuanchuan/tidb/util/execdetails"
+	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	"github.com/hanchuanchuan/goInception/util/execdetails"
 	"golang.org/x/net/context"
 )
 

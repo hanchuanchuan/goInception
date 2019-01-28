@@ -16,10 +16,10 @@ package structure_test
 import (
 	"testing"
 
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/hanchuanchuan/tidb/structure"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/goInception/structure"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

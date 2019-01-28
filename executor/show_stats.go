@@ -16,11 +16,11 @@ package executor
 import (
 	"time"
 
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/statistics"
-	"github.com/hanchuanchuan/tidb/store/tikv/oracle"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/statistics"
+	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	"github.com/hanchuanchuan/goInception/types"
 	"github.com/pingcap/errors"
 )
 

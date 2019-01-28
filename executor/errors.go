@@ -14,8 +14,8 @@
 package executor
 
 import (
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/terror"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/terror"
 )
 
 // Error codes that are not mapping to mysql error codes.

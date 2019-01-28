@@ -17,9 +17,9 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/config"
-	"github.com/hanchuanchuan/tidb/metrics"
-	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/metrics"
+	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/pd/client"

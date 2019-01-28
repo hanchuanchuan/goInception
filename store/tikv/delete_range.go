@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/hanchuanchuan/tidb/store/tikv/tikvrpc"
+	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 )

@@ -14,9 +14,9 @@
 package executor_test
 
 import (
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
 

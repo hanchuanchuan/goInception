@@ -19,12 +19,12 @@ import (
 	"time"
 
 	gofail "github.com/etcd-io/gofail/runtime"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/session"
-	. "github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/hanchuanchuan/tidb/terror"
-	"github.com/hanchuanchuan/tidb/util/mock"
-	"github.com/hanchuanchuan/tidb/util/testkit"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/session"
+	. "github.com/hanchuanchuan/goInception/store/tikv"
+	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/goInception/util/mock"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
@@ -58,11 +58,11 @@ func (s *testSQLSuite) TestFailBusyServerCop(c *C) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	gofail.Enable("github.com/hanchuanchuan/tidb/store/mockstore/mocktikv/rpcServerBusy", `return(true)`)
+	gofail.Enable("github.com/hanchuanchuan/goInception/store/mockstore/mocktikv/rpcServerBusy", `return(true)`)
 	go func() {
 		defer wg.Done()
 		time.Sleep(time.Millisecond * 100)
-		gofail.Disable("github.com/hanchuanchuan/tidb/store/mockstore/mocktikv/rpcServerBusy")
+		gofail.Disable("github.com/hanchuanchuan/goInception/store/mockstore/mocktikv/rpcServerBusy")
 	}()
 
 	go func() {

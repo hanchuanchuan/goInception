@@ -20,7 +20,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/hanchuanchuan/tidb/mysql"
+	"github.com/hanchuanchuan/goInception/mysql"
 )
 
 var _ = yyLexer(&Scanner{})

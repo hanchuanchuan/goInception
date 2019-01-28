@@ -16,9 +16,9 @@ package statistics
 import (
 	"hash"
 
-	"github.com/hanchuanchuan/tidb/sessionctx/stmtctx"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/codec"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
 	"github.com/spaolacci/murmur3"

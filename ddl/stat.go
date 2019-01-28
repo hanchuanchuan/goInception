@@ -14,9 +14,9 @@
 package ddl
 
 import (
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/sessionctx/variable"
-	"github.com/hanchuanchuan/tidb/util/admin"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
+	"github.com/hanchuanchuan/goInception/util/admin"
 	"github.com/pingcap/errors"
 )
 

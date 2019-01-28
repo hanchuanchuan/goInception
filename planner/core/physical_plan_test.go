@@ -14,15 +14,15 @@
 package core_test
 
 import (
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/kv"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/parser"
-	"github.com/hanchuanchuan/tidb/planner"
-	"github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/util/testleak"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/parser"
+	"github.com/hanchuanchuan/goInception/planner"
+	"github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

@@ -14,11 +14,11 @@
 package executor
 
 import (
-	"github.com/hanchuanchuan/tidb/expression"
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/sessionctx"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
+	"github.com/hanchuanchuan/goInception/expression"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
 )
 
@@ -144,7 +144,7 @@ func (j *baseJoiner) initDefaultInner(innerTypes []*types.FieldType, defaultInne
 
 func (j *baseJoiner) makeJoinRowToChunk(chk *chunk.Chunk, lhs, rhs chunk.Row) {
 	// Call AppendRow() first to increment the virtual rows.
-	// Fix: https://github.com/hanchuanchuan/tidb/issues/5771
+	// Fix: https://github.com/hanchuanchuan/goInception/issues/5771
 	chk.AppendRow(lhs)
 	chk.AppendPartialRow(lhs.Len(), rhs)
 }

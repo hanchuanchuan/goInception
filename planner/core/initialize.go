@@ -14,8 +14,8 @@
 package core
 
 import (
-	"github.com/hanchuanchuan/tidb/planner/property"
-	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/goInception/planner/property"
+	"github.com/hanchuanchuan/goInception/sessionctx"
 )
 
 const (

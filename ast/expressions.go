@@ -20,10 +20,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/mysql"
-	"github.com/hanchuanchuan/tidb/parser/opcode"
-	"github.com/hanchuanchuan/tidb/types"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/parser/opcode"
+	"github.com/hanchuanchuan/goInception/types"
 )
 
 var (

@@ -20,11 +20,11 @@ import (
 	"time"
 
 	gofail "github.com/etcd-io/gofail/runtime"
-	"github.com/hanchuanchuan/tidb/domain"
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/store/mockoracle"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/hanchuanchuan/tidb/store/tikv"
+	"github.com/hanchuanchuan/goInception/domain"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/store/mockoracle"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/goInception/store/tikv"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/kvproto/pkg/errorpb"
 	"golang.org/x/net/context"
@@ -160,23 +160,23 @@ func (s *testGCWorkerSuite) TestDoGCForOneRegion(c *C) {
 	c.Assert(regionErr, IsNil)
 	c.Assert(err, IsNil)
 
-	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult", `return("timeout")`)
+	gofail.Enable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult", `return("timeout")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr, IsNil)
 	c.Assert(err, IsNil)
-	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult")
 
-	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult", `return("GCNotLeader")`)
+	gofail.Enable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult", `return("GCNotLeader")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr.GetNotLeader(), IsNil)
 	c.Assert(err, IsNil)
-	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult")
 
-	gofail.Enable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult", `return("GCServerIsBusy")`)
+	gofail.Enable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult", `return("GCServerIsBusy")`)
 	regionErr, err = taskWorker.doGCForRegion(bo, 20, loc.Region)
 	c.Assert(regionErr.GetServerIsBusy(), IsNil)
 	c.Assert(err, IsNil)
-	gofail.Disable("github.com/hanchuanchuan/tidb/store/tikv/tikvStoreSendReqResult")
+	gofail.Disable("github.com/hanchuanchuan/goInception/store/tikv/tikvStoreSendReqResult")
 }
 
 func (s *testGCWorkerSuite) TestDoGC(c *C) {

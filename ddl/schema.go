@@ -14,9 +14,9 @@
 package ddl
 
 import (
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/meta"
-	"github.com/hanchuanchuan/tidb/model"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/meta"
+	"github.com/hanchuanchuan/goInception/model"
 	"github.com/pingcap/errors"
 )
 

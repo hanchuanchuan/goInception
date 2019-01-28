@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hanchuanchuan/tidb/tablecodec"
+	"github.com/hanchuanchuan/goInception/tablecodec"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"golang.org/x/net/context"

@@ -14,9 +14,9 @@
 package ddl
 
 import (
-	"github.com/hanchuanchuan/tidb/infoschema"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/sessionctx"
+	"github.com/hanchuanchuan/goInception/infoschema"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/sessionctx"
 	"golang.org/x/net/context"
 )
 

@@ -17,12 +17,12 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/hanchuanchuan/tidb/ddl"
-	"github.com/hanchuanchuan/tidb/model"
-	"github.com/hanchuanchuan/tidb/session"
-	"github.com/hanchuanchuan/tidb/store/mockstore"
-	"github.com/hanchuanchuan/tidb/store/tikv"
-	"github.com/hanchuanchuan/tidb/tablecodec"
+	"github.com/hanchuanchuan/goInception/ddl"
+	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/goInception/store/tikv"
+	"github.com/hanchuanchuan/goInception/tablecodec"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

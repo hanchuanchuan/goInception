@@ -3,13 +3,13 @@ package executor
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/tidb/ast"
-	"github.com/hanchuanchuan/tidb/expression"
-	"github.com/hanchuanchuan/tidb/mysql"
-	plannercore "github.com/hanchuanchuan/tidb/planner/core"
-	"github.com/hanchuanchuan/tidb/types"
-	"github.com/hanchuanchuan/tidb/util/chunk"
-	"github.com/hanchuanchuan/tidb/util/mock"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/mysql"
+	plannercore "github.com/hanchuanchuan/goInception/planner/core"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/mock"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )

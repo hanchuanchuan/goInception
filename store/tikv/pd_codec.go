@@ -14,7 +14,7 @@
 package tikv
 
 import (
-	"github.com/hanchuanchuan/tidb/util/codec"
+	"github.com/hanchuanchuan/goInception/util/codec"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/pd/client"
