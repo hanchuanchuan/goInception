@@ -10,11 +10,13 @@
 
 ### 安装说明
 
-#### 二进制安装
+#### 二进制免安装
 
-[goInception安装包](https://github.com/hanchuanchuan/goInceptionLFS)
+[goInception下载](https://github.com/hanchuanchuan/goInception/releases)
 
-#### 源码安装
+#### 源码编译
+
+***go version 1.11***
 
 ```bash
 git clone https://github.com/hanchuanchuan/goInception
