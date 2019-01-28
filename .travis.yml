@@ -7,6 +7,7 @@ go:
 
 env:
     - TRAVIS_COVERAGE=0
+    - GO111MODULE=on
 
 before_install:
   # create /logs/unit-test for unit test.
@@ -15,4 +16,5 @@ before_install:
   # See https://github.com/golang/go/issues/12933
   - bash gitcookie.sh
 script:
+  - rm -f go.sum
   - make dev
