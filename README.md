@@ -1,8 +1,8 @@
 # goInception
 
-![](https://img.shields.io/travis/hanchuanchuan/goInception.svg)
+[![](https://img.shields.io/travis/hanchuanchuan/goInception.svg)](https://travis-ci.org/hanchuanchuan/goInception)
 [![GitHub release](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)](https://github.com/hanchuanchuan/goInception/releases)
-![](https://img.shields.io/badge/go-1.11-brightgreen.svg) 
+[![](https://img.shields.io/badge/go-1.11-brightgreen.svg)](https://golang.org/dl/)
 [![TiDB](https://img.shields.io/badge/TiDB-v2.1.1-brightgreen.svg)](https://github.com/pingcap/tidb)
 ![](https://img.shields.io/github/downloads/hanchuanchuan/goInception/total.svg)
 ![](https://img.shields.io/github/license/hanchuanchuan/goInception.svg)
