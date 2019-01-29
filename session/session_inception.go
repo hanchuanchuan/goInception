@@ -50,6 +50,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+// MasterStatus is 主库状态信息,包括当前日志文件,位置等
 type MasterStatus struct {
 	gorm.Model
 	File              string `gorm:"Column:File"`
@@ -59,6 +60,7 @@ type MasterStatus struct {
 	Executed_Gtid_Set string `gorm:"Column:Executed_Gtid_Set"`
 }
 
+// sourceOptions is 线上数据库信息和审核或执行的参数
 type sourceOptions struct {
 	host           string
 	port           int
@@ -72,6 +74,7 @@ type sourceOptions struct {
 	remoteBackup bool
 }
 
+// ExplainInfo is 执行计划信息
 type ExplainInfo struct {
 	gorm.Model
 
@@ -88,6 +91,7 @@ type ExplainInfo struct {
 	Extra        string  `gorm:"Column:Extra"`
 }
 
+// FieldInfo is 字段信息
 type FieldInfo struct {
 	gorm.Model
 
@@ -100,10 +104,14 @@ type FieldInfo struct {
 	Extra      string `gorm:"Column:Extra"`
 	Privileges string `gorm:"Column:Privileges"`
 	Comment    string `gorm:"Column:Comment"`
-	IsDeleted  bool   `gorm:"-"`
-	IsNew      bool   `gorm:"-"`
+
+	IsDeleted bool `gorm:"-"`
+	IsNew     bool `gorm:"-"`
 }
 
+// TableInfo 表结构.
+// 表结构实现了快照功能,在表结构变更前,会复制快照,在快照上做变更
+// 在解析binlog时,基于执行时的快照做binlog解析,以实现删除列时的binlog解析
 type TableInfo struct {
 	Schema string
 	Name   string
@@ -130,10 +138,11 @@ type TableInfo struct {
 
 	AlterCount int
 
-	// 是否已清除已删除的列[用以解析binlog]
+	// 是否已清除已删除的列[解析binlog时会自动清除已删除的列]
 	IsClear bool
 }
 
+// IndexInfo is 索引信息
 type IndexInfo struct {
 	gorm.Model
 
@@ -143,7 +152,8 @@ type IndexInfo struct {
 	Seq        int    `gorm:"Column:Seq_in_index"`
 	ColumnName string `gorm:"Column:Column_name"`
 	IndexType  string `gorm:"Column:Index_type"`
-	IsDeleted  bool   `gorm:"-"`
+
+	IsDeleted bool `gorm:"-"`
 }
 
 var (
@@ -165,11 +175,13 @@ const (
 
 func init() {
 
-	// 正则匹配sql的option设置
+	// 匹配sql的option设置
 	regParseOption = regexp.MustCompile(`^\/\*(.*?)\*\/`)
 
+	// 匹配字段长度
 	regFieldLength = regexp.MustCompile(`^.*?\((\d)`)
 
+	// 匹配标识符,只能包含字母数字和下划线
 	regIdentified = regexp.MustCompile(`^[0-9a-zA-Z\_]*$`)
 
 }
@@ -3789,14 +3801,10 @@ func (s *session) AppendErrorNo(number int, values ...interface{}) {
 }
 
 func (s *session) checkKeyWords(name string) {
-
 	if !regIdentified.MatchString(name) {
 		s.AppendErrorNo(ER_INVALID_IDENT, name)
-	} else {
-
-		if _, ok := Keywords[strings.ToUpper(name)]; ok {
-			s.AppendErrorNo(ER_IDENT_USE_KEYWORD, name)
-		}
+	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
+		s.AppendErrorNo(ER_IDENT_USE_KEYWORD, name)
 	}
 
 	if len(name) > mysql.MaxTableNameLength {
