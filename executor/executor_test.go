@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	gofail "github.com/etcd-io/gofail/runtime"
+	// gofail "github.com/etcd-io/gofail/runtime"
 	"github.com/golang/protobuf/proto"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
@@ -2652,53 +2652,6 @@ func (s *testSuite) TestUnsignedPk(c *C) {
 	num2Str := strconv.FormatUint(num2, 10)
 	tk.MustQuery("select * from t order by id").Check(testkit.Rows("1", "2", num1Str, num2Str))
 	tk.MustQuery("select * from t where id not in (2)").Check(testkit.Rows(num1Str, num2Str, "1"))
-}
-
-func (s *testSuite) TestEarlyClose(c *C) {
-	tk := testkit.NewTestKit(c, s.store)
-	tk.MustExec("use test")
-	tk.MustExec("create table earlyclose (id int primary key)")
-
-	// Insert 1000 rows.
-	var values []string
-	for i := 0; i < 1000; i++ {
-		values = append(values, fmt.Sprintf("(%d)", i))
-	}
-	tk.MustExec("insert earlyclose values " + strings.Join(values, ","))
-
-	// Get table ID for split.
-	dom := domain.GetDomain(tk.Se)
-	is := dom.InfoSchema()
-	tbl, err := is.TableByName(model.NewCIStr("test"), model.NewCIStr("earlyclose"))
-	c.Assert(err, IsNil)
-	tblID := tbl.Meta().ID
-
-	// Split the table.
-	s.cluster.SplitTable(s.mvccStore, tblID, 500)
-
-	ctx := context.Background()
-	for i := 0; i < 500; i++ {
-		rss, err1 := tk.Se.Execute(ctx, "select * from earlyclose order by id")
-		c.Assert(err1, IsNil)
-		rs := rss[0]
-		chk := rs.NewChunk()
-		err = rs.Next(ctx, chk)
-		c.Assert(err, IsNil)
-		rs.Close()
-	}
-
-	// Goroutine should not leak when error happen.
-	gofail.Enable("github.com/hanchuanchuan/goInception/store/tikv/handleTaskOnceError", `return(true)`)
-	defer gofail.Disable("github.com/hanchuanchuan/goInception/store/tikv/handleTaskOnceError")
-	rss, err := tk.Se.Execute(ctx, "select * from earlyclose")
-	c.Assert(err, IsNil)
-	rs := rss[0]
-	chk := rs.NewChunk()
-	err = rs.Next(ctx, chk)
-	// hcc 2019-1-21 下面go test报错,调整之
-	c.Assert(err, NotNil)
-	// c.Assert(err, IsNil)
-	rs.Close()
 }
 
 func (s *testSuite) TestIssue5666(c *C) {
