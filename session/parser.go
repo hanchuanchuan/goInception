@@ -5,10 +5,9 @@ import (
 	"database/sql/driver"
 	"fmt"
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
-	"github.com/juju/errors"
 	"github.com/hanchuanchuan/go-mysql/mysql"
 	"github.com/hanchuanchuan/go-mysql/replication"
+	"github.com/juju/errors"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
@@ -19,24 +18,7 @@ import (
 const digits01 = "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
 const digits10 = "0000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999"
 
-type Column struct {
-	gorm.Model
-	Field     string `gorm:"Column:COLUMN_NAME"`
-	Type      string `gorm:"Column:COLUMN_TYPE"`
-	Collation string `gorm:"Column:COLLATION_NAME"`
-	Key       string `gorm:"Column:COLUMN_KEY"`
-	Comment   string `gorm:"Column:COLUMN_COMMENT"`
-
-	// CharacterSetName string `gorm:"Column:CHARACTER_SET_NAME"`
-}
-
-type Table struct {
-	tableId    uint64
-	Fields     []Column
-	hasPrimary bool
-	primarys   map[int]bool
-}
-
+// ChanData 备份channal数据,用来传递备份的sql等信息
 type ChanData struct {
 	sql    []byte // dml动态解析的语句
 	sqlStr string // ddl回滚语句
