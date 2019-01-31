@@ -1,239 +1,181 @@
-PROJECT=tidb
-GOPATH ?= $(shell go env GOPATH)
+#!/bin/bash
 
-# Ensure GOPATH is set before running build process.
-ifeq "$(GOPATH)" ""
-  $(error Please set the environment variable GOPATH before running `make`)
-endif
-FAIL_ON_STDOUT := awk '{ print } END { if (NR > 0) { exit 1 } }'
 
-CURDIR := $(shell pwd)
-path_to_add := $(addsuffix /bin,$(subst :,/bin:,$(GOPATH)))
-export PATH := $(path_to_add):$(PATH)
+TIDB_TEST_STORE_NAME=$TIDB_TEST_STORE_NAME
+TIKV_PATH=$TIKV_PATH
 
-GO        := GO111MODULE=on go
-GOBUILD   := CGO_ENABLED=0 $(GO) build $(BUILD_FLAG)
+build=1
+explain_test="./explain_test"
+importer=""
+tidb_server=""
+explain_test_log="./explain-test.out"
+tests=""
+record=0
+record_case=""
+create=0
+create_case=""
 
-# 指定部分单元测试跳过
-ifeq ("$(SHORT)", "1")
-	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3 -short
+set -eu
+trap 'set +e; PIDS=$(jobs -p); [ -n "$PIDS" ] && kill -9 $PIDS' EXIT
+
+function help_message()
+{
+    echo "Usage: $0 [options]
+    -h: Print this help message.
+    -s <tidb-server-path>: Use tidb-server in <tidb-server-path> for testing.
+                           eg. \"./run-tests.sh -s ./explaintest_tidb-server\"
+    -b <y|Y|n|N>: \"y\" or \"Y\" for building test binaries [default \"y\" if this option is not specified].
+                  \"n\" or \"N\" for not to build.
+                  The building of tidb-server will be skiped if \"-s <tidb-server-path>\" is provided.
+    -r <test-name>|all: Run tests in file \"t/<test-name>.test\" and record result to file \"r/<test-name>.result\".
+                        \"all\" for running all tests and record their results.
+    -t <test-name>: Run tests in file \"t/<test-name>.test\".
+                    This option will be ignored if \"-r <test-name>\" is provided.
+                    Run all tests if this option is not provided.
+    -c <test-name>|all: Create data according to creating statements in file \"t/<test-name>.test\" and save stats in \"s/<test-name>_tableName.json\".
+                    <test-name> must has a suffix of '_stats'.
+                    \"all\" for creating stats of all tests.
+    -i <importer-path>: Use importer in <importer-path> for creating data.
+"
+}
+
+function build_importer()
+{
+    importer="./importer"
+    echo "building importer binary: $importer"
+    rm -rf $importer
+    GO111MODULE=on go build -o $importer github.com/hanchuanchuan/goInception/cmd/importer
+}
+
+function build_tidb_server()
+{
+    tidb_server="./explaintest_tidb-server"
+    echo "building tidb-server binary: $tidb_server"
+    rm -rf $tidb_server
+    GO111MODULE=on go build -race -o $tidb_server github.com/hanchuanchuan/goInception/tidb-server
+}
+
+function build_explain_test()
+{
+    echo "building explain-test binary: $explain_test"
+    rm -rf $explain_test
+    GO111MODULE=on go build -o $explain_test
+}
+
+while getopts "t:s:r:b:c:i:h" opt; do
+    case $opt in
+        t)
+            tests="$OPTARG"
+            ;;
+        s)
+            tidb_server="$OPTARG"
+            ;;
+        r)
+            record=1
+            record_case="$OPTARG"
+            ;;
+        b)
+            case $OPTARG in
+                y|Y)
+                    build=1
+                    ;;
+                n|N)
+                    build=0
+                    ;;
+                *)
+                    help_messge 1>&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+        h)
+            help_message
+            exit 0
+            ;;
+        c)
+            create=1
+            create_case="$OPTARG"
+            ;;
+        i)
+            importer="$OPTARG"
+            ;;
+        *)
+            help_message 1>&2
+            exit 1
+            ;;
+    esac
+done
+
+if [ $build -eq 1 ]; then
+    if [ -z "$tidb_server" ]; then
+        build_tidb_server
+    else
+        echo "skip building tidb-server, using existing binary: $tidb_server"
+    fi
+    if [[ -z "$importer" && $create -eq 1 ]]; then
+        build_importer
+    else
+        echo "skip building importer, using existing binary: $importer"
+    fi
+    build_explain_test
 else
-	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3
-endif
+    if [ -z "$tidb_server" ]; then
+        tidb_server="./explaintest_tidb-server"
+    fi
+    if [ -z "$explain_test" ]; then
+        explain_test="./explain_test"
+    fi
+    if [ -z "$importer" ]; then
+        importer="./importer"
+    fi
+    echo "skip building tidb-server, using existing binary: $tidb_server"
+    echo "skip building explaintest, using existing binary: $explain_test"
+    echo "skip building importer, using existing binary: $importer"
+fi
 
-OVERALLS  := CGO_ENABLED=1 overalls
-GOVERALLS := goveralls
+rm -rf $explain_test_log
 
-ARCH      := "`uname -s`"
-LINUX     := "Linux"
-MAC       := "Darwin"
-PACKAGE_LIST  := go list ./...| grep -vE "vendor"
-PACKAGES  := $$($(PACKAGE_LIST))
-PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/hanchuanchuan/$(PROJECT)/||'
-FILES     := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go" | grep -vE "vendor")
-
-GOFAIL_ENABLE  := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail enable)
-GOFAIL_DISABLE := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail disable)
-
-LDFLAGS += -X "github.com/hanchuanchuan/goInception/mysql.TiDBReleaseVersion=$(shell git describe --tags --dirty)"
-LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBBuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
-LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBGitHash=$(shell git rev-parse HEAD)"
-LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBGitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
-LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.GoVersion=$(shell go version)"
-
-TEST_LDFLAGS =  -X "github.com/hanchuanchuan/goInception/config.checkBeforeDropLDFlag=1"
-
-CHECK_LDFLAGS += $(LDFLAGS) ${TEST_LDFLAGS}
-
-TARGET = ""
-
-.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist
-
-default: server buildsucc
-
-server-admin-check: server_check buildsucc
-
-buildsucc:
-	@echo Build TiDB Server successfully!
-
-all: dev server benchkv
-
-# dev: checklist parserlib test check
-dev: checklist parserlib test
-
-build:
-	$(GOBUILD)
-
-goyacc:
-	$(GOBUILD) -o bin/goyacc parser/goyacc/main.go
-
-parser: goyacc
-	bin/goyacc -o /dev/null parser/parser.y
-	bin/goyacc -o parser/parser.go parser/parser.y 2>&1 | egrep "(shift|reduce)/reduce" | awk '{print} END {if (NR > 0) {print "Find conflict in parser.y. Please check y.output for more information."; exit 1;}}'
-	rm -f y.output
-
-	@if [ $(ARCH) = $(LINUX) ]; \
-	then \
-		sed -i -e 's|//line.*||' -e 's/yyEofCode/yyEOFCode/' parser/parser.go; \
-	elif [ $(ARCH) = $(MAC) ]; \
-	then \
-		/usr/bin/sed -i "" 's|//line.*||' parser/parser.go; \
-		/usr/bin/sed -i "" 's/yyEofCode/yyEOFCode/' parser/parser.go; \
-	fi
-
-	@awk 'BEGIN{print "// Code generated by goyacc"} {print $0}' parser/parser.go > tmp_parser.go && mv tmp_parser.go parser/parser.go;
-
-parserlib: parser/parser.go
-
-parser/parser.go: parser/parser.y
-	make parser
-
-# The retool tools.json is setup from hack/retool-install.sh
-check-setup:
-	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
-	@retool sync
-
-check: check-setup fmt lint vet
-
-# These need to be fixed before they can be ran regularly
-check-fail: goword check-static check-slow
-
-fmt:
-	@echo "gofmt (simplify)"
-	@gofmt -s -l -w $(FILES) 2>&1 | grep -v "vendor|parser/parser.go" | $(FAIL_ON_STDOUT)
-
-goword:
-	retool do goword $(FILES) 2>&1 | $(FAIL_ON_STDOUT)
-
-check-static:
-	@ # vet and fmt have problems with vendor when ran through metalinter
-	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all --deadline 120s \
-	  --enable misspell \
-	  --enable megacheck \
-	  --enable ineffassign \
-	  $$($(PACKAGE_DIRECTORIES))
-
-check-slow:
-	CGO_ENABLED=0 retool do gometalinter.v2 --disable-all \
-	  --enable errcheck \
-	  $$($(PACKAGE_DIRECTORIES))
-	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
-
-lint:
-	@echo "linting"
-	@CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $(PACKAGES)
-
-vet:
-	@echo "vet"
-	@go vet -all -shadow $(PACKAGES) 2>&1 | $(FAIL_ON_STDOUT)
-
-clean:
-	$(GO) clean -i ./...
-	rm -rf *.out
-
-todo:
-	@grep -n ^[[:space:]]*_[[:space:]]*=[[:space:]][[:alpha:]][[:alnum:]]* */*.go parser/parser.y || true
-	@grep -n TODO */*.go parser/parser.y || true
-	@grep -n BUG */*.go parser/parser.y || true
-	@grep -n println */*.go parser/parser.y || true
-
-test: checklist gotest explaintest
-
-explaintest: server
-	@cd cmd/explaintest && ./run-tests.sh -s ../../bin/tidb-server
-
-gotest: parserlib
-	go get github.com/etcd-io/gofail
-	@$(GOFAIL_ENABLE)
-ifeq ("$(TRAVIS_COVERAGE)", "1")
-	@echo "Running in TRAVIS_COVERAGE mode."
-	@export log_level=error; \
-	go get github.com/go-playground/overalls
-	go get github.com/mattn/goveralls
-	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
-	$(GOVERALLS) -service=travis-ci -coverprofile=overalls.coverprofile || { $(GOFAIL_DISABLE); exit 1; }
+echo "start tidb-server, log file: $explain_test_log"
+if [ "${TIDB_TEST_STORE_NAME}" = "tikv" ]; then
+    $tidb_server -config config.toml -store tikv -path "${TIKV_PATH}" > $explain_test_log 2>&1 &
+    SERVER_PID=$!
 else
-	@echo "Running in native mode."
-	@export log_level=error; \
-	$(GOTEST) -ldflags '$(TEST_LDFLAGS)' -cover $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
-endif
-	@$(GOFAIL_DISABLE)
+    $tidb_server -config config.toml -store mocktikv -path "" > $explain_test_log 2>&1 &
+    SERVER_PID=$!
+fi
+echo "tidb-server(PID: $SERVER_PID) started"
 
-race: parserlib
-	go get github.com/etcd-io/gofail
-	@$(GOFAIL_ENABLE)
-	@export log_level=debug; \
-	$(GOTEST) -timeout 20m -race $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
-	@$(GOFAIL_DISABLE)
+sleep 5
 
-leak: parserlib
-	go get github.com/etcd-io/gofail
-	@$(GOFAIL_ENABLE)
-	@export log_level=debug; \
-	$(GOTEST) -tags leak $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
-	@$(GOFAIL_DISABLE)
-
-tikv_integration_test: parserlib
-	go get github.com/etcd-io/gofail
-	@$(GOFAIL_ENABLE)
-	$(GOTEST) ./store/tikv/. -with-tikv=true || { $(GOFAIL_DISABLE); exit 1; }
-	@$(GOFAIL_DISABLE)
-
-RACE_FLAG =
-ifeq ("$(WITH_RACE)", "1")
-	RACE_FLAG = -race
-	GOBUILD   = GOPATH=$(GOPATH) CGO_ENABLED=1 $(GO) build
-endif
-
-CHECK_FLAG =
-ifeq ("$(WITH_CHECK)", "1")
-	CHECK_FLAG = $(TEST_LDFLAGS)
-endif
-
-server: parserlib
-ifeq ($(TARGET), "")
-	$(GOBUILD) $(RACE_FLAG) -ldflags '$(LDFLAGS) $(CHECK_FLAG)' -o bin/tidb-server tidb-server/main.go
+if [ $record -eq 1 ]; then
+    if [ "$record_case" = 'all' ]; then
+        echo "record all cases"
+        $explain_test --record --log-level=error
+    else
+        echo "record result for case: \"$record_case\""
+        $explain_test --record $record_case --log-level=error
+    fi
+elif [ $create -eq 1 ]; then
+    if [ "$create_case" = 'all' ]; then
+        echo "create all cases"
+        $explain_test --create --log-level=error
+    else
+        echo "create result for case: \"$create_case\""
+        $explain_test --create $create_case --log-level=error
+    fi
 else
-	$(GOBUILD) $(RACE_FLAG) -ldflags '$(LDFLAGS) $(CHECK_FLAG)' -o '$(TARGET)' tidb-server/main.go
-endif
+    if [ -z "$tests" ]; then
+        echo "run all explain test cases"
+    else
+        echo "run explain test cases: $tests"
+    fi
+    $explain_test --log-level=error $tests
+fi
 
-server_check: parserlib
-ifeq ($(TARGET), "")
-	$(GOBUILD) $(RACE_FLAG) -ldflags '$(CHECK_LDFLAGS)' -o bin/tidb-server tidb-server/main.go
-else
-	$(GOBUILD) $(RACE_FLAG) -ldflags '$(CHECK_LDFLAGS)' -o '$(TARGET)' tidb-server/main.go
-endif
-
-benchkv:
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o bin/benchkv cmd/benchkv/main.go
-
-benchraw:
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o bin/benchraw cmd/benchraw/main.go
-
-benchdb:
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o bin/benchdb cmd/benchdb/main.go
-
-importer:
-	$(GOBUILD) -ldflags '$(LDFLAGS)' -o bin/importer ./cmd/importer
-
-update:
-	which dep 2>/dev/null || go get -u github.com/golang/dep/cmd/dep
-ifdef PKG
-	dep ensure -add ${PKG}
-else
-	dep ensure -update
-endif
-	@echo "removing test files"
-	dep prune
-	bash ./hack/clean_vendor.sh
-
-checklist:
-	cat checklist.md
-
-gofail-enable:
-# Converting gofail failpoints...
-	@$(GOFAIL_ENABLE)
-
-gofail-disable:
-# Restoring gofail failpoints...
-	@$(GOFAIL_DISABLE)
+race=`grep 'DATA RACE' $explain_test_log || true`
+if [ ! -z "$race" ]; then
+    echo "tidb-server DATA RACE!"
+    cat $explain_test_log
+    exit 1
+fi
+echo "explaintest end"
