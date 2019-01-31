@@ -58,8 +58,8 @@ buildsucc:
 
 all: dev server benchkv
 
-dev: checklist parserlib test check
-# dev: checklist parserlib test
+# dev: checklist parserlib test check
+dev: checklist parserlib test
 
 build:
 	$(GOBUILD)
