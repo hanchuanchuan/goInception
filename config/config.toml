@@ -38,6 +38,11 @@ backup_password = "inception"
 # 1  表示开启安全更新
 sql_safe_updates = 0
 
+[osc]
+osc_on = true
+osc_min_table_size = 0
+
+
 [log]
 # Log level: debug, info, warn, error, fatal.
 level = "info"

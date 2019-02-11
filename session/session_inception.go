@@ -132,6 +132,9 @@ type TableInfo struct {
 
 	// 是否已清除已删除的列[用以解析binlog]
 	IsClear bool
+
+	// 表大小.单位MB
+	TableSize uint
 }
 
 type IndexInfo struct {
@@ -187,6 +190,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.backupTableCacheList = make(map[string]bool)
 
 	s.Inc = config.GetGlobalConfig().Inc
+	s.Osc = config.GetGlobalConfig().Osc
 
 	s.recordSets = NewRecordSets()
 
@@ -528,6 +532,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 		log.Infof("%T\n", stmtNode)
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
+
+	s.mysqlComputeSqlSha1(s.myRecord)
 
 	return nil, nil
 }
@@ -971,36 +977,41 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 	start := time.Now()
 
-	res := s.db.Exec(sql)
-
-	record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
-
-	record.ExecTimestamp = time.Now().Unix()
-
-	err := res.Error
-	if err != nil {
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-		log.Error(err)
-		record.StageStatus = StatusExecFail
+	if record.useOsc {
+		s.mysqlExecuteAlterTableOsc(record)
+		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 	} else {
-		record.AffectedRows = int(res.RowsAffected)
-		record.StageStatus = StatusExecOK
-		record.ThreadId = s.fetchThreadID()
+		res := s.db.Exec(sql)
 
-		record.ExecComplete = true
+		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 
-		switch record.Type.(type) {
-		case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
-			s.TotalChangeRows += record.AffectedRows
-		}
+		record.ExecTimestamp = time.Now().Unix()
 
-		if _, ok := record.Type.(*ast.CreateTableStmt); ok &&
-			record.TableInfo == nil && record.DBName != "" && record.TableName != "" {
-			record.TableInfo = s.getTableFromCache(record.DBName, record.TableName, true)
+		err := res.Error
+		if err != nil {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.AppendErrorMessage(myErr.Message)
+			} else {
+				s.AppendErrorMessage(err.Error())
+			}
+			log.Error(err)
+			record.StageStatus = StatusExecFail
+		} else {
+			record.AffectedRows = int(res.RowsAffected)
+			record.StageStatus = StatusExecOK
+			record.ThreadId = s.fetchThreadID()
+
+			record.ExecComplete = true
+
+			switch record.Type.(type) {
+			case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+				s.TotalChangeRows += record.AffectedRows
+			}
+
+			if _, ok := record.Type.(*ast.CreateTableStmt); ok &&
+				record.TableInfo == nil && record.DBName != "" && record.TableName != "" {
+				record.TableInfo = s.getTableFromCache(record.DBName, record.TableName, true)
+			}
 		}
 	}
 }
@@ -1346,7 +1357,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 
 	// sql := fmt.Sprintf("show table status from `%s` where name = '%s';", dbname, tableName)
 	sql := fmt.Sprintf(`select TABLE_ROWS from information_schema.tables
-		where table_name='%s' and table_schema='%s';`, t.Schema, t.Name)
+		where table_schema='%s' and table_name='%s';`, t.Schema, t.Name)
 
 	var res uint
 
@@ -1365,6 +1376,37 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 			rows.Scan(&res)
 		}
 		s.myRecord.AffectedRows = int(res)
+	}
+}
+
+// mysqlShowTableStatus is 获取表估计的受影响行数
+func (s *session) mysqlGetTableSize(t *TableInfo) {
+
+	if t.IsNew || t.TableSize > 0 {
+		return
+	}
+
+	sql := fmt.Sprintf(`select (DATA_LENGTH + INDEX_LENGTH)/1024/1024
+		from information_schema.tables
+		where table_schema='%s' and table_name='%s';`, t.Schema, t.Name)
+
+	var res uint
+
+	rows, err := s.db.Raw(sql).Rows()
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else if rows != nil {
+		for rows.Next() {
+			rows.Scan(&res)
+		}
+		t.TableSize = res
 	}
 }
 
@@ -1781,6 +1823,9 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	}
 
 	s.mysqlShowTableStatus(table)
+	s.mysqlGetTableSize(table)
+
+	s.checkAlterUseOsc(table)
 
 	s.myRecord.TableInfo = table
 
