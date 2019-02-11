@@ -84,6 +84,9 @@ type Record struct {
 	OPID        string
 
 	ExecComplete bool
+
+	// 是否开启OSC
+	useOsc bool
 }
 
 type recordSet struct {

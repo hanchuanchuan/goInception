@@ -177,6 +177,7 @@ type session struct {
 	backupTableCacheList map[string]bool
 
 	Inc config.Inc
+	Osc config.Osc
 
 	// 异步备份的通道
 	ch chan *ChanData

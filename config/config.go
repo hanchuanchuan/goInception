@@ -74,6 +74,7 @@ type Config struct {
 	TiKVClient          TiKVClient        `toml:"tikv-client" json:"tikv-client"`
 	Binlog              Binlog            `toml:"binlog" json:"binlog"`
 	Inc                 Inc               `toml:"inc" json:"inc"`
+	Osc                 Osc               `toml:"osc" json:"osc"`
 	CompatibleKillQuery bool              `toml:"compatible-kill-query" json:"compatible-kill-query"`
 }
 
@@ -323,6 +324,77 @@ type Inc struct {
 	SqlSafeUpdates int `toml:"sql_safe_updates" json:"sql_safe_updates"`
 }
 
+// Osc online schema change 工具参数配置
+type Osc struct {
+
+	// 用来设置在arkit返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，
+	// 如果设置为1，就不打印，如果设置为0，就打印。而如果出现了错误，则都会打印。默认值：OFF
+	OscPrintNone bool `toml:"osc_print_none" json:"osc_print_none"`
+
+	// 对应参数pt-online-schema-change中的参数--print。默认值：OFF
+	OscPrintSql bool `toml:"osc_print_sql" json:"osc_print_sql"`
+
+	// 全局的OSC开关，默认是打开的，如果想要关闭则设置为OFF，这样就会直接修改。默认值：OFF
+	OscOn bool `toml:"osc_on" json:"osc_on"`
+
+	// 这个参数实际上是一个OSC开关，如果设置为0，则全部ALTER语句都使用OSC方式，
+	// 如果设置为非0，则当这个表占用空间大小大于这个值时才使用OSC方式。
+	// 单位为M，这个表大小的计算方式是通过语句
+	// select (DATA_LENGTH + INDEX_LENGTH)/1024/1024 from information_schema.tables
+	// where table_schema = 'dbname' and table_name = 'tablename' 来实现的。默认值：16
+	// [0-1048576]
+	OscMinTableSize uint `toml:"osc_min_table_size" json:"osc_min_table_size"`
+
+	// 对应参数pt-online-schema-change中的参数alter-foreign-keys-method，具体意义可以参考OSC官方手册。默认值：none
+	// [auto | none | rebuild_constraints | drop_swap]
+	OscAlterForeignKeysMethod string `toml:"osc_alter_foreign_keys_method" json:"osc_alter_foreign_keys_method"`
+
+	// 对应参数pt-online-schema-change中的参数recursion_method，具体意义可以参考OSC官方手册。默认值：processlist
+	// [processlist | hosts | none]
+	OscRecursionMethod string `toml:"osc_recursion_method" json:"osc_recursion_method"`
+
+	// 对应参数pt-online-schema-change中的参数--max-lag。默认值：3
+	OscMaxLag int `toml:"osc_max_lag" json:"osc_max_lag"`
+
+	// 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
+	OscCheckAlter bool `toml:"osc_check_alter" json:"osc_check_alter"`
+
+	// 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
+	OscCheckReplicationFilters bool `toml:"osc_check_replication_filters" json:"osc_check_replication_filters"`
+
+	// 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
+	oscDropOldTable bool `toml:"osc_drop_old_table" json:"osc_drop_old_table"`
+
+	// 对应参数pt-online-schema-change中的参数--[no]drop-new-table。默认值：ON
+	OscDropNewTable bool `toml:"osc_drop_new_table" json:"osc_drop_new_table"`
+
+	// 对应参数pt-online-schema-change中的参数--max-load中的thread_running部分。默认值：80
+	OscMaxRunning int `toml:"osc_max_running" json:"osc_max_running"`
+
+	// 对应参数pt-online-schema-change中的参数--max-load中的thread_connected部分。默认值：1000
+	OscMaxConnected int `toml:"osc_max_connected" json:"osc_max_connected"`
+
+	// 对应参数pt-online-schema-change中的参数--critical-load中的thread_running部分。默认值：80
+	OscCriticalRunning int `toml:"osc_critical_running" json:"osc_critical_running"`
+
+	// 对应参数pt-online-schema-change中的参数--critical-load中的thread_connected部分。默认值：1000
+	OscCriticalConnected int `toml:"osc_critical_connected" json:"osc_critical_connected"`
+
+	// 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
+	OscChunkTime int `toml:"osc_chunk_time" json:"osc_chunk_time"`
+
+	// 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
+	OscChunkSizeLimit int `toml:"osc_chunk_size_limit" json:"osc_chunk_size_limit"`
+
+	// 对应参数pt-online-schema-change中的参数--chunk-size。默认值：4
+	OscChunkSize int `toml:"osc_chunk_size" json:"osc_chunk_size"`
+
+	// 对应参数pt-online-schema-change中的参数--check-interval，意义是Sleep time between checks for --max-lag。默认值：5
+	OscCheckInterval int `toml:"osc_check_interval" json:"osc_check_interval"`
+
+	OscBinDir string `toml:"osc_bin_dir" json:"osc_bin_dir"`
+}
+
 var defaultConf = Config{
 	Host:             "0.0.0.0",
 	AdvertiseAddress: "",
@@ -407,6 +479,28 @@ var defaultConf = Config{
 		CheckTableComment:  false,
 		CheckColumnComment: false,
 		SqlSafeUpdates:     -1,
+	},
+	Osc: Osc{
+		OscPrintNone:               false,
+		OscPrintSql:                false,
+		OscOn:                      false,
+		OscMinTableSize:            16,
+		OscAlterForeignKeysMethod:  "none",
+		OscRecursionMethod:         "processlist",
+		OscMaxLag:                  3,
+		OscCheckAlter:              true,
+		OscCheckReplicationFilters: true,
+		oscDropOldTable:            true,
+		OscDropNewTable:            true,
+		OscMaxRunning:              80,
+		OscMaxConnected:            1000,
+		OscCriticalRunning:         80,
+		OscCriticalConnected:       1000,
+		OscChunkTime:               1,
+		OscChunkSizeLimit:          4,
+		OscChunkSize:               4,
+		OscCheckInterval:           5,
+		OscBinDir:                  "/usr/local/bin",
 	},
 }
 
