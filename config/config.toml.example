@@ -264,3 +264,71 @@ check_column_comment = false
 sql_safe_updates = -1
 
 
+[osc]
+
+# 用来设置在arkit返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，
+# 如果设置为1，就不打印，如果设置为0，就打印。而如果出现了错误，则都会打印。默认值：OFF
+osc_print_none = false
+
+# 对应参数pt-online-schema-change中的参数--print。默认值：OFF
+osc_print_sql = false
+
+# 全局的OSC开关，默认是打开的，如果想要关闭则设置为OFF，这样就会直接修改。默认值：OFF
+osc_on = false
+
+# 这个参数实际上是一个OSC开关，如果设置为0，则全部ALTER语句都使用OSC方式，
+# 如果设置为非0，则当这个表占用空间大小大于这个值时才使用OSC方式。
+# 单位为M，这个表大小的计算方式是通过语句
+# select (DATA_LENGTH + INDEX_LENGTH)/1024/1024 from information_schema.tables
+# where table_schema = 'dbname' and table_name = 'tablename' 来实现的。默认值：16
+# [0-1048576]
+osc_min_table_size = 16
+
+# 对应参数pt-online-schema-change中的参数alter-foreign-keys-method，具体意义可以参考OSC官方手册。默认值：none
+# [auto | none | rebuild_constraints | drop_swap]
+osc_alter_foreign_keys_method = "none"
+
+# 对应参数pt-online-schema-change中的参数recursion_method，具体意义可以参考OSC官方手册。默认值：processlist
+# [processlist | hosts | none]
+osc_recursion_method = "processlist"
+
+# 对应参数pt-online-schema-change中的参数--max-lag。默认值：3
+osc_max_lag = 3
+
+# 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
+osc_check_alter = true
+
+# 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
+osc_check_replication_filters = true
+
+# 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
+osc_drop_old_table = true
+
+# 对应参数pt-online-schema-change中的参数--[no]drop-new-table。默认值：ON
+osc_drop_new_table = true
+
+# 对应参数pt-online-schema-change中的参数--max-load中的thread_running部分。默认值：80
+osc_max_running = 80
+
+# 对应参数pt-online-schema-change中的参数--max-load中的thread_connected部分。默认值：1000
+osc_max_connected = 1000
+
+# 对应参数pt-online-schema-change中的参数--critical-load中的thread_running部分。默认值：80
+osc_critical_running = 80
+
+# 对应参数pt-online-schema-change中的参数--critical-load中的thread_connected部分。默认值：1000
+osc_critical_connected = 1000
+
+# 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
+osc_chunk_time = 1
+
+# 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
+osc_chunk_size_limit = 4
+
+# 对应参数pt-online-schema-change中的参数--chunk-size。默认值：4
+osc_chunk_size = 4
+
+# 对应参数pt-online-schema-change中的参数--check-interval，意义是Sleep time between checks for --max-lag。默认值：5
+osc_check_interval = 5
+
+osc_bin_dir = "/usr/local/bin"
