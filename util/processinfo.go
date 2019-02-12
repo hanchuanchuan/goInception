@@ -45,4 +45,19 @@ type SessionManager interface {
 	// ShowProcessList returns map[connectionID]ProcessInfo
 	ShowProcessList() map[uint64]ProcessInfo
 	Kill(connectionID uint64, query bool)
+
+	// 添加osc进程
+	AddOscProcess(p *OscProcessInfo)
+	// 返回osc进程列表
+	ShowOscProcessList() map[string]*OscProcessInfo
+}
+
+// OscProcessInfo is a struct used for show osc processlist statement.
+type OscProcessInfo struct {
+	Schema     string
+	Table      string
+	Sqlsha1    string
+	Percent    int
+	RemainTime string
+	Info       string
 }

@@ -193,6 +193,9 @@ type session struct {
 	// 总的操作行数,当备份时用以计算备份进度
 	TotalChangeRows int
 	BackupTotalRows int
+
+	// // osc进程解析通道
+	// chanOsc chan *ChanOscData
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.

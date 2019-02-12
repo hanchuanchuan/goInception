@@ -381,7 +381,7 @@ type Osc struct {
 	OscCriticalConnected int `toml:"osc_critical_connected" json:"osc_critical_connected"`
 
 	// 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
-	OscChunkTime int `toml:"osc_chunk_time" json:"osc_chunk_time"`
+	OscChunkTime float32 `toml:"osc_chunk_time" json:"osc_chunk_time"`
 
 	// 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
 	OscChunkSizeLimit int `toml:"osc_chunk_size_limit" json:"osc_chunk_size_limit"`
