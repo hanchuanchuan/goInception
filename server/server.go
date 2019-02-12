@@ -90,6 +90,9 @@ type Server struct {
 	// So we just stop the listener and store to force clients to chose other TiDB servers.
 	stopListenerCh chan struct{}
 	statusServer   *http.Server
+
+	// osc进程列表
+	oscProcessList map[string]*util.OscProcessInfo
 }
 
 // ConnectionCount gets current connection count.
@@ -142,6 +145,8 @@ func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
 		rwlock:            &sync.RWMutex{},
 		clients:           make(map[uint32]*clientConn),
 		stopListenerCh:    make(chan struct{}, 1),
+
+		oscProcessList: make(map[string]*util.OscProcessInfo),
 	}
 	s.loadTLSCertificates()
 
@@ -400,6 +405,16 @@ func (s *Server) kickIdleConnection() {
 			log.Error("close connection error:", err)
 		}
 	}
+}
+
+// AddOscProcess 添加osc进程
+func (s *Server) AddOscProcess(p *util.OscProcessInfo) {
+	s.oscProcessList[p.Sqlsha1] = p
+}
+
+// ShowOscProcessList 返回osc进程列表
+func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
+	return s.oscProcessList
 }
 
 // Server error codes.

@@ -41,6 +41,7 @@ sql_safe_updates = 0
 [osc]
 osc_on = true
 osc_min_table_size = 0
+osc_print_none = true
 
 
 [log]

@@ -191,6 +191,9 @@ func init() {
 
 func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
 
+	// log.Infof("%#v", ctx)
+	// log.Infof("%#v", s.sessionManager)
+
 	s.DBName = ""
 	s.haveBegin = false
 	s.haveCommit = false
@@ -991,6 +994,8 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 	if record.useOsc {
 		s.mysqlExecuteAlterTableOsc(record)
+		record.ExecTimestamp = time.Now().Unix()
+		record.ThreadId = s.fetchThreadID()
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 	} else {
 		res := s.db.Exec(sql)
