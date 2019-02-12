@@ -274,7 +274,7 @@ var tokenMap = map[string]int{
 	"FULLTEXT":                 fulltext,
 	"FUNCTION":                 function,
 	"GENERATED":                generated,
-	"GET":                      show,
+	"GET":                      get,
 	"GET_FORMAT":               getFormat,
 	"GLOBAL":                   global,
 	"GRANT":                    grant,
@@ -523,6 +523,9 @@ var tokenMap = map[string]int{
 	"YEAR":                     yearType,
 	"YEAR_MONTH":               yearMonth,
 	"ZEROFILL":                 zerofill,
+
+	"OSC":         osc,
+	"OSC_PERCENT": osc_percent,
 }
 
 // See https://dev.mysql.com/doc/refman/5.7/en/function-resolution.html for details

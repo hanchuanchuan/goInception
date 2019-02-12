@@ -278,6 +278,9 @@ import (
 	inception_magic_start "INCEPTION_MAGIC_START"
 	inception_magic_commit "INCEPTION_MAGIC_COMMIT"
 
+	osc "OSC"
+	osc_percent "OSC_PERCENT"
+
 	committed	"COMMITTED"
 	compact		"COMPACT"
 	compressed	"COMPRESSED"
@@ -1414,32 +1417,42 @@ CommitStmt:
 	}
 
 InceptionStmt:
-	"INCEPTION" "SHOW" ShowTargetFilterable ShowLikeOrWhereOpt
+	"INCEPTION" "GET" "OSC" "PROCESSLIST"
 	{
-		stmt := $3.(*ast.ShowStmt)
-		if $4 != nil {
-			if x, ok := $4.(*ast.PatternLikeExpr); ok {
-				stmt.Pattern = x
-			} else {
-				stmt.Where = $4.(ast.ExprNode)
-			}
-		}
-		stmt.IsInception = true
-		$$ = stmt
+		$$ = &ast.ShowOscStmt{}
 	}
+|	"INCEPTION" "GET" "OSC_PERCENT" AuthString
+	{
+		$$ = &ast.ShowOscStmt{
+			Sqlsha1: $4.(string),
+		}
+	}
+|	"INCEPTION" "SHOW" ShowTargetFilterable ShowLikeOrWhereOpt
+ 	{
+ 		stmt := $3.(*ast.ShowStmt)
+ 		if $4 != nil {
+ 			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+ 				stmt.Pattern = x
+ 			} else {
+ 				stmt.Where = $4.(ast.ExprNode)
+ 			}
+ 		}
+ 		stmt.IsInception = true
+ 		$$ = stmt
+ 	}
 |	"INCEPTION" "GET" ShowTargetFilterable ShowLikeOrWhereOpt
-	{
-		stmt := $3.(*ast.ShowStmt)
-		if $4 != nil {
-			if x, ok := $4.(*ast.PatternLikeExpr); ok {
-				stmt.Pattern = x
-			} else {
-				stmt.Where = $4.(ast.ExprNode)
-			}
-		}
-		stmt.IsInception = true
-		$$ = stmt
-	}
+ 	{
+ 		stmt := $3.(*ast.ShowStmt)
+ 		if $4 != nil {
+ 			if x, ok := $4.(*ast.PatternLikeExpr); ok {
+ 				stmt.Pattern = x
+ 			} else {
+ 				stmt.Where = $4.(ast.ExprNode)
+ 			}
+ 		}
+ 		stmt.IsInception = true
+ 		$$ = stmt
+ 	}
 |	"INCEPTION" "SHOW" "CREATE" "TABLE" TableName
 	{
 		$$ = &ast.ShowStmt{
@@ -1473,21 +1486,14 @@ InceptionStmt:
 			IsInception: true,
 		}
 	}
-|	"INCEPTION" "SHOW" "MASTER" "STATUS"
-	{
-		$$ = &ast.ShowStmt{
-			Tp:	ast.ShowMasterStatus,
-			IsInception: true,
-		}
-	}
 |	"INCEPTION" "SHOW" OptFull "PROCESSLIST"
-	{
-		$$ = &ast.ShowStmt{
-			Tp: ast.ShowProcessList,
-			Full:	$3.(bool),
-			IsInception: true,
-		}
-	}
+ 	{
+ 		$$ = &ast.ShowStmt{
+ 			Tp: ast.ShowProcessList,
+ 			Full:	$3.(bool),
+ 			IsInception: true,
+ 		}
+ 	}
 |	"INCEPTION" "SHOW" "STATS_META" ShowLikeOrWhereOpt
 	{
 		stmt := &ast.ShowStmt{
@@ -3042,7 +3048,7 @@ identifier | UnReservedKeyword | NotKeywordToken | TiDBKeyword
 
 UnReservedKeyword:
  "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CLEANUP" | "CHARSET"
-| "COLUMNS" | "COMMIT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT"  | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
+| "COLUMNS" | "COMMIT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
 | "DYNAMIC"| "END" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FORMAT" | "FULL" |"GLOBAL"
 | "HASH" | "HOUR" | "LESS" | "LOCAL" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REDUNDANT"
 | "ROLLBACK" | "SESSION" | "SIGNED" | "SNAPSHOT" | "START" | "STATUS" | "SUBPARTITIONS" | "SUBPARTITION" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken

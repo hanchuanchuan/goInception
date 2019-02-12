@@ -48,6 +48,8 @@ var (
 	_ StmtNode = &InceptionStmt{}
 	_ StmtNode = &InceptionSetStmt{}
 
+	_ StmtNode = &ShowOscStmt{}
+
 	_ Node = &PrivElem{}
 	_ Node = &VariableAssignment{}
 )
@@ -871,6 +873,24 @@ func (n *TableOptimizerHint) Accept(v Visitor) (Node, bool) {
 		return v.Leave(newNode)
 	}
 	n = newNode.(*TableOptimizerHint)
+	return v.Leave(n)
+}
+
+// ShowOscStmt is a statement to provide information about databases, tables, columns and so on.
+// See https://dev.mysql.com/doc/refman/5.7/en/show.html
+type ShowOscStmt struct {
+	stmtNode
+
+	Sqlsha1 string
+}
+
+// Accept implements Node Accept interface.
+func (n *ShowOscStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*ShowOscStmt)
 	return v.Leave(n)
 }
 

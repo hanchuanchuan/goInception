@@ -384,7 +384,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					need := s.needDataSource(stmtNode)
 
 					if !s.haveBegin && need {
-						log.Error(stmtNode)
+						log.Errorf("%#v", stmtNode)
 						s.AppendErrorMessage("Must start as begin statement.")
 						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
@@ -474,6 +474,8 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 		}
 	case *ast.InceptionSetStmt:
 		return false
+	case *ast.ShowOscStmt:
+		return false
 	}
 
 	return true
@@ -529,7 +531,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 			case ast.ShowProcessList:
 				return s.executeLocalShowProcesslist(node)
 			default:
-				log.Infof("%+v", node)
+				log.Infof("%#v", node)
 				return nil, errors.New("不支持的语法类型")
 			}
 		} else {
@@ -542,6 +544,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 	case *ast.ExplainStmt:
 		s.executeInceptionShow(currentSql)
 
+	case *ast.ShowOscStmt:
+		return s.executeLocalShowOscProcesslist(node)
 	default:
 		log.Info("无匹配类型...")
 		log.Infof("%T\n", stmtNode)
@@ -3401,6 +3405,41 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordS
 			data = append(data, fmt.Sprintf("%.2f%%", pi.Percent*100))
 		}
 		res.appendRow(data)
+	}
+
+	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
+	return res.Rows(), nil
+}
+
+func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+	pl := s.sessionManager.ShowOscProcessList()
+
+	res := NewOscProcessListSets(len(pl))
+
+	if node.Sqlsha1 == "" {
+		for _, pi := range pl {
+			data := []interface{}{
+				pi.Sqlsha1,
+				pi.Schema,
+				pi.Table,
+				pi.Percent,
+				pi.RemainTime,
+				pi.Info,
+			}
+			res.appendRow(data)
+		}
+	} else {
+		if pi, ok := pl[node.Sqlsha1]; ok {
+			data := []interface{}{
+				pi.Sqlsha1,
+				pi.Schema,
+				pi.Table,
+				pi.Percent,
+				pi.RemainTime,
+				pi.Info,
+			}
+			res.appendRow(data)
+		}
 	}
 
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
