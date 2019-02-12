@@ -320,7 +320,7 @@ osc_critical_running = 80
 osc_critical_connected = 1000
 
 # 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
-osc_chunk_time = 1
+osc_chunk_time = 1.0
 
 # 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
 osc_chunk_size_limit = 4

@@ -55,6 +55,16 @@ func (msm *mockSessionManager) Kill(cid uint64, query bool) {
 
 }
 
+// AddOscProcess 添加osc进程
+func (msm *mockSessionManager) AddOscProcess(p *util.OscProcessInfo) {
+
+}
+
+// ShowOscProcessList 返回osc进程列表
+func (msm *mockSessionManager) ShowOscProcessList() map[string]*util.OscProcessInfo {
+	return nil
+}
+
 func (s *testExecSuite) TestShowProcessList(c *C) {
 	// Compose schema.
 	names := []string{"Id", "User", "Host", "db", "Command", "Time", "State", "Info", "Mem"}
