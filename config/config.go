@@ -363,7 +363,7 @@ type Osc struct {
 	OscCheckReplicationFilters bool `toml:"osc_check_replication_filters" json:"osc_check_replication_filters"`
 
 	// 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
-	oscDropOldTable bool `toml:"osc_drop_old_table" json:"osc_drop_old_table"`
+	OscDropOldTable bool `toml:"osc_drop_old_table" json:"osc_drop_old_table"`
 
 	// 对应参数pt-online-schema-change中的参数--[no]drop-new-table。默认值：ON
 	OscDropNewTable bool `toml:"osc_drop_new_table" json:"osc_drop_new_table"`
@@ -490,7 +490,7 @@ var defaultConf = Config{
 		OscMaxLag:                  3,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
-		oscDropOldTable:            true,
+		OscDropOldTable:            true,
 		OscDropNewTable:            true,
 		OscMaxRunning:              80,
 		OscMaxConnected:            1000,
