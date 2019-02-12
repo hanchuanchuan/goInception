@@ -37,5 +37,3 @@ go build -o goInception tidb-server/main.go
 - [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)
 
-##### 联系方式
-- 邮箱：chuanchuanhan@gmail.com
