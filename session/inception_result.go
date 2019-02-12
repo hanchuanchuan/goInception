@@ -444,3 +444,27 @@ func (s *ProcessListSets) appendRow(fields []interface{}) {
 func (s *ProcessListSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }
+
+func NewOscProcessListSets(count int) *ProcessListSets {
+	t := &ProcessListSets{}
+
+	rc := &recordSet{
+		data:       make([][]types.Datum, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 6)
+
+	rc.CreateFiled("Sqlsha1", mysql.TypeString)
+	rc.CreateFiled("Schema", mysql.TypeString)
+	rc.CreateFiled("Table", mysql.TypeString)
+	rc.CreateFiled("Percent", mysql.TypeLong)
+	rc.CreateFiled("Remain_Time", mysql.TypeString)
+	rc.CreateFiled("Info", mysql.TypeString)
+
+	t.rc = rc
+
+	return t
+}

@@ -166,7 +166,6 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString(r.TableInfo.Name)
 
 	str := buf.String()
-	// log.Info(str)
 
 	s.execCommand(r, "bash", []string{"-c", str})
 }
