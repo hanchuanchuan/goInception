@@ -526,6 +526,7 @@ var tokenMap = map[string]int{
 
 	"OSC":         osc,
 	"OSC_PERCENT": osc_percent,
+	"STOP":        stop,
 }
 
 // See https://dev.mysql.com/doc/refman/5.7/en/function-resolution.html for details

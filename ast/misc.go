@@ -881,6 +881,7 @@ func (n *TableOptimizerHint) Accept(v Visitor) (Node, bool) {
 type ShowOscStmt struct {
 	stmtNode
 
+	Kill    bool
 	Sqlsha1 string
 }
 

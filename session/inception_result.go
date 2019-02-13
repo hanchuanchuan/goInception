@@ -445,7 +445,7 @@ func (s *ProcessListSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }
 
-func NewOscProcessListSets(count int) *ProcessListSets {
+func NewOscProcessListSets(count int, hideCommand bool) *ProcessListSets {
 	t := &ProcessListSets{}
 
 	rc := &recordSet{
@@ -455,14 +455,21 @@ func NewOscProcessListSets(count int) *ProcessListSets {
 		fieldCount: 0,
 	}
 
-	rc.fields = make([]*ast.ResultField, 6)
+	if hideCommand {
+		rc.fields = make([]*ast.ResultField, 6)
+	} else {
+		rc.fields = make([]*ast.ResultField, 7)
+	}
 
-	rc.CreateFiled("Sqlsha1", mysql.TypeString)
-	rc.CreateFiled("Schema", mysql.TypeString)
-	rc.CreateFiled("Table", mysql.TypeString)
-	rc.CreateFiled("Percent", mysql.TypeLong)
-	rc.CreateFiled("Remain_Time", mysql.TypeString)
-	rc.CreateFiled("Info", mysql.TypeString)
+	rc.CreateFiled("DBNAME", mysql.TypeString)
+	rc.CreateFiled("TABLENAME", mysql.TypeString)
+	if !hideCommand {
+		rc.CreateFiled("COMMAND", mysql.TypeString)
+	}
+	rc.CreateFiled("SQLSHA1", mysql.TypeString)
+	rc.CreateFiled("PERCENT", mysql.TypeLong)
+	rc.CreateFiled("REMAINTIME", mysql.TypeString)
+	rc.CreateFiled("INFOMATION", mysql.TypeString)
 
 	t.rc = rc
 
