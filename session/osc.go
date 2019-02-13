@@ -73,7 +73,7 @@ func (s *session) mysqlComputeSqlSha1(r *Record) {
 func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	err := os.Setenv("PATH", fmt.Sprintf("%s%s%s",
-		s.Osc.OscBinDir, os.PathListSeparator, os.Getenv("PATH")))
+		s.Osc.OscBinDir, string(os.PathListSeparator), os.Getenv("PATH")))
 	if err != nil {
 		log.Error(err)
 		return
