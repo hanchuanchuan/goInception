@@ -1850,7 +1850,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	s.mysqlShowTableStatus(table)
 	s.mysqlGetTableSize(table)
 
-	s.checkAlterUseOsc(table)
+	for _, alter := range node.Specs {
+		if alter.Tp != ast.AlterTableRenameTable {
+			s.checkAlterUseOsc(table)
+		} else {
+			s.myRecord.useOsc = false
+		}
+	}
 
 	s.myRecord.TableInfo = table
 
