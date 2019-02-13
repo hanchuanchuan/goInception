@@ -201,6 +201,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	p := &util.OscProcessInfo{
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
+		Command:    r.Sql,
 		Sqlsha1:    r.Sqlsha1,
 		Percent:    0,
 		RemainTime: "",
@@ -217,7 +218,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	buf := bytes.NewBufferString("")
 
 	//实时循环读取输出流中的一行内容
-	go func() {
+	f := func(reader *bufio.Reader) {
 		for {
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
@@ -226,29 +227,27 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 			buf.WriteString(line)
 			buf.WriteString("\n")
 			s.mysqlAnalyzeOscOutput(line, p)
-		}
-	}()
-
-	go func() {
-		for {
-			line, err2 := reader2.ReadString('\n')
-			if err2 != nil || io.EOF == err2 {
-				break
+			if p.Killed {
+				if err := cmd.Process.Kill(); err != nil {
+					s.AppendErrorMessage(err.Error())
+				} else {
+					s.AppendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
+						p.Percent, p.RemainTime))
+				}
 			}
-			buf.WriteString(line)
-			buf.WriteString("\n")
-			s.mysqlAnalyzeOscOutput(line, p)
 		}
-	}()
+	}
+
+	go f(reader)
+	go f(reader2)
 
 	//阻塞直到该命令执行完成，该命令必须是被Start方法开始执行的
 	err = cmd.Wait()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
 	}
-	if s.hasError() {
+	if p.Percent < 100 || s.hasError() {
 		r.StageStatus = StatusExecFail
-
 	} else {
 		r.StageStatus = StatusExecOK
 		r.ExecComplete = true
@@ -264,20 +263,20 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 
 func (s *session) mysqlAnalyzeOscOutput(out string, p *util.OscProcessInfo) {
 	firsts := regOscPercent.FindStringSubmatch(out)
-
+	// log.Info(p.Killed)
 	if len(firsts) < 3 {
 		if strings.HasPrefix(out, "Successfully altered") {
 
 			p.Percent = 100
 			p.RemainTime = ""
-			p.Info = out
+			p.Info = strings.TrimSpace(out)
 		}
 		return
 	}
 
 	pct, _ := strconv.Atoi(firsts[1])
 	remain := firsts[2]
-	p.Info = out
+	p.Info = strings.TrimSpace(out)
 
 	p.Percent = pct
 	p.RemainTime = remain

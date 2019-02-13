@@ -56,8 +56,11 @@ type SessionManager interface {
 type OscProcessInfo struct {
 	Schema     string
 	Table      string
+	Command    string
 	Sqlsha1    string
 	Percent    int
 	RemainTime string
 	Info       string
+
+	Killed bool
 }

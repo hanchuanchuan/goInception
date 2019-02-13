@@ -545,7 +545,11 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 		s.executeInceptionShow(currentSql)
 
 	case *ast.ShowOscStmt:
-		return s.executeLocalShowOscProcesslist(node)
+		if node.Kill {
+			return s.executeLocalOscKill(node)
+		} else {
+			return s.executeLocalShowOscProcesslist(node)
+		}
 	default:
 		log.Info("无匹配类型...")
 		log.Infof("%T\n", stmtNode)
@@ -3414,36 +3418,55 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordS
 func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
-	res := NewOscProcessListSets(len(pl))
+	// 根据是否指定sqlsha1控制显示command列
+	res := NewOscProcessListSets(len(pl), node.Sqlsha1 != "")
 
 	if node.Sqlsha1 == "" {
 		for _, pi := range pl {
 			data := []interface{}{
-				pi.Sqlsha1,
 				pi.Schema,
 				pi.Table,
+				pi.Command,
+				pi.Sqlsha1,
 				pi.Percent,
 				pi.RemainTime,
 				pi.Info,
 			}
 			res.appendRow(data)
 		}
+	} else if pi, ok := pl[node.Sqlsha1]; ok {
+		data := []interface{}{
+			pi.Schema,
+			pi.Table,
+			// pi.Command,
+			pi.Sqlsha1,
+			pi.Percent,
+			pi.RemainTime,
+			pi.Info,
+		}
+		res.appendRow(data)
 	} else {
-		if pi, ok := pl[node.Sqlsha1]; ok {
-			data := []interface{}{
-				pi.Sqlsha1,
-				pi.Schema,
-				pi.Table,
-				pi.Percent,
-				pi.RemainTime,
-				pi.Info,
-			}
-			res.appendRow(data)
-		}
+		s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not found"))
 	}
 
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 	return res.Rows(), nil
+}
+
+func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+	pl := s.sessionManager.ShowOscProcessList()
+
+	if pi, ok := pl[node.Sqlsha1]; ok {
+		if pi.Killed {
+			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
+		} else {
+			pi.Killed = true
+		}
+	} else {
+		return nil, errors.New("osc process not found")
+	}
+
+	return nil, nil
 }
 
 func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
