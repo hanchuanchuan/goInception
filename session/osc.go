@@ -87,8 +87,12 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf := bytes.NewBufferString("pt-online-schema-change")
 
 	buf.WriteString(" --alter \"")
-	// buf.WriteString(r.Sql)
-	buf.WriteString("modify ROW_FORMAT varchar(11)")
+	buf.WriteString(s.getAlterTablePostPart(r.Sql))
+
+	if s.hasError() {
+		return
+	}
+
 	buf.WriteString("\" ")
 	if s.Osc.OscPrintSql {
 		buf.WriteString(" --print ")
@@ -168,14 +172,13 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	str := buf.String()
 
 	s.execCommand(r, "bash", []string{"-c", str})
+
 }
 
 func (s *session) execCommand(r *Record, commandName string, params []string) bool {
 	//函数返回一个*Cmd，用于使用给出的参数执行name指定的程序
 	cmd := exec.Command(commandName, params...)
 
-	//显示运行的命令
-	// log.Info(cmd.Args)
 	//StdoutPipe方法返回一个在命令Start后与命令标准输出关联的管道。Wait方法获知命令结束后会关闭这个管道，一般不需要显式的关闭该管道。
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -258,6 +261,10 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		r.Buf.WriteString("\n")
 	}
 
+	// 执行完成或中止后清理osc进程信息
+	pl := s.sessionManager.ShowOscProcessList()
+	delete(pl, p.Sqlsha1)
+
 	return true
 }
 
@@ -281,7 +288,33 @@ func (s *session) mysqlAnalyzeOscOutput(out string, p *util.OscProcessInfo) {
 	p.Percent = pct
 	p.RemainTime = remain
 
-	// for _, p := range s.sessionManager.ShowOscProcessList() {
-	// 	log.Infof("%v", p)
-	// }
+}
+
+func (s *session) getAlterTablePostPart(sql string) string {
+
+	var buf []string
+	for _, line := range strings.Split(sql, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-- ") || strings.HasPrefix(line, "/*") {
+			continue
+		}
+		buf = append(buf, line)
+	}
+	sql = strings.Join(buf, "\n")
+	index := strings.Index(strings.ToUpper(sql), "ALTER")
+	if index == -1 {
+		s.AppendErrorMessage("无效alter语句!")
+		return sql
+	}
+
+	sql = string(sql[index:])
+	parts := strings.SplitN(sql, " ", 4)
+	if len(parts) != 4 {
+		s.AppendErrorMessage("无效alter语句!")
+		return sql
+	}
+
+	sql = parts[3]
+
+	return sql
 }

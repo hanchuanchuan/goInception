@@ -470,6 +470,7 @@ func NewOscProcessListSets(count int, hideCommand bool) *ProcessListSets {
 	rc.CreateFiled("PERCENT", mysql.TypeLong)
 	rc.CreateFiled("REMAINTIME", mysql.TypeString)
 	rc.CreateFiled("INFOMATION", mysql.TypeString)
+	// rc.CreateFiled("STATUS", mysql.TypeString)
 
 	t.rc = rc
 
