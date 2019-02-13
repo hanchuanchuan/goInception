@@ -195,7 +195,7 @@ func removeStore(c *C, dbPath string) {
 	os.RemoveAll(dbPath)
 }
 
-func exec(se Session, sql string, args ...interface{}) (ast.RecordSet, error) {
+func exec1(se Session, sql string, args ...interface{}) (ast.RecordSet, error) {
 	ctx := context.Background()
 	if len(args) == 0 {
 		rs, err := se.Execute(ctx, sql)
@@ -216,7 +216,7 @@ func exec(se Session, sql string, args ...interface{}) (ast.RecordSet, error) {
 }
 
 func mustExecSQL(c *C, se Session, sql string, args ...interface{}) ast.RecordSet {
-	rs, err := exec(se, sql, args...)
+	rs, err := exec1(se, sql, args...)
 	c.Assert(err, IsNil)
 	return rs
 }
