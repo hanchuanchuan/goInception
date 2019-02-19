@@ -905,3 +905,71 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
 }
+
+func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+
+	res := makeSql(tk, "drop database if exists test1111111111111111111;create database test1111111111111111111;")
+	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
+
+	// 不存在
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	// 存在
+	res = makeSql(tk, "drop database if exists test1111111111111111111;create database test1111111111111111111;create database test1111111111111111111;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "数据库'test1111111111111111111'已存在.")
+
+	// 不存在
+	res = makeSql(tk, "drop database if exists test1111111111111111111;drop database test1111111111111111111;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "命令禁止! 无法删除数据库'test1111111111111111111'.")
+
+	// if not exists 创建
+	res = makeSql(tk, "create database if not exists test1111111111111111111;create database if not exists test1111111111111111111;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	// if not exists 删除
+	res = makeSql(tk, "drop database if exists test1111111111111111111;drop database if exists test1111111111111111111;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "命令禁止! 无法删除数据库'test1111111111111111111'.")
+}
+
+func (s *testSessionIncSuite) TestRenameTable(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+
+	// 不存在
+	res := makeSql(tk, "drop table if exists t1;create table t1(id int primary key);alter table t1 rename t2;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	res = makeSql(tk, "drop table if exists t1;create table t1(id int primary key);rename table t1 to t2;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	// 存在
+	res = makeSql(tk, "drop table if exists t1;create table t1(id int primary key);alter table t1 rename t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Table 't1' already exists.")
+
+	res = makeSql(tk, "drop table if exists t1;create table t1(id int primary key);rename table t1 to t1;")
+	fmt.Println(tk.Se.AffectedRows())
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Table 't1' already exists.")
+}
+
+func (s *testSessionIncSuite) TestCreateView(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+
+	res := makeSql(tk, "create table t1(id int primary key);create view v1 as select * from t1;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "命令禁止! 无法创建视图'v1'.")
+}
