@@ -1474,8 +1474,8 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 	// log.Infof("%#v \n", node)
 
 	originTable := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
-	if originTable != nil {
-		originTable.IsDeleted = true
+	if originTable == nil {
+		s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.OldTable.Name.O)
 	}
 
 	table := s.getTableFromCache(node.NewTable.Schema.O, node.NewTable.Name.O, false)
@@ -1484,6 +1484,10 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 	}
 
 	s.checkKeyWords(node.NewTable.Schema.O)
+
+	if s.hasError() {
+		return
+	}
 
 	// 旧表存在,新建不存在时
 	if originTable != nil && table == nil {
@@ -1502,6 +1506,11 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
 				table.Schema, table.Name, originTable.Schema, originTable.Name)
 		}
+	}
+
+	if originTable != nil {
+		// rename后旧表标记删除
+		originTable.IsDeleted = true
 	}
 }
 
@@ -1958,7 +1967,6 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 
 		table = s.copyTableInfo(t)
 
-		t.IsDeleted = true
 		table.Name = c.NewTable.Name.O
 		if c.NewTable.Schema.O == "" {
 			table.Schema = s.DBName
@@ -1972,8 +1980,10 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
 				table.Schema, table.Name, t.Schema, t.Name)
 		}
-	}
 
+		// rename后旧表标记删除
+		t.IsDeleted = true
+	}
 }
 
 func (s *session) checkChangeColumn(t *TableInfo, c *ast.AlterTableSpec) {
