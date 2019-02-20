@@ -308,6 +308,31 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
+	// 支持innodb引擎
+	res = makeSql(tk, "create table t1(c1 varchar(10))engine = innodb;")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "0")
+
+	res = makeSql(tk, "create table t1(c1 varchar(10))engine = myisam;")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Set engine to innodb for table 't1'.")
+
+	// 时间戳 timestamp默认值
+	res = makeSql(tk, "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause")
+
+	res = makeSql(tk, "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "0")
+
+	res = makeSql(tk, "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 date default CURRENT_TIMESTAMP);")
+	row = res.Rows()[1]
+	c.Assert(row[2], Equals, "2")
+	c.Assert(row[4], Equals, "Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause")
+
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {

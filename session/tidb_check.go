@@ -170,3 +170,30 @@ func (s *session) checkIndexInfo(indexName string, indexColNames []*ast.IndexCol
 	}
 	return s.checkDuplicateColumnName(indexColNames)
 }
+
+// isDefaultValNowSymFunc checks whether defaul value is a NOW() builtin function.
+func isDefaultValNowSymFunc(expr ast.ExprNode) bool {
+	if funcCall, ok := expr.(*ast.FuncCallExpr); ok {
+		// Default value NOW() is transformed to CURRENT_TIMESTAMP() in parser.
+		if funcCall.FnName.L == ast.CurrentTimestamp {
+			return true
+		}
+	}
+	return false
+}
+
+func isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
+	tp := colDef.Tp
+	// Check the last default value.
+	for i := len(colDef.Options) - 1; i >= 0; i-- {
+		columnOpt := colDef.Options[i]
+		if columnOpt.Tp == ast.ColumnOptionDefaultValue {
+			if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime) && isDefaultValNowSymFunc(columnOpt.Expr) {
+				return true
+			}
+			break
+		}
+	}
+
+	return false
+}
