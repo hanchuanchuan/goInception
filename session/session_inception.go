@@ -1660,25 +1660,37 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 		table = s.buildTableInfo(node)
 
-		timestampCount := 0
+		currentTimestampCount := 0
+		onUpdateTimestampCount := 0
 		for _, field := range node.Cols {
 			s.mysqlCheckField(table, field)
 
+			if isInvalidDefaultValue(field) {
+				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
+
 			if field.Tp.Tp == mysql.TypeTimestamp {
-				// log.Infof("%#v", field)
 				for _, op := range field.Options {
 					if op.Tp == ast.ColumnOptionDefaultValue {
-						timestampCount += 1
-						// if _,ok := op.Expr(*ast.FuncCallExpr);ok{
-						// }
-						// defaultValue := op.Expr.GetDatum().GetString()
-						// log.Info(defaultValue)
+						if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+							if f.FnName.L == ast.CurrentTimestamp {
+								currentTimestampCount += 1
+							}
+						}
+					} else if op.Tp == ast.ColumnOptionOnUpdate {
+						if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+							if f.FnName.L == ast.CurrentTimestamp {
+								onUpdateTimestampCount += 1
+							}
+						} else {
+
+						}
 					}
 				}
 			}
 		}
 
-		if timestampCount > 1 {
+		if currentTimestampCount > 1 || onUpdateTimestampCount > 1 {
 			s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
 		}
 
