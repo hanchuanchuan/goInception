@@ -15,11 +15,9 @@ package session_test
 
 import (
 	"fmt"
-	// "os"
-	// "sync"
-	// "sync/atomic"
+	"strconv"
+	"strings"
 	"testing"
-	// "time"
 	// log "github.com/sirupsen/logrus"
 
 	"github.com/hanchuanchuan/goInception/config"
@@ -70,6 +68,7 @@ type testSessionIncSuite struct {
 	mvccStore mocktikv.MVCCStore
 	store     kv.Storage
 	dom       *domain.Domain
+	tk        *testkit.TestKit
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
@@ -124,6 +123,35 @@ use test_inc;
 %s;
 inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
+}
+
+func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	res := makeSql(s.tk, sql)
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+
+	errCode := 0
+	if len(errors) > 0 {
+		for _, e := range errors {
+			level := session.GetErrorLevel(e.Code)
+			if int(level) > errCode {
+				errCode = int(level)
+			}
+		}
+	}
+
+	if errCode > 0 {
+		errMsgs := []string{}
+		for _, e := range errors {
+			errMsgs = append(errMsgs, e.Error())
+		}
+		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"))
+	}
+
+	c.Assert(row[2], Equals, strconv.Itoa(errCode))
 }
 
 func (s *testSessionIncSuite) TestBegin(c *C) {
@@ -186,6 +214,8 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
+	sql := ""
+
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
@@ -202,6 +232,9 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	row = res.Rows()[1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Duplicate column name 'c1'.")
+
+	sql = "create table test_error_code1 (c1 int, c2 int, c2 int)"
+	s.testErrorCode(c, sql, session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
 
 	// 主键
 	config.GetGlobalConfig().Inc.CheckPrimaryKey = true
@@ -241,6 +274,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!\n表 't1' 列 'c2' 禁止设置字符集!")
 
+	config.GetGlobalConfig().Inc.EnableSetCharset = false
 	res = makeSql(tk, `create table t1(id int,c1 varchar(20)) character set utf8;`)
 	row = res.Rows()[1]
 	c.Assert(row[2], Equals, "1")
@@ -319,20 +353,181 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	c.Assert(row[4], Equals, "Set engine to innodb for table 't1'.")
 
 	// 时间戳 timestamp默认值
-	res = makeSql(tk, "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP);")
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause")
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql,
+		session.NewErrf("Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause"))
 
-	res = makeSql(tk, "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);")
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "0")
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql)
 
-	res = makeSql(tk, "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 date default CURRENT_TIMESTAMP);")
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause")
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 date default CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql,
+		session.NewErrf("Invalid default value for column '%s'.", "t2"))
 
+	// create table
+	sql = "create table test_error_code1 (c1 int, c2 int, c2 int)"
+	s.testErrorCode(c, sql, session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
+
+	sql = "create table test_error_code1 (c1 int, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int)"
+	s.testErrorCode(c, sql, session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+
+	sql = "create table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(a int)"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+
+	sql = "create table test_error_code1 (c1 int, c2 int, key aa (c1, c2), key aa (c1))"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DUP_INDEX, "aa", "test_inc", "test_error_code1"),
+		session.NewErr(session.ER_DUP_KEYNAME, "aa"))
+
+	sql = "create table test_error_code1 (c1 int, c2 int, c3 int, key(c_not_exist))"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code1"),
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "test_error_code1.c_not_exist"))
+
+	sql = "create table test_error_code1 (c1 int, c2 int, c3 int, primary key(c_not_exist))"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "test_error_code1.c_not_exist"))
+
+	sql = "create table test_error_code1 (c1 int not null default '')"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = "CREATE TABLE `t` (`a` double DEFAULT 1.0 DEFAULT 2.0 DEFAULT now());"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
+
+	sql = "CREATE TABLE `t` (`a` double DEFAULT now());"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
+
+	// 字符集
+	config.GetGlobalConfig().Inc.EnableSetCharset = false
+	config.GetGlobalConfig().Inc.SupportCharset = ""
+	sql = "create table t1(a int) character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
+
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
+	sql = "create table t1(a int) character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	sql = "create table t1(a int) character set utf8;"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	sql = "create table t1(a int) character set laitn1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+
+	// 外键
+	sql = "create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
+		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
+
+	sql = "create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key fk_1(b, c) references product(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
+
+	sql = "create table test_error_code_2;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+
+	sql = "create table test_error_code_2 (unique(c1));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+
+	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MULTIPLE_PRI_KEY))
+
+	config.GetGlobalConfig().Inc.EnableBlobType = false
+	sql = "create table test_error_code_3(pt blob ,primary key (pt));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
+		session.NewErr(session.ER_BLOB_USED_AS_KEY, "pt"))
+
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	sql = "create table test_error_code_3(pt blob ,primary key (pt));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_BLOB_USED_AS_KEY, "pt"))
+
+	// 索引长度
+	sql = "create table test_error_code_3(a text, unique (a(3073)));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
+		session.NewErr(session.ER_TOO_LONG_KEY, "", 3072))
+
+	sql = "create table test_error_code_3(c1 int,c2 text, unique uq_1(c1,c2(3069)));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", 3072))
+
+	sql = "create table test_error_code_3(c1 int,c2 text, unique uq_1(c1,c2(3068)));"
+	s.testErrorCode(c, sql)
+
+	// sql = "create table test_error_code_3(`id` int, key `primary`(`id`));"
+	// s.testErrorCode(c, sql, tmysql.ErrWrongNameForIndex)
+	// sql = "create table t2(c1.c2 blob default null);"
+	// s.testErrorCode(c, sql, tmysql.ErrWrongTableName)
+	// sql = "create table t2 (id int default null primary key , age int);"
+	// s.testErrorCode(c, sql, tmysql.ErrInvalidDefault)
+	// sql = "create table t2 (id int null primary key , age int);"
+	// s.testErrorCode(c, sql, tmysql.ErrPrimaryCantHaveNull)
+	// sql = "create table t2 (id int default null, age int, primary key(id));"
+	// s.testErrorCode(c, sql, tmysql.ErrPrimaryCantHaveNull)
+	// sql = "create table t2 (id int null, age int, primary key(id));"
+	// s.testErrorCode(c, sql, tmysql.ErrPrimaryCantHaveNull)
+
+	// sql = "create table t2 (id int primary key , age int);"
+	// s.tk.MustExec(sql)
+
+	// // add column
+	// sql = "alter table test_error_code_succ add column c1 int"
+	// s.testErrorCode(c, sql, tmysql.ErrDupFieldName)
+	// sql = "alter table test_error_code_succ add column aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int"
+	// s.testErrorCode(c, sql, tmysql.ErrTooLongIdent)
+	// sql = "alter table test_comment comment 'test comment'"
+	// s.testErrorCode(c, sql, tmysql.ErrNoSuchTable)
+	// sql = "alter table test_error_code_succ add column `a ` int ;"
+	// s.testErrorCode(c, sql, tmysql.ErrWrongColumnName)
+	// s.tk.MustExec("create table test_on_update (c1 int, c2 int);")
+	// sql = "alter table test_on_update add column c3 int on update current_timestamp;"
+	// s.testErrorCode(c, sql, tmysql.ErrInvalidOnUpdate)
+	// sql = "create table test_on_update_2(c int on update current_timestamp);"
+	// s.testErrorCode(c, sql, tmysql.ErrInvalidOnUpdate)
+
+	// // drop column
+	// sql = "alter table test_error_code_succ drop c_not_exist"
+	// s.testErrorCode(c, sql, tmysql.ErrCantDropFieldOrKey)
+	// s.tk.MustExec("create table test_drop_column (c1 int );")
+	// sql = "alter table test_drop_column drop column c1;"
+	// s.testErrorCode(c, sql, tmysql.ErrCantRemoveAllFields)
+	// // add index
+	// sql = "alter table test_error_code_succ add index idx (c_not_exist)"
+	// s.testErrorCode(c, sql, tmysql.ErrKeyColumnDoesNotExits)
+	// s.tk.Exec("alter table test_error_code_succ add index idx (c1)")
+	// sql = "alter table test_error_code_succ add index idx (c1)"
+	// s.testErrorCode(c, sql, tmysql.ErrDupKeyName)
+	// // drop index
+	// sql = "alter table test_error_code_succ drop index idx_not_exist"
+	// s.testErrorCode(c, sql, tmysql.ErrCantDropFieldOrKey)
+	// sql = "alter table test_error_code_succ drop column c3"
+	// s.testErrorCode(c, sql, int(tmysql.ErrUnknown))
+	// // modify column
+	// sql = "alter table test_error_code_succ modify testx.test_error_code_succ.c1 bigint"
+	// s.testErrorCode(c, sql, tmysql.ErrWrongDBName)
+	// sql = "alter table test_error_code_succ modify t.c1 bigint"
+	// s.testErrorCode(c, sql, tmysql.ErrWrongTableName)
+	// // insert value
+	// s.tk.MustExec("create table test_error_code_null(c1 char(100) not null);")
+	// sql = "insert into test_error_code_null (c1) values(null);"
+	// s.testErrorCode(c, sql, tmysql.ErrBadNull)
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
@@ -963,6 +1158,39 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "命令禁止! 无法删除数据库'test1111111111111111111'.")
+
+	// create database
+	sql := "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+
+	sql = "create database mysql"
+	s.testErrorCode(c, sql,
+		session.NewErrf("数据库'%s'已存在.", "mysql"))
+
+	// 字符集
+	config.GetGlobalConfig().Inc.EnableSetCharset = false
+	config.GetGlobalConfig().Inc.SupportCharset = ""
+	sql = "create database test1 character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
+
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
+	sql = "create database test1 character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	sql = "create database test1 character set utf8;"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	sql = "create database test1 character set laitn1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
 }
 
 func (s *testSessionIncSuite) TestRenameTable(c *C) {

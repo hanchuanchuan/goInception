@@ -309,6 +309,9 @@ type Inc struct {
 	EnablePKColumnsOnlyInt      bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
 	EnableSelectStar            bool `toml:"enable_select_star" json:"enable_select_star"`
 
+	// 是否允许设置字符集和排序规则
+	EnableSetCharset bool `toml:"enable_set_charset" json:"enable_set_charset"`
+
 	MaxCharLength uint `toml:"max_char_length" json:"max_char_length"`
 	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
 	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
@@ -322,6 +325,9 @@ type Inc struct {
 	// 0  表示关闭安全更新
 	// 1  表示开启安全更新
 	SqlSafeUpdates int `toml:"sql_safe_updates" json:"sql_safe_updates"`
+
+	// 支持的字符集
+	SupportCharset string `toml:"support_charset" json:"support_charset"`
 }
 
 // Osc online schema change 工具参数配置
@@ -479,6 +485,7 @@ var defaultConf = Config{
 		CheckTableComment:  false,
 		CheckColumnComment: false,
 		SqlSafeUpdates:     -1,
+		SupportCharset:     "utf8,utf8mb4",
 	},
 	Osc: Osc{
 		OscPrintNone:               false,
