@@ -2518,11 +2518,13 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		if found {
 			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 		} else {
-			s.checkKeyWords(name)
+			if len(name) > mysql.MaxIndexIdentifierLen {
+				s.AppendErrorNo(ER_TOO_LONG_IDENT, name)
+			}
 		}
 	}
 
-	if name == "PRIMARY" {
+	if tp != ast.ConstraintPrimaryKey && strings.ToUpper(name) == "PRIMARY" {
 		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 	}
 
@@ -2774,8 +2776,6 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			return
 		}
 	}
-
-	s.checkKeyWords(IndexName)
 
 	s.checkIndexAttr(tp, IndexName, IndexColNames, t)
 
