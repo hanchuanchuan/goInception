@@ -263,6 +263,7 @@ check_column_comment = false
 # 1  表示开启安全更新
 sql_safe_updates = -1
 
+support_charset = "utf8,utf8mb4"
 
 [osc]
 

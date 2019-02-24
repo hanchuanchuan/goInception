@@ -168,7 +168,9 @@ var (
 // var Keywords map[string]int = parser.GetKeywords()
 
 const (
-	MaxKeyLength                   = 767
+	MaxKeyLength   = 767
+	MaxKeyLength57 = 3072
+
 	RemoteBackupTable              = "$_$Inception_backup_information$_$"
 	TABLE_COMMENT_MAXLEN           = 2048
 	COLUMN_COMMENT_MAXLEN          = 1024
@@ -1111,6 +1113,40 @@ func (s *session) checkBinlogFormatIsRow() bool {
 	return format == "ROW"
 }
 
+func (s *session) mysqlServerVersion() int {
+	log.Debug("checkBinlogFormatIsRow")
+
+	var value string
+	sql := "select @@version;"
+
+	rows, err := s.db.Raw(sql).Rows()
+	defer rows.Close()
+
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&value)
+		}
+	}
+
+	versionStr := strings.Split(value, "-")[0]
+	versionSeg := strings.Split(versionStr, ".")
+	if len(versionSeg) == 3 {
+		versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
+		version, err := strconv.Atoi(versionStr)
+		if err != nil {
+			s.AppendErrorMessage(err.Error())
+		}
+		return version
+	}
+	return 50700
+}
+
 func (s *session) fetchThreadID() (threadId uint32) {
 	// log.Debug("fetchThreadID")
 
@@ -1404,7 +1440,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 	}
 }
 
-// mysqlShowTableStatus is 获取表估计的受影响行数
+// mysqlGetTableSize is 获取表估计的受影响行数
 func (s *session) mysqlGetTableSize(t *TableInfo) {
 
 	if t.IsNew || t.TableSize > 0 {
@@ -1520,23 +1556,17 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	// tidb暂不支持临时表 create temporary table t1
 
-	// log.Infof("%#v", node)
-	// log.Infof("%#v", node.Options)
-	// log.Infof("%#v", node.ReferTable)
-
-	// Table       *TableName
-	// ReferTable  *TableName
-	// Cols        []*ColumnDef
-	// Constraints []*Constraint
-	// Options     []*TableOption
-	// Partition   *PartitionOptions
-	// OnDuplicate OnDuplicateCreateTableSelectType
-	// Select      ResultSetNode
 	if node.Table.Schema.O == "" {
 		node.Table.Schema = model.NewCIStr(s.DBName)
 	}
 
 	if !s.checkDBExists(node.Table.Schema.O, true) {
+		return
+	}
+
+	s.checkKeyWords(node.Table.Name.O)
+	// 如果列名有错误的话,则直接跳出
+	if s.myRecord.ErrLevel == 2 {
 		return
 	}
 
@@ -1546,8 +1576,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
 		return
 	}
-
-	s.checkKeyWords(node.Table.Name.O)
 
 	s.myRecord.DBName = node.Table.Schema.O
 	s.myRecord.TableName = node.Table.Name.O
@@ -1586,8 +1614,15 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				if !strings.EqualFold(opt.StrValue, "innodb") {
 					s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
 				}
-			case ast.TableOptionCharset, ast.TableOptionCollate:
-				s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+			case ast.TableOptionCharset:
+				if !s.Inc.EnableSetCharset {
+					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+				}
+				s.checkCharset(opt.StrValue)
+			case ast.TableOptionCollate:
+				if !s.Inc.EnableSetCharset {
+					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+				}
 			case ast.TableOptionComment:
 				if opt.StrValue != "" {
 					hasComment = true
@@ -1610,19 +1645,19 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			switch ct.Tp {
 			case ast.ConstraintPrimaryKey:
 				hasPrimary = len(ct.Keys) > 0
-				for _, col := range ct.Keys {
-					found := false
-					for _, field := range node.Cols {
-						if field.Name.Name.L == col.Column.Name.L {
-							found = true
-							break
-						}
-					}
-					if !found {
-						s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-							fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
-					}
-				}
+				// for _, col := range ct.Keys {
+				// 	found := false
+				// 	for _, field := range node.Cols {
+				// 		if field.Name.Name.L == col.Column.Name.L {
+				// 			found = true
+				// 			break
+				// 		}
+				// 	}
+				// 	if !found {
+				// 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+				// 			fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
+				// 	}
+				// }
 				break
 			}
 		}
@@ -1658,74 +1693,77 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
 		}
 
-		table = s.buildTableInfo(node)
+		if len(node.Cols) == 0 {
+			s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
+		} else {
+			table = s.buildTableInfo(node)
 
-		currentTimestampCount := 0
-		onUpdateTimestampCount := 0
-		for _, field := range node.Cols {
-			s.mysqlCheckField(table, field)
+			currentTimestampCount := 0
+			onUpdateTimestampCount := 0
+			for _, field := range node.Cols {
+				s.mysqlCheckField(table, field)
 
-			if isInvalidDefaultValue(field) {
-				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
-			}
-
-			if field.Tp.Tp == mysql.TypeTimestamp {
-				for _, op := range field.Options {
-					if op.Tp == ast.ColumnOptionDefaultValue {
-						if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
-							if f.FnName.L == ast.CurrentTimestamp {
-								currentTimestampCount += 1
+				if field.Tp.Tp == mysql.TypeTimestamp {
+					for _, op := range field.Options {
+						if op.Tp == ast.ColumnOptionDefaultValue {
+							if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+								if f.FnName.L == ast.CurrentTimestamp {
+									currentTimestampCount += 1
+								}
 							}
-						}
-					} else if op.Tp == ast.ColumnOptionOnUpdate {
-						if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
-							if f.FnName.L == ast.CurrentTimestamp {
-								onUpdateTimestampCount += 1
-							}
-						} else {
+						} else if op.Tp == ast.ColumnOptionOnUpdate {
+							if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+								if f.FnName.L == ast.CurrentTimestamp {
+									onUpdateTimestampCount += 1
+								}
+							} else {
 
+							}
 						}
 					}
 				}
 			}
-		}
 
-		if currentTimestampCount > 1 || onUpdateTimestampCount > 1 {
-			s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
-		}
-
-		s.cacheNewTable(table)
-		s.myRecord.TableInfo = table
-	}
-
-	dupIndexes := map[string]bool{}
-	for _, ct := range node.Constraints {
-		s.checkCreateIndex(nil, ct.Name,
-			ct.Keys, ct.Option, table, false, ct.Tp)
-
-		switch ct.Tp {
-		case ast.ConstraintKey, ast.ConstraintUniq,
-			ast.ConstraintIndex, ast.ConstraintUniqKey,
-			ast.ConstraintUniqIndex:
-			if ct.Name == "" {
-				ct.Name = ct.Keys[0].Column.Name.O
+			if currentTimestampCount > 1 || onUpdateTimestampCount > 1 {
+				s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
 			}
-			if _, ok := dupIndexes[strings.ToLower(ct.Name)]; ok {
-				s.AppendErrorNo(ER_DUP_KEYNAME, ct.Name)
-			}
-			dupIndexes[strings.ToLower(ct.Name)] = true
+
+			s.cacheNewTable(table)
+			s.myRecord.TableInfo = table
 		}
 	}
 
 	if node.Partition != nil {
 		s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
 	}
-	if table == nil {
-		s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.Table.Name.O)
-		return
-	}
-	if s.opt.execute {
-		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
+
+	if node.ReferTable != nil || len(node.Cols) > 0 {
+		dupIndexes := map[string]bool{}
+		for _, ct := range node.Constraints {
+			s.checkCreateIndex(nil, ct.Name,
+				ct.Keys, ct.Option, table, false, ct.Tp)
+
+			switch ct.Tp {
+			case ast.ConstraintKey, ast.ConstraintUniq,
+				ast.ConstraintIndex, ast.ConstraintUniqKey,
+				ast.ConstraintUniqIndex:
+				if ct.Name == "" {
+					ct.Name = ct.Keys[0].Column.Name.O
+				}
+				if _, ok := dupIndexes[strings.ToLower(ct.Name)]; ok {
+					s.AppendErrorNo(ER_DUP_KEYNAME, ct.Name)
+				}
+				dupIndexes[strings.ToLower(ct.Name)] = true
+			}
+		}
+
+		if len(node.Cols) > 0 && table == nil {
+			s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.Table.Name.O)
+			return
+		}
+		if s.opt.execute {
+			s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
+		}
 	}
 }
 
@@ -1854,8 +1892,15 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 					if !strings.EqualFold(opt.StrValue, "innodb") {
 						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
 					}
-				case ast.TableOptionCharset, ast.TableOptionCollate:
-					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+				case ast.TableOptionCharset:
+					if !s.Inc.EnableSetCharset {
+						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+					}
+					s.checkCharset(opt.StrValue)
+				case ast.TableOptionCollate:
+					if !s.Inc.EnableSetCharset {
+						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+					}
 				case ast.TableOptionComment:
 					if opt.StrValue != "" {
 						hasComment = true
@@ -2234,7 +2279,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 	s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, foundField.Field))
 		// }
 
-		// if !mysqlFiledIsBlob(nc.Tp.Tp) && (nc.Tp.Charset != "" || nc.Tp.Collate != "") {
+		// if !types.IsTypeBlob(nc.Tp.Tp) && (nc.Tp.Charset != "" || nc.Tp.Collate != "") {
 		// 	s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
 		// }
 
@@ -2316,15 +2361,6 @@ func (s *session) hasErrorBefore() bool {
 	return false
 }
 
-func mysqlFiledIsBlob(tp byte) bool {
-
-	if tp == mysql.TypeTinyBlob || tp == mysql.TypeMediumBlob ||
-		tp == mysql.TypeLongBlob || tp == mysql.TypeBlob {
-		return true
-	}
-	return false
-}
-
 func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	log.Debug("mysqlCheckField")
 
@@ -2371,7 +2407,11 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionAutoIncrement:
 				autoIncrement = true
 			case ast.ColumnOptionDefaultValue:
-				defaultValue = op.Expr.GetDatum().GetString()
+				if funcCall, ok := op.Expr.(*ast.FuncCallExpr); ok {
+					defaultValue = funcCall.FnName.O
+				} else {
+					defaultValue = op.Expr.GetDatum().GetString()
+				}
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
@@ -2381,6 +2421,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 
 	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
+	}
+
+	if hasDefaultValue && isInvalidDefaultValue(field) {
+		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
 
 	if hasDefaultValue && len(defaultValue) == 0 {
@@ -2393,7 +2437,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		}
 	}
 
-	if mysqlFiledIsBlob(field.Tp.Tp) {
+	if types.IsTypeBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
 		if !notNullFlag {
@@ -2409,7 +2453,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	// 	s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
 	// }
 
-	if mysqlFiledIsBlob(field.Tp.Tp) && notNullFlag {
+	if types.IsTypeBlob(field.Tp.Tp) && notNullFlag {
 		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
 	}
 
@@ -2432,7 +2476,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if !hasDefaultValue && field.Tp.Tp != mysql.TypeTimestamp &&
-		!mysqlFiledIsBlob(field.Tp.Tp) && !autoIncrement && !isPrimary {
+		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary {
 		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name, tableName)
 	}
 
@@ -2739,26 +2783,60 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	for _, col := range IndexColNames {
 		found := false
 		var foundField FieldInfo
+
 		for _, field := range t.Fields {
 			if strings.EqualFold(field.Field, col.Column.Name.O) {
 				found = true
 				foundField = field
-				keyMaxLen += FieldLengthWithType(field.Type)
 				break
 			}
 		}
 		if !found {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
 		} else {
-			if strings.Contains(foundField.Type, "bolb") {
+			// log.Infof("%#v", col.Column.Tp)
+
+			if strings.ToLower(foundField.Type) == "json" {
+				s.AppendErrorMessage(
+					fmt.Sprintf("JSON column '%-.192s' cannot be used in key specification.", foundField.Field))
+			}
+
+			if strings.Contains(strings.ToLower(foundField.Type), "blob") {
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
+			maxLength := foundField.GetDataBytes(s.mysqlServerVersion())
+
+			// && !types.IsTypePrefixable(col.Column.Tp.Tp)
+			if col.Length != types.UnspecifiedLength {
+				if !strings.Contains(strings.ToLower(foundField.Type), "blob") &&
+					!strings.Contains(strings.ToLower(foundField.Type), "char") &&
+					!strings.Contains(strings.ToLower(foundField.Type), "text") {
+					s.AppendErrorNo(ER_WRONG_SUB_KEY)
+					col.Length = types.UnspecifiedLength
+				}
+
+				if (strings.Contains(strings.ToLower(foundField.Type), "char") ||
+					!strings.Contains(strings.ToLower(foundField.Type), "text")) &&
+					col.Length > maxLength {
+					s.AppendErrorNo(ER_WRONG_SUB_KEY)
+
+					col.Length = maxLength
+				}
+			}
+
+			if col.Length == types.UnspecifiedLength {
+				keyMaxLen += maxLength
+			} else {
+				keyMaxLen += col.Length
+			}
+
 			if tp == ast.ConstraintPrimaryKey {
-				if strings.Contains(foundField.Type, "int") {
+				if strings.Contains(strings.ToLower(foundField.Type), "int") {
 					s.AppendErrorNo(ER_PK_COLS_NOT_INT, foundField.Field, t.Schema, t.Name)
 				}
 			}
+
 		}
 	}
 
@@ -2766,8 +2844,12 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		s.AppendErrorMessage(fmt.Sprintf("表'%s'的索引'%s'名称过长", t.Name, IndexName))
 	}
 
-	if keyMaxLen > MaxKeyLength {
+	mysqlVersion := s.mysqlServerVersion()
+	// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
+	if mysqlVersion < 50700 && keyMaxLen > MaxKeyLength {
 		s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
+	} else if (mysqlVersion >= 50700) && keyMaxLen > MaxKeyLength57 {
+		s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength57)
 	}
 
 	if IndexOption != nil {
@@ -3568,13 +3650,45 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 			s.AppendErrorMessage(fmt.Sprintf("数据库'%s'已存在.", node.Name))
 		}
 	} else {
+
+		s.checkKeyWords(node.Name)
+
+		for _, opt := range node.Options {
+			switch opt.Tp {
+			case ast.DatabaseOptionCharset:
+				if !s.Inc.EnableSetCharset {
+					s.AppendErrorNo(ER_CANT_SET_CHARSET, opt.Value)
+				}
+
+				s.checkCharset(opt.Value)
+			case ast.DatabaseOptionCollate:
+				s.AppendErrorNo(ER_CANT_SET_COLLATION, opt.Value)
+			}
+		}
+
+		if s.hasError() {
+			return
+		}
+
 		s.dbCacheList[node.Name] = true
 
 		if s.opt.execute {
 			s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)
 		}
 	}
+}
 
+func (s *session) checkCharset(charset string) bool {
+	if s.Inc.SupportCharset != "" {
+		for _, item := range strings.Split(s.Inc.SupportCharset, ",") {
+			if strings.EqualFold(item, charset) {
+				return true
+			}
+		}
+		s.AppendErrorNo(ER_NAMES_MUST_UTF8, s.Inc.SupportCharset)
+		return false
+	}
+	return true
 }
 
 func (s *session) checkChangeDB(node *ast.UseStmt) {
@@ -3880,6 +3994,7 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 || reportNotExists {
+				// log.Error(myErr)
 				s.AppendErrorMessage(myErr.Message + ".")
 			}
 		} else {
@@ -3941,6 +4056,7 @@ func (s *session) AppendErrorNo(number int, values ...interface{}) {
 }
 
 func (s *session) checkKeyWords(name string) {
+	// log.Info("checkKeyWords,", name)
 	if !regIdentified.MatchString(name) {
 		s.AppendErrorNo(ER_INVALID_IDENT, name)
 	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
