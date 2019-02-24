@@ -471,13 +471,14 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table test_error_code_3(c1 int,c2 text, unique uq_1(c1,c2(3068)));"
 	s.testErrorCode(c, sql)
 
-	// sql = "create table test_error_code_3(`id` int, key `primary`(`id`));"
-	// s.testErrorCode(c, sql,
-	// 	session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", 3072))
+	sql = "create table test_error_code_3(`id` int, key `primary`(`id`));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "primary", "test_error_code_3"))
 
-	// s.testErrorCode(c, sql, tmysql.ErrWrongNameForIndex)
-	// sql = "create table t2(c1.c2 blob default null);"
-	// s.testErrorCode(c, sql, tmysql.ErrWrongTableName)
+	sql = "create table t2(c1.c2 blob default null);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_TABLE_NAME, "c1"))
+
 	// sql = "create table t2 (id int default null primary key , age int);"
 	// s.testErrorCode(c, sql, tmysql.ErrInvalidDefault)
 	// sql = "create table t2 (id int null primary key , age int);"
