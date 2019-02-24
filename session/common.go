@@ -99,7 +99,7 @@ func HTMLEscapeString(s string) string {
 // return -1 表示该列无法计算数据大小
 func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 	if col.Type == "" {
-		log.Warning("Can't get %s data type", col.Field)
+		log.Warnf("Can't get %s data type", col.Field)
 		return -1
 	}
 	switch strings.ToLower(GetDataTypeBase(col.Type)) {
@@ -123,7 +123,7 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 		// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
 		return MaxKeyLength + 1
 	default:
-		log.Warning("Type %s not support:", col.Type)
+		log.Warnf("Type %s not support:", col.Type)
 		return -1
 	}
 }
@@ -300,7 +300,7 @@ func numericStorageReq(dataType string) int {
 		return (typeLength[0] + 7) / 8
 
 	default:
-		log.Error("No such numeric type: %s", baseType)
+		log.Errorf("No such numeric type: %s", baseType)
 		return 8
 	}
 }
@@ -330,7 +330,7 @@ func GetDataTypeLength(dataType string) []int {
 				for _, l := range strings.Split(dataLength, ",") {
 					v, err := strconv.Atoi(l)
 					if err != nil {
-						log.Debug("GetDataTypeLength() Error: %v", err)
+						log.Debugf("GetDataTypeLength() Error: %v", err)
 						return []int{-1}
 					}
 					length = append(length, v)
