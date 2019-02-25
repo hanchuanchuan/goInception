@@ -198,3 +198,24 @@ func isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 
 	return false
 }
+
+// func checkDefaultValue( c *table.Column ) error {
+
+// 	if c.GetDefaultValue() != nil {
+// 		if _, err := table.GetColDefaultValue(ctx, c.ToInfo()); err != nil {
+// 			return types.ErrInvalidDefault.GenWithStackByArgs(c.Name)
+// 		}
+// 		return nil
+// 	}
+// 	// Primary key default null is invalid.
+// 	if mysql.HasPriKeyFlag(c.Flag) {
+// 		return ErrPrimaryCantHaveNull
+// 	}
+
+// 	// Set not null but default null is invalid.
+// 	if mysql.HasNotNullFlag(c.Flag) {
+// 		return types.ErrInvalidDefault.GenWithStackByArgs(c.Name)
+// 	}
+
+// 	return nil
+// }

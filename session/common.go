@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	// "github.com/hanchuanchuan/goInception/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -345,3 +346,55 @@ func GetDataTypeLength(dataType string) []int {
 
 	return length
 }
+
+// func getDefaultValue(ctx sessionctx.Context, c *ast.ColumnOption, tp byte, fsp int) (interface{}, error) {
+// 	if tp == mysql.TypeTimestamp || tp == mysql.TypeDatetime {
+// 		vd, err := expression.GetTimeValue(ctx, c.Expr, tp, fsp)
+// 		value := vd.GetValue()
+// 		if err != nil {
+// 			return nil, errors.Trace(err)
+// 		}
+
+// 		// Value is nil means `default null`.
+// 		if value == nil {
+// 			return nil, nil
+// 		}
+
+// 		// If value is types.Time, convert it to string.
+// 		if vv, ok := value.(types.Time); ok {
+// 			return vv.String(), nil
+// 		}
+
+// 		return value, nil
+// 	}
+// 	v, err := expression.EvalAstExpr(ctx, c.Expr)
+// 	if err != nil {
+// 		return nil, errors.Trace(err)
+// 	}
+
+// 	if v.IsNull() {
+// 		return nil, nil
+// 	}
+
+// 	if v.Kind() == types.KindBinaryLiteral || v.Kind() == types.KindMysqlBit {
+// 		if tp == mysql.TypeBit ||
+// 			tp == mysql.TypeString || tp == mysql.TypeVarchar || tp == mysql.TypeVarString ||
+// 			tp == mysql.TypeBlob || tp == mysql.TypeLongBlob || tp == mysql.TypeMediumBlob || tp == mysql.TypeTinyBlob ||
+// 			tp == mysql.TypeJSON {
+// 			// For BinaryLiteral / string fields, when getting default value we cast the value into BinaryLiteral{}, thus we return
+// 			// its raw string content here.
+// 			return v.GetBinaryLiteral().ToString(), nil
+// 		}
+// 		// For other kind of fields (e.g. INT), we supply its integer value so that it acts as integers.
+// 		return v.GetBinaryLiteral().ToInt(ctx.GetSessionVars().StmtCtx)
+// 	}
+
+// 	if tp == mysql.TypeBit {
+// 		if v.Kind() == types.KindInt64 || v.Kind() == types.KindUint64 {
+// 			// For BIT fields, convert int into BinaryLiteral.
+// 			return types.NewBinaryLiteralFromUint(v.GetUint64(), -1).ToString(), nil
+// 		}
+// 	}
+
+// 	return v.ToString()
+// }
