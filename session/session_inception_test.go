@@ -479,17 +479,24 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_TABLE_NAME, "c1"))
 
-	// sql = "create table t2 (id int default null primary key , age int);"
-	// s.testErrorCode(c, sql, tmysql.ErrInvalidDefault)
-	// sql = "create table t2 (id int null primary key , age int);"
-	// s.testErrorCode(c, sql, tmysql.ErrPrimaryCantHaveNull)
-	// sql = "create table t2 (id int default null, age int, primary key(id));"
-	// s.testErrorCode(c, sql, tmysql.ErrPrimaryCantHaveNull)
-	// sql = "create table t2 (id int null, age int, primary key(id));"
-	// s.testErrorCode(c, sql, tmysql.ErrPrimaryCantHaveNull)
+	sql = "create table t2 (c1 int default null primary key , age int);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
 
-	// sql = "create table t2 (id int primary key , age int);"
-	// s.tk.MustExec(sql)
+	sql = "create table t2 (id int null primary key , age int);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
+
+	sql = "create table t2 (id int default null, age int, primary key(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
+
+	sql = "create table t2 (id int null, age int, primary key(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
+
+	sql = "create table t2 (id int primary key , age int);"
+	s.testErrorCode(c, sql)
 
 	// // add column
 	// sql = "alter table test_error_code_succ add column c1 int"

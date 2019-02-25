@@ -107,6 +107,8 @@ type FieldInfo struct {
 
 	IsDeleted bool `gorm:"-"`
 	IsNew     bool `gorm:"-"`
+
+	Tp *types.FieldType `gorm:"-"`
 }
 
 // TableInfo 表结构.
@@ -1664,8 +1666,13 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 		if !hasPrimary {
 			for _, field := range node.Cols {
+				hasNullFlag := false
+				defaultNullValue := false
 				for _, op := range field.Options {
-					if op.Tp == ast.ColumnOptionPrimaryKey {
+					switch op.Tp {
+					case ast.ColumnOptionNull:
+						hasNullFlag = true
+					case ast.ColumnOptionPrimaryKey:
 						hasPrimary = true
 
 						if field.Tp.Tp != mysql.TypeInt24 &&
@@ -1675,9 +1682,22 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 								field.Name.Name.O,
 								node.Table.Schema, node.Table.Name)
 						}
+					case ast.ColumnOptionDefaultValue:
+						log.Infof("%#v", op)
+						log.Info(op.Expr.GetDatum().GetString())
+						log.Info(op.Expr.GetDatum().IsNull())
 
-						break
+						// op.Expr.GetDatum().GetString()
+						if op.Expr.GetDatum().IsNull() {
+							defaultNullValue = true
+						}
 					}
+				}
+
+				// log.Infof("%#v, %d", field.Tp, mysql.PriKeyFlag, mysql.HasPriKeyFlag(field.Tp.Flag))
+				// log.Info(field.Name.Name.O, hasPrimary, mysql.HasPriKeyFlag(field.Tp.Flag), hasNullFlag, defaultNullValue)
+				if hasPrimary && (hasNullFlag || defaultNullValue) {
+					s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
 				}
 				if hasPrimary {
 					break
@@ -2003,6 +2023,7 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 						switch strings.Split(foundField.Type, "(")[0] {
 						case "bit", "smallint", "mediumint", "int",
 							"bigint", "decimal", "float", "double", "year":
+							log.Info("1")
 							s.AppendErrorNo(ER_INVALID_DEFAULT, nc.Name.Name)
 						}
 					}
@@ -2388,12 +2409,12 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	notNullFlag := false
 	autoIncrement := false
 	hasDefaultValue := false
-	var defaultValue string
+	var defaultValue *types.Datum
+
 	isPrimary := false
 
 	if len(field.Options) > 0 {
 		for _, op := range field.Options {
-			// log.Infof("%#v", op)
 
 			switch op.Tp {
 			case ast.ColumnOptionComment:
@@ -2407,11 +2428,12 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionAutoIncrement:
 				autoIncrement = true
 			case ast.ColumnOptionDefaultValue:
-				if funcCall, ok := op.Expr.(*ast.FuncCallExpr); ok {
-					defaultValue = funcCall.FnName.O
-				} else {
-					defaultValue = op.Expr.GetDatum().GetString()
-				}
+				defaultValue = op.Expr.GetDatum()
+				// if funcCall, ok := op.Expr.(*ast.FuncCallExpr); ok {
+				// 	defaultValue = funcCall.FnName.O
+				// } else {
+				// 	defaultValue = op.Expr.GetDatum().GetString()
+				// }
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
@@ -2427,7 +2449,11 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
 
-	if hasDefaultValue && len(defaultValue) == 0 {
+	if hasDefaultValue && defaultValue.IsNull() && notNullFlag {
+		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+	}
+
+	if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) == 0 {
 		switch field.Tp.Tp {
 		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
 			mysql.TypeLong, mysql.TypeLonglong,
@@ -2834,6 +2860,11 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			if tp == ast.ConstraintPrimaryKey {
 				if strings.Contains(strings.ToLower(foundField.Type), "int") {
 					s.AppendErrorNo(ER_PK_COLS_NOT_INT, foundField.Field, t.Schema, t.Name)
+				}
+
+				// log.Info(t.Name, foundField.Field, foundField.Null, foundField.Default)
+				if foundField.Null == "YES" || foundField.Default == "NULL" {
+					s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
 				}
 			}
 
@@ -4251,18 +4282,27 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 
 	c.Field = field.Name.Name.String()
 	c.Type = field.Tp.CompactStr()
-	c.Null = "YES"
+	// c.Null = "YES"
+	c.Null = ""
+	c.Tp = field.Tp
 
 	for _, op := range field.Options {
 		switch op.Tp {
 		case ast.ColumnOptionComment:
 			c.Comment = op.Expr.GetDatum().GetString()
+		case ast.ColumnOptionNull:
+			c.Null = "YES"
 		case ast.ColumnOptionNotNull:
 			c.Null = "NO"
 		case ast.ColumnOptionPrimaryKey:
 			c.Key = "PRI"
 		case ast.ColumnOptionDefaultValue:
-			c.Default = op.Expr.GetDatum().GetString()
+			if op.Expr.GetDatum().IsNull() {
+				c.Null = "YES"
+				c.Default = "NULL"
+			} else {
+				c.Default = op.Expr.GetDatum().GetString()
+			}
 		case ast.ColumnOptionAutoIncrement:
 			if strings.ToLower(c.Field) != "id" {
 				s.AppendErrorNo(ER_AUTO_INCR_ID_WARNING, c.Field)
@@ -4270,6 +4310,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 		}
 	}
 
+	// log.Info(c.Field, c.Null)
 	c.IsNew = true
 	return c
 }
