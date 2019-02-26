@@ -50,6 +50,7 @@ import (
 )
 
 var _ = Suite(&testSessionIncSuite{})
+var sql string
 
 func Test1(t *testing.T) {
 	TestingT(t)
@@ -494,51 +495,6 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table t2 (id int null, age int, primary key(id));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
-
-	sql = "create table t2 (id int primary key , age int);"
-	s.testErrorCode(c, sql)
-
-	// // add column
-	// sql = "alter table test_error_code_succ add column c1 int"
-	// s.testErrorCode(c, sql, tmysql.ErrDupFieldName)
-	// sql = "alter table test_error_code_succ add column aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int"
-	// s.testErrorCode(c, sql, tmysql.ErrTooLongIdent)
-	// sql = "alter table test_comment comment 'test comment'"
-	// s.testErrorCode(c, sql, tmysql.ErrNoSuchTable)
-	// sql = "alter table test_error_code_succ add column `a ` int ;"
-	// s.testErrorCode(c, sql, tmysql.ErrWrongColumnName)
-	// s.tk.MustExec("create table test_on_update (c1 int, c2 int);")
-	// sql = "alter table test_on_update add column c3 int on update current_timestamp;"
-	// s.testErrorCode(c, sql, tmysql.ErrInvalidOnUpdate)
-	// sql = "create table test_on_update_2(c int on update current_timestamp);"
-	// s.testErrorCode(c, sql, tmysql.ErrInvalidOnUpdate)
-
-	// // drop column
-	// sql = "alter table test_error_code_succ drop c_not_exist"
-	// s.testErrorCode(c, sql, tmysql.ErrCantDropFieldOrKey)
-	// s.tk.MustExec("create table test_drop_column (c1 int );")
-	// sql = "alter table test_drop_column drop column c1;"
-	// s.testErrorCode(c, sql, tmysql.ErrCantRemoveAllFields)
-	// // add index
-	// sql = "alter table test_error_code_succ add index idx (c_not_exist)"
-	// s.testErrorCode(c, sql, tmysql.ErrKeyColumnDoesNotExits)
-	// s.tk.Exec("alter table test_error_code_succ add index idx (c1)")
-	// sql = "alter table test_error_code_succ add index idx (c1)"
-	// s.testErrorCode(c, sql, tmysql.ErrDupKeyName)
-	// // drop index
-	// sql = "alter table test_error_code_succ drop index idx_not_exist"
-	// s.testErrorCode(c, sql, tmysql.ErrCantDropFieldOrKey)
-	// sql = "alter table test_error_code_succ drop column c3"
-	// s.testErrorCode(c, sql, int(tmysql.ErrUnknown))
-	// // modify column
-	// sql = "alter table test_error_code_succ modify testx.test_error_code_succ.c1 bigint"
-	// s.testErrorCode(c, sql, tmysql.ErrWrongDBName)
-	// sql = "alter table test_error_code_succ modify t.c1 bigint"
-	// s.testErrorCode(c, sql, tmysql.ErrWrongTableName)
-	// // insert value
-	// s.tk.MustExec("create table test_error_code_null(c1 char(100) not null);")
-	// sql = "insert into test_error_code_null (c1) values(null);"
-	// s.testErrorCode(c, sql, tmysql.ErrBadNull)
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
@@ -702,6 +658,33 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
+	sql = "create table t2 (id int primary key , age int);"
+	s.testErrorCode(c, sql)
+
+	// // add column
+	sql = "create table t1 (c1 int primary key);alter table t1 add column c1 int"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_EXISTED, "t1.c1"))
+
+	sql = "create table t1 (c1 int primary key);alter table t1 add column aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+
+	sql = "alter table t1 comment 'test comment'"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
+
+	sql = "create table t1 (c1 int primary key);alter table t1 add column `a ` int ;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_IDENT, "a "))
+
+	sql = "create table t1 (c1 int primary key);alter table t1 add column c2 int on update current_timestamp;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
+
+	sql = "create table t1(c2 int on update current_timestamp);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
@@ -854,6 +837,18 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	res = makeSql(tk, "create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(10);")
 	row = res.Rows()[2]
 	c.Assert(row[2], Equals, "0")
+
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql)
+
+	// modify column
+	sql = "create table t1(id int primary key,c1 int);alter table t1 modify testx.t1.c1 int"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_DB_NAME, "testx"))
+
+	sql = "create table t1(id int primary key,c1 int);alter table t1 modify t.c1 int"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_TABLE_NAME, "t"))
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
@@ -872,6 +867,15 @@ func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
+
+	// // drop column
+	sql = "create table t2 (id int null);alter table t2 drop c1"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t2.c1"))
+
+	sql = "create table t2 (id int null);alter table t2 drop id;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCantRemoveAllFields))
 }
 
 func (s *testSessionIncSuite) TestInsert(c *C) {
@@ -980,6 +984,10 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "1")
+
+	sql = "create table t1(c1 char(100) not null);insert into t1(c1) values(null);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_BAD_NULL_ERROR, "test_inc.t1.c1", 1))
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
@@ -992,25 +1000,22 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 
 	// 表不存在
-	res := makeSql(tk, "update t1 set c1 = 1;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
+	sql = "update t1 set c1 = 1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
 
-	res = makeSql(tk, "create table t1(id int);update t1 set c1 = 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column 'c1' not existed.")
+	sql = "create table t1(id int);update t1 set c1 = 1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "c1"))
 
-	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1,c2 = 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column 't1.c2' not existed.")
+	sql = "create table t1(id int,c1 int);update t1 set c1 = 1,c2 = 1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c2"))
 
-	res = makeSql(tk, `create table t1(id int primary key,c1 int);
+	res := makeSql(tk, `create table t1(id int primary key,c1 int);
 		create table t2(id int primary key,c1 int,c2 int);
 		update t1 inner join t2 on t1.id=t2.id2  set t1.c1=t2.c1 where c11=1;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
 
@@ -1222,18 +1227,54 @@ func (s *testSessionIncSuite) TestRenameTable(c *C) {
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 't1' already exists.")
 
-	res = makeSql(tk, "drop table if exists t1;create table t1(id int primary key);rename table t1 to t1;")
-	fmt.Println(tk.Se.AffectedRows())
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 't1' already exists.")
+	sql = "drop table if exists t1;create table t1(id int primary key);rename table t1 to t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_EXISTS_ERROR, "t1"))
 }
 
 func (s *testSessionIncSuite) TestCreateView(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 
-	res := makeSql(tk, "create table t1(id int primary key);create view v1 as select * from t1;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "命令禁止! 无法创建视图'v1'.")
+	sql = "create table t1(id int primary key);create view v1 as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("命令禁止! 无法创建视图'v1'."))
+}
+
+func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	// add index
+	sql = "create table t1(id int);alter table t1 add index idx (c1)"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c1"))
+
+	sql = "create table t1(id int,c1 int);alter table t1 add index idx (c1);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int,c1 int);alter table t1 add index idx (c1);alter table t1 add index idx (c1);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DUP_INDEX, "idx", "test_inc", "t1"))
+}
+
+func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	// drop index
+	sql = "create table t1(id int);alter table t1 drop index idx"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CANT_DROP_FIELD_OR_KEY, "t1.idx"))
+
+	sql = "create table t1(c1 int);alter table t1 add index idx (c1);alter table t1 drop index idx;"
+	s.testErrorCode(c, sql)
 }

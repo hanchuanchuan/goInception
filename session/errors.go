@@ -172,6 +172,7 @@ const (
 	ER_CANT_SET_COLLATION
 	ER_MUST_HAVE_COLUMNS
 	ER_PRIMARY_CANT_HAVE_NULL
+	ErrCantRemoveAllFields
 	ER_ERROR_LAST
 )
 
@@ -316,6 +317,7 @@ var MyErrors = map[int]string{
 	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
 	ER_MUST_HAVE_COLUMNS:                   "A table must have at least 1 column",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
+	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 }
 
