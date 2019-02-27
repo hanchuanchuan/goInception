@@ -220,22 +220,16 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	res := makeSql(tk, "create table t1(id int);create table t1(id int);")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-
 	// 表存在
+	res := makeSql(tk, "create table t1(id int);create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 't1' already exists.")
 
 	// 重复列
-	res = makeSql(tk, "create table t1(c1 int,c1 int);")
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Duplicate column name 'c1'.")
-
 	sql = "create table test_error_code1 (c1 int, c2 int, c2 int)"
-	s.testErrorCode(c, sql, session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
 
 	// 主键
 	config.GetGlobalConfig().Inc.CheckPrimaryKey = true
@@ -365,10 +359,6 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErrf("Invalid default value for column '%s'.", "t2"))
 
-	// create table
-	sql = "create table test_error_code1 (c1 int, c2 int, c2 int)"
-	s.testErrorCode(c, sql, session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
-
 	sql = "create table test_error_code1 (c1 int, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int)"
 	s.testErrorCode(c, sql, session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
 
@@ -449,10 +439,10 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 		session.NewErr(session.ER_MULTIPLE_PRI_KEY))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	sql = "create table test_error_code_3(pt blob ,primary key (pt));"
+	sql = "create table test_error_code_3(pt text ,primary key (pt));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
-		session.NewErr(session.ER_BLOB_USED_AS_KEY, "pt"))
+		session.NewErr(session.ER_TOO_LONG_KEY, "", 3072))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	sql = "create table test_error_code_3(pt blob ,primary key (pt));"
@@ -1143,37 +1133,32 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 
-	res := makeSql(tk, "drop database if exists test1111111111111111111;create database test1111111111111111111;")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-
-	// 不存在
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
+	sql = "drop database if exists test1111111111111111111;create database test1111111111111111111;"
+	s.testErrorCode(c, sql)
 
 	// 存在
-	res = makeSql(tk, "drop database if exists test1111111111111111111;create database test1111111111111111111;create database test1111111111111111111;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "数据库'test1111111111111111111'已存在.")
+	sql = "create database test1111111111111111111;create database test1111111111111111111;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("数据库'test1111111111111111111'已存在."))
 
 	// 不存在
-	res = makeSql(tk, "drop database if exists test1111111111111111111;drop database test1111111111111111111;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "命令禁止! 无法删除数据库'test1111111111111111111'.")
+	sql = "drop database if exists test1111111111111111111;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+
+	sql = "drop database test1111111111111111111;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
 
 	// if not exists 创建
-	res = makeSql(tk, "create database if not exists test1111111111111111111;create database if not exists test1111111111111111111;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
+	sql = "create database if not exists test1111111111111111111;create database if not exists test1111111111111111111;"
+	s.testErrorCode(c, sql)
 
 	// if not exists 删除
-	res = makeSql(tk, "drop database if exists test1111111111111111111;drop database if exists test1111111111111111111;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "命令禁止! 无法删除数据库'test1111111111111111111'.")
+	sql = "drop database if exists test1111111111111111111;drop database if exists test1111111111111111111;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
 
 	// create database
 	sql := "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1210,23 +1195,15 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 }
 
 func (s *testSessionIncSuite) TestRenameTable(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 
 	// 不存在
-	res := makeSql(tk, "drop table if exists t1;create table t1(id int primary key);alter table t1 rename t2;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
+	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 rename t2;"
+	s.testErrorCode(c, sql)
 
-	res = makeSql(tk, "drop table if exists t1;create table t1(id int primary key);rename table t1 to t2;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
+	sql = "drop table if exists t1;create table t1(id int primary key);rename table t1 to t2;"
+	s.testErrorCode(c, sql)
 
 	// 存在
-	res = makeSql(tk, "drop table if exists t1;create table t1(id int primary key);alter table t1 rename t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 't1' already exists.")
-
 	sql = "drop table if exists t1;create table t1(id int primary key);rename table t1 to t1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_EXISTS_ERROR, "t1"))
