@@ -49,7 +49,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// MasterStatus is 主库状态信息,包括当前日志文件,位置等
+// MasterStatus 主库状态信息,包括当前日志文件,位置等
 type MasterStatus struct {
 	gorm.Model
 	File              string `gorm:"Column:File"`
@@ -59,7 +59,7 @@ type MasterStatus struct {
 	Executed_Gtid_Set string `gorm:"Column:Executed_Gtid_Set"`
 }
 
-// sourceOptions is 线上数据库信息和审核或执行的参数
+// sourceOptions 线上数据库信息和审核或执行的参数
 type sourceOptions struct {
 	host           string
 	port           int
@@ -73,7 +73,7 @@ type sourceOptions struct {
 	remoteBackup bool
 }
 
-// ExplainInfo is 执行计划信息
+// ExplainInfo 执行计划信息
 type ExplainInfo struct {
 	gorm.Model
 
@@ -90,7 +90,7 @@ type ExplainInfo struct {
 	Extra        string  `gorm:"Column:Extra"`
 }
 
-// FieldInfo is 字段信息
+// FieldInfo 字段信息
 type FieldInfo struct {
 	gorm.Model
 
@@ -146,7 +146,7 @@ type TableInfo struct {
 	TableSize uint
 }
 
-// IndexInfo is 索引信息
+// IndexInfo 索引信息
 type IndexInfo struct {
 	gorm.Model
 
@@ -1399,7 +1399,7 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 	}
 }
 
-// mysqlShowTableStatus is 获取表估计的受影响行数
+// mysqlShowTableStatus 获取表估计的受影响行数
 func (s *session) mysqlShowTableStatus(t *TableInfo) {
 
 	if t.IsNew {
@@ -1430,7 +1430,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 	}
 }
 
-// mysqlGetTableSize is 获取表估计的受影响行数
+// mysqlGetTableSize 获取表估计的受影响行数
 func (s *session) mysqlGetTableSize(t *TableInfo) {
 
 	if t.IsNew || t.TableSize > 0 {
@@ -1461,7 +1461,7 @@ func (s *session) mysqlGetTableSize(t *TableInfo) {
 	}
 }
 
-// mysqlShowCreateTable is 生成回滚语句
+// mysqlShowCreateTable 生成回滚语句
 func (s *session) mysqlShowCreateTable(t *TableInfo) {
 
 	if t.IsNew {
@@ -1682,8 +1682,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 					}
 				}
 
-				// log.Infof("%#v, %d", field.Tp, mysql.PriKeyFlag, mysql.HasPriKeyFlag(field.Tp.Flag))
-				// log.Info(field.Name.Name.O, hasPrimary, mysql.HasPriKeyFlag(field.Tp.Flag), hasNullFlag, defaultNullValue)
 				if hasPrimary && (hasNullFlag || defaultNullValue) {
 					s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
 				}
@@ -2342,7 +2340,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	// }
 }
 
-// hasError is return current sql has errors or warnings
+// hasError return current sql has errors or warnings
 func (s *session) hasError() bool {
 	if s.myRecord.ErrLevel == 2 ||
 		(s.myRecord.ErrLevel == 1 && !s.opt.ignoreWarnings) {
@@ -2352,7 +2350,7 @@ func (s *session) hasError() bool {
 	return false
 }
 
-// hasError is return all sql has errors or warnings
+// hasError return all sql has errors or warnings
 func (s *session) hasErrorBefore() bool {
 	if s.recordSets.MaxLevel == 2 ||
 		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
@@ -2795,6 +2793,9 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	s.checkIndexAttr(tp, IndexName, IndexColNames, t)
 
 	keyMaxLen := 0
+	// 禁止使用blob列当索引,所以不再检测blob字段时列是否过长
+	isBlobColumn := false
+
 	for _, col := range IndexColNames {
 		found := false
 		var foundField FieldInfo
@@ -2809,7 +2810,6 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		if !found {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
 		} else {
-			// log.Infof("%#v", col.Column.Tp)
 
 			if strings.ToLower(foundField.Type) == "json" {
 				s.AppendErrorMessage(
@@ -2817,12 +2817,12 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			}
 
 			if strings.Contains(strings.ToLower(foundField.Type), "blob") {
+				isBlobColumn = true
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
 			maxLength := foundField.GetDataBytes(s.mysqlServerVersion())
 
-			// && !types.IsTypePrefixable(col.Column.Tp.Tp)
 			if col.Length != types.UnspecifiedLength {
 				if !strings.Contains(strings.ToLower(foundField.Type), "blob") &&
 					!strings.Contains(strings.ToLower(foundField.Type), "char") &&
@@ -2832,10 +2832,9 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				}
 
 				if (strings.Contains(strings.ToLower(foundField.Type), "char") ||
-					!strings.Contains(strings.ToLower(foundField.Type), "text")) &&
+					strings.Contains(strings.ToLower(foundField.Type), "text")) &&
 					col.Length > maxLength {
 					s.AppendErrorNo(ER_WRONG_SUB_KEY)
-
 					col.Length = maxLength
 				}
 			}
@@ -2863,12 +2862,14 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		s.AppendErrorMessage(fmt.Sprintf("表'%s'的索引'%s'名称过长", t.Name, IndexName))
 	}
 
-	mysqlVersion := s.mysqlServerVersion()
-	// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
-	if mysqlVersion < 50700 && keyMaxLen > MaxKeyLength {
-		s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
-	} else if (mysqlVersion >= 50700) && keyMaxLen > MaxKeyLength57 {
-		s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength57)
+	if !isBlobColumn {
+		mysqlVersion := s.mysqlServerVersion()
+		// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
+		if mysqlVersion < 50700 && keyMaxLen > MaxKeyLength {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
+		} else if (mysqlVersion >= 50700) && keyMaxLen > MaxKeyLength57 {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength57)
+		}
 	}
 
 	if IndexOption != nil {

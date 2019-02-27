@@ -118,11 +118,19 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 	case "char", "binary", "varchar", "varbinary", "enum", "set":
 		// string
 		return StringStorageReq(col.Type, "utf8mb4")
-	case "tinyblob", "tinytext", "blob", "text", "mediumblob", "mediumtext",
-		"longblob", "longtext":
-		// strings length depend on it's values
-		// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
-		return MaxKeyLength + 1
+	case "tibyblob", "tinytext":
+		return 1<<8 - 1
+	case "blob", "text":
+		return 1<<16 - 1
+	case "mediumblob", "mediumtext":
+		return 1<<24 - 1
+	case "longblob", "longtext":
+		return 1<<32 - 1
+	// case "tinyblob", "tinytext", "blob", "text", "mediumblob", "mediumtext",
+	// 	"longblob", "longtext":
+	// 	// strings length depend on it's values
+	// 	// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
+	// 	return MaxKeyLength + 1
 	default:
 		log.Warnf("Type %s not support:", col.Type)
 		return -1
