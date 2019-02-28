@@ -76,11 +76,13 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 		s.Osc.OscBinDir, string(os.PathListSeparator), os.Getenv("PATH")))
 	if err != nil {
 		log.Error(err)
+		s.AppendErrorMessage(err.Error())
 		return
 	}
 
 	if _, err := exec.LookPath("pt-online-schema-change"); err != nil {
 		log.Error(err)
+		s.AppendErrorMessage(err.Error())
 		return
 	}
 
