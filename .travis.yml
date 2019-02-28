@@ -17,5 +17,5 @@ before_install:
   - bash gitcookie.sh
   - sudo chmod +x cmd/explaintest/run-tests.sh
 script:
-  - rm -f go.sum
+  # - rm -f go.sum
   - make dev
