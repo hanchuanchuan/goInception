@@ -39,9 +39,10 @@ backup_password = "inception"
 sql_safe_updates = 0
 
 [osc]
-osc_on = true
+osc_on = false
 osc_min_table_size = 0
 osc_print_none = false
+osc_bin_dir = "/usr/local/bin/pt-online-schema-change"
 
 
 [log]

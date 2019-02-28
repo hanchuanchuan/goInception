@@ -597,7 +597,7 @@ func (s *session) executeCommit() {
 
 	if s.opt.backup {
 
-		log.Info("开始备份")
+		// log.Info("开始备份")
 		// 如果有错误时,把错误输出放在第一行
 		// s.myRecord = s.recordSets.All()[0]
 
@@ -966,6 +966,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 
 	case *ast.UseStmt,
 		*ast.DropDatabaseStmt,
+		*ast.CreateDatabaseStmt,
 
 		*ast.CreateTableStmt,
 		*ast.AlterTableStmt,
@@ -979,8 +980,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		s.executeRemoteStatement(record)
 
 	default:
-		log.Info("无匹配类型...")
-		log.Infof("%T\n", node)
+		log.Infof("无匹配类型: %T\n", node)
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
 
@@ -1563,213 +1563,218 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, false)
 
 	if table != nil {
-		s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
-		return
-	}
-
-	s.myRecord.DBName = node.Table.Schema.O
-	s.myRecord.TableName = node.Table.Name.O
-
-	s.checkAutoIncrement(node)
-	s.checkContainDotColumn(node)
-
-	// 缓存表结构 CREATE TABLE LIKE
-	if node.ReferTable != nil {
-		originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
-		if originTable != nil {
-			table = s.copyTableInfo(originTable)
-
-			table.Name = node.Table.Name.O
-			table.Schema = node.Table.Schema.O
-
-			s.cacheNewTable(table)
-			s.myRecord.TableInfo = table
+		if !node.IfNotExists {
+			s.AppendErrorNo(ER_TABLE_EXISTS_ERROR, node.Table.Name.O)
 		}
+		s.myRecord.DBName = node.Table.Schema.O
+		s.myRecord.TableName = node.Table.Name.O
 	} else {
 
-		// 校验列是否重复指定
-		checkDup := map[string]bool{}
-		for _, c := range node.Cols {
-			if _, ok := checkDup[c.Name.Name.L]; ok {
-				s.AppendErrorNo(ER_DUP_FIELDNAME, c.Name.Name)
-			}
-			checkDup[c.Name.Name.L] = true
-		}
+		s.myRecord.DBName = node.Table.Schema.O
+		s.myRecord.TableName = node.Table.Name.O
 
-		hasComment := false
-		for _, opt := range node.Options {
-			// log.Infof("%#v", opt)
-			switch opt.Tp {
-			case ast.TableOptionEngine:
-				if !strings.EqualFold(opt.StrValue, "innodb") {
-					s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
+		s.checkAutoIncrement(node)
+		s.checkContainDotColumn(node)
+
+		// 缓存表结构 CREATE TABLE LIKE
+		if node.ReferTable != nil {
+			originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
+			if originTable != nil {
+				table = s.copyTableInfo(originTable)
+
+				table.Name = node.Table.Name.O
+				table.Schema = node.Table.Schema.O
+
+				s.cacheNewTable(table)
+				s.myRecord.TableInfo = table
+			}
+		} else {
+
+			// 校验列是否重复指定
+			checkDup := map[string]bool{}
+			for _, c := range node.Cols {
+				if _, ok := checkDup[c.Name.Name.L]; ok {
+					s.AppendErrorNo(ER_DUP_FIELDNAME, c.Name.Name)
 				}
-			case ast.TableOptionCharset:
-				if !s.Inc.EnableSetCharset {
-					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
-				}
-				s.checkCharset(opt.StrValue)
-			case ast.TableOptionCollate:
-				if !s.Inc.EnableSetCharset {
-					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
-				}
-			case ast.TableOptionComment:
-				if opt.StrValue != "" {
-					hasComment = true
-				}
-				if len(opt.StrValue) > TABLE_COMMENT_MAXLEN {
-					s.AppendErrorMessage(fmt.Sprintf("Comment for table '%s' is too long (max = %d)",
-						node.Table.Name.O, TABLE_COMMENT_MAXLEN))
-				}
-			case ast.TableOptionAutoIncrement:
+				checkDup[c.Name.Name.L] = true
+			}
+
+			hasComment := false
+			for _, opt := range node.Options {
 				// log.Infof("%#v", opt)
-				if opt.UintValue > 1 {
-					s.AppendErrorNo(ER_INC_INIT_ERR)
-				}
-			}
-		}
-
-		hasPrimary := false
-		for _, ct := range node.Constraints {
-			// log.Infof("%#v", ct)
-			switch ct.Tp {
-			case ast.ConstraintPrimaryKey:
-				hasPrimary = len(ct.Keys) > 0
-				// for _, col := range ct.Keys {
-				// 	found := false
-				// 	for _, field := range node.Cols {
-				// 		if field.Name.Name.L == col.Column.Name.L {
-				// 			found = true
-				// 			break
-				// 		}
-				// 	}
-				// 	if !found {
-				// 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-				// 			fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
-				// 	}
-				// }
-				break
-			}
-		}
-
-		if !hasPrimary {
-			for _, field := range node.Cols {
-				hasNullFlag := false
-				defaultNullValue := false
-				for _, op := range field.Options {
-					switch op.Tp {
-					case ast.ColumnOptionNull:
-						hasNullFlag = true
-					case ast.ColumnOptionPrimaryKey:
-						hasPrimary = true
-
-						if field.Tp.Tp != mysql.TypeInt24 &&
-							field.Tp.Tp != mysql.TypeLong &&
-							field.Tp.Tp != mysql.TypeLonglong {
-							s.AppendErrorNo(ER_PK_COLS_NOT_INT,
-								field.Name.Name.O,
-								node.Table.Schema, node.Table.Name)
-						}
-					case ast.ColumnOptionDefaultValue:
-						// log.Infof("%#v", op)
-						// log.Info(op.Expr.GetDatum().GetString())
-						// log.Info(op.Expr.GetDatum().IsNull())
-
-						// op.Expr.GetDatum().GetString()
-						if op.Expr.GetDatum().IsNull() {
-							defaultNullValue = true
-						}
+				switch opt.Tp {
+				case ast.TableOptionEngine:
+					if !strings.EqualFold(opt.StrValue, "innodb") {
+						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
+					}
+				case ast.TableOptionCharset:
+					if !s.Inc.EnableSetCharset {
+						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+					}
+					s.checkCharset(opt.StrValue)
+				case ast.TableOptionCollate:
+					if !s.Inc.EnableSetCharset {
+						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+					}
+				case ast.TableOptionComment:
+					if opt.StrValue != "" {
+						hasComment = true
+					}
+					if len(opt.StrValue) > TABLE_COMMENT_MAXLEN {
+						s.AppendErrorMessage(fmt.Sprintf("Comment for table '%s' is too long (max = %d)",
+							node.Table.Name.O, TABLE_COMMENT_MAXLEN))
+					}
+				case ast.TableOptionAutoIncrement:
+					// log.Infof("%#v", opt)
+					if opt.UintValue > 1 {
+						s.AppendErrorNo(ER_INC_INIT_ERR)
 					}
 				}
+			}
 
-				if hasPrimary && (hasNullFlag || defaultNullValue) {
-					s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
-				}
-				if hasPrimary {
+			hasPrimary := false
+			for _, ct := range node.Constraints {
+				// log.Infof("%#v", ct)
+				switch ct.Tp {
+				case ast.ConstraintPrimaryKey:
+					hasPrimary = len(ct.Keys) > 0
+					// for _, col := range ct.Keys {
+					// 	found := false
+					// 	for _, field := range node.Cols {
+					// 		if field.Name.Name.L == col.Column.Name.L {
+					// 			found = true
+					// 			break
+					// 		}
+					// 	}
+					// 	if !found {
+					// 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+					// 			fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
+					// 	}
+					// }
 					break
 				}
 			}
-		}
 
-		if !hasPrimary {
-			s.AppendErrorNo(ER_TABLE_MUST_HAVE_PK, node.Table.Name.O)
-		}
-
-		if !hasComment {
-			s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
-		}
-
-		if len(node.Cols) == 0 {
-			s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
-		} else {
-			table = s.buildTableInfo(node)
-
-			currentTimestampCount := 0
-			onUpdateTimestampCount := 0
-			for _, field := range node.Cols {
-				s.mysqlCheckField(table, field)
-
-				if field.Tp.Tp == mysql.TypeTimestamp {
+			if !hasPrimary {
+				for _, field := range node.Cols {
+					hasNullFlag := false
+					defaultNullValue := false
 					for _, op := range field.Options {
-						if op.Tp == ast.ColumnOptionDefaultValue {
-							if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
-								if f.FnName.L == ast.CurrentTimestamp {
-									currentTimestampCount += 1
-								}
-							}
-						} else if op.Tp == ast.ColumnOptionOnUpdate {
-							if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
-								if f.FnName.L == ast.CurrentTimestamp {
-									onUpdateTimestampCount += 1
-								}
-							} else {
+						switch op.Tp {
+						case ast.ColumnOptionNull:
+							hasNullFlag = true
+						case ast.ColumnOptionPrimaryKey:
+							hasPrimary = true
 
+							if field.Tp.Tp != mysql.TypeInt24 &&
+								field.Tp.Tp != mysql.TypeLong &&
+								field.Tp.Tp != mysql.TypeLonglong {
+								s.AppendErrorNo(ER_PK_COLS_NOT_INT,
+									field.Name.Name.O,
+									node.Table.Schema, node.Table.Name)
+							}
+						case ast.ColumnOptionDefaultValue:
+							// log.Infof("%#v", op)
+							// log.Info(op.Expr.GetDatum().GetString())
+							// log.Info(op.Expr.GetDatum().IsNull())
+
+							// op.Expr.GetDatum().GetString()
+							if op.Expr.GetDatum().IsNull() {
+								defaultNullValue = true
 							}
 						}
+					}
+
+					if hasPrimary && (hasNullFlag || defaultNullValue) {
+						s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
+					}
+					if hasPrimary {
+						break
 					}
 				}
 			}
 
-			if currentTimestampCount > 1 || onUpdateTimestampCount > 1 {
-				s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
+			if !hasPrimary {
+				s.AppendErrorNo(ER_TABLE_MUST_HAVE_PK, node.Table.Name.O)
 			}
 
-			s.cacheNewTable(table)
-			s.myRecord.TableInfo = table
+			if !hasComment {
+				s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
+			}
+
+			if len(node.Cols) == 0 {
+				s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
+			} else {
+				table = s.buildTableInfo(node)
+
+				currentTimestampCount := 0
+				onUpdateTimestampCount := 0
+				for _, field := range node.Cols {
+					s.mysqlCheckField(table, field)
+
+					if field.Tp.Tp == mysql.TypeTimestamp {
+						for _, op := range field.Options {
+							if op.Tp == ast.ColumnOptionDefaultValue {
+								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+									if f.FnName.L == ast.CurrentTimestamp {
+										currentTimestampCount += 1
+									}
+								}
+							} else if op.Tp == ast.ColumnOptionOnUpdate {
+								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+									if f.FnName.L == ast.CurrentTimestamp {
+										onUpdateTimestampCount += 1
+									}
+								} else {
+
+								}
+							}
+						}
+					}
+				}
+
+				if currentTimestampCount > 1 || onUpdateTimestampCount > 1 {
+					s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
+				}
+
+				s.cacheNewTable(table)
+				s.myRecord.TableInfo = table
+			}
+		}
+
+		if node.Partition != nil {
+			s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
+		}
+
+		if node.ReferTable != nil || len(node.Cols) > 0 {
+			dupIndexes := map[string]bool{}
+			for _, ct := range node.Constraints {
+				s.checkCreateIndex(nil, ct.Name,
+					ct.Keys, ct.Option, table, false, ct.Tp)
+
+				switch ct.Tp {
+				case ast.ConstraintKey, ast.ConstraintUniq,
+					ast.ConstraintIndex, ast.ConstraintUniqKey,
+					ast.ConstraintUniqIndex:
+					if ct.Name == "" {
+						ct.Name = ct.Keys[0].Column.Name.O
+					}
+					if _, ok := dupIndexes[strings.ToLower(ct.Name)]; ok {
+						s.AppendErrorNo(ER_DUP_KEYNAME, ct.Name)
+					}
+					dupIndexes[strings.ToLower(ct.Name)] = true
+				}
+			}
+
+			if len(node.Cols) > 0 && table == nil {
+				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.Table.Name.O)
+				return
+			}
 		}
 	}
 
-	if node.Partition != nil {
-		s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
-	}
-
-	if node.ReferTable != nil || len(node.Cols) > 0 {
-		dupIndexes := map[string]bool{}
-		for _, ct := range node.Constraints {
-			s.checkCreateIndex(nil, ct.Name,
-				ct.Keys, ct.Option, table, false, ct.Tp)
-
-			switch ct.Tp {
-			case ast.ConstraintKey, ast.ConstraintUniq,
-				ast.ConstraintIndex, ast.ConstraintUniqKey,
-				ast.ConstraintUniqIndex:
-				if ct.Name == "" {
-					ct.Name = ct.Keys[0].Column.Name.O
-				}
-				if _, ok := dupIndexes[strings.ToLower(ct.Name)]; ok {
-					s.AppendErrorNo(ER_DUP_KEYNAME, ct.Name)
-				}
-				dupIndexes[strings.ToLower(ct.Name)] = true
-			}
-		}
-
-		if len(node.Cols) > 0 && table == nil {
-			s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.Table.Name.O)
-			return
-		}
-		if s.opt.execute {
-			s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
-		}
+	if !s.hasError() && s.opt.execute {
+		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
 	}
 }
 
@@ -2451,9 +2456,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		}
 	}
 
-	// if len(field.Name.Name.O) > mysql.MaxColumnNameLength {
-	// 	s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
-	// }
+	if isIncorrectName(field.Name.Name.O) {
+		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
+	}
 
 	if types.IsTypeBlob(field.Tp.Tp) && notNullFlag {
 		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
@@ -3911,9 +3916,14 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	// if node.BeforeFrom {
 	// 	s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
 	// }
-	s.checkItem(node.Where, tableInfoList)
+	if s.myRecord.TableInfo != nil && !s.hasError() {
+		s.checkItem(node.Where, tableInfoList)
+	}
 
-	s.explainOrAnalyzeSql(sql)
+	if !s.hasError() {
+		// 如果没有表结构,或者新增表 or 新增列时,不做explain
+		s.explainOrAnalyzeSql(sql)
+	}
 
 	if node.Where == nil {
 		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
