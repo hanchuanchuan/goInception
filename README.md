@@ -12,7 +12,7 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 
 **[使用文档](https://hanchuanchuan.github.io/goInception/)**
 
-
+**[更新日志](https://github.com/hanchuanchuan/goInception/blob/master/CHANGELOG.md)**
 
 #### 安装说明
 
@@ -22,7 +22,7 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 
 ##### 源码编译
 
-***go version 1.11(go mod)***
+***go version 1.11.3(go mod)***
 
 ```bash
 git clone https://github.com/hanchuanchuan/goInception
