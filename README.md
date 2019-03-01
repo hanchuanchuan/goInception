@@ -27,6 +27,7 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 ```bash
 git clone https://github.com/hanchuanchuan/goInception
 cd goInception
+make parse
 go build -o goInception tidb-server/main.go
 
 ./goInception -config=config/config.toml
