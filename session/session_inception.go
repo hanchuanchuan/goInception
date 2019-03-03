@@ -209,6 +209,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 
 	s.Inc = config.GetGlobalConfig().Inc
 	s.Osc = config.GetGlobalConfig().Osc
+	s.Ghost = config.GetGlobalConfig().Ghost
 
 	s.recordSets = NewRecordSets()
 
@@ -618,9 +619,13 @@ func (s *session) executeCommit() {
 					break
 				}
 				if record.TableInfo == nil {
-					s.AppendErrorMessage("无表结构信息,生成备份失败!")
+					s.AppendErrorNo(ErrNotFoundTableInfo)
 				} else {
 					s.mysqlBackupSql(record)
+				}
+
+				if s.hasError() {
+					break
 				}
 			}
 		}
@@ -995,7 +1000,11 @@ func (s *session) executeRemoteStatement(record *Record) {
 	start := time.Now()
 
 	if record.useOsc {
-		s.mysqlExecuteAlterTableOsc(record)
+		if s.Ghost.GhostOn {
+			s.mysqlExecuteAlterTableGhost(record)
+		} else {
+			s.mysqlExecuteAlterTableOsc(record)
+		}
 		record.ExecTimestamp = time.Now().Unix()
 		record.ThreadId = s.fetchThreadID()
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())

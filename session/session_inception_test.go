@@ -30,14 +30,14 @@ import (
 	. "github.com/pingcap/check"
 )
 
-var _ = Suite(&testSessionIncExecSuite{})
+var _ = Suite(&testSessionIncSuite{})
 var sql string
 
-func Test2(t *testing.T) {
+func TestAudit(t *testing.T) {
 	TestingT(t)
 }
 
-type testSessionIncExecSuite struct {
+type testSessionIncSuite struct {
 	cluster   *mocktikv.Cluster
 	mvccStore mocktikv.MVCCStore
 	store     kv.Storage
@@ -45,7 +45,7 @@ type testSessionIncExecSuite struct {
 	tk        *testkit.TestKit
 }
 
-func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
+func (s *testSessionIncSuite) SetUpSuite(c *C) {
 
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
@@ -67,7 +67,7 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *testSessionIncExecSuite) TearDownSuite(c *C) {
+func (s *testSessionIncSuite) TearDownSuite(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	} else {
@@ -77,7 +77,7 @@ func (s *testSessionIncExecSuite) TearDownSuite(c *C) {
 	}
 }
 
-func (s *testSessionIncExecSuite) TearDownTest(c *C) {
+func (s *testSessionIncSuite) TearDownTest(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
@@ -99,7 +99,7 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
 }
 
-func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
+func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
@@ -128,7 +128,7 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	c.Assert(row[2], Equals, strconv.Itoa(errCode))
 }
 
-func (s *testSessionIncExecSuite) TestBegin(c *C) {
+func (s *testSessionIncSuite) TestBegin(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
@@ -144,7 +144,7 @@ func (s *testSessionIncExecSuite) TestBegin(c *C) {
 	}
 }
 
-func (s *testSessionIncExecSuite) TestNoSourceInfo(c *C) {
+func (s *testSessionIncSuite) TestNoSourceInfo(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	res := tk.MustQueryInc("inception_magic_start;\ncreate table t1(id int);")
 
@@ -156,7 +156,7 @@ func (s *testSessionIncExecSuite) TestNoSourceInfo(c *C) {
 	}
 }
 
-func (s *testSessionIncExecSuite) TestWrongDBName(c *C) {
+func (s *testSessionIncSuite) TestWrongDBName(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	res := tk.MustQueryInc(`/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;create table t1(id int);inception_magic_commit;`)
@@ -169,7 +169,7 @@ inception_magic_start;create table t1(id int);inception_magic_commit;`)
 	}
 }
 
-func (s *testSessionIncExecSuite) TestEnd(c *C) {
+func (s *testSessionIncSuite) TestEnd(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	res := tk.MustQueryInc(`/*--user=admin;--password=han123;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;use test_inc;create table t1(id int);`)
@@ -181,7 +181,7 @@ inception_magic_start;use test_inc;create table t1(id int);`)
 	c.Assert(row[4], Equals, "Must end with commit.")
 }
 
-func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
+func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -460,7 +460,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
 }
 
-func (s *testSessionIncExecSuite) TestDropTable(c *C) {
+func (s *testSessionIncSuite) TestDropTable(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -487,7 +487,7 @@ func (s *testSessionIncExecSuite) TestDropTable(c *C) {
 	c.Assert(row[2], Equals, "0")
 }
 
-func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
+func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -650,7 +650,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
 }
 
-func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
+func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -673,7 +673,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
 	c.Assert(row[2], Equals, "0")
 }
 
-func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
+func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -814,7 +814,7 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 		session.NewErr(session.ER_WRONG_TABLE_NAME, "t"))
 }
 
-func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
+func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -841,7 +841,7 @@ func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
 		session.NewErr(session.ErrCantRemoveAllFields))
 }
 
-func (s *testSessionIncExecSuite) TestInsert(c *C) {
+func (s *testSessionIncSuite) TestInsert(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -953,7 +953,7 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 		session.NewErr(session.ER_BAD_NULL_ERROR, "test_inc.t1.c1", 1))
 }
 
-func (s *testSessionIncExecSuite) TestUpdate(c *C) {
+func (s *testSessionIncSuite) TestUpdate(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -1027,7 +1027,7 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	c.Assert(row[6], Equals, "0")
 }
 
-func (s *testSessionIncExecSuite) TestDelete(c *C) {
+func (s *testSessionIncSuite) TestDelete(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -1105,7 +1105,7 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 	c.Assert(row[6], Equals, "0")
 }
 
-func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
+func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 
 	sql = "drop database if exists test1111111111111111111;create database test1111111111111111111;"
 	s.testErrorCode(c, sql)
@@ -1167,7 +1167,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
 }
 
-func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
+func (s *testSessionIncSuite) TestRenameTable(c *C) {
 
 	// 不存在
 	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 rename t2;"
@@ -1182,14 +1182,14 @@ func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
 		session.NewErr(session.ER_TABLE_EXISTS_ERROR, "t1"))
 }
 
-func (s *testSessionIncExecSuite) TestCreateView(c *C) {
+func (s *testSessionIncSuite) TestCreateView(c *C) {
 
 	sql = "create table t1(id int primary key);create view v1 as select * from t1;"
 	s.testErrorCode(c, sql,
 		session.NewErrf("命令禁止! 无法创建视图'v1'."))
 }
 
-func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {
+func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
@@ -1211,7 +1211,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {
 		session.NewErr(session.ER_DUP_INDEX, "idx", "test_inc", "t1"))
 }
 
-func (s *testSessionIncExecSuite) TestAlterTableDropIndex(c *C) {
+func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
