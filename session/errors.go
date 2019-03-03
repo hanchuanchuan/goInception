@@ -18,6 +18,8 @@
 package session
 
 import (
+	"fmt"
+
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/terror"
 )
@@ -173,6 +175,7 @@ const (
 	ER_MUST_HAVE_COLUMNS
 	ER_PRIMARY_CANT_HAVE_NULL
 	ErrCantRemoveAllFields
+	ErrNotFoundTableInfo
 	ER_ERROR_LAST
 )
 
@@ -318,6 +321,7 @@ var MyErrors = map[int]string{
 	ER_MUST_HAVE_COLUMNS:                   "A table must have at least 1 column",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
+	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 }
 
@@ -364,6 +368,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_INVALID_IDENT,
 		ER_CANT_SET_CHARSET,
 		ER_CANT_SET_COLLATION,
+		ErrNotFoundTableInfo,
 		ER_CHANGE_COLUMN_TYPE:
 		return 1
 
@@ -435,4 +440,29 @@ func GetErrorMessage(errorNo int) string {
 	}
 	// if errorNo >= ER_ERROR_FIRST && errorNo <= ER_ERROR_LAST {
 	// }
+}
+
+// SQLError records an error information, from executing SQL.
+type SQLError struct {
+	Code    int
+	Message string
+}
+
+// Error prints errors, with a formatted string.
+func (e *SQLError) Error() string {
+	return e.Message
+}
+
+// NewErr generates a SQL error, with an error code and default format specifier defined in MySQLErrName.
+func NewErr(errCode int, args ...interface{}) *SQLError {
+	e := &SQLError{Code: errCode}
+	e.Message = fmt.Sprintf(GetErrorMessage(errCode), args...)
+	return e
+}
+
+// NewErrf creates a SQL error, with an error code and a format specifier.
+func NewErrf(format string, args ...interface{}) *SQLError {
+	e := &SQLError{Code: 0}
+	e.Message = fmt.Sprintf(format, args...)
+	return e
 }

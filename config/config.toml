@@ -42,8 +42,23 @@ sql_safe_updates = 0
 osc_on = false
 osc_min_table_size = 0
 osc_print_none = false
-osc_bin_dir = "/usr/local/bin/pt-online-schema-change"
+osc_bin_dir = "/usr/local/bin"
 
+[ghost]
+
+# ghost_on = true
+ghost_allow_on_master = true
+ghost_assume_rbr = true
+ghost_chunk_size = 1000
+ghost_concurrent_rowcount = true
+ghost_cut_over = "atomic"
+ghost_cut_over_lock_timeout_seconds = 3
+ghost_default_retries = 60
+ghost_heartbeat_interval_millis = 500
+ghost_max_lag_millis = 1500
+ghost_approve_renamed_columns = true
+ghost_exponential_backoff_max_interval = 64
+ghost_dml_batch_size = 10
 
 [log]
 # Log level: debug, info, warn, error, fatal.

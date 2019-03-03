@@ -1,5 +1,9 @@
 module github.com/hanchuanchuan/goInception
 
+replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3
+
+replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190303084842-1cb650b42f46
+
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
@@ -23,6 +27,7 @@ require (
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/github/gh-ost v1.0.48
 	github.com/go-sql-driver/mysql v0.0.0-20170715192408-3955978caca4
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
@@ -58,6 +63,7 @@ require (
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opentracing/basictracer-go v1.0.0
 	github.com/opentracing/opentracing-go v1.0.2
+	github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502
 	github.com/pingcap/check v0.0.0-20171206051426-1c287c953996
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/goleveldb v0.0.0-20171020122428-b9ff6c35079e
@@ -71,10 +77,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446 // indirect
 	github.com/rs/zerolog v1.11.0
-	github.com/satori/go.uuid v1.2.0 // indirect
-	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24 // indirect
-	github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726 // indirect
-	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07 // indirect
+	github.com/siddontang/go-mysql v0.0.0-20190228090055-3242b1d89f16 // indirect
 	github.com/sirupsen/logrus v1.2.0
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
@@ -93,7 +96,9 @@ require (
 	golang.org/x/text v0.3.0
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
 	google.golang.org/grpc v1.16.0
+	gopkg.in/gcfg.v1 v1.2.3 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

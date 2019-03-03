@@ -75,6 +75,7 @@ type Config struct {
 	Binlog              Binlog            `toml:"binlog" json:"binlog"`
 	Inc                 Inc               `toml:"inc" json:"inc"`
 	Osc                 Osc               `toml:"osc" json:"osc"`
+	Ghost               Ghost             `toml:"ghost" json:"ghost"`
 	CompatibleKillQuery bool              `toml:"compatible-kill-query" json:"compatible-kill-query"`
 }
 
@@ -401,6 +402,140 @@ type Osc struct {
 	OscBinDir string `toml:"osc_bin_dir" json:"osc_bin_dir"`
 }
 
+// GhOst online schema change 工具参数配置
+type Ghost struct {
+
+	// 阿里云数据库
+	GhostAliyunRds bool `toml:"ghost_aliyun_rds"`
+	// 允许gh-ost运行在双主复制架构中，一般与-assume-master-host参数一起使用。
+	GhostAllowMasterMaster bool `toml:"ghost_allow_master_master"`
+	// 允许gh-ost在数据迁移(migrate)依赖的唯一键可以为NULL，默认为不允许为NULL的唯一键。如果数据迁移(migrate)依赖的唯一键允许NULL值，则可能造成数据不正确，请谨慎使用。
+	GhostAllowNullableUniqueKey bool `toml:"ghost_allow_nullable_unique_key"`
+	// 允许gh-ost直接运行在主库上。默认gh-ost连接的从库。
+	GhostAllowOnMaster bool `toml:"ghost_allow_on_master"`
+	// ALTER语句的body部分
+	GhostAlter string `toml:"ghost_alter"`
+	// 如果你修改一个列的名字(如change column)，gh-ost将会识别到并且需要提供重命名列名的原因，默认情况下gh-ost是不继续执行的，除非提供-approve-renamed-columns ALTER。
+	// ALTER
+	GhostApproveRenamedColumns bool `toml:"ghost_approve_renamed_columns"`
+	// 为gh-ost指定一个主库，格式为"ip:port"或者"hostname:port"。默认推荐gh-ost连接从库。
+	GhostAssumeMasterHost string `toml:"ghost_assume_master_host"`
+	// 确认gh-ost连接的数据库实例的binlog_format=ROW的情况下，可以指定-assume-rbr，
+	// 这样可以禁止从库上运行stop slave,start slave,执行gh-ost用户也不需要SUPER权限。
+	GhostAssumeRbr bool `toml:"ghost_assume_rbr"`
+
+	// 该参数如果为True(默认值)，则进行row-copy之后，估算统计行数(使用explain select count(*)方式)，
+	// 并调整ETA时间，否则，gh-ost首先预估统计行数，然后开始row-copy。
+	GhostConcurrentRowcount bool `toml:"ghost_concurrent_rowcount"`
+
+	// 一系列逗号分隔的status-name=values组成，当MySQL中status超过对应的values，gh-ost将会退出
+	// 	e.g:
+	// -critical-load Threads_connected=20,Connections=1500
+	// 指的是当MySQL中的状态值Threads_connected>20,Connections>1500的时候，gh-ost将会由于该数据库严重负载而停止并退出。
+	GhostCriticalLoad string `toml:"ghost_critical_load"`
+
+	// 当值为0时，当达到-critical-load，gh-ost立即退出。当值不为0时，当达到-critical-load，
+	// gh-ost会在-critical-load-interval-millis秒数后，再次进行检查，再次检查依旧达到-critical-load，gh-ost将会退出。
+	GhostCriticalLoadIntervalMillis   int64 `toml:"ghost_critical_load_interval_millis"`
+	GhostCriticalLoadHibernateSeconds int64 `toml:"ghost_critical_load_hibernate_seconds"`
+
+	// 选择cut-over类型:atomic/two-step，atomic(默认)类型的cut-over是github的算法，two-step采用的是facebook-OSC的算法。
+	GhostCutOver string `toml:"ghost_cut_over"`
+
+	GhostCutOverExponentialBackoff bool `toml:"ghost_cut_over_exponential_backoff"`
+	// 在每次迭代中处理的行数量(允许范围：100-100000)，默认值为1000。
+	GhostChunkSize int64 `toml:"ghost_chunk_size"`
+
+	// gh-ost在cut-over阶段最大的锁等待时间，当锁超时时，gh-ost的cut-over将重试。(默认值：3)
+	GhostCutOverLockTimeoutSeconds int64 `toml:"ghost_cut_over_lock_timeout_seconds"`
+
+	// 很危险的参数，慎用！
+	// 该参数针对一个有外键的表，在gh-ost创建ghost表时，并不会为ghost表创建外键。该参数很适合用于删除外键，除此之外，请谨慎使用。
+	GhostDiscardForeignKeys bool `toml:"ghost_discard_foreign_keys"`
+
+	// 各种操作在panick前重试次数。(默认为60)
+	GhostDefaultRetries int64 `toml:"ghost_default_retries"`
+
+	GhostDmlBatchSize int64 `toml:"ghost_dml_batch_size"`
+
+	// 准确统计表行数(使用select count(*)的方式)，得到更准确的预估时间。
+	GhostExactRowcount bool `toml:"ghost_exact_rowcount"`
+
+	// 实际执行alter&migrate表，默认为不执行，仅仅做测试并退出，如果想要ALTER TABLE语句真正落实到数据库中去，需要明确指定-execute
+	GhostExecute bool `toml:"ghost_execute"`
+
+	GhostExponentialBackoffMaxInterval int64 `toml:"ghost_exponential_backoff_max_interval"`
+	// When true, the 'unpostpone|cut-over' interactive command must name the migrated table。
+	GhostForceTableNames   string `toml:"ghost_force_table_names"`
+	GhostForceNamedCutOver bool   `toml:"ghost_force_named_cut_over"`
+	GhostGcp               bool   `toml:"ghost_gcp"`
+
+	// gh-ost心跳频率值，默认为500。
+	GhostHeartbeatIntervalMillis int64 `toml:"ghost_heartbeat_interval_millis"`
+
+	// gh-ost操作之前，检查并删除已经存在的ghost表。该参数不建议使用，请手动处理原来存在的ghost表。默认不启用该参数，gh-ost直接退出操作。
+	GhostInitiallyDropGhostTable bool `toml:"ghost_initially_drop_ghost_table"`
+
+	// gh-ost操作之前，检查并删除已经存在的旧表。该参数不建议使用，请手动处理原来存在的ghost表。默认不启用该参数，gh-ost直接退出操作。
+	GhostInitiallyDropOldTable bool `toml:"ghost_initially_drop_old_table"`
+
+	// gh-ost强制删除已经存在的socket文件。该参数不建议使用，可能会删除一个正在运行的gh-ost程序，导致DDL失败。
+	GhostInitiallyDropSocketFile bool `toml:"ghost_initially_drop_socket_file"`
+
+	// 主从复制最大延迟时间，当主从复制延迟时间超过该值后，gh-ost将采取节流(throttle)措施，默认值：1500s。
+	GhostMaxLagMillis int64 `toml:"ghost_max_lag_millis"`
+
+	// 	一系列逗号分隔的status-name=values组成，当MySQL中status超过对应的values，gh-ost将采取节流(throttle)措施。
+	// e.g:
+	// -max-load Threads_connected=20,Connections=1500
+	// 指的是当MySQL中的状态值Threads_connected>20,Connections>1500的时候，gh-ost将采取节流(throttle)措施。
+	GhostMaxLoad string `toml:"ghost_max_load"`
+
+	GhostNiceRatio float64 `toml:"ghost_nice_ratio"`
+	// gh-ost的数据迁移(migrate)运行在从库上，而不是主库上。
+	// Have the migration run on a replica, not on the master.
+	// This will do the full migration on the replica including cut-over (as opposed to --test-on-replica)
+	// GhostMigrateOnReplica bool `toml:"ghost_migrate_on_replica"`
+
+	// 开启标志
+	GhostOn bool `toml:"ghost_on"`
+	// 当这个文件存在的时候，gh-ost的cut-over阶段将会被推迟，直到该文件被删除。
+	GhostPostponeCutOverFlagFile string `toml:"ghost_postpone_cut_over_flag_file"`
+	GhostPanicFlagFile           string `toml:"ghost_panic_flag_file"`
+	GhostReplicaServerID         bool   `toml:"ghost_replica_server_id"`
+	GhostSkipForeignKeyChecks    bool   `toml:"ghost_skip_foreign_key_checks"`
+
+	// 如果你修改一个列的名字(如change column)，gh-ost将会识别到并且需要提供重命名列名的原因，
+	// 默认情况下gh-ost是不继续执行的。该参数告诉gh-ost跳该列的数据迁移，
+	// 让gh-ost把重命名列作为无关紧要的列。该操作很危险，你会损失该列的所有值。
+	// GhostSkipRenamedColumns bool `toml:"ghost_skip_renamed_columns"`
+
+	// GhostSsl              bool `toml:"ghost_ssl"`
+	// GhostSslAllowInsecure bool `toml:"ghost_ssl_allow_insecure"`
+	// GhostSslCa            bool `toml:"ghost_ssl_ca"`
+
+	// 在从库上测试gh-ost，包括在从库上数据迁移(migration)，数据迁移完成后stop slave，
+	// 原表和ghost表立刻交换而后立刻交换回来。继续保持stop slave，使你可以对比两张表。
+	// GhostTestOnReplica bool `toml:"ghost_test_on_replica"`
+
+	// 当-test-on-replica执行时，该参数表示该过程中不用stop slave。
+	// GhostTestOnReplicaSkipReplicaStop bool `toml:"ghost_test_on_replica_skip_replica_stop"`
+
+	// 	列出所有需要被检查主从复制延迟的从库。
+	// e.g:
+	// -throttle-control-replica=192.16.12.22:3306,192.16.12.23:3307,192.16.13.12:3308
+	GhostThrottleControlReplicas    string `toml:"ghost_throttle_control_replicas"`
+	GhostThrottleHTTP               string `toml:"ghost_throttle_http"`
+	GhostTimestampOldTable          bool   `toml:"ghost_timestamp_old_table"`
+	GhostThrottleQuery              string `toml:"ghost_throttle_query"`
+	GhostThrottleFlagFile           string `toml:"ghost_throttle_flag_file"`
+	GhostThrottleAdditionalFlagFile string `toml:"ghost_throttle_additional_flag_file"`
+
+	// 告诉gh-ost你正在运行的是一个tungsten-replication拓扑结构。
+	GhostTungsten            bool   `toml:"ghost_tungsten"`
+	GhostReplicationLagQuery string `toml:"ghost_replication_lag_query"`
+}
+
 var defaultConf = Config{
 	Host:             "0.0.0.0",
 	AdvertiseAddress: "",
@@ -508,6 +643,21 @@ var defaultConf = Config{
 		OscChunkSize:               4,
 		OscCheckInterval:           5,
 		OscBinDir:                  "/usr/local/bin",
+	},
+	Ghost: Ghost{
+		GhostOn:                            false,
+		GhostAllowOnMaster:                 true,
+		GhostAssumeRbr:                     true,
+		GhostChunkSize:                     1000,
+		GhostConcurrentRowcount:            true,
+		GhostCutOver:                       "atomic",
+		GhostCutOverLockTimeoutSeconds:     3,
+		GhostDefaultRetries:                60,
+		GhostHeartbeatIntervalMillis:       500,
+		GhostMaxLagMillis:                  1500,
+		GhostApproveRenamedColumns:         true,
+		GhostExponentialBackoffMaxInterval: 64,
+		GhostDmlBatchSize:                  10,
 	},
 }
 
