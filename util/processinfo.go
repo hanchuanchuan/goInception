@@ -63,4 +63,7 @@ type OscProcessInfo struct {
 	Info       string
 
 	Killed bool
+
+	IsGhost bool
+	Pause   bool
 }

@@ -2,7 +2,7 @@ module github.com/hanchuanchuan/goInception
 
 replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3
 
-replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190303084842-1cb650b42f46
+replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162
 
 require (
 	github.com/BurntSushi/toml v0.3.1
@@ -42,6 +42,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.5.1 // indirect
+	github.com/gusto/gh-ost v0.0.0-20180412203128-4aff5966f226
 	github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
