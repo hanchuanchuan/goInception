@@ -91,10 +91,16 @@ github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92Bcuy
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgfV/d3M/q6VIi02HzZEHgUlZvzk=
 github.com/grpc-ecosystem/grpc-gateway v1.5.1 h1:3scN4iuXkNOyP98jF55Lv8a9j1o/IwvnDIZ0LHJK1nk=
 github.com/grpc-ecosystem/grpc-gateway v1.5.1/go.mod h1:RSKVYQBd5MCa4OVpNdGskqpgL2+G+NZTnrVHpWWfpdw=
+github.com/gusto/gh-ost v0.0.0-20180412203128-4aff5966f226 h1:HMd4B1eSLdOWa+TFE7CvH7pA3KbdUACxtnlbS47G/Do=
+github.com/gusto/gh-ost v0.0.0-20180412203128-4aff5966f226/go.mod h1:/dbTX+P/tsYjr6/YBDn62ugO2rjngWMc+MD1y+fR4Yg=
+github.com/gusto/gh-ost v1.0.40 h1:SRKGxZisCxNi2WmHE0C4oGOicopcT25gRE1lyjsPJMI=
+github.com/gusto/gh-ost v1.0.40/go.mod h1:/dbTX+P/tsYjr6/YBDn62ugO2rjngWMc+MD1y+fR4Yg=
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3 h1:PerDKRFKMglE4GRVZ34aS7pua67+Ht7hIPVVoSSUk2w=
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3/go.mod h1:yesOnuUOFQAhST5vPY4nbZsb/huCgGGXlipJsBn0b3o=
 github.com/hanchuanchuan/gh-ost v0.0.0-20190303084842-1cb650b42f46 h1:hhe+lrOeoUggoNhku08G75ogVjGjvPPZNGQTRYMc8VY=
 github.com/hanchuanchuan/gh-ost v0.0.0-20190303084842-1cb650b42f46/go.mod h1:LjQSgtiA0sJLr4Z4CS/nctK+Ry2ca1O+Mug6zRP1iKQ=
+github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162 h1:GQzeUPDj/QvpOht1xMeCBG9IoGDvfcm6cX7THlpDjtY=
+github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162/go.mod h1:LjQSgtiA0sJLr4Z4CS/nctK+Ry2ca1O+Mug6zRP1iKQ=
 github.com/hanchuanchuan/gh-ost v1.0.48 h1:Y0Npnj6lNQs79ft6//WflaDSTEjR34QoEs7mmboHztM=
 github.com/hanchuanchuan/gh-ost v1.0.48/go.mod h1:LjQSgtiA0sJLr4Z4CS/nctK+Ry2ca1O+Mug6zRP1iKQ=
 github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff h1:QQJzMLDLwtJCZd4tJ25I0Am/gJxSOak2PoPFxRkG48c=

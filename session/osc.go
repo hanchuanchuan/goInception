@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	// "github.com/hanchuanchuan/goInception/ast"
@@ -246,7 +247,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	migrationContext.MigrateOnReplica = false
 	// flag.BoolVar(&migrationContext.MigrateOnReplica, "migrate-on-replica", false, "Have the migration run on a replica, not on the master. This will do the full migration on the replica including cut-over (as opposed to --test-on-replica)")
 
-	migrationContext.OkToDropTable = false
+	migrationContext.OkToDropTable = true
 	// flag.BoolVar(&migrationContext.OkToDropTable, "ok-to-drop-table", false, "Shall the tool drop the old table at end of operation. DROPping tables can be a long locking operation, which is why I'm not doing it by default. I'm an online tool, yes?")
 	migrationContext.InitiallyDropOldTable = false
 	// flag.BoolVar(&migrationContext.InitiallyDropOldTable, "initially-drop-old-table", false, "Drop a possibly existing OLD table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
@@ -298,7 +299,8 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.PanicFlagFile, "panic-flag-file", "", "when this file is created, gh-ost will immediately terminate, without cleanup")
 	migrationContext.DropServeSocket = s.Ghost.GhostInitiallyDropSocketFile
 	// flag.BoolVar(&migrationContext.DropServeSocket, "initially-drop-socket-file", false, "Should gh-ost forcibly delete an existing socket file. Be careful: this might drop the socket file of a running migration!")
-	// migrationContext.DropServeSocket = s.Ghost.GhostServeSocketFile
+	// migrationContext.ServeSocketFile = s.Ghost.GhostServeSocketFile
+	migrationContext.ServeSocketFile = ""
 	// flag.StringVar(&migrationContext.ServeSocketFile, "serve-socket-file", "", "Unix socket file to serve on. Default: auto-determined and advertised upon startup")
 	// migrationContext.DropServeSocket = s.Ghost.GhostServeTcpPort
 	// flag.Int64Var(&migrationContext.ServeTCPPort, "serve-tcp-port", 0, "TCP port to serve on. Default: disabled")
@@ -347,8 +349,6 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.ForceTmpTableName, "force-table-names", "", "table name prefix to be used on the temporary tables")
 	// flag.CommandLine.SetOutput(os.Stdout)
 
-	// ghostlog.SetLevel(ghostlog.INFO)
-	ghostlog.SetLevel(ghostlog.ERROR)
 	// if *verbose {
 	// 	log.SetLevel(log.INFO)
 	// }
@@ -472,6 +472,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		Percent:    0,
 		RemainTime: "",
 		Info:       "",
+		IsGhost:    true,
 	}
 	s.sessionManager.AddOscProcess(p)
 
@@ -483,6 +484,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 	done := false
 	buf := bytes.NewBufferString("")
+	migrator := logic.NewMigrator(migrationContext)
 
 	//实时循环读取输出流中的一行内容
 	f := func(reader *bufio.Reader) {
@@ -496,34 +498,51 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 				if err2 != nil || io.EOF == err2 || line == "" {
 					break
 				}
-				log.Warning(line)
+				// log.Warning(line)
 				buf.WriteString(line)
 				buf.WriteString("\n")
 
 				s.mysqlAnalyzeGhostOutput(line, p)
-				// if p.Killed {
-				// 	if err := cmd.Process.Kill(); err != nil {
-				// 		s.AppendErrorMessage(err.Error())
-				// 	} else {
-				// 		s.AppendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
-				// 			p.Percent, p.RemainTime))
-				// 	}
-				// }
+				if p.Killed {
+					migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
+						p.Percent, p.RemainTime)
+
+					// s.AppendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
+					// 	p.Percent, p.RemainTime))
+					done = true
+				} else if p.Pause && migrationContext.ThrottleCommandedByUser == 0 {
+					log.Info("pause", migrationContext.ThrottleCommandedByUser)
+					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
+					// case "throttle", "pause", "suspend":
+					// {
+					// 	atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
+					// 	fmt.Fprintf(writer, throttleHint)
+					// 	return ForcePrintStatusAndHintRule, nil
+					// }
+					// case "no-throttle", "unthrottle", "resume", "continue":
+					// {
+					// 	atomic.StoreInt64(&this.migrationContext.ThrottleCommandedByUser, 0)
+					// 	return ForcePrintStatusAndHintRule, nil
+					// }
+				} else if !p.Pause && migrationContext.ThrottleCommandedByUser == 1 {
+					log.Info("resume", migrationContext.ThrottleCommandedByUser)
+					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
+				}
 			}
 		}
 	}
 
-	migrator := logic.NewMigrator(migrationContext)
-
 	migrator.Log = bytes.NewBufferString("")
 
-	// go f(bufio.NewReader(os.Stdout))
 	go f(bufio.NewReader(migrator.Log))
 
+	// ghostlog.SetLevel(ghostlog.INFO)
+	ghostlog.SetLevel(ghostlog.ERROR)
+
 	if err := migrator.Migrate(); err != nil {
+		log.Error(err)
 		done = true
 		migrator.ExecOnFailureHook()
-		log.Error(err)
 		s.AppendErrorMessage(err.Error())
 	}
 
