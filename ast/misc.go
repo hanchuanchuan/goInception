@@ -876,13 +876,27 @@ func (n *TableOptimizerHint) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-// ShowOscStmt is a statement to provide information about databases, tables, columns and so on.
-// See https://dev.mysql.com/doc/refman/5.7/en/show.html
+type OscOptionType int
+
+const (
+	// 显示osc进程信息
+	OscOptionNone OscOptionType = iota
+	// kill进程
+	OscOptionKill
+	// 暂停进程(仅gh-ost支持)
+	OscOptionPause
+	// 恢复进程(仅gh-ost支持)
+	OscOptionResume
+)
+
+// ShowOscStmt pt-osc和gh-ost的语法解析
 type ShowOscStmt struct {
 	stmtNode
 
-	Kill    bool
 	Sqlsha1 string
+
+	// Kill bool
+	Tp OscOptionType
 }
 
 // Accept implements Node Accept interface.
