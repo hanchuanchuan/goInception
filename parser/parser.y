@@ -281,6 +281,8 @@ import (
 	osc "OSC"
 	osc_percent "OSC_PERCENT"
 	stop "STOP"
+	pause "PAUSE"
+	resume "RESUME"
 
 	committed	"COMMITTED"
 	compact		"COMPACT"
@@ -1431,15 +1433,43 @@ InceptionStmt:
 |	"INCEPTION" "KILL" "OSC" AuthString
 	{
 		$$ = &ast.ShowOscStmt{
-			Kill: true,
 			Sqlsha1: $4.(string),
+			Tp: ast.OscOptionKill,
 		}
 	}
 |	"INCEPTION" "STOP" "ALTER" AuthString
 	{
 		$$ = &ast.ShowOscStmt{
-			Kill: true,
 			Sqlsha1: $4.(string),
+			Tp: ast.OscOptionKill,
+		}
+	}
+|	"INCEPTION" "PAUSE" "OSC" AuthString
+	{
+		$$ = &ast.ShowOscStmt{
+			Sqlsha1: $4.(string),
+			Tp: ast.OscOptionPause,
+		}
+	}
+|	"INCEPTION" "PAUSE" "ALTER" AuthString
+	{
+		$$ = &ast.ShowOscStmt{
+			Sqlsha1: $4.(string),
+			Tp: ast.OscOptionPause,
+		}
+	}
+|	"INCEPTION" "RESUME" "OSC" AuthString
+	{
+		$$ = &ast.ShowOscStmt{
+			Sqlsha1: $4.(string),
+			Tp: ast.OscOptionResume,
+		}
+	}
+|	"INCEPTION" "RESUME" "ALTER" AuthString
+	{
+		$$ = &ast.ShowOscStmt{
+			Sqlsha1: $4.(string),
+			Tp: ast.OscOptionResume,
 		}
 	}
 |	"INCEPTION" "SHOW" ShowTargetFilterable ShowLikeOrWhereOpt
@@ -3063,7 +3093,7 @@ identifier | UnReservedKeyword | NotKeywordToken | TiDBKeyword
 
 UnReservedKeyword:
  "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CLEANUP" | "CHARSET"
-| "COLUMNS" | "COMMIT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "STOP" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
+| "COLUMNS" | "COMMIT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "STOP" | "PAUSE" | "RESUME" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
 | "DYNAMIC"| "END" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FORMAT" | "FULL" |"GLOBAL"
 | "HASH" | "HOUR" | "LESS" | "LOCAL" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REDUNDANT"
 | "ROLLBACK" | "SESSION" | "SIGNED" | "SNAPSHOT" | "START" | "STATUS" | "SUBPARTITIONS" | "SUBPARTITION" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken

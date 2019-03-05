@@ -490,15 +490,11 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	f := func(reader *bufio.Reader) {
 		statusTick := time.Tick(100 * time.Millisecond)
 		for range statusTick {
-			if done {
-				break
-			}
 			for {
 				line, err2 := reader.ReadString('\n')
 				if err2 != nil || io.EOF == err2 || line == "" {
 					break
 				}
-				// log.Warning(line)
 				buf.WriteString(line)
 				buf.WriteString("\n")
 
@@ -507,27 +503,17 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 					migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
 						p.Percent, p.RemainTime)
 
-					// s.AppendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
-					// 	p.Percent, p.RemainTime))
 					done = true
 				} else if p.Pause && migrationContext.ThrottleCommandedByUser == 0 {
-					log.Info("pause", migrationContext.ThrottleCommandedByUser)
+
 					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
-					// case "throttle", "pause", "suspend":
-					// {
-					// 	atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
-					// 	fmt.Fprintf(writer, throttleHint)
-					// 	return ForcePrintStatusAndHintRule, nil
-					// }
-					// case "no-throttle", "unthrottle", "resume", "continue":
-					// {
-					// 	atomic.StoreInt64(&this.migrationContext.ThrottleCommandedByUser, 0)
-					// 	return ForcePrintStatusAndHintRule, nil
-					// }
 				} else if !p.Pause && migrationContext.ThrottleCommandedByUser == 1 {
-					log.Info("resume", migrationContext.ThrottleCommandedByUser)
+
 					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
 				}
+			}
+			if done {
+				break
 			}
 		}
 	}
@@ -542,7 +528,6 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	if err := migrator.Migrate(); err != nil {
 		log.Error(err)
 		done = true
-		migrator.ExecOnFailureHook()
 		s.AppendErrorMessage(err.Error())
 	}
 

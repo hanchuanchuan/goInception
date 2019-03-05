@@ -46,7 +46,7 @@ osc_bin_dir = "/usr/local/bin"
 
 [ghost]
 
-# ghost_on = true
+ghost_on = true
 ghost_allow_on_master = true
 ghost_assume_rbr = true
 ghost_chunk_size = 1000

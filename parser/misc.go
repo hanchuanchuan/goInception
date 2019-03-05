@@ -189,10 +189,6 @@ var tokenMap = map[string]int{
 	"COMMENT":        comment,
 	"COMMIT":         commit,
 
-	"INCEPTION":              inception,
-	"INCEPTION_MAGIC_START":  inception_magic_start,
-	"INCEPTION_MAGIC_COMMIT": inception_magic_commit,
-
 	"COMMITTED":                committed,
 	"COMPACT":                  compact,
 	"COMPRESSED":               compressed,
@@ -524,9 +520,15 @@ var tokenMap = map[string]int{
 	"YEAR_MONTH":               yearMonth,
 	"ZEROFILL":                 zerofill,
 
+	"INCEPTION":              inception,
+	"INCEPTION_MAGIC_START":  inception_magic_start,
+	"INCEPTION_MAGIC_COMMIT": inception_magic_commit,
+
 	"OSC":         osc,
 	"OSC_PERCENT": osc_percent,
 	"STOP":        stop,
+	"PAUSE":       pause,
+	"RESUME":      resume,
 }
 
 // See https://dev.mysql.com/doc/refman/5.7/en/function-resolution.html for details

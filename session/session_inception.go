@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"io"
 	"math"
 	"reflect"
 	"regexp"
@@ -543,9 +544,14 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 		s.executeInceptionShow(currentSql)
 
 	case *ast.ShowOscStmt:
-		if node.Kill {
+		switch node.Tp {
+		case ast.OscOptionKill:
 			return s.executeLocalOscKill(node)
-		} else {
+		case ast.OscOptionPause:
+			return s.executeLocalOscPause(node)
+		case ast.OscOptionResume:
+			return s.executeLocalOscResume(node)
+		default:
 			return s.executeLocalShowOscProcesslist(node)
 		}
 	default:
@@ -3240,11 +3246,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			return nil, errors.New("无效参数")
 		}
 
-		cnf := config.GetGlobalConfig()
-
-		t := reflect.TypeOf(cnf.Inc)
-		values := reflect.ValueOf(&(cnf.Inc)).Elem()
-
 		var value *ast.ValueExpr
 
 		switch expr := v.Value.(type) {
@@ -3259,32 +3260,83 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			return nil, errors.New("参数值无效")
 		}
 
-		found := false
-		for i := 0; i < values.NumField(); i++ {
-			if values.Field(i).CanInterface() { //判断是否为可导出字段
-				if k := t.Field(i).Tag.Get("json"); strings.EqualFold(k, v.Name) {
-					err := s.setConfigValue(v.Name, values.Field(i), &(value.Datum))
-					if err != nil {
+		cnf := config.GetGlobalConfig()
+
+		// t := reflect.TypeOf(cnf.Inc)
+		// values := reflect.ValueOf(&cnf.Inc).Elem()
+
+		err := s.setVariableValue(reflect.TypeOf(cnf.Inc), reflect.ValueOf(&cnf.Inc).Elem(), v.Name, value)
+		if err != nil {
+			if err == io.EOF {
+				err := s.setVariableValue(reflect.TypeOf(cnf.Osc), reflect.ValueOf(&cnf.Osc).Elem(), v.Name, value)
+				if err != nil {
+					if err == io.EOF {
+						err := s.setVariableValue(reflect.TypeOf(cnf.Ghost), reflect.ValueOf(&cnf.Ghost).Elem(), v.Name, value)
+						if err != nil {
+							if err == io.EOF {
+								return nil, errors.New("无效参数")
+							} else {
+								return nil, err
+							}
+						}
+					} else {
 						return nil, err
 					}
-					found = true
-					break
-				} else if strings.EqualFold(t.Field(i).Name, v.Name) {
-					err := s.setConfigValue(v.Name, values.Field(i), &(value.Datum))
-					if err != nil {
-						return nil, err
-					}
-					found = true
-					break
 				}
+			} else {
+				return nil, err
 			}
 		}
-		if !found {
-			return nil, errors.New("无效参数")
-		}
+
+		// t := reflect.TypeOf(cnf.Inc)
+		// values := reflect.ValueOf(&(cnf.Inc)).Elem()
+
+		// found := false
+		// for i := 0; i < values.NumField(); i++ {
+		// 	if values.Field(i).CanInterface() { //判断是否为可导出字段
+		// 		if k := t.Field(i).Tag.Get("json"); strings.EqualFold(k, v.Name) ||
+		// 			strings.EqualFold(t.Field(i).Name, v.Name) {
+		// 			err := s.setConfigValue(v.Name, values.Field(i), &(value.Datum))
+		// 			if err != nil {
+		// 				return nil, err
+		// 			}
+		// 			found = true
+		// 			break
+		// 		}
+		// 	}
+		// }
+		// if !found {
+		// 	return nil, errors.New("无效参数")
+		// }
 	}
 
 	return nil, nil
+}
+
+func (s *session) setVariableValue(t reflect.Type, values reflect.Value, name string, value *ast.ValueExpr) error {
+
+	// t := reflect.TypeOf(*(obj))
+	// // values := reflect.ValueOf(obj).Elem()
+	// values := reflect.ValueOf(obj).Elem()
+
+	found := false
+	for i := 0; i < values.NumField(); i++ {
+		if values.Field(i).CanInterface() { //判断是否为可导出字段
+			if k := t.Field(i).Tag.Get("toml"); strings.EqualFold(k, name) ||
+				strings.EqualFold(t.Field(i).Name, name) {
+				err := s.setConfigValue(name, values.Field(i), &(value.Datum))
+				if err != nil {
+					return err
+				}
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return io.EOF
+	}
+	return nil
 }
 
 func (s *session) checkUInt64SystemVar(name, value string, min, max uint64) (string, error) {
@@ -3381,14 +3433,10 @@ func (s *session) setConfigValue(name string, field reflect.Value, value *types.
 	return nil
 }
 
-func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet, error) {
+func (s *session) showVariables(node *ast.ShowStmt, obj interface{}, res *VariableSets) {
 
-	inc := config.GetGlobalConfig().Inc
-
-	t := reflect.TypeOf(inc)
-	v := reflect.ValueOf(inc)
-
-	res := NewVariableSets(v.NumField())
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
 
 	var (
 		like     string
@@ -3408,7 +3456,7 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).CanInterface() { //判断是否为可导出字段
 			if len(like) == 0 {
-				if k := t.Field(i).Tag.Get("json"); k != "" {
+				if k := t.Field(i).Tag.Get("toml"); k != "" {
 					if k == "backup_password" {
 						p := auth.EncodePassword(
 							fmt.Sprintf("%v", v.Field(i).Interface()))
@@ -3418,7 +3466,7 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 					}
 				}
 			} else {
-				if k := t.Field(i).Tag.Get("json"); k != "" {
+				if k := t.Field(i).Tag.Get("toml"); k != "" {
 					match := stringutil.DoMatch(k, patChars, patTypes)
 					if match && !node.Pattern.Not {
 						if k == "backup_password" {
@@ -3441,6 +3489,18 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 			}
 		}
 	}
+}
+
+func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet, error) {
+
+	// inc := config.GetGlobalConfig().Inc
+
+	// v := reflect.ValueOf(inc)
+
+	res := NewVariableSets(120)
+	s.showVariables(node, s.Inc, res)
+	s.showVariables(node, s.Osc, res)
+	s.showVariables(node, s.Ghost, res)
 
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 
@@ -3536,6 +3596,38 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]ast.RecordSet, e
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 		} else {
 			pi.Killed = true
+		}
+	} else {
+		return nil, errors.New("osc process not found")
+	}
+
+	return nil, nil
+}
+
+func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+	pl := s.sessionManager.ShowOscProcessList()
+
+	if pi, ok := pl[node.Sqlsha1]; ok {
+		if pi.Pause {
+			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
+		} else {
+			pi.Pause = true
+		}
+	} else {
+		return nil, errors.New("osc process not found")
+	}
+
+	return nil, nil
+}
+
+func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+	pl := s.sessionManager.ShowOscProcessList()
+
+	if pi, ok := pl[node.Sqlsha1]; ok {
+		if pi.Pause {
+			pi.Pause = false
+		} else {
+			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
 		}
 	} else {
 		return nil, errors.New("osc process not found")

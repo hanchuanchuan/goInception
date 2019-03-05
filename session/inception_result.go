@@ -321,7 +321,7 @@ func NewVariableSets(count int) *VariableSets {
 	t := &VariableSets{}
 
 	rc := &recordSet{
-		data:       make([][]types.Datum, count),
+		data:       make([][]types.Datum, 0, count),
 		count:      0,
 		cursor:     0,
 		fieldCount: 0,
@@ -342,8 +342,8 @@ func (s *VariableSets) Append(name string, value string) {
 	row[0].SetString(name)
 	row[1].SetString(value)
 
-	// s.rc.data = append(s.rc.data, row)
-	s.rc.data[s.rc.count] = row
+	s.rc.data = append(s.rc.data, row)
+	// s.rc.data[s.rc.count] = row
 	s.rc.count++
 }
 
