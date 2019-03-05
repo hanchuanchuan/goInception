@@ -1,6 +1,18 @@
 # goInception 更新日志
 
 
+## [v0.4-beta] - 2019-3-5
+### New Features
+* 添加gh-ost工具支持
+  - 无需安装gh-ost,功能内置(v1.0.48)  
+  - 进程列表 ```inception get osc processlist```
+  - 指定进程信息 ```inception get osc_percent 'sqlsha1'```
+  - 进程终止 ```inception stop alter 'sqlsha1'``` (同义词```inception kill osc 'sqlsha1'```)
+  - 进程暂停 ```inception pause alter 'sqlsha1'``` (同义词```inception pause osc 'sqlsha1'```)
+  - 进程恢复 ```inception resume alter 'sqlsha1'``` (同义词```inception resume osc 'sqlsha1'```)
+  - 兼容gh-ost参数 ```inception show variables like 'ghost%'```
+
+
 ## [v0.3-beta] - 2019-2-13
 ### New Features
 * 添加pt-osc工具支持
