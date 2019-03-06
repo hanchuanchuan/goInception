@@ -38,3 +38,9 @@ go build -o goInception tidb-server/main.go
 - [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)
 
+#### 交流
+
+QQ群 **499262190**
+
+*(通用问题建议提issue以便于记录及帮助他人)*
+
