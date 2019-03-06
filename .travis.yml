@@ -3,11 +3,18 @@ language: go
 go_import_path: github.com/hanchuanchuan/goInception
 
 go:
-  - "1.11"
+  - "1.11.3"
 
 env:
-    #- TRAVIS_COVERAGE=0 GO111MODULE=on SHORT=1
-    - TRAVIS_COVERAGE=0 GO111MODULE=auto SHORT=1
+    - TRAVIS_COVERAGE=0 SHORT=1
+    - TRAVIS_COVERAGE=1 SHORT=1
+
+# Run coverage tests.
+matrix:
+  fast_finish: true
+  allow_failures:
+    - go: "1.11.3"
+      env: TRAVIS_COVERAGE=1
 
 before_install:
   # create /logs/unit-test for unit test.
@@ -18,4 +25,4 @@ before_install:
   - sudo chmod +x cmd/explaintest/run-tests.sh
 script:
   # - rm -f go.sum
-  - make dev
+  - make dev upload-coverage

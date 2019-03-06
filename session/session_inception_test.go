@@ -639,7 +639,8 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 
 	sql = "create table t1 (c1 int primary key);alter table t1 add column `a ` int ;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_IDENT, "a "))
+		session.NewErr(session.ER_INVALID_IDENT, "a "),
+		session.NewErr(session.ER_WRONG_COLUMN_NAME, "a "))
 
 	sql = "create table t1 (c1 int primary key);alter table t1 add column c2 int on update current_timestamp;"
 	s.testErrorCode(c, sql,
@@ -1040,7 +1041,7 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	res := makeSql(tk, "delete from t1 where c1 = 1;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.\nColumn 'c1' not existed.")
+	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
 
 	// res = makeSql(tk, "create table t1(id int);delete from t1 where c1 = 1;")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -1082,7 +1083,7 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 		delete from t3 where id1 =1;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 'test_inc.t3' doesn't exist.\nColumn 'id1' not existed.")
+	c.Assert(row[4], Equals, "Table 'test_inc.t3' doesn't exist.")
 
 	res = makeSql(tk, `create table t1(id int primary key,c1 int);
 		create table t2(id int primary key,c1 int,c2 int);
@@ -1096,7 +1097,8 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 		delete t2 from t1 inner join t2 on t1.id=t2.id2 where c11=1;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
+	// c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
+	c.Assert(row[4], Equals, "Column 't2.id2' not existed.")
 
 	// 受影响行数
 	res = makeSql(tk, "create table t1(id int,c1 int);delete from t1 where id = 1;")
