@@ -206,6 +206,7 @@ func (s *session) Parser() {
 	logSync, err := b.StartSync(startPosition)
 	if err != nil {
 		log.Infof("Start sync error: %v\n", errors.ErrorStack(err))
+		s.AppendErrorMessage(err.Error())
 		return
 	}
 
@@ -215,6 +216,7 @@ func (s *session) Parser() {
 		e, err := logSync.GetEvent(context.Background())
 		if err != nil {
 			log.Infof("Get event error: %v\n", errors.ErrorStack(err))
+			s.AppendErrorMessage(err.Error())
 			break
 		}
 
@@ -234,7 +236,9 @@ func (s *session) Parser() {
 			continue
 		}
 
-		if e.Header.EventType == replication.TABLE_MAP_EVENT {
+		switch e.Header.EventType {
+		case replication.TABLE_MAP_EVENT:
+
 			if event, ok := e.Event.(*replication.TableMapEvent); ok {
 				if !strings.EqualFold(string(event.Schema), record.TableInfo.Schema) ||
 					!strings.EqualFold(string(event.Table), record.TableInfo.Name) {
@@ -242,12 +246,14 @@ func (s *session) Parser() {
 				}
 			}
 
-		} else if e.Header.EventType == replication.QUERY_EVENT {
+		case replication.QUERY_EVENT:
+
 			if event, ok := e.Event.(*replication.QueryEvent); ok {
 				currentThreadID = event.SlaveProxyID
 			}
 
-		} else if e.Header.EventType == replication.WRITE_ROWS_EVENTv2 {
+		case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
+
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
 					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
@@ -256,11 +262,12 @@ func (s *session) Parser() {
 				if record.ThreadId != currentThreadID {
 					goto ENDCHECK
 				}
-				// log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateDeleteSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
-		} else if e.Header.EventType == replication.DELETE_ROWS_EVENTv2 {
+
+		case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
+
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
 					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
@@ -270,11 +277,12 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				// log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateInsertSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
-		} else if e.Header.EventType == replication.UPDATE_ROWS_EVENTv2 {
+
+		case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
+
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
 					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
@@ -284,10 +292,10 @@ func (s *session) Parser() {
 					goto ENDCHECK
 				}
 
-				// log.Infof("%#v", record.TableInfo.Fields)
 				_, err = s.generateUpdateSql(record.TableInfo, event, e)
 				s.checkError(err)
 			}
+
 		}
 
 	ENDCHECK:

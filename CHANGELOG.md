@@ -1,10 +1,17 @@
 # goInception 更新日志
 
 
+## [v0.4.1-beta] - 2019-3-6
+### Update
+* 兼容mariadb数据库
+  - 添加mariadb的binlog解析支持
+  - 优化备份失败时的返回信息
+
+
 ## [v0.4-beta] - 2019-3-5
 ### New Features
 * 添加gh-ost工具支持
-  - 无需安装gh-ost,功能内置(v1.0.48)  
+  - 无需安装gh-ost,功能内置(v1.0.48)
   - 进程列表 ```inception get osc processlist```
   - 指定进程信息 ```inception get osc_percent 'sqlsha1'```
   - 进程终止 ```inception stop alter 'sqlsha1'``` (同义词```inception kill osc 'sqlsha1'```)
