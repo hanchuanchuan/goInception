@@ -21,7 +21,7 @@ else
 	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3
 endif
 
-OVERALLS  := CGO_ENABLED=1 overalls
+OVERALLS  := CGO_ENABLED=1 GO111MODULE=on overalls
 GOVERALLS := goveralls
 
 ARCH      := "`uname -s`"
@@ -149,9 +149,11 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 	@echo "Running in TRAVIS_COVERAGE mode."
 	@export log_level=error; \
 	go get github.com/go-playground/overalls
-	go get github.com/mattn/goveralls
-	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
-	$(GOVERALLS) -service=travis-ci -coverprofile=overalls.coverprofile || { $(GOFAIL_DISABLE); exit 1; }
+	# go get github.com/mattn/goveralls
+	# $(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
+	# $(GOVERALLS) -service=travis-ci -coverprofile=overalls.coverprofile || { $(GOFAIL_DISABLE); exit 1; }
+
+	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' -concurrency=1 || { $(GOFAIL_DISABLE); exit 1; }
 else
 	@echo "Running in native mode."
 	@export log_level=error; \
