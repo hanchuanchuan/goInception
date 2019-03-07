@@ -18,6 +18,12 @@
 package session
 
 const (
+	DBTypeMysql = iota
+	DBTypeMariaDB
+	DBTypeTiDB
+)
+
+const (
 	StageOK byte = iota
 	StageCheck
 	StageExec

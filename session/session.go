@@ -195,6 +195,11 @@ type session struct {
 	TotalChangeRows int
 	BackupTotalRows int
 
+	// 数据库类型
+	DBType int
+	// 数据库版本号
+	DBVersion int
+
 	// // osc进程解析通道
 	// chanOsc chan *ChanOscData
 }
