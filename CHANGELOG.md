@@ -3,8 +3,8 @@
 
 ## [v0.4.1-beta] - 2019-3-6
 ### Update
-* 兼容mariadb数据库
-  - 添加mariadb的binlog解析支持
+* 兼容mariadb数据库(v5.5.60)
+  - 添加mariadb的binlog解析支持(测试版本**v5.5.60**,v10版本由于binlog格式改变,暂无法解析thread_id)
   - 优化备份失败时的返回信息
 
 
