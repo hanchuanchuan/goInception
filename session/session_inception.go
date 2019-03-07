@@ -367,6 +367,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
 					}
+
+					s.mysqlServerVersion()
+
 					continue
 				case *ast.InceptionCommitStmt:
 
@@ -1120,8 +1123,8 @@ func (s *session) checkBinlogFormatIsRow() bool {
 	return format == "ROW"
 }
 
-func (s *session) mysqlServerVersion() int {
-	log.Debug("checkBinlogFormatIsRow")
+func (s *session) mysqlServerVersion() {
+	log.Info("checkBinlogFormatIsRow")
 
 	var value string
 	sql := "select @@version;"
@@ -1141,6 +1144,9 @@ func (s *session) mysqlServerVersion() int {
 		}
 	}
 
+	if strings.Contains(strings.ToLower(value), "mariadb") {
+		s.DBType = DBTypeMariaDB
+	}
 	versionStr := strings.Split(value, "-")[0]
 	versionSeg := strings.Split(versionStr, ".")
 	if len(versionSeg) == 3 {
@@ -1149,9 +1155,9 @@ func (s *session) mysqlServerVersion() int {
 		if err != nil {
 			s.AppendErrorMessage(err.Error())
 		}
-		return version
+		s.DBVersion = version
 	}
-	return 50700
+	log.Debug(s.DBType, "---", s.DBVersion)
 }
 
 func (s *session) fetchThreadID() (threadId uint32) {
@@ -2841,7 +2847,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
-			maxLength := foundField.GetDataBytes(s.mysqlServerVersion())
+			maxLength := foundField.GetDataBytes(s.DBVersion)
 
 			if col.Length != types.UnspecifiedLength {
 				if !strings.Contains(strings.ToLower(foundField.Type), "blob") &&
@@ -2883,7 +2889,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	}
 
 	if !isBlobColumn {
-		mysqlVersion := s.mysqlServerVersion()
+		mysqlVersion := s.DBVersion
 		// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
 		if mysqlVersion < 50700 && keyMaxLen > MaxKeyLength {
 			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)

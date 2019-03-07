@@ -176,6 +176,7 @@ const (
 	ER_PRIMARY_CANT_HAVE_NULL
 	ErrCantRemoveAllFields
 	ErrNotFoundTableInfo
+	ErrNotFoundThreadId
 	ER_ERROR_LAST
 )
 
@@ -322,7 +323,9 @@ var MyErrors = map[int]string{
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
-	ER_ERROR_LAST:                          "TheLastError,ByeBye",
+	ErrNotFoundThreadId:                    "MariaDB v%d not supported yet,please confirm that the rollback sql is correct",
+	// ErrNotFoundThreadId:                    "MariaDB v%d 暂不支持,请注意确认回滚语句是否正确",
+	ER_ERROR_LAST: "TheLastError,ByeBye",
 }
 
 func GetErrorLevel(errorNo int) uint8 {
@@ -369,6 +372,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_CANT_SET_CHARSET,
 		ER_CANT_SET_COLLATION,
 		ErrNotFoundTableInfo,
+		ErrNotFoundThreadId,
 		ER_CHANGE_COLUMN_TYPE:
 		return 1
 

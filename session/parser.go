@@ -236,9 +236,11 @@ func (s *session) Parser() {
 			continue
 		}
 
+		log.Debug(e.Header.EventType)
+		log.Debug("%#v", e.Event)
+
 		switch e.Header.EventType {
 		case replication.TABLE_MAP_EVENT:
-
 			if event, ok := e.Event.(*replication.TableMapEvent); ok {
 				if !strings.EqualFold(string(event.Schema), record.TableInfo.Schema) ||
 					!strings.EqualFold(string(event.Table), record.TableInfo.Name) {
@@ -247,55 +249,40 @@ func (s *session) Parser() {
 			}
 
 		case replication.QUERY_EVENT:
-
 			if event, ok := e.Event.(*replication.QueryEvent); ok {
 				currentThreadID = event.SlaveProxyID
 			}
 
 		case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
-
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
-				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
-					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
+				if s.checkFilter(event, record, currentThreadID) {
+					_, err = s.generateDeleteSql(record.TableInfo, event, e)
+					s.checkError(err)
+				} else {
 					goto ENDCHECK
 				}
-				if record.ThreadId != currentThreadID {
-					goto ENDCHECK
-				}
-				_, err = s.generateDeleteSql(record.TableInfo, event, e)
-				s.checkError(err)
 			}
 
 		case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
 
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
-				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
-					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
+				if s.checkFilter(event, record, currentThreadID) {
+					_, err = s.generateInsertSql(record.TableInfo, event, e)
+					s.checkError(err)
+				} else {
 					goto ENDCHECK
 				}
-				if record.ThreadId != currentThreadID {
-					goto ENDCHECK
-				}
-
-				_, err = s.generateInsertSql(record.TableInfo, event, e)
-				s.checkError(err)
 			}
 
 		case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
-
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
-				if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
-					!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
+				if s.checkFilter(event, record, currentThreadID) {
+					_, err = s.generateUpdateSql(record.TableInfo, event, e)
+					s.checkError(err)
+				} else {
 					goto ENDCHECK
 				}
-				if record.ThreadId != currentThreadID {
-					goto ENDCHECK
-				}
-
-				_, err = s.generateUpdateSql(record.TableInfo, event, e)
-				s.checkError(err)
 			}
-
 		}
 
 	ENDCHECK:
@@ -317,6 +304,25 @@ func (s *session) Parser() {
 			}
 		}
 	}
+}
+
+// checkFilter 检查限制条件
+// 库表正确,线程号正确
+// 由于mariadb v10版本后无法获取thread id,所以采用模糊方式解析binlog,并添加警告
+func (s *session) checkFilter(event *replication.RowsEvent,
+	record *Record, currentThreadID uint32) bool {
+	if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
+		!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
+		return false
+	}
+
+	if currentThreadID == 0 && s.DBType == DBTypeMariaDB {
+		record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+		return true
+	} else if record.ThreadId != currentThreadID {
+		return false
+	}
+	return true
 }
 
 // 解析的sql写入缓存,并定期入库
