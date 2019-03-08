@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"fmt"
-	"io"
+	// "io"
 	"math"
 	"reflect"
 	"regexp"
@@ -3330,56 +3330,36 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 
 		// t := reflect.TypeOf(cnf.Inc)
 		// values := reflect.ValueOf(&cnf.Inc).Elem()
+		prefix := strings.ToLower(v.Name)
+		if strings.Contains(prefix, "_") {
+			prefix = strings.Split(prefix, "_")[0]
+		}
 
-		err := s.setVariableValue(reflect.TypeOf(cnf.Inc), reflect.ValueOf(&cnf.Inc).Elem(), v.Name, value)
-		if err != nil {
-			if err == io.EOF {
-				err := s.setVariableValue(reflect.TypeOf(cnf.Osc), reflect.ValueOf(&cnf.Osc).Elem(), v.Name, value)
-				if err != nil {
-					if err == io.EOF {
-						err := s.setVariableValue(reflect.TypeOf(cnf.Ghost), reflect.ValueOf(&cnf.Ghost).Elem(), v.Name, value)
-						if err != nil {
-							if err == io.EOF {
-								return nil, errors.New("无效参数")
-							} else {
-								return nil, err
-							}
-						}
-					} else {
-						return nil, err
-					}
-				}
-			} else {
+		var err error
+		switch prefix {
+		case "osc":
+			err = s.setVariableValue(reflect.TypeOf(cnf.Osc), reflect.ValueOf(&cnf.Osc).Elem(), v.Name, value)
+			if err != nil {
+				return nil, err
+			}
+		case "ghost":
+			err = s.setVariableValue(reflect.TypeOf(cnf.Ghost), reflect.ValueOf(&cnf.Ghost).Elem(), v.Name, value)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			err = s.setVariableValue(reflect.TypeOf(cnf.Inc), reflect.ValueOf(&cnf.Inc).Elem(), v.Name, value)
+			if err != nil {
 				return nil, err
 			}
 		}
-
-		// t := reflect.TypeOf(cnf.Inc)
-		// values := reflect.ValueOf(&(cnf.Inc)).Elem()
-
-		// found := false
-		// for i := 0; i < values.NumField(); i++ {
-		// 	if values.Field(i).CanInterface() { //判断是否为可导出字段
-		// 		if k := t.Field(i).Tag.Get("json"); strings.EqualFold(k, v.Name) ||
-		// 			strings.EqualFold(t.Field(i).Name, v.Name) {
-		// 			err := s.setConfigValue(v.Name, values.Field(i), &(value.Datum))
-		// 			if err != nil {
-		// 				return nil, err
-		// 			}
-		// 			found = true
-		// 			break
-		// 		}
-		// 	}
-		// }
-		// if !found {
-		// 	return nil, errors.New("无效参数")
-		// }
 	}
 
 	return nil, nil
 }
 
-func (s *session) setVariableValue(t reflect.Type, values reflect.Value, name string, value *ast.ValueExpr) error {
+func (s *session) setVariableValue(t reflect.Type, values reflect.Value,
+	name string, value *ast.ValueExpr) error {
 
 	// t := reflect.TypeOf(*(obj))
 	// // values := reflect.ValueOf(obj).Elem()
@@ -3400,7 +3380,7 @@ func (s *session) setVariableValue(t reflect.Type, values reflect.Value, name st
 		}
 	}
 	if !found {
-		return io.EOF
+		return errors.New("无效参数")
 	}
 	return nil
 }

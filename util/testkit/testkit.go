@@ -211,6 +211,15 @@ func (tk *TestKit) MustExec(sql string, args ...interface{}) {
 	}
 }
 
+// MustExec executes a sql statement and asserts nil error.
+func (tk *TestKit) MustExecInc(sql string, args ...interface{}) {
+	res, err := tk.ExecInc(sql, args...)
+	tk.c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
+	if res != nil {
+		tk.c.Assert(res.Close(), check.IsNil)
+	}
+}
+
 // MustQuery query the statements and returns result rows.
 // If expected result is set it asserts the query result equals expected result.
 func (tk *TestKit) MustQuery(sql string, args ...interface{}) *Result {
