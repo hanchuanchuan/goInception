@@ -72,6 +72,9 @@ type sourceOptions struct {
 	ignoreWarnings bool
 
 	remoteBackup bool
+
+	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
+	middlewareExtend string
 }
 
 // ExplainInfo 执行计划信息
@@ -368,7 +371,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						return s.recordSets.Rows(), nil
 					}
 
-					s.mysqlServerVersion()
+					// s.mysqlServerVersion()
 
 					continue
 				case *ast.InceptionCommitStmt:
@@ -639,8 +642,10 @@ func (s *session) executeCommit() {
 			}
 		}
 
-		// 解析binlog生成回滚语句
-		s.Parser()
+		if s.opt.middlewareExtend == "" {
+			// 解析binlog生成回滚语句
+			s.Parser()
+		}
 	}
 }
 
@@ -1058,7 +1063,10 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 
 	if s.opt.backup {
 		masterStatus := s.mysqlFetchMasterBinlogPosition()
-		if masterStatus != nil {
+		if masterStatus == nil {
+			s.AppendErrorNo(ErrNotFoundMasterStatus)
+			return
+		} else {
 			record.StartFile = masterStatus.File
 			record.StartPosition = masterStatus.Position
 		}
@@ -1068,7 +1076,10 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 
 	if s.opt.backup {
 		masterStatus := s.mysqlFetchMasterBinlogPosition()
-		if masterStatus != nil {
+		if masterStatus == nil {
+			s.AppendErrorNo(ErrNotFoundMasterStatus)
+			return
+		} else {
 			record.EndFile = masterStatus.File
 			record.EndPosition = masterStatus.Position
 
@@ -1086,16 +1097,32 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	log.Debug("mysqlFetchMasterBinlogPosition")
 
-	r := MasterStatus{}
-	if err := s.db.Raw("SHOW MASTER STATUS").Scan(&r).Error; err != nil {
+	sql := "SHOW MASTER STATUS;"
+	if s.opt.middlewareExtend != "" {
+		sql = s.opt.middlewareExtend + sql
+	}
+
+	var r MasterStatus
+	rows, err := s.db.Raw(sql).Rows()
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
-		log.Error(err)
+	} else {
+		for rows.Next() {
+			s.db.ScanRows(rows, &r)
+			return &r
+		}
 	}
-	return &r
+
+	log.Info(sql)
+	log.Infof("%#v", r)
+	return nil
 }
 
 func (s *session) checkBinlogFormatIsRow() bool {
@@ -1106,7 +1133,10 @@ func (s *session) checkBinlogFormatIsRow() bool {
 	var format string
 
 	rows, err := s.db.Raw(sql).Rows()
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
+
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1124,13 +1154,19 @@ func (s *session) checkBinlogFormatIsRow() bool {
 }
 
 func (s *session) mysqlServerVersion() {
-	log.Info("checkBinlogFormatIsRow")
+	log.Debug("mysqlServerVersion")
+
+	if s.DBVersion > 0 {
+		return
+	}
 
 	var value string
 	sql := "select @@version;"
 
 	rows, err := s.db.Raw(sql).Rows()
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
 
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -1156,15 +1192,25 @@ func (s *session) mysqlServerVersion() {
 			s.AppendErrorMessage(err.Error())
 		}
 		s.DBVersion = version
+	} else {
+		s.AppendErrorMessage(fmt.Sprintf("无法解析版本号:%s", value))
 	}
+
 	log.Debug(s.DBType, "---", s.DBVersion)
 }
 
 func (s *session) fetchThreadID() (threadId uint32) {
 	// log.Debug("fetchThreadID")
 
-	rows, err := s.db.Raw("select connection_id()").Rows()
-	defer rows.Close()
+	sql := "select connection_id();"
+	if s.opt.middlewareExtend != "" {
+		sql = s.opt.middlewareExtend + sql
+	}
+
+	rows, err := s.db.Raw(sql).Rows()
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1174,7 +1220,6 @@ func (s *session) fetchThreadID() (threadId uint32) {
 	} else {
 		for rows.Next() {
 			rows.Scan(&threadId)
-			return
 		}
 	}
 	return
@@ -1229,7 +1274,9 @@ func (s *session) checkBinlogIsOn() bool {
 	var format string
 
 	rows, err := s.db.Raw(sql).Rows()
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1292,6 +1339,7 @@ func (s *session) parseOptions(sql string) {
 		backup:         viper.GetBool("backup"),
 		ignoreWarnings: viper.GetBool("ignoreWarnings"),
 		// remoteBackup:   viper.GetBool("remotebackup"),
+		middlewareExtend: viper.GetString("middlewareExtend"),
 	}
 
 	if s.opt.check {
@@ -1306,18 +1354,28 @@ func (s *session) parseOptions(sql string) {
 		return
 	}
 
-	addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
-		s.opt.user, s.opt.password, s.opt.host, s.opt.port)
-	db, err := gorm.Open("mysql", addr)
+	var addr string
+	if s.opt.middlewareExtend == "" {
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4M",
+			s.opt.user, s.opt.password, s.opt.host, s.opt.port)
+	} else {
+		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
+			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
 
-	// 禁用日志记录器，不显示任何日志
-	db.LogMode(false)
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=64M",
+			s.opt.user, s.opt.password, s.opt.host, s.opt.port)
+	}
+
+	db, err := gorm.Open("mysql", addr)
 
 	if err != nil {
 		log.Error(err)
 		s.AppendErrorMessage(err.Error())
 		return
 	}
+
+	// 禁用日志记录器，不显示任何日志
+	db.LogMode(false)
 
 	s.db = db
 
@@ -3000,7 +3058,9 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 	var name string
 
 	rows, err := s.db.Raw(fmt.Sprintf(sql, db)).Rows()
-	defer rows.Close()
+	if rows != nil {
+		defer rows.Close()
+	}
 	if err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -3762,6 +3822,8 @@ func (s *session) checkChangeDB(node *ast.UseStmt) {
 	if s.checkDBExists(node.DBName, true) {
 		s.db.Exec(fmt.Sprintf("USE `%s`", node.DBName))
 	}
+
+	s.mysqlServerVersion()
 }
 
 func getSingleTableName(tableRefs *ast.TableRefsClause) *ast.TableName {
@@ -3804,6 +3866,10 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	}
 
 	var explain []string
+
+	if s.opt.middlewareExtend != "" {
+		explain = append(explain, s.opt.middlewareExtend)
+	}
 
 	explain = append(explain, "EXPLAIN ")
 	explain = append(explain, sql)

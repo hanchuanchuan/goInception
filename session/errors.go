@@ -177,6 +177,7 @@ const (
 	ErrCantRemoveAllFields
 	ErrNotFoundTableInfo
 	ErrNotFoundThreadId
+	ErrNotFoundMasterStatus
 	ER_ERROR_LAST
 )
 
@@ -324,6 +325,7 @@ var MyErrors = map[int]string{
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
 	ErrNotFoundThreadId:                    "MariaDB v%d not supported yet,please confirm that the rollback sql is correct",
+	ErrNotFoundMasterStatus:                "Can't found master binlog position.",
 	// ErrNotFoundThreadId:                    "MariaDB v%d 暂不支持,请注意确认回滚语句是否正确",
 	ER_ERROR_LAST: "TheLastError,ByeBye",
 }

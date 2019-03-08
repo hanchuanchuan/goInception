@@ -208,9 +208,10 @@ func NewRecordSets() *MyRecordSets {
 	// 备份库的库名
 	rc.CreateFiled("backup_dbname", mysql.TypeString)
 	rc.CreateFiled("execute_time", mysql.TypeString)
-	rc.CreateFiled("backup_time", mysql.TypeString)
 	// sql的hash值,osc使用
 	rc.CreateFiled("sqlsha1", mysql.TypeString)
+	// 备份用时
+	rc.CreateFiled("backup_time", mysql.TypeString)
 
 	t.rc = rc
 	return t
