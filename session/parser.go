@@ -237,7 +237,6 @@ func (s *session) Parser() {
 		}
 
 		log.Debug(e.Header.EventType)
-		log.Debug("%#v", e.Event)
 
 		switch e.Header.EventType {
 		case replication.TABLE_MAP_EVENT:
