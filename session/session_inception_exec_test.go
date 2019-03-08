@@ -511,7 +511,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-
+	sql := ""
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int;"
 	s.testErrorCode(c, sql)
 
@@ -688,6 +688,7 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
+	sql := ""
 
 	res := makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int first;")
 	for _, row := range res.Rows() {
@@ -819,6 +820,7 @@ func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
+	sql := ""
 
 	res := makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c2;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -847,6 +849,8 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+
+	sql := ""
 
 	// 表不存在
 	res := makeExecSql(tk, "insert into t1 values(1,1);")
@@ -959,6 +963,7 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	sql := ""
 
 	// 表不存在
 	sql = "drop table if exists t1;update t1 set c1 = 1;"
@@ -1033,6 +1038,7 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	sql := ""
 
 	sql = "drop table if exists t1"
 	s.testErrorCode(c, sql)
@@ -1107,10 +1113,10 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
+	sql := ""
 
 	sql = "drop database if exists test1111111111111111111;create database test1111111111111111111;"
-	s.testErrorCode(c, sql,
-		session.NewErrf("数据库'test1111111111111111111'已存在."))
+	s.testErrorCode(c, sql)
 
 	// 存在
 	sql = "create database test1111111111111111111;create database test1111111111111111111;"
@@ -1136,7 +1142,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
 
 	// create database
-	sql := "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	sql = "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
 
@@ -1170,7 +1176,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
-
+	sql := ""
 	// 不存在
 	sql = "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);alter table t1 rename t2;"
 	s.testErrorCode(c, sql)
@@ -1185,7 +1191,7 @@ func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestCreateView(c *C) {
-
+	sql := ""
 	sql = "drop table if exists t1;create table t1(id int primary key);create view v1 as select * from t1;"
 	s.testErrorCode(c, sql,
 		session.NewErrf("命令禁止! 无法创建视图'v1'."))
@@ -1199,7 +1205,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-
+	sql := ""
 	// add index
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add index idx (c1)"
 	s.testErrorCode(c, sql,
@@ -1221,7 +1227,7 @@ func (s *testSessionIncExecSuite) TestAlterTableDropIndex(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-
+	sql := ""
 	// drop index
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 drop index idx"
 	s.testErrorCode(c, sql,
