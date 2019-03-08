@@ -1113,9 +1113,16 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	// config.GetGlobalConfig().Inc.CheckInsertField = false
+
 	sql := ""
 
-	sql = "drop database if exists test1111111111111111111;create database test1111111111111111111;"
+	sql = "drop database if exists test1111111111111111111;create database if not exists test1111111111111111111;"
 	s.testErrorCode(c, sql)
 
 	// 存在
@@ -1235,4 +1242,67 @@ func (s *testSessionIncExecSuite) TestAlterTableDropIndex(c *C) {
 
 	sql = "drop table if exists t1;create table t1(c1 int);alter table t1 add index idx (c1);alter table t1 drop index idx;"
 	s.testErrorCode(c, sql)
+}
+
+func (s *testSessionIncExecSuite) TestShowVariables(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+
+	sql := ""
+	sql = "inception show variables;"
+	tk.MustQueryInc(sql)
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+
+	sql = "inception get variables;"
+	tk.MustQueryInc(sql)
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+
+	sql = "inception show variables like 'backup_password';"
+	res := tk.MustQueryInc(sql)
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	if row[1].(string) != "" {
+		c.Assert(row[1].(string)[:1], Equals, "*")
+	}
+}
+
+func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+
+	sql := ""
+	sql = "inception show variables;"
+	tk.MustQueryInc(sql)
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+
+	sql = "inception get variables;"
+	tk.MustQueryInc(sql)
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+
+	// 不区分session和global.所有会话全都global级别
+	tk.MustExecInc("inception set global max_keys = 20;")
+	tk.MustExecInc("inception set session max_keys = 10;")
+	result := tk.MustQueryInc("inception show variables like 'max_keys';")
+	result.Check(testkit.Rows("max_keys 10"))
+
+	tk.MustExecInc("inception set ghost_default_retries = 70;")
+	result = tk.MustQueryInc("inception show variables like 'ghost_default_retries';")
+	result.Check(testkit.Rows("ghost_default_retries 70"))
+
+	tk.MustExecInc("inception set osc_max_running = 100;")
+	result = tk.MustQueryInc("inception show variables like 'osc_max_running';")
+	result.Check(testkit.Rows("osc_max_running 100"))
+
+	// 无效参数
+	res, err := tk.ExecInc("inception set osc_max_running1 = 100;")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "无效参数")
+	if res != nil {
+		c.Assert(res.Close(), IsNil)
+	}
+
+	// 无效参数
+	res, err = tk.ExecInc("inception set osc_max_running = 'abc';")
+	c.Assert(err, NotNil)
+	c.Assert(err.Error(), Equals, "[variable:1232]Incorrect argument type to variable 'osc_max_running'")
+	if res != nil {
+		c.Assert(res.Close(), IsNil)
+	}
 }
