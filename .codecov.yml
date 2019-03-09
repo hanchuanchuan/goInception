@@ -1,0 +1,32 @@
+codecov:
+  notify:
+    require_ci_to_pass: yes
+
+coverage:
+  precision: 4
+  round: down
+  range: "60...90"
+
+  status:
+    project:
+      default:
+        threshold: 0.2 #Allow the coverage to drop by threshold%, and posting a success status.
+    patch:
+      default:
+        target: 0% # trial operation
+    changes: no
+
+
+ignore:
+  - "LICENSES"
+  - "*_test.go"
+  - ".git"
+  - "*.yml"
+  - "*.md"
+  - "cmd/.*"
+  - "docs/.*"
+  - "vendor/.*"
+  - "ddl/failtest/.*"
+  - "ddl/testutil/.*"
+  - "executor/seqtest/.*"
+  - "metrics/.*"
