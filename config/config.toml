@@ -39,14 +39,14 @@ backup_password = "inception"
 sql_safe_updates = 0
 
 [osc]
-osc_on = false
+osc_on = true
 osc_min_table_size = 0
 osc_print_none = false
 osc_bin_dir = "/usr/local/bin"
 
 [ghost]
 
-ghost_on = true
+ghost_on = false
 ghost_allow_on_master = true
 ghost_assume_rbr = true
 ghost_chunk_size = 1000

@@ -3490,8 +3490,6 @@ func (s *session) showVariables(node *ast.ShowStmt, obj interface{}, res *Variab
 		patTypes []byte
 	)
 	if node.Pattern != nil {
-		// log.Infof("%+v", node.Pattern)
-		// log.Infof("%+v,%T", node.Pattern.Pattern, node.Pattern.Pattern)
 		if node.Pattern.Pattern != nil {
 			va, _ := node.Pattern.Pattern.(*ast.ValueExpr)
 			like = va.GetString()
@@ -3538,10 +3536,6 @@ func (s *session) showVariables(node *ast.ShowStmt, obj interface{}, res *Variab
 }
 
 func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet, error) {
-
-	// inc := config.GetGlobalConfig().Inc
-
-	// v := reflect.ValueOf(inc)
 
 	res := NewVariableSets(120)
 	s.showVariables(node, s.Inc, res)
@@ -3654,6 +3648,10 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]ast.RecordSet, 
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
+		if !pi.IsGhost {
+			return nil, errors.New("pt-osc process not support pause")
+		}
+
 		if pi.Pause {
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
 		} else {
@@ -3670,6 +3668,10 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]ast.RecordSet,
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
+		if !pi.IsGhost {
+			return nil, errors.New("pt-osc process not support resume")
+		}
+
 		if pi.Pause {
 			pi.Pause = false
 		} else {
@@ -3743,17 +3745,13 @@ func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
 }
 
 func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
-
 	log.Debug("checkCreateDB")
-
-	// log.Infof("%#v \n", node)
 
 	if s.checkDBExists(node.Name, false) {
 		if !node.IfNotExists {
 			s.AppendErrorMessage(fmt.Sprintf("数据库'%s'已存在.", node.Name))
 		}
 	} else {
-
 		s.checkKeyWords(node.Name)
 
 		for _, opt := range node.Options {
@@ -3795,7 +3793,6 @@ func (s *session) checkCharset(charset string) bool {
 }
 
 func (s *session) checkChangeDB(node *ast.UseStmt) {
-
 	log.Debug("checkChangeDB", node.DBName)
 
 	s.DBName = node.DBName
@@ -3833,7 +3830,6 @@ func (s *session) getExplainInfo(sql string) []ExplainInfo {
 			s.AppendErrorMessage(err.Error())
 		}
 	}
-
 	return rows
 }
 
@@ -3893,8 +3889,6 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 	catchError := false
 	for _, tblSource := range tableList {
-		// log.Info(tblSource.Source)
-		// log.Infof("%#v", tblSource.Source)
 		tblName, ok := tblSource.Source.(*ast.TableName)
 		if !ok {
 			continue
@@ -4033,8 +4027,8 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 }
 
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
-
 	log.Debug("checkDelete")
+
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
 			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
@@ -4051,7 +4045,6 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 		if t != nil {
-			// log.Infof(":: %#v", t.Name)
 			if tblSource.AsName.L != "" {
 				t.AsName = tblSource.AsName.O
 			}
@@ -4101,7 +4094,6 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 || reportNotExists {
-				// log.Error(myErr)
 				s.AppendErrorMessage(myErr.Message + ".")
 			}
 		} else {
@@ -4415,38 +4407,6 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 
 	c.IsNew = true
 	return c
-}
-
-func FieldLengthWithType(tp string) int {
-
-	var p string
-	if strings.Contains(tp, "(") {
-		p = tp[0:strings.Index(tp, "(")]
-	} else {
-		p = tp
-	}
-
-	var l int
-
-	firsts := regFieldLength.FindStringSubmatch(tp)
-	if len(firsts) < 2 {
-		l = 0
-	} else {
-		l, _ = strconv.Atoi(firsts[1])
-	}
-
-	switch p {
-	case "bit", "tinyint", "bool", "year":
-		l = 1
-	case "small":
-		l = 2
-	case "date", "int", "integer", "timestamp", "time":
-		l = 4
-	case "bigint", "datetime":
-		l = 8
-	}
-
-	return l
 }
 
 func Max(x, y int) int {

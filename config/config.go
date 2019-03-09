@@ -376,16 +376,16 @@ type Osc struct {
 	OscDropNewTable bool `toml:"osc_drop_new_table" json:"osc_drop_new_table"`
 
 	// 对应参数pt-online-schema-change中的参数--max-load中的thread_running部分。默认值：80
-	OscMaxRunning int `toml:"osc_max_running" json:"osc_max_running"`
+	OscMaxThreadRunning int `toml:"osc_max_thread_running" json:"osc_max_thread_running"`
 
 	// 对应参数pt-online-schema-change中的参数--max-load中的thread_connected部分。默认值：1000
-	OscMaxConnected int `toml:"osc_max_connected" json:"osc_max_connected"`
+	OscMaxThreadConnected int `toml:"osc_max_thread_connected" json:"osc_max_thread_connected"`
 
 	// 对应参数pt-online-schema-change中的参数--critical-load中的thread_running部分。默认值：80
-	OscCriticalRunning int `toml:"osc_critical_running" json:"osc_critical_running"`
+	OscCriticalThreadRunning int `toml:"osc_critical_thread_running" json:"osc_critical_thread_running"`
 
 	// 对应参数pt-online-schema-change中的参数--critical-load中的thread_connected部分。默认值：1000
-	OscCriticalConnected int `toml:"osc_critical_connected" json:"osc_critical_connected"`
+	OscCriticalThreadConnected int `toml:"osc_critical_thread_connected" json:"osc_critical_thread_connected"`
 
 	// 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
 	OscChunkTime float32 `toml:"osc_chunk_time" json:"osc_chunk_time"`
@@ -393,7 +393,7 @@ type Osc struct {
 	// 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
 	OscChunkSizeLimit int `toml:"osc_chunk_size_limit" json:"osc_chunk_size_limit"`
 
-	// 对应参数pt-online-schema-change中的参数--chunk-size。默认值：4
+	// 对应参数pt-online-schema-change中的参数--chunk-size。默认值：1000
 	OscChunkSize int `toml:"osc_chunk_size" json:"osc_chunk_size"`
 
 	// 对应参数pt-online-schema-change中的参数--check-interval，意义是Sleep time between checks for --max-lag。默认值：5
@@ -634,13 +634,13 @@ var defaultConf = Config{
 		OscCheckReplicationFilters: true,
 		OscDropOldTable:            true,
 		OscDropNewTable:            true,
-		OscMaxRunning:              80,
-		OscMaxConnected:            1000,
-		OscCriticalRunning:         80,
-		OscCriticalConnected:       1000,
+		OscMaxThreadRunning:        80,
+		OscMaxThreadConnected:      1000,
+		OscCriticalThreadRunning:   80,
+		OscCriticalThreadConnected: 1000,
 		OscChunkTime:               1,
 		OscChunkSizeLimit:          4,
-		OscChunkSize:               4,
+		OscChunkSize:               1000,
 		OscCheckInterval:           5,
 		OscBinDir:                  "/usr/local/bin",
 	},

@@ -309,16 +309,16 @@ osc_drop_old_table = true
 osc_drop_new_table = true
 
 # 对应参数pt-online-schema-change中的参数--max-load中的thread_running部分。默认值：80
-osc_max_running = 80
+osc_max_thread_running = 80
 
 # 对应参数pt-online-schema-change中的参数--max-load中的thread_connected部分。默认值：1000
-osc_max_connected = 1000
+osc_max_thread_connected = 1000
 
 # 对应参数pt-online-schema-change中的参数--critical-load中的thread_running部分。默认值：80
-osc_critical_running = 80
+osc_critical_thread_running = 80
 
 # 对应参数pt-online-schema-change中的参数--critical-load中的thread_connected部分。默认值：1000
-osc_critical_connected = 1000
+osc_critical_thread_connected = 1000
 
 # 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
 osc_chunk_time = 1.0
@@ -327,7 +327,7 @@ osc_chunk_time = 1.0
 osc_chunk_size_limit = 4
 
 # 对应参数pt-online-schema-change中的参数--chunk-size。默认值：4
-osc_chunk_size = 4
+osc_chunk_size = 1000
 
 # 对应参数pt-online-schema-change中的参数--check-interval，意义是Sleep time between checks for --max-lag。默认值：5
 osc_check_interval = 5

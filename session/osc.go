@@ -112,16 +112,16 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	buf.WriteString(" --critical-load ")
 	buf.WriteString("Threads_connected:")
-	buf.WriteString(strconv.Itoa(s.Osc.OscCriticalConnected))
+	buf.WriteString(strconv.Itoa(s.Osc.OscCriticalThreadConnected))
 	buf.WriteString(",Threads_running:")
-	buf.WriteString(strconv.Itoa(s.Osc.OscCriticalRunning))
+	buf.WriteString(strconv.Itoa(s.Osc.OscCriticalThreadRunning))
 	buf.WriteString(" ")
 
 	buf.WriteString(" --max-load ")
 	buf.WriteString("Threads_connected:")
-	buf.WriteString(strconv.Itoa(s.Osc.OscMaxConnected))
+	buf.WriteString(strconv.Itoa(s.Osc.OscMaxThreadConnected))
 	buf.WriteString(",Threads_running:")
-	buf.WriteString(strconv.Itoa(s.Osc.OscMaxRunning))
+	buf.WriteString(strconv.Itoa(s.Osc.OscMaxThreadRunning))
 	buf.WriteString(" ")
 
 	buf.WriteString(" --recurse=1 ")
@@ -317,22 +317,22 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// criticalLoad := s.Ghost.GhostCriticalLoad
 	// criticalLoad := flag.String("critical-load", "", "Comma delimited status-name=threshold, same format as --max-load. When status exceeds threshold, app panics and quits")
 	criticalLoad := fmt.Sprintf("Threads_running=%d,Threads_connected=%d",
-		s.Osc.OscCriticalRunning, s.Osc.OscCriticalConnected)
+		s.Osc.OscCriticalThreadRunning, s.Osc.OscCriticalThreadConnected)
 
 	maxLoad := fmt.Sprintf("Threads_running=%d,Threads_connected=%d",
-		s.Osc.OscMaxRunning, s.Osc.OscMaxConnected)
+		s.Osc.OscMaxThreadRunning, s.Osc.OscMaxThreadConnected)
 	// buf.WriteString(" --critical-load ")
 	// buf.WriteString("Threads_connected:")
-	// buf.WriteString(strconv.Itoa(s.Osc.OscCriticalConnected))
+	// buf.WriteString(strconv.Itoa(s.Osc.OscCriticalThreadConnected))
 	// buf.WriteString(",Threads_running:")
-	// buf.WriteString(strconv.Itoa(s.Osc.OscCriticalRunning))
+	// buf.WriteString(strconv.Itoa(s.Osc.OscCriticalThreadRunning))
 	// buf.WriteString(" ")
 
 	// buf.WriteString(" --max-load ")
 	// buf.WriteString("Threads_connected:")
-	// buf.WriteString(strconv.Itoa(s.Osc.OscMaxConnected))
+	// buf.WriteString(strconv.Itoa(s.Osc.OscMaxThreadConnected))
 	// buf.WriteString(",Threads_running:")
-	// buf.WriteString(strconv.Itoa(s.Osc.OscMaxRunning))
+	// buf.WriteString(strconv.Itoa(s.Osc.OscMaxThreadRunning))
 	// buf.WriteString(" ")
 
 	migrationContext.CriticalLoadIntervalMilliseconds = s.Ghost.GhostCriticalLoadIntervalMillis
