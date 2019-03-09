@@ -38,11 +38,11 @@ print(tb)
 
 返回结果：
 
-order_id |  stage  | error_level |   stage_status   |         error_message        |                    sql                     | affected_rows |   sequence   | backup_dbname | execute_time | backup_time | sqlsha1
+order_id |  stage  | error_level |   stage_status   |         error_message        |                    sql                     | affected_rows |   sequence   | backup_dbname | execute_time | sqlsha1 | backup_time
 ----------|---------|----------|-----------------|-----------------------------|--------------------------------------------|---------------|--------------|---------------|--------------|-------------|---------
-1     | CHECKED |    0     | Audit Completed |                             |                use test_inc                |       0       | 0_0_00000000 |      None     |      0       |      0      |   None
-2     | CHECKED |    0     | Audit Completed |                             | create table t1(id int primary key,c1 int) |       0       | 0_0_00000001 |      None     |      0       |      0      |   None
-3     | CHECKED |    2     | Audit Completed | Column 't1.c2' not existed. |   insert into t1(id,c1,c2) values(1,1,1)   |       1       | 0_0_00000002 |      None     |      0       |      0      |   None
+1     | CHECKED |    0     | Audit Completed |    None                         |                use test_inc                |       0       | 0_0_00000000 |      None     |      0       |   None |      0
+2     | CHECKED |    0     | Audit Completed |    None                         | create table t1(id int primary key,c1 int) |       0       | 0_0_00000001 |      None     |      0       |   None |      0
+3     | CHECKED |    2     | Audit Completed | Column 't1.c2' not existed. |   insert into t1(id,c1,c2) values(1,1,1)   |       1       | 0_0_00000002 |      None     |      0       |   None |      0
 
 
 ### 系统变量

@@ -238,7 +238,12 @@ func (s *MyRecordSets) setFields(r *Record) {
 	if r.ErrorMessage != "" {
 		row[4].SetString(r.ErrorMessage)
 	} else {
-		row[4].SetString(strings.TrimRight(r.Buf.String(), "\n"))
+		e := strings.TrimSpace(r.Buf.String())
+		if e == "" {
+			row[4].SetNull()
+		} else {
+			row[4].SetString(e)
+		}
 	}
 
 	row[5].SetString(r.Sql)
@@ -268,16 +273,16 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[9].SetString(r.ExecTime)
 	}
 
-	if r.BackupCostTime == "" {
-		row[10].SetString("0")
+	if r.Sqlsha1 == "" {
+		row[10].SetNull()
 	} else {
-		row[10].SetString(r.BackupCostTime)
+		row[10].SetString(r.Sqlsha1)
 	}
 
-	if r.Sqlsha1 == "" {
-		row[11].SetNull()
+	if r.BackupCostTime == "" {
+		row[11].SetString("0")
 	} else {
-		row[11].SetString(r.Sqlsha1)
+		row[11].SetString(r.BackupCostTime)
 	}
 
 	s.rc.data[s.rc.count] = row
