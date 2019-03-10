@@ -247,7 +247,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	migrationContext.MigrateOnReplica = false
 	// flag.BoolVar(&migrationContext.MigrateOnReplica, "migrate-on-replica", false, "Have the migration run on a replica, not on the master. This will do the full migration on the replica including cut-over (as opposed to --test-on-replica)")
 
-	migrationContext.OkToDropTable = true
+	migrationContext.OkToDropTable = s.Ghost.GhostOkToDropTable
 	// flag.BoolVar(&migrationContext.OkToDropTable, "ok-to-drop-table", false, "Shall the tool drop the old table at end of operation. DROPping tables can be a long locking operation, which is why I'm not doing it by default. I'm an online tool, yes?")
 	migrationContext.InitiallyDropOldTable = false
 	// flag.BoolVar(&migrationContext.InitiallyDropOldTable, "initially-drop-old-table", false, "Drop a possibly existing OLD table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
@@ -295,7 +295,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.ThrottleAdditionalFlagFile, "throttle-additional-flag-file", "/tmp/gh-ost.throttle", "operation pauses when this file exists; hint: keep default, use for throttling multiple gh-ost operations")
 	migrationContext.PostponeCutOverFlagFile = s.Ghost.GhostPostponeCutOverFlagFile
 	// flag.StringVar(&migrationContext.PostponeCutOverFlagFile, "postpone-cut-over-flag-file", "", "while this file exists, migration will postpone the final stage of swapping tables, and will keep on syncing the ghost table. Cut-over/swapping would be ready to perform the moment the file is deleted.")
-	migrationContext.PanicFlagFile = s.Ghost.GhostPanicFlagFile
+	// migrationContext.PanicFlagFile = s.Ghost.GhostPanicFlagFile
 	// flag.StringVar(&migrationContext.PanicFlagFile, "panic-flag-file", "", "when this file is created, gh-ost will immediately terminate, without cleanup")
 	migrationContext.DropServeSocket = s.Ghost.GhostInitiallyDropSocketFile
 	// flag.BoolVar(&migrationContext.DropServeSocket, "initially-drop-socket-file", false, "Should gh-ost forcibly delete an existing socket file. Be careful: this might drop the socket file of a running migration!")

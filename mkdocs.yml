@@ -18,4 +18,5 @@ nav:
     - 审核规则: options.md
     - 备份功能: backup.md
     - DDL变更:pt-osc: osc.md
+    - DDL变更:gh-ost: ghost.md
     # - About: about.md

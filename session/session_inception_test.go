@@ -115,7 +115,9 @@ inception_magic_commit;`
 		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 		c.Assert(row[2], Equals, "0")
 		c.Assert(row[3], Equals, "Execute Successfully")
-		c.Assert(row[4], IsNil, row[4])
+		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
+		// fmt.Println(row[4])
+		c.Assert(row[4], IsNil)
 	}
 
 }

@@ -326,7 +326,7 @@ osc_chunk_time = 1.0
 # 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
 osc_chunk_size_limit = 4
 
-# 对应参数pt-online-schema-change中的参数--chunk-size。默认值：4
+# 对应参数pt-online-schema-change中的参数--chunk-size。默认值：1000
 osc_chunk_size = 1000
 
 # 对应参数pt-online-schema-change中的参数--check-interval，意义是Sleep time between checks for --max-lag。默认值：5
@@ -348,3 +348,5 @@ ghost_max_lag_millis = 1500
 ghost_approve_renamed_columns = true
 ghost_exponential_backoff_max_interval = 64
 ghost_dml_batch_size = 10
+ghost_ok_to_drop_table = true
+ghost_skip_foreign_key_checks = true

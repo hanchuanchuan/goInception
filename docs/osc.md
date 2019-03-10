@@ -1,8 +1,11 @@
 
 
-### 使用说明
+### pt-online-schema-change
 
-**参数设置**
+- 使用前需要手动下载安装`percona-toolkit` (`v3.0.4`或参数兼容版本)
+- 使用前需要指定pt-osc目录参数`osc_bin_dir`，默认为`/usr/local/bin`
+
+####参数设置
 
 pt-osc工具的设置参数可以可以通过```inception show variables like 'osc%';```查看
 
@@ -20,7 +23,12 @@ inception set osc_check_interval = 10;
 
 - 2.配置config.toml,并通过```-config=config.toml```指定配置文件启动
 
-**查看osc进程**
+
+
+#### 进程命令
+
+
+#####查看osc进程
 
 <!-- sqlsha1 -->
 ```sql
@@ -35,7 +43,7 @@ test_inc | t1 | alter table t1 add column c33 int | *E53542EFF4E179BE267210114EC
 
 
 
-**查看指定osc进程**
+#####查看指定osc进程
 ```sql
 inception get osc_percent '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
 ```
@@ -47,7 +55,7 @@ DBNAME   | TABLENAME | SQLSHA1                                   | PERCENT | REM
 test_inc | t1        | *E53542EFF4E179BE267210114EC5EDBEF9DC5D8F |      49 | 00:14      | Copying `test_inc`.`t1`:  49% 00:14 remain
 
 
-**终止指定osc进程**
+#####终止指定osc进程
 `终止后注意手动清理相关辅助表`
 ```sql
 inception kill osc '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
