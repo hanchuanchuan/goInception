@@ -1,6 +1,24 @@
 # goInception 更新日志
 
 
+## [v0.5-beta] - 2019-3-10
+### Update
+* 兼容mariadb v10版本的备份兼容(高并发时回滚语句可能有误，须注意检查)
+* 更新pt-osc部分参数名，使其与inception保持一致
+  - osc_critical_running -> osc_critical_thread_running
+  - osc_critical_connected -> osc_critical_thread_connected
+  - osc_max_running -> osc_max_thread_running
+  - osc_max_connected -> osc_max_thread_connected
+* 隐藏gh-osc部分未使用参数
+* 添加是否允许删除数据库参数`enable_drop_database`
+* 优化系统变量variables显示和设置
+* 调整部分参数默认值
+  - ghost_ok_to_drop_table `true`
+  - ghost_skip_foreign_key_checks `true`
+  - osc_chunk_size `1000`
+### Fix
+* 修复json列校验异常问题 (#7)
+
 ## [v0.4.1-beta] - 2019-3-6
 ### Update
 * 兼容mariadb数据库(v5.5.60)
