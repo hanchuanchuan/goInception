@@ -169,6 +169,7 @@ const (
 	ER_REMOVED_SPACES
 	ER_CHANGE_COLUMN_TYPE
 	ER_CANT_DROP_TABLE
+	ER_CANT_DROP_DATABASE
 	ER_WRONG_TABLE_NAME
 	ER_CANT_SET_CHARSET
 	ER_CANT_SET_COLLATION
@@ -317,6 +318,7 @@ var MyErrors = map[int]string{
 	ER_REMOVED_SPACES:                      "Leading spaces are removed from name '%s'",
 	ER_CHANGE_COLUMN_TYPE:                  "类型转换警告: 列 '%s' %s -> %s.",
 	ER_CANT_DROP_TABLE:                     "禁用【DROP】|【TRUNCATE】删除/清空表 '%s', 请改用RENAME重写.",
+	ER_CANT_DROP_DATABASE:                  "命令禁止! 无法删除数据库'%s'.",
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "禁止指定字符集: '%s'",
 	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
@@ -425,6 +427,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_VIEW_SELECT_CLAUSE,
 		ER_NOT_SUPPORTED_ITEM_TYPE,
 		ER_CANT_DROP_TABLE,
+		ER_CANT_DROP_DATABASE,
 		ER_CANT_DROP_FIELD_OR_KEY,
 		ER_NOT_SUPPORTED_YET,
 		ER_TABLE_MUST_INNODB,

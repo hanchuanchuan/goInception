@@ -82,12 +82,42 @@ func (s *testSessionIncSuite) TearDownTest(c *C) {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
 
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	r := tk.MustQuery("show tables")
-	for _, tb := range r.Rows() {
-		tableName := tb[0]
-		tk.MustExec(fmt.Sprintf("drop table %v", tableName))
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
+
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	res := makeSql(s.tk, "show tables")
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	sql := row[5]
+
+	exec := `/*--user=admin;--password=han123;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	for _, name := range strings.Split(sql.(string), "\n") {
+		if strings.HasPrefix(name, "show tables:") {
+			continue
+		}
+		n := strings.Replace(name, "'", "", -1)
+		res := s.tk.MustQueryInc(fmt.Sprintf(exec, "drop table "+n))
+		// fmt.Println(res.Rows())
+		c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+		c.Assert(row[2], Equals, "0")
+		c.Assert(row[3], Equals, "Execute Successfully")
+		c.Assert(row[4], IsNil, row[4])
+	}
+
 }
 
 func makeSql(tk *testkit.TestKit, sql string) *testkit.Result {
@@ -649,6 +679,10 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	sql = "create table t1(c2 int on update current_timestamp);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
+
+	sql = "create table t1 (c1 int primary key);alter table t1 add c2 json;"
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
@@ -1108,6 +1142,21 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.EnableDropDatabase = false
+	// 不存在
+	sql = "drop database if exists test1111111111111111111;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+
+	sql = "drop database test1111111111111111111;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
 	sql = "drop database if exists test1111111111111111111;create database test1111111111111111111;"
 	s.testErrorCode(c, sql)
@@ -1117,23 +1166,9 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErrf("数据库'test1111111111111111111'已存在."))
 
-	// 不存在
-	sql = "drop database if exists test1111111111111111111;"
-	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
-
-	sql = "drop database test1111111111111111111;"
-	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
-
 	// if not exists 创建
 	sql = "create database if not exists test1111111111111111111;create database if not exists test1111111111111111111;"
 	s.testErrorCode(c, sql)
-
-	// if not exists 删除
-	sql = "drop database if exists test1111111111111111111;drop database if exists test1111111111111111111;"
-	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
 
 	// create database
 	sql := "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1147,24 +1182,24 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	// 字符集
 	config.GetGlobalConfig().Inc.EnableSetCharset = false
 	config.GetGlobalConfig().Inc.SupportCharset = ""
-	sql = "create database test1 character set utf8;"
+	sql = "drop database test1;create database test1 character set utf8;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
 
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
-	sql = "create database test1 character set utf8;"
+	sql = "drop database test1;create database test1 character set utf8;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
 		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "create database test1 character set utf8;"
+	sql = "drop database test1;create database test1 character set utf8;"
 	s.testErrorCode(c, sql)
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "create database test1 character set laitn1;"
+	sql = "drop database test1;create database test1 character set laitn1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
 }
