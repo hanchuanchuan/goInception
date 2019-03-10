@@ -414,8 +414,7 @@ type Ghost struct {
 	GhostAllowNullableUniqueKey bool `toml:"ghost_allow_nullable_unique_key"`
 	// 允许gh-ost直接运行在主库上。默认gh-ost连接的从库。
 	GhostAllowOnMaster bool `toml:"ghost_allow_on_master"`
-	// ALTER语句的body部分
-	GhostAlter string `toml:"ghost_alter"`
+
 	// 如果你修改一个列的名字(如change column)，gh-ost将会识别到并且需要提供重命名列名的原因，默认情况下gh-ost是不继续执行的，除非提供-approve-renamed-columns ALTER。
 	// ALTER
 	GhostApproveRenamedColumns bool `toml:"ghost_approve_renamed_columns"`
@@ -433,7 +432,7 @@ type Ghost struct {
 	// 	e.g:
 	// -critical-load Threads_connected=20,Connections=1500
 	// 指的是当MySQL中的状态值Threads_connected>20,Connections>1500的时候，gh-ost将会由于该数据库严重负载而停止并退出。
-	GhostCriticalLoad string `toml:"ghost_critical_load"`
+	// GhostCriticalLoad string `toml:"ghost_critical_load"`
 
 	// 当值为0时，当达到-critical-load，gh-ost立即退出。当值不为0时，当达到-critical-load，
 	// gh-ost会在-critical-load-interval-millis秒数后，再次进行检查，再次检查依旧达到-critical-load，gh-ost将会退出。
@@ -463,7 +462,7 @@ type Ghost struct {
 	GhostExactRowcount bool `toml:"ghost_exact_rowcount"`
 
 	// 实际执行alter&migrate表，默认为不执行，仅仅做测试并退出，如果想要ALTER TABLE语句真正落实到数据库中去，需要明确指定-execute
-	GhostExecute bool `toml:"ghost_execute"`
+	// GhostExecute bool `toml:"ghost_execute"`
 
 	GhostExponentialBackoffMaxInterval int64 `toml:"ghost_exponential_backoff_max_interval"`
 	// When true, the 'unpostpone|cut-over' interactive command must name the migrated table。
@@ -500,11 +499,13 @@ type Ghost struct {
 
 	// 开启标志
 	GhostOn bool `toml:"ghost_on"`
+	// gh-ost操作结束后，删除旧表，默认状态是不删除旧表，会存在_tablename_del表。
+	GhostOkToDropTable bool `toml:"ghost_ok_to_drop_table"`
 	// 当这个文件存在的时候，gh-ost的cut-over阶段将会被推迟，直到该文件被删除。
 	GhostPostponeCutOverFlagFile string `toml:"ghost_postpone_cut_over_flag_file"`
-	GhostPanicFlagFile           string `toml:"ghost_panic_flag_file"`
-	GhostReplicaServerID         bool   `toml:"ghost_replica_server_id"`
-	GhostSkipForeignKeyChecks    bool   `toml:"ghost_skip_foreign_key_checks"`
+	// GhostPanicFlagFile           string `toml:"ghost_panic_flag_file"`
+	// GhostReplicaServerID      bool `toml:"ghost_replica_server_id"`
+	GhostSkipForeignKeyChecks bool `toml:"ghost_skip_foreign_key_checks"`
 
 	// 如果你修改一个列的名字(如change column)，gh-ost将会识别到并且需要提供重命名列名的原因，
 	// 默认情况下gh-ost是不继续执行的。该参数告诉gh-ost跳该列的数据迁移，
@@ -659,6 +660,8 @@ var defaultConf = Config{
 		GhostApproveRenamedColumns:         true,
 		GhostExponentialBackoffMaxInterval: 64,
 		GhostDmlBatchSize:                  10,
+		GhostOkToDropTable:                 true,
+		GhostSkipForeignKeyChecks:          true,
 	},
 }
 

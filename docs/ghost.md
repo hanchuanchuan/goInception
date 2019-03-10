@@ -1,72 +1,135 @@
 
 
-### 支持参数
+### gh-ost
 
+- 内置gh-ost源码(`v1.0.48`)，因此无须下载。
+- 手动终止和暂停及恢复功能已开放相应命令，因此隐藏相关参数。
 
-goInception的审核规则可以通过```inception show variables;```查看
+####参数设置
+
+gh-ost工具的设置参数可以可以通过```inception show variables like 'ghost%';```查看
 
 ```sql
-inception show variables;
+inception show variables like 'ghost%';
 ```
 
 支持以下方式设置:
 
-- 1. 通过```inception set ```设置
+- 1.通过```inception set ```设置
 
 ```sql
-inception set check_dml_limit = true;
+inception set osc_check_interval = 10;
 ```
 
-- 2. 配置config.toml,并通过```-config=config.toml```指定配置文件启动
+- 2.配置config.toml,并通过```-config=config.toml```指定配置文件启动
+
+
+#### 进程命令
+
+
+#####查看osc进程
+
+<!-- sqlsha1 -->
+```sql
+inception get osc processlist;
+```
+
+返回结果：
+
+DBNAME   | TABLENAME | COMMAND | SQLSHA1  | PERCENT | REMAINTIME | INFOMATION
+----------|---------|--------------------|-----------------|-----------------|-------------------|-----
+test_inc | t1 | alter table t1 add column c33 int | *E53542EFF4E179BE267210114EC5EDBEF9DC5D8F |       9 | 00:36      | Copying `test_inc`.`t1`:   9% 00:36 remain
 
 
 
-![variables列表](./images/variables.png)
+#####查看指定osc进程
+```sql
+inception get osc_percent '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+```
 
+返回结果：
+
+DBNAME   | TABLENAME | SQLSHA1                                   | PERCENT | REMAINTIME | INFOMATION
+----------|---------|--------------------|-----------------|-----------------|-----
+test_inc | t1        | *E53542EFF4E179BE267210114EC5EDBEF9DC5D8F |      49 | 00:14      | Copying `test_inc`.`t1`:  49% 00:14 remain
+
+
+#####终止指定osc进程
+`终止后注意手动清理相关辅助表`
+```sql
+inception kill osc '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+-- 或同义词
+inception stop alter '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+```
+
+#####暂停指定osc进程
+```sql
+inception pause osc '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+-- 或同义词
+inception pause alter '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+```
+
+#####恢复指定osc进程
+```sql
+inception resume osc '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+-- 或同义词
+inception resume alter '*E53542EFF4E179BE267210114EC5EDBEF9DC5D8F';
+```
+
+
+### 复用pt-osc参数
 
 参数  |  默认值  |  可选范围 | 说明
 ------------ | ------------- | ------------ | ------------
-check_autoincrement_datatype   |  false    |   true,false     |   当建表时自增列的类型不为int或者bigint时报错
-check_autoincrement_init_value   |  false    |   true,false     |     当建表时自增列的值指定的不为1，则报错
-check_autoincrement_name   |  false    |   true,false     |   建表时，如果指定的自增列的名字不为ID，则报错，说明是有意义的，给提示
-check_column_comment   |  false    |   true,false     |   建表时，列没有注释时报错
-check_column_default_value   |  false    |   true,false     |     检查在建表、修改列、新增列时，新的列属性是不是要有默认值
-check_dml_limit   |  false    |   true,false     |    在DML语句中使用了LIMIT时，是不是要报错
-check_dml_orderby   |  false    |   true,false     |  在DML语句中使用了Order By时，是不是要报错
-check_dml_where   |  false    |   true,false     |    在DML语句中没有WHERE条件时，是不是要报错
-check_identifier  |  false    |   true,false     |    检查标识符是否正确,规则是[a-z,A-Z,0-9,_]
-check_index_prefix   |  false    |   true,false     |     是不是要检查索引名字前缀为"idx_"，检查唯一索引前缀是不是"uniq_"
-check_insert_field   |  false    |   true,false     |     是不是要检查插入语句中的列链表的存在性
-check_primary_key   |  false    |   true,false     |  建表时，如果没有主键，则报错
-check_table_comment   |  false    |   true,false     |    建表时，表没有注释时报错
-check_timestamp_default   |  false    |   true,false     |    建表时，如果没有为timestamp类型指定默认值，则报错
-enable_autoincrement_unsigned   |  false    |   true,false     |  自增列是不是要为无符号型
-enable_blob_type   |  false    |   true,false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
-enable_column_charset   |  false    |   true,false     |  允许列自己设置字符集
-enable_drop_table   |  false    |   true,false     |  是否允许删除表
-enable_enum_set_bit   |  false    |   true,false     |    是不是支持enum,set,bit数据类型
-enable_foreign_key   |  false    |   true,false     |     是不是支持外键
-enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
-enable_not_innodb   |  false    |   true,false     |  建表指定的存储引擎不为Innodb，不报错
-enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
-enable_orderby_rand   |  false    |   true,false     |    order by rand时是不是报错
-enable_partition_table   |  false    |   true,false     |     是不是支持分区表
-enable_pk_columns_only_int  |  false    |   true,false     |     是否强制主键列必须是int
-enable_select_star   |  false    |   true,false     |     Select*时是不是要报错
-merge_alter_table   |  false    |   true,false     |  在多个改同一个表的语句出现是，报错，提示合成一个
-max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
-max_keys                       | 3              | int | 单表允许的最大索引数
-max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
-max_update_rows                | 5000           | int  | 当update/delete预估受影响行数超出设置值时警告
-max_primary_key_parts          | 3              | int | 主键最多可指定的列数
-sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表示不做操作,基于远端数据库,0表示关闭安全更新,1表示开启安全更新
+osc_critical_thread_connected                 | 1000           | int | 对应参数--critical-load中的thread_connected部分
+osc_critical_thread_running                   | 80             | int | 对应参数--critical-load中的thread_running部分
+osc_max_thread_connected                      | 1000           | int | 对应参数--max-load中的thread_connected部分
+osc_max_thread_running                        | 80             | int | 对应参数--max-load中的thread_running部分
+osc_min_table_size                     | 16             | int | OSC的开关，如果设置为0，则全部ALTER语句都走OSC，如果设置为非0，则当这个表占用空间大小大于这个值时才使用OSC方式。单位为M，这个表大小的计算方式是通过语句： select (DATA_LENGTH + INDEX_LENGTH)/1024/1024 from information_schema.tables where table_schema = "dbname" and table_name = "tablename"来实现的。
+osc_print_none                         | false          | bool | 用来设置在Inception返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，如果设置为1，就不打印，如果设置为0，就打印。而如果出现错误了，则都会打印
 
-<!--
-auto_commit     这个参数的作用是为了匹配Python客户端每次自动设置auto_commit=0的，如果取消则会报错，针对Inception本身没有实际意义
-general_log     这个参数就是原生的MySQL的参数，用来记录在Inception服务上执行过哪些语句，用来定位一些问题等
-inception_enable_sql_statistic      设置是不是支持统计Inception执行过的语句中，各种语句分别占多大比例，如果打开这个参数，则每次执行的情况都会在备份数据库实例中的inception库的statistic表中以一条记录存储这次操作的统计情况，每次操作对应一条记录，这条记录中含有的信息是各种类型的语句执行次数情况，具体的信息需要参考后面一章<<Inception 的统计功能>>
-inception_read_only     设置当前Inception服务器是不是只读的，这是为了防止一些人具有修改权限的帐号时，通过Inception误修改一些数据，如果inception_read_only设置为ON，则即使开了enable-execute，同时又有执行权限，也不会去执行，审核完成即返回
-inception_check_identifier      打开与关闭Inception对SQL语句中各种名字的检查，如果设置为ON，则如果发现名字中存在除数字、字母、下划线之外的字符时，会报Identifier "invalidname" is invalid, valid options: [a-z,A-Z,0-9,_].
-inception_osc_on        一个全局的OSC开关，默认是打开的，如果想要关闭则设置为OFF，这样就会直接修改
-inception_osc_print_sql     对应参数--print
-inception_osc_print_none        用来设置在Inception返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，如果设置为1，就不打印，如果设置为0，就打印。而如果出现错误了，则都会打印 -->
+
+### 参数说明
+
+参数  |  默认值  |  可选范围 | 说明
+------------ | ------------- | ------------ | ------------
+ghost_on                               | false  | bool | gh-ost开关
+ghost_aliyun_rds                       | false  | bool | 阿里云rds数据库标志
+ghost_allow_master_master              | false  | bool | 允许gh-ost运行在双主复制架构中，一般与-assume-master-host参数一起使用
+ghost_allow_nullable_unique_key        | false  | bool | 允许gh-ost在数据迁移(migrate)依赖的唯一键可以为NULL，默认为不允许为NULL的唯一键。如果数据迁移(migrate)依赖的唯一键允许NULL值，则可能造成数据不正确，请谨慎使用。
+ghost_allow_on_master                  | `true`   | bool | 允许gh-ost直接运行在主库上。默认gh-ost连接的`主库`。`(暂未添加从库地址的配置)`
+ghost_approve_renamed_columns          | true   | bool | 如果支持修改列名,则需设置此参数为`true`,否则gh-ost不会执行。
+ghost_assume_master_host               |        | string | 为gh-ost指定一个主库，格式为"ip:port"或者"hostname:port"。默认推荐gh-ost连接从库。
+ghost_assume_rbr                       | true   | bool | 确认gh-ost连接的数据库实例的binlog_format=ROW的情况下，可以指定-assume-rbr，这样可以禁止从库上运行stop slave,start slave,执行gh-ost用户也不需要SUPER权限。`为避免影响生产数据库，此参数建议置为true`
+ghost_chunk_size                       | 1000   | int | 在每次迭代中处理的行数量(允许范围：100-100000)，默认值为1000。
+ghost_concurrent_rowcount              | true   | bool | 该参数如果为True(默认值)，则进行row-copy之后，估算统计行数(使用explain select count(*)方式)，并调整ETA时间，否则，gh-ost首先预估统计行数，然后开始row-copy。
+ghost_critical_load_hibernate_seconds  | 0      | int | 负载达到critical-load时，gh-ost在指定的时间内进入休眠状态。 它不会读/写任何来自任何服务器的任何内容。
+ghost_critical_load_interval_millis    | 0      | int | 当值为0时，当达到-critical-load，gh-ost立即退出。当值不为0时，当达到-critical-load，gh-ost会在-critical-load-interval-millis秒数后，再次进行检查，再次检查依旧达到-critical-load，gh-ost将会退出。
+ghost_cut_over                         | atomic | string |  选择cut-over类型:atomic/two-step，atomic(默认)类型的cut-over是github的算法，two-step采用的是facebook-OSC的算法。
+ghost_cut_over_exponential_backoff     | false  | bool | Wait exponentially longer intervals between failed cut-over attempts. Wait intervals obey a maximum configurable with 'exponential-backoff-max-interval').
+ghost_cut_over_lock_timeout_seconds    | 3      | int | gh-ost在cut-over阶段最大的锁等待时间，当锁超时时，gh-ost的cut-over将重试。(默认值：3)
+ghost_default_retries                  | 60     | int | 各种操作在panick前重试次数。(默认为60)
+ghost_discard_foreign_keys             | false  | bool | 该参数针对一个有外键的表，在gh-ost创建ghost表时，并不会为ghost表创建外键。该参数很适合用于删除外键，除此之外，请谨慎使用。
+ghost_dml_batch_size                   | 10     | int | 在单个事务中应用DML事件的批量大小（范围1-100）（默认值为10）
+ghost_exact_rowcount                   | false  | bool | 准确统计表行数(使用select count(*)的方式)，得到更准确的预估时间。
+ghost_exponential_backoff_max_interval | 64     | int |  Maximum number of seconds to wait between attempts when performing various operations with exponential backoff. (default 64)
+ghost_force_named_cut_over             | false  | bool | When true, the ‘unpostpone|cut-over’ interactive command must name the migrated table。
+ghost_force_table_names                |        | string | table name prefix to be used on the temporary tables
+ghost_gcp                              | false  | bool | google云平台支持
+ghost_heartbeat_interval_millis        | 500    | int | gh-ost心跳频率值，默认为500。
+ghost_initially_drop_ghost_table       | false  | bool | gh-ost操作之前，检查并删除已经存在的ghost表。该参数不建议使用，请手动处理原来存在的ghost表。
+ghost_initially_drop_old_table         | false  | bool | gh-ost操作之前，检查并删除已经存在的旧表。该参数不建议使用，请手动处理原来存在的ghost表。
+ghost_initially_drop_socket_file       | false  | bool | gh-ost强制删除已经存在的socket文件。该参数不建议使用，可能会删除一个正在运行的gh-ost程序，导致DDL失败。
+ghost_max_lag_millis                   | 1500   | int | 主从复制最大延迟时间，当主从复制延迟时间超过该值后，gh-ost将采取节流(throttle)措施，默认值：1500s。
+ghost_nice_ratio                       | 0      | float | 每次chunk时间段的休眠时间，范围[0.0...100.0]。e.g:0：每个chunk时间段不休眠，即一个chunk接着一个chunk执行；1：每row-copy 1毫秒，则另外休眠1毫秒；0.7：每row-copy 10毫秒，则另外休眠7毫秒。
+ghost_ok_to_drop_table                 | true   | bool | gh-ost操作结束后，删除旧表，默认状态是`删除旧表`。
+ghost_postpone_cut_over_flag_file      |        | string | 当这个文件存在的时候，gh-ost的cut-over阶段将会被推迟，直到该文件被删除。
+ghost_replication_lag_query            |        | string | 检查主从复制延迟的SQL语句，默认gh-ost通过show slave status获取Seconds_behind_master作为主从延迟时间依据。如果使用pt-heartbeat工具，检查主从复制延迟的SQL语句类似于:`SELECT ROUND(UNIX_TIMESTAMP() - MAX(UNIX_TIMESTAMP(ts))) AS delay FROM my_schema.heartbeat`;
+ghost_skip_foreign_key_checks          | true  | bool | 跳过外键检查,默认为`true`
+ghost_throttle_additional_flag_file    |        | string | 当该文件被创建后，gh-ost操作立即停止。该参数可以用在多个gh-ost同时操作的时候，创建一个文件，让所有的gh-ost操作停止，或者删除这个文件，让所有的gh-ost操作恢复。
+ghost_throttle_control_replicas        |        | string | 列出所有需要被检查主从复制延迟的从库。
+ghost_throttle_flag_file               |        | string | 当该文件被创建后，gh-ost操作立即停止。该参数适合控制单个gh-ost操作。-throttle-additional-flag-file string适合控制多个gh-ost操作。
+ghost_throttle_http                    |        | string | The --throttle-http flag allows for throttling via HTTP. Every 100ms gh-ost issues a HEAD request to the provided URL. If the response status code is not 200 throttling will kick in until a 200 response status code is returned.
+ghost_throttle_query                   |        | string | 节流查询。每秒钟执行一次。当返回值=0时不需要节流，当返回值>0时，需要执行节流操作。该查询会在数据迁移(migrated)服务器上操作，所以请确保该查询是轻量级的。
+ghost_timestamp_old_table              | false  | bool | 在旧表名中使用时间戳。 这会使旧表名称具有唯一且无冲突的交叉迁移
+ghost_tungsten                         | false  | bool | 告诉gh-ost你正在运行的是一个tungsten-replication拓扑结构。
