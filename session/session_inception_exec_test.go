@@ -832,11 +832,11 @@ func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
 	c.Assert(row[2], Equals, "0")
 
 	// // drop column
-	sql = "create table t1(id int null);alter table t2 drop c1"
+	sql = "drop table if exists t1;create table t1(id int null);alter table t1 drop c1"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t2.c1"))
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c1"))
 
-	sql = "create table t1(id int null);alter table t2 drop id;"
+	sql = "drop table if exists t1;create table t1(id int null);alter table t1 drop id;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCantRemoveAllFields))
 }
@@ -1286,12 +1286,12 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	result = tk.MustQueryInc("inception show variables like 'ghost_default_retries';")
 	result.Check(testkit.Rows("ghost_default_retries 70"))
 
-	tk.MustExecInc("inception set osc_max_running = 100;")
-	result = tk.MustQueryInc("inception show variables like 'osc_max_running';")
-	result.Check(testkit.Rows("osc_max_running 100"))
+	tk.MustExecInc("inception set osc_max_thread_running = 100;")
+	result = tk.MustQueryInc("inception show variables like 'osc_max_thread_running';")
+	result.Check(testkit.Rows("osc_max_thread_running 100"))
 
 	// 无效参数
-	res, err := tk.ExecInc("inception set osc_max_running1 = 100;")
+	res, err := tk.ExecInc("inception set osc_max_thread_running1 = 100;")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "无效参数")
 	if res != nil {
@@ -1299,9 +1299,9 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	}
 
 	// 无效参数
-	res, err = tk.ExecInc("inception set osc_max_running = 'abc';")
+	res, err = tk.ExecInc("inception set osc_max_thread_running = 'abc';")
 	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "[variable:1232]Incorrect argument type to variable 'osc_max_running'")
+	c.Assert(err.Error(), Equals, "[variable:1232]Incorrect argument type to variable 'osc_max_thread_running'")
 	if res != nil {
 		c.Assert(res.Close(), IsNil)
 	}

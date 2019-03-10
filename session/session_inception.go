@@ -1572,6 +1572,33 @@ func (s *session) mysqlShowCreateTable(t *TableInfo) {
 	}
 }
 
+// mysqlShowCreateDatabase 生成回滚语句
+func (s *session) mysqlShowCreateDatabase(name string) {
+
+	sql := fmt.Sprintf("SHOW CREATE DATABASE `%s`;", name)
+
+	var res string
+
+	rows, err := s.db.Raw(sql).Rows()
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else if rows != nil {
+		for rows.Next() {
+			rows.Scan(&res, &res)
+		}
+		s.myRecord.DDLRollback = res
+		s.myRecord.DDLRollback += ";"
+	}
+}
+
 func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	log.Debug("checkRenameTable")
@@ -2531,7 +2558,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		}
 
 		if field.Tp.Charset != "" || field.Tp.Collate != "" {
-			s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
+			if field.Tp.Charset != "binary" {
+				s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
+			}
 		}
 	}
 
@@ -3048,8 +3077,8 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		return false
 	}
 
-	if _, ok := s.dbCacheList[db]; ok {
-		return true
+	if v, ok := s.dbCacheList[strings.ToLower(db)]; ok {
+		return v
 	}
 
 	sql := "show databases like '%s';"
@@ -3079,7 +3108,7 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		}
 		return false
 	} else {
-		s.dbCacheList[db] = true
+		s.dbCacheList[strings.ToLower(db)] = true
 		return true
 	}
 
@@ -3292,22 +3321,26 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 }
 
 func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
-
 	log.Debug("checkDropDB")
 
-	// log.Infof("%#v \n", node)
+	if !s.Inc.EnableDropDatabase {
+		s.AppendErrorNo(ER_CANT_DROP_DATABASE, node.Name)
+		return
+	}
 
-	s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法删除数据库'%s'.", node.Name))
+	if s.checkDBExists(node.Name, !node.IfExists) {
+		if s.opt.execute {
+			// 生成回滚语句
+			s.mysqlShowCreateDatabase(node.Name)
+		}
+		s.dbCacheList[strings.ToLower(node.Name)] = false
+	}
 }
 
 func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([]ast.RecordSet, error) {
-
 	log.Debug("executeInceptionSet")
 
-	// IsGlobal bool
-	// IsSystem bool
 	for _, v := range node.Variables {
-
 		if !v.IsSystem {
 			return nil, errors.New("无效参数")
 		}
@@ -3771,7 +3804,7 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 			return
 		}
 
-		s.dbCacheList[node.Name] = true
+		s.dbCacheList[strings.ToLower(node.Name)] = true
 
 		if s.opt.execute {
 			s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)

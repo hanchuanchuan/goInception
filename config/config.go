@@ -299,6 +299,7 @@ type Inc struct {
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
 	EnableColumnCharset         bool `toml:"enable_column_charset" json:"enable_column_charset"`
+	EnableDropDatabase          bool `toml:"enable_drop_database" json:"enable_drop_database"`
 	EnableDropTable             bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
 	EnableEnumSetBit            bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
 	EnableForeignKey            bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
