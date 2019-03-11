@@ -117,7 +117,7 @@ inception_magic_commit;`
 		c.Assert(row[3], Equals, "Execute Successfully")
 		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
 		// fmt.Println(row[4])
-		c.Assert(row[4], IsNil)
+		// c.Assert(row[4].(string), IsNil)
 	}
 
 }
@@ -471,7 +471,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "primary", "test_error_code_3"))
 
-	sql = "create table t2(c1.c2 blob default null);"
+	sql = "create table t2(c1.c2 varchar(10));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_TABLE_NAME, "c1"))
 
