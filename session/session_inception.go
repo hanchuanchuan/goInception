@@ -2531,23 +2531,40 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
-
+	//有默认值，且归类无效，如(default CURRENT_TIMESTAMP)
 	if hasDefaultValue && isInvalidDefaultValue(field) {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
-
+	//有默认值，且为NULL，且有NOT NULL约束，如(not null default null)
 	if hasDefaultValue && defaultValue.IsNull() && notNullFlag {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
+	//有默认值，且不为NULL，且默认值为int\float类型，可以兼容，暂不做校验
+	//if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) == 0 {
 
-	if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) == 0 {
+	//有默认值，且不为NULL，且默认值为string类型，需要对非string字段类型校验，如int default "a"
+	if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) > 0 {
+		defaultValue.GetValue()
 		switch field.Tp.Tp {
 		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
 			mysql.TypeLong, mysql.TypeLonglong,
 			mysql.TypeBit, mysql.TypeYear,
 			mysql.TypeFloat, mysql.TypeDouble, mysql.TypeNewDecimal:
-			s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+			_, intErr := strconv.ParseInt(defaultValue.GetString(), 10, 64)
+			_, floatErr := strconv.ParseFloat(defaultValue.GetString(), 64)
+			if intErr != nil && floatErr != nil {
+				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+			}
 		}
+	}
+
+	//不可设置default值的部分字段类型
+	if hasDefaultValue && (field.Tp.Tp == mysql.TypeJSON ||
+		field.Tp.Tp == mysql.TypeTinyBlob ||
+		field.Tp.Tp == mysql.TypeMediumBlob ||
+		field.Tp.Tp == mysql.TypeLongBlob ||
+		field.Tp.Tp == mysql.TypeBlob) {
+		s.AppendErrorNo(ER_BLOB_CANT_HAVE_DEFAULT, field.Name.Name.O)
 	}
 
 	if types.IsTypeBlob(field.Tp.Tp) {
@@ -2591,8 +2608,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if !hasDefaultValue && field.Tp.Tp != mysql.TypeTimestamp &&
-		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary {
-		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name, tableName)
+		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary && field.Tp.Tp != mysql.TypeJSON {
+		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
+
 	}
 
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
