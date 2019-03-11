@@ -65,6 +65,9 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	session.SetStatsLease(0)
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
+
+	config.GetGlobalConfig().Inc.Lang = "zh-CN"
+	session.SetLanguage("zh-CN")
 }
 
 func (s *testSessionIncSuite) TearDownSuite(c *C) {
@@ -184,7 +187,7 @@ func (s *testSessionIncSuite) TestNoSourceInfo(c *C) {
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Invalid source infomation.")
+		c.Assert(row[4], Equals, "不正确的数据源信息.")
 	}
 }
 
@@ -197,7 +200,7 @@ inception_magic_start;create table t1(id int);inception_magic_commit;`)
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Incorrect database name ''.")
+		c.Assert(row[4], Equals, "不正确的的数据库名 ''.")
 	}
 }
 
@@ -292,7 +295,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	res = makeSql(tk, "create table t1(id int, TABLES varchar(20),`c1$` varchar(20),c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20));")
 	row = res.Rows()[1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\nIdentifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
+	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\n标识符 'c1$' 无效, 允许字符为 [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
@@ -530,6 +533,7 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
 	res := makeSql(tk, "create table t1(id int);alter table t1 add column c1 int;")
+	fmt.Println(res.Rows())
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
@@ -608,7 +612,7 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.")
 	row = res.Rows()[3]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Identifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].")
+	c.Assert(row[4], Equals, "标识符 'c1$' 无效, 允许字符为 [a-z|A-Z|0-9|_].")
 	row = res.Rows()[4]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Identifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
@@ -897,17 +901,17 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id) values(1,1);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column count doesn't match value count at row 1.")
+	c.Assert(row[4], Equals, "行 1 的列数和值列表不匹配.")
 
 	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id) values(1),(2,1);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column count doesn't match value count at row 2.")
+	c.Assert(row[4], Equals, "行 2 的列数和值列表不匹配.")
 
 	res = makeSql(tk, "create table t1(id int,c1 int not null);insert into t1(id,c1) select 1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column count doesn't match value count at row 1.")
+	c.Assert(row[4], Equals, "行 1 的列数和值列表不匹配.")
 
 	// 列重复
 	res = makeSql(tk, "create table t1(id int,c1 int);insert into t1(id,id) values(1,1);")
@@ -963,7 +967,7 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 limit 1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
+	c.Assert(row[4], Equals, "update/delete语句不允许Limit.")
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
@@ -971,7 +975,7 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 order by rand();")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Order by rand is not allowed in select statement.")
+	c.Assert(row[4], Equals, "不允许'Order by rand'语法.")
 	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
@@ -1046,7 +1050,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1 limit 1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
+	c.Assert(row[4], Equals, "update/delete语句不允许Limit.")
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
@@ -1054,7 +1058,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int);update t1 set c1 = 1 order by rand();")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Order by is not allowed in update/delete statement.")
+	c.Assert(row[4], Equals, "update/delete语句不允许Order by.")
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
@@ -1102,7 +1106,7 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int);delete from t1 where id = 1 limit 1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
+	c.Assert(row[4], Equals, "update/delete语句不允许Limit.")
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
@@ -1110,7 +1114,7 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	res = makeSql(tk, "create table t1(id int,c1 int);delete from t1 where id = 1 order by rand();")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Order by is not allowed in update/delete statement.")
+	c.Assert(row[4], Equals, "update/delete语句不允许Order by.")
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 表不存在

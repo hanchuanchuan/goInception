@@ -3408,6 +3408,11 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			if err != nil {
 				return nil, err
 			}
+
+			// 错误信息语言设置
+			if prefix == "lang" {
+				SetLanguage(value.GetString())
+			}
 		}
 	}
 

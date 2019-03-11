@@ -265,6 +265,8 @@ sql_safe_updates = -1
 
 support_charset = "utf8,utf8mb4"
 
+lang = "en-US"
+
 [osc]
 
 # 用来设置在arkit返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，

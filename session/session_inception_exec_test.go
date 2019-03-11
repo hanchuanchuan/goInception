@@ -262,22 +262,20 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
 
 	// 字符集
-	res = makeExecSql(tk, `drop table if exists t1;create table t1(id int,c1 varchar(20) character set utf8,
-        c2 varchar(20) COLLATE utf8_bin);`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!\n表 't1' 列 'c2' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20) character set utf8,
+        c2 varchar(20) COLLATE utf8_bin);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = false
-	res = makeExecSql(tk, `drop table if exists t1;create table t1(id int,c1 varchar(20)) character set utf8;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) character set utf8;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
 
-	res = makeExecSql(tk, `drop table if exists t1;create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -497,16 +495,15 @@ func (s *testSessionIncExecSuite) TestDropTable(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.EnableDropTable = false
-
-	res := makeExecSql(tk, "drop table if exists t1;create table t1(id int);drop table t1;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "禁用【DROP】|【TRUNCATE】删除/清空表 't1', 请改用RENAME重写.")
+	sql := ""
+	sql = "drop table if exists t1;create table t1(id int);drop table t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CANT_DROP_TABLE, "t1"))
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int);drop table t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := makeExecSql(tk, "drop table if exists t1;create table t1(id int);drop table t1;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 }
 
@@ -568,16 +565,15 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[2], Equals, "0")
 
 	// 字符集
-	res = makeExecSql(tk, `drop table if exists t1;create table t1(id int);
-        alter table t1 add column c1 varchar(20) character set utf8;
-        alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int);
+        alter table t1 add column c1 varchar(20) character set utf8;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"))
 
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c2' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int);
+        alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -744,16 +740,15 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
 
 	// 字符集
-	res = makeExecSql(tk, `drop table if exists t1;create table t1(id int,c1 varchar(20));
-        alter table t1 modify column c1 varchar(20) character set utf8;
-        alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20));
+        alter table t1 modify column c1 varchar(20) character set utf8;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"))
 
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20));
+        alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"))
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
@@ -796,10 +791,9 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
 	// 变更类型
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "类型转换警告: 列 't1.c1' int(11) -> varchar(10).")
+	sql = "drop table if exists t1;create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "varchar(10)"))
 
 	res = makeExecSql(tk, "drop table if exists t1;create table t1(c1 char(100));alter table t1 modify column c1 char(20);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -895,16 +889,15 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 
 	// 字段警告
 	config.GetGlobalConfig().Inc.CheckInsertField = true
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "insert语句需要指定字段列表.")
+	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WITH_INSERT_FIELD))
+
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values();")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "insert语句需要指定值列表.")
+	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values();"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WITH_INSERT_VALUES))
 
 	// 列不允许为空
 	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int not null);insert into t1(id,c1) values(1,null);")
@@ -925,10 +918,9 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 
 	// select where
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "selete语句请指定where条件.")
+	sql = "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
 	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
 	// limit
@@ -1009,10 +1001,10 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 
 	// where
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "selete语句请指定where条件.")
+	sql = "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
+
 	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
 	// limit
@@ -1069,10 +1061,10 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 
 	// where
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
-	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int,c1 int);delete from t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "selete语句请指定where条件.")
+	sql = "drop table if exists t1;create table t1(id int,c1 int);delete from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
+
 	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
 	// limit
@@ -1140,11 +1132,11 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	// 不存在
 	sql = "drop database if exists test1111111111111111111;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+		session.NewErr(session.ER_CANT_DROP_DATABASE, "test1111111111111111111"))
 
 	sql = "drop database test1111111111111111111;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+		session.NewErr(session.ER_CANT_DROP_DATABASE, "test1111111111111111111"))
 
 	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
