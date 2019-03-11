@@ -929,11 +929,11 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 
 	switch record.Type.(type) {
 	case *ast.CreateTableStmt,
-		*ast.AlterTableStmt,
-		*ast.DropTableStmt,
+	*ast.AlterTableStmt,
+	*ast.DropTableStmt,
 
-		*ast.CreateIndexStmt,
-		*ast.DropIndexStmt:
+	*ast.CreateIndexStmt,
+	*ast.DropIndexStmt:
 		if record.ExecComplete {
 			return true
 		}
@@ -984,17 +984,17 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		s.executeRemoteStatementAndBackup(record)
 
 	case *ast.UseStmt,
-		*ast.DropDatabaseStmt,
-		*ast.CreateDatabaseStmt,
+	*ast.DropDatabaseStmt,
+	*ast.CreateDatabaseStmt,
 
-		*ast.CreateTableStmt,
-		*ast.AlterTableStmt,
-		*ast.DropTableStmt,
-		*ast.RenameTableStmt,
-		*ast.TruncateTableStmt,
+	*ast.CreateTableStmt,
+	*ast.AlterTableStmt,
+	*ast.DropTableStmt,
+	*ast.RenameTableStmt,
+	*ast.TruncateTableStmt,
 
-		*ast.CreateIndexStmt,
-		*ast.DropIndexStmt:
+	*ast.CreateIndexStmt,
+	*ast.DropIndexStmt:
 
 		s.executeRemoteStatement(record)
 
@@ -2531,23 +2531,41 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
-
+	//有默认值，且归类无效，如(default CURRENT_TIMESTAMP)
 	if hasDefaultValue && isInvalidDefaultValue(field) {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
-
+	//有默认值，且为NULL，且有NOT NULL约束，如(not null default null)
 	if hasDefaultValue && defaultValue.IsNull() && notNullFlag {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
-
-	if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) == 0 {
+	//有默认值，且不为NULL
+	if hasDefaultValue && !defaultValue.IsNull() {
 		switch field.Tp.Tp {
 		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
 			mysql.TypeLong, mysql.TypeLonglong,
 			mysql.TypeBit, mysql.TypeYear,
 			mysql.TypeFloat, mysql.TypeDouble, mysql.TypeNewDecimal:
-			s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+			//验证string型默认值的合法性
+			if v, ok := defaultValue.GetValue().(string); ok {
+				if v == "" {
+					s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+				} else {
+					_, intErr := strconv.ParseInt(defaultValue.GetString(), 10, 64)
+					_, floatErr := strconv.ParseFloat(defaultValue.GetString(), 64)
+					if intErr != nil && floatErr != nil {
+						s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+					}
+				}
+
+			}
+
 		}
+	}
+
+	//不可设置default值的部分字段类型
+	if hasDefaultValue && (field.Tp.Tp == mysql.TypeJSON || types.IsTypeBlob(field.Tp.Tp)) {
+		s.AppendErrorNo(ER_BLOB_CANT_HAVE_DEFAULT, field.Name.Name.O)
 	}
 
 	if types.IsTypeBlob(field.Tp.Tp) {
@@ -2591,8 +2609,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if !hasDefaultValue && field.Tp.Tp != mysql.TypeTimestamp &&
-		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary {
-		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name, tableName)
+		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary && field.Tp.Tp != mysql.TypeJSON {
+		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
+
 	}
 
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&

@@ -288,7 +288,7 @@ var MyErrors = map[int]string{
 	ER_CHARSET_ON_COLUMN:                   "表 '%s' 列 '%s' 禁止设置字符集!",
 	ER_AUTO_INCR_ID_WARNING:                "Auto increment column '%s' is meaningful? it's dangerous!",
 	ER_ALTER_TABLE_ONCE:                    "表 '%s' 的多个alter操作请合并成一个.",
-	ER_BLOB_CANT_HAVE_DEFAULT:              "BLOB/TEXT column '%s' can't have a default value.",
+	ER_BLOB_CANT_HAVE_DEFAULT:              "BLOB, TEXT, GEOMETRY or JSON column '%s' can't have a default value.",
 	ER_END_WITH_SEMICOLON:                  "Add ';' after the last sql statement.",
 	ER_NON_UNIQ_ERROR:                      "Column '%s' in %s is ambiguous.",
 	ER_TABLE_NOT_EXISTED_ERROR:             "Table '%s' doesn't exist.",
