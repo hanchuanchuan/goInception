@@ -929,11 +929,11 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 
 	switch record.Type.(type) {
 	case *ast.CreateTableStmt,
-	*ast.AlterTableStmt,
-	*ast.DropTableStmt,
+		*ast.AlterTableStmt,
+		*ast.DropTableStmt,
 
-	*ast.CreateIndexStmt,
-	*ast.DropIndexStmt:
+		*ast.CreateIndexStmt,
+		*ast.DropIndexStmt:
 		if record.ExecComplete {
 			return true
 		}
@@ -984,17 +984,17 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		s.executeRemoteStatementAndBackup(record)
 
 	case *ast.UseStmt,
-	*ast.DropDatabaseStmt,
-	*ast.CreateDatabaseStmt,
+		*ast.DropDatabaseStmt,
+		*ast.CreateDatabaseStmt,
 
-	*ast.CreateTableStmt,
-	*ast.AlterTableStmt,
-	*ast.DropTableStmt,
-	*ast.RenameTableStmt,
-	*ast.TruncateTableStmt,
+		*ast.CreateTableStmt,
+		*ast.AlterTableStmt,
+		*ast.DropTableStmt,
+		*ast.RenameTableStmt,
+		*ast.TruncateTableStmt,
 
-	*ast.CreateIndexStmt,
-	*ast.DropIndexStmt:
+		*ast.CreateIndexStmt,
+		*ast.DropIndexStmt:
 
 		s.executeRemoteStatement(record)
 
@@ -1434,7 +1434,7 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 		table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
 
 		if table == nil {
-			s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+			s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", t.Schema, t.Name))
 		} else {
 			s.mysqlShowTableStatus(table)
 		}
@@ -1457,7 +1457,7 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 			//如果表不存在，但存在if existed，则跳过
 			if table == nil {
 				if !node.IfExists {
-					s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+					s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", t.Schema, t.Name))
 				}
 			} else {
 				if s.opt.execute {
@@ -2531,14 +2531,17 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if !hasComment {
 		s.AppendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
+
 	//有默认值，且归类无效，如(default CURRENT_TIMESTAMP)
 	if hasDefaultValue && isInvalidDefaultValue(field) {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
+
 	//有默认值，且为NULL，且有NOT NULL约束，如(not null default null)
 	if hasDefaultValue && defaultValue.IsNull() && notNullFlag {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
+
 	//有默认值，且不为NULL
 	if hasDefaultValue && !defaultValue.IsNull() {
 		switch field.Tp.Tp {
@@ -4145,8 +4148,10 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 
 	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			if myErr.Number != 1146 || reportNotExists {
+			if myErr.Number != 1146 {
 				s.AppendErrorMessage(myErr.Message + ".")
+			} else if reportNotExists {
+				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", db, tableName))
 			}
 		} else {
 			s.AppendErrorMessage(err.Error() + ".")
@@ -4354,7 +4359,7 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 		// 如果表已删除, 之后又使用到,则报错
 		if t.IsDeleted {
 			if reportNotExists {
-				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, t.Name)
+				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", t.Schema, t.Name))
 			}
 			return nil
 		}
