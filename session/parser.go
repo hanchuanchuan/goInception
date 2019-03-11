@@ -316,7 +316,9 @@ func (s *session) checkFilter(event *replication.RowsEvent,
 	}
 
 	if currentThreadID == 0 && s.DBType == DBTypeMariaDB {
-		record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+		if record.ErrLevel != 1 {
+			record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+		}
 		return true
 	} else if record.ThreadId != currentThreadID {
 		return false
