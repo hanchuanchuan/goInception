@@ -20,3 +20,4 @@ _tools/
 *.go.tmp
 site/
 util/logutil/slow_query
+test/
