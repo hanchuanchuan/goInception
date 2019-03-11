@@ -371,7 +371,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						return s.recordSets.Rows(), nil
 					}
 
-					// s.mysqlServerVersion()
+					s.mysqlServerVersion()
 
 					continue
 				case *ast.InceptionCommitStmt:
@@ -1161,7 +1161,8 @@ func (s *session) mysqlServerVersion() {
 	}
 
 	var value string
-	sql := "select @@version;"
+	// sql := "select @@version;"
+	sql := "show variables like 'version';"
 
 	rows, err := s.db.Raw(sql).Rows()
 	if rows != nil {
@@ -1176,7 +1177,7 @@ func (s *session) mysqlServerVersion() {
 		}
 	} else {
 		for rows.Next() {
-			rows.Scan(&value)
+			rows.Scan(&value, &value)
 		}
 	}
 
@@ -3853,9 +3854,9 @@ func (s *session) checkChangeDB(node *ast.UseStmt) {
 	s.DBName = node.DBName
 	if s.checkDBExists(node.DBName, true) {
 		s.db.Exec(fmt.Sprintf("USE `%s`", node.DBName))
-	}
 
-	s.mysqlServerVersion()
+		// s.mysqlServerVersion()
+	}
 }
 
 func getSingleTableName(tableRefs *ast.TableRefsClause) *ast.TableName {

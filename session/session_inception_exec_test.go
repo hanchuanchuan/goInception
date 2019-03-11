@@ -144,6 +144,14 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	}
 
 	c.Assert(row[2], Equals, strconv.Itoa(errCode))
+	// 无错误时需要校验结果是否标记为已执行
+	if errCode == 0 {
+		if !strings.Contains(row[3].(string), "Execute Successfully") {
+			fmt.Println(res.Rows())
+		}
+		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"), Equals, true)
+		// c.Assert(row[4].(string), IsNil)
+	}
 }
 
 func (s *testSessionIncExecSuite) TestBegin(c *C) {
@@ -460,7 +468,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "primary", "t1"))
 
-	sql = "drop table if exists t1;create table t1(c1.c2 blob default null);"
+	sql = "drop table if exists t1;create table t1(c1.c2 varchar(10));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_TABLE_NAME, "c1"))
 
@@ -640,7 +648,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 
 	sql = "drop table if exists t1;alter table t1 comment 'test comment'"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "t1"))
+		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
 
 	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add column `a ` int ;"
 	s.testErrorCode(c, sql,
@@ -913,7 +921,7 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 	res = makeExecSql(tk, "drop table if exists t1;drop table if exists t2;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t2;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 't2' doesn't exist.")
+	c.Assert(row[4], Equals, "Table 'test_inc.t2' doesn't exist.")
 
 	// select where
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
@@ -985,15 +993,15 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
 
-	res = makeExecSql(tk, `create table t1(id int primary key,c1 int);
-        create table t1(id int primary key,c1 int,c2 int);
+	res = makeExecSql(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+        create table t2(id int primary key,c1 int,c2 int);
         update t1,t2 t3 set t1.c1=t2.c3 where t1.id=t3.id;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.c3' not existed.")
 
-	res = makeExecSql(tk, `create table t1(id int primary key,c1 int);
-        create table t1(id int primary key,c1 int,c2 int);
+	res = makeExecSql(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+        create table t2(id int primary key,c1 int,c2 int);
         update t1,t2 t3 set t1.c1=t2.c3 where t1.id=t3.id;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
@@ -1084,22 +1092,20 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 表不存在
-	res = makeExecSql(tk, `create table t1(id int primary key,c1 int);
-        create table t1(id int primary key,c1 int,c2 int);
-        delete from t3 where id1 =1;`)
+	res = makeExecSql(tk, `drop table if exists t1;
+        delete from t1 where id1 =1;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 'test_inc.t3' doesn't exist.")
+	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
 
-	res = makeExecSql(tk, `create table t1(id int primary key,c1 int);
-        create table t1(id int primary key,c1 int,c2 int);
+	res = makeExecSql(tk, `drop table if exists t1;create table t1(id int,c1 int);
         delete from t1 where id1 =1;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 'id1' not existed.")
 
-	res = makeExecSql(tk, `create table t1(id int primary key,c1 int);
-        create table t1(id int primary key,c1 int,c2 int);
+	res = makeExecSql(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+        create table t2(id int primary key,c1 int,c2 int);
         delete t2 from t1 inner join t2 on t1.id=t2.id2 where c11=1;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
@@ -1118,7 +1124,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	// config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
 	sql := ""
 
@@ -1130,6 +1136,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErrf("数据库'test1111111111111111111'已存在."))
 
+	config.GetGlobalConfig().Inc.EnableDropDatabase = false
 	// 不存在
 	sql = "drop database if exists test1111111111111111111;"
 	s.testErrorCode(c, sql,
@@ -1139,14 +1146,11 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
 
+	config.GetGlobalConfig().Inc.EnableDropDatabase = true
+
 	// if not exists 创建
 	sql = "create database if not exists test1111111111111111111;create database if not exists test1111111111111111111;"
 	s.testErrorCode(c, sql)
-
-	// if not exists 删除
-	sql = "drop database if exists test1111111111111111111;drop database if exists test1111111111111111111;"
-	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
 
 	// create database
 	sql = "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -1250,11 +1254,11 @@ func (s *testSessionIncExecSuite) TestShowVariables(c *C) {
 	sql := ""
 	sql = "inception show variables;"
 	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
 
 	sql = "inception get variables;"
 	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
 
 	sql = "inception show variables like 'backup_password';"
 	res := tk.MustQueryInc(sql)
@@ -1270,11 +1274,7 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	sql := ""
 	sql = "inception show variables;"
 	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
-
-	sql = "inception get variables;"
-	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(105))
+	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
 
 	// 不区分session和global.所有会话全都global级别
 	tk.MustExecInc("inception set global max_keys = 20;")
