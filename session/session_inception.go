@@ -929,11 +929,11 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 
 	switch record.Type.(type) {
 	case *ast.CreateTableStmt,
-		*ast.AlterTableStmt,
-		*ast.DropTableStmt,
+	*ast.AlterTableStmt,
+	*ast.DropTableStmt,
 
-		*ast.CreateIndexStmt,
-		*ast.DropIndexStmt:
+	*ast.CreateIndexStmt,
+	*ast.DropIndexStmt:
 		if record.ExecComplete {
 			return true
 		}
@@ -984,17 +984,17 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		s.executeRemoteStatementAndBackup(record)
 
 	case *ast.UseStmt,
-		*ast.DropDatabaseStmt,
-		*ast.CreateDatabaseStmt,
+	*ast.DropDatabaseStmt,
+	*ast.CreateDatabaseStmt,
 
-		*ast.CreateTableStmt,
-		*ast.AlterTableStmt,
-		*ast.DropTableStmt,
-		*ast.RenameTableStmt,
-		*ast.TruncateTableStmt,
+	*ast.CreateTableStmt,
+	*ast.AlterTableStmt,
+	*ast.DropTableStmt,
+	*ast.RenameTableStmt,
+	*ast.TruncateTableStmt,
 
-		*ast.CreateIndexStmt,
-		*ast.DropIndexStmt:
+	*ast.CreateIndexStmt,
+	*ast.DropIndexStmt:
 
 		s.executeRemoteStatement(record)
 
@@ -2539,31 +2539,34 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if hasDefaultValue && defaultValue.IsNull() && notNullFlag {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
-	//有默认值，且不为NULL，且默认值为int\float类型，可以兼容，暂不做校验
-	//if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) == 0 {
-
-	//有默认值，且不为NULL，且默认值为string类型，需要对非string字段类型校验，如int default "a"
-	if hasDefaultValue && !defaultValue.IsNull() && len(defaultValue.GetString()) > 0 {
-		defaultValue.GetValue()
+	//有默认值，且不为NULL
+	if hasDefaultValue && !defaultValue.IsNull() {
+		log.Error(defaultValue.GetValue())
 		switch field.Tp.Tp {
 		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
 			mysql.TypeLong, mysql.TypeLonglong,
 			mysql.TypeBit, mysql.TypeYear,
 			mysql.TypeFloat, mysql.TypeDouble, mysql.TypeNewDecimal:
-			_, intErr := strconv.ParseInt(defaultValue.GetString(), 10, 64)
-			_, floatErr := strconv.ParseFloat(defaultValue.GetString(), 64)
-			if intErr != nil && floatErr != nil {
-				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+			//验证string型默认值的合法性
+			if v, ok := defaultValue.GetValue().(string); ok {
+				log.Error(defaultValue.GetValue())
+				if v == "" {
+					s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+				} else {
+					_, intErr := strconv.ParseInt(defaultValue.GetString(), 10, 64)
+					_, floatErr := strconv.ParseFloat(defaultValue.GetString(), 64)
+					if intErr != nil && floatErr != nil {
+						s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name)
+					}
+				}
+
 			}
+
 		}
 	}
 
 	//不可设置default值的部分字段类型
-	if hasDefaultValue && (field.Tp.Tp == mysql.TypeJSON ||
-		field.Tp.Tp == mysql.TypeTinyBlob ||
-		field.Tp.Tp == mysql.TypeMediumBlob ||
-		field.Tp.Tp == mysql.TypeLongBlob ||
-		field.Tp.Tp == mysql.TypeBlob) {
+	if hasDefaultValue && (field.Tp.Tp == mysql.TypeJSON || types.IsTypeBlob(field.Tp.Tp)) {
 		s.AppendErrorNo(ER_BLOB_CANT_HAVE_DEFAULT, field.Name.Name.O)
 	}
 
