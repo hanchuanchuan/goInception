@@ -331,6 +331,8 @@ type Inc struct {
 
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
+
+	// Version *string
 }
 
 // Osc online schema change 工具参数配置
@@ -625,6 +627,7 @@ var defaultConf = Config{
 		SqlSafeUpdates:     -1,
 		SupportCharset:     "utf8,utf8mb4",
 		Lang:               "en-US",
+		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{
 		OscPrintNone:               false,

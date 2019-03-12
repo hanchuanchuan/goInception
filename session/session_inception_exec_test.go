@@ -516,6 +516,8 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
 	sql := ""
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int;"
 	s.testErrorCode(c, sql)
@@ -677,9 +679,9 @@ func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
 	c.Assert(row[2], Equals, "0")
 
 	res = makeExecSql(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "0")
-	row = res.Rows()[3]
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 }
 
