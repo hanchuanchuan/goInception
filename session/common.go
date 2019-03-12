@@ -20,7 +20,7 @@ var (
 	htmlApos = []byte(`\'`) // shorter than "&apos;" and apos was not in HTML until HTML5
 )
 
-var CharSets = map[string]int{
+var charSets = map[string]int{
 	"armscii8": 1,
 	"ascii":    1,
 	"big5":     2,
@@ -141,8 +141,8 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 func StringStorageReq(dataType string, charset string) int {
 	// get bytes per character, default 1
 	bysPerChar := 1
-	if _, ok := CharSets[strings.ToLower(charset)]; ok {
-		bysPerChar = CharSets[strings.ToLower(charset)]
+	if _, ok := charSets[strings.ToLower(charset)]; ok {
+		bysPerChar = charSets[strings.ToLower(charset)]
 	}
 
 	// get length

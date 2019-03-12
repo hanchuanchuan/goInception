@@ -17,18 +17,21 @@
 
 package session
 
+// 数据库类型
 const (
 	DBTypeMysql = iota
 	DBTypeMariaDB
 	DBTypeTiDB
 )
 
+// 审核阶段
 const (
 	StageOK byte = iota
 	StageCheck
 	StageExec
 )
 
+// 审核状态
 const (
 	StatusAuditOk byte = iota
 	StatusExecFail
@@ -43,6 +46,7 @@ var (
 		"Execute Successfully\nBackup failed", "Execute Successfully\nBackup Successfully"}
 )
 
+// Keywords 数据库关键字
 var Keywords = map[string]bool{
 	"ACTION":                   true,
 	"ADD":                      true,
