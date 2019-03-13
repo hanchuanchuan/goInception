@@ -83,6 +83,9 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Osc.OscOn = false
 
 	inc.EnableDropTable = true
+
+	config.GetGlobalConfig().Inc.Lang = "en-US"
+	session.SetLanguage("en-US")
 }
 
 func (s *testSessionIncExecSuite) TearDownSuite(c *C) {

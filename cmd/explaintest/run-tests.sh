@@ -152,13 +152,16 @@ fi
 rm -rf $explain_test_log
 
 echo "start tidb-server, log file: $explain_test_log"
-if [ "${TIDB_TEST_STORE_NAME}" = "tikv" ]; then
-    $tidb_server -config config.toml -store tikv -path "${TIKV_PATH}" > $explain_test_log 2>&1 &
-    SERVER_PID=$!
-else
-    $tidb_server -config config.toml -store mocktikv -path "" > $explain_test_log 2>&1 &
-    SERVER_PID=$!
-fi
+$tidb_server -config config.toml -store mocktikv -path "" > $explain_test_log 2>&1 &
+SERVER_PID=$!
+# 2019-3-13 hcc 不使用tikv
+# if [ "${TIDB_TEST_STORE_NAME}" = "tikv" ]; then
+#     $tidb_server -config config.toml -store tikv -path "${TIKV_PATH}" > $explain_test_log 2>&1 &
+#     SERVER_PID=$!
+# else
+#     $tidb_server -config config.toml -store mocktikv -path "" > $explain_test_log 2>&1 &
+#     SERVER_PID=$!
+# fi
 echo "tidb-server(PID: $SERVER_PID) started"
 
 sleep 5
