@@ -547,13 +547,15 @@ var defaultConf = Config{
 	Port:             4000,
 	Store:            "mocktikv",
 	Path:             "/tmp/tidb",
-	RunDDL:           true,
-	SplitTable:       true,
-	Lease:            "45s",
-	TokenLimit:       1000,
-	OOMAction:        "log",
-	MemQuotaQuery:    32 << 30,
-	EnableStreaming:  false,
+	// 关闭ddl线程
+	RunDDL:     false,
+	SplitTable: true,
+	// 更新远程架构的时间
+	Lease:           "0s",
+	TokenLimit:      1000,
+	OOMAction:       "log",
+	MemQuotaQuery:   32 << 30,
+	EnableStreaming: false,
 	TxnLocalLatches: TxnLocalLatches{
 		Enabled:  true,
 		Capacity: 2048000,
@@ -576,13 +578,16 @@ var defaultConf = Config{
 		MetricsInterval: 15,
 	},
 	Performance: Performance{
-		TCPKeepAlive:        false,
-		CrossJoin:           true,
-		StatsLease:          "3s",
-		RunAutoAnalyze:      false,
-		StmtCountLimit:      5000,
-		FeedbackProbability: 0.05,
-		QueryFeedbackLimit:  1024,
+		TCPKeepAlive: false,
+		CrossJoin:    true,
+		// 设置0s时关闭统计信息更新
+		StatsLease:     "0s",
+		RunAutoAnalyze: false,
+		StmtCountLimit: 5000,
+		// 统计直方图采样率,为0时不作采样
+		FeedbackProbability: 0.0,
+		// 内存最大采样数
+		QueryFeedbackLimit:  0,
 		PseudoEstimateRatio: 0.8,
 		ForcePriority:       "NO_PRIORITY",
 	},

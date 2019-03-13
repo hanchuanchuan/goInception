@@ -561,10 +561,9 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeSQL(tk, `create table t1(id int);
+	res = makeSQL(tk, `drop table if exists t1;create table t1(id int);
 		alter table t1 add column c1 char(200);
 		alter table t1 add column c2 varchar(200);`)
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 4)
 	row = res.Rows()[int(tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
@@ -573,7 +572,7 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[2], Equals, "0")
 
 	// 字符集
-	res = makeSQL(tk, `create table t1(id int);
+	res = makeSQL(tk, `drop table if exists t1;create table t1(id int);
 		alter table t1 add column c1 varchar(20) character set utf8;
 		alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-2]
@@ -588,7 +587,7 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
 	config.GetGlobalConfig().Inc.CheckIdentifier = true
 
-	res = makeSQL(tk, "create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t1 add column `c1$` varchar(20);alter table t1 add column c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20);")
+	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t1 add column `c1$` varchar(20);alter table t1 add column c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-3]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.")
@@ -601,7 +600,7 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = makeSQL(tk, "create table t1(id int);alter table t1 add column c1 varchar(20);")
+	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(20);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
@@ -609,14 +608,14 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 
 	// 无效默认值
-	res = makeSQL(tk, "create table t1(id int);alter table t1 add column c1 int default '';")
+	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int default '';")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	res = makeSQL(tk, "create table t1(id int);alter table t1 add column c1 blob;alter table t1 add column c2 text;")
+	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob;alter table t1 add column c2 text;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
@@ -626,48 +625,48 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c2'.")
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
-	res = makeSQL(tk, "create table t1(id int);alter table t1 add column c1 blob not null;")
+	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob not null;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
 
 	// 检查默认值
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
-	sql = "create table t1(id int);alter table t1 add column c1 varchar(10);"
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(10);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_DEFAULT_ADD_COLUMN, "c1", "t1"))
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
-	sql = "create table t2 (id int primary key , age int);"
+	sql = "drop table if exists t1;create table t1(id int primary key , age int);"
 	s.testErrorCode(c, sql)
 
 	// // add column
-	sql = "create table t1 (c1 int primary key);alter table t1 add column c1 int"
+	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add column c1 int"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_COLUMN_EXISTED, "t1.c1"))
 
-	sql = "create table t1 (c1 int primary key);alter table t1 add column aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int"
+	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add column aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
 
-	sql = "alter table t1 comment 'test comment'"
+	sql = "drop table if exists t1;alter table t1 comment 'test comment'"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
 
-	sql = "create table t1 (c1 int primary key);alter table t1 add column `a ` int ;"
+	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add column `a ` int ;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_IDENT, "a "),
 		session.NewErr(session.ER_WRONG_COLUMN_NAME, "a "))
 
-	sql = "create table t1 (c1 int primary key);alter table t1 add column c2 int on update current_timestamp;"
+	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add column c2 int on update current_timestamp;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
 
-	sql = "create table t1(c2 int on update current_timestamp);"
+	sql = "drop table if exists t1;create table t1(c2 int on update current_timestamp);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
 
-	sql = "create table t1 (c1 int primary key);alter table t1 add c2 json;"
+	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
 	s.testErrorCode(c, sql)
 
 }
