@@ -306,10 +306,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			stmtNodes, err := s.ParseSQL(ctx, s1, charsetInfo, collation)
 
 			if err != nil {
-				log.Error(s1)
 				log.Error(fmt.Sprintf("解析失败! %s", err))
+				log.Error(s1)
+				// 移除config配置信息/*user=...*/
+				if !s.haveBegin && strings.Contains(s1, "*/") {
+					s1 = s1[strings.Index(s1, "*/")+2:]
+				}
 				s.recordSets.Append(&Record{
-					Sql:          s1,
+					Sql:          strings.TrimSpace(s1),
 					ErrLevel:     2,
 					ErrorMessage: err.Error(),
 				})

@@ -65,7 +65,7 @@ ghost_dml_batch_size = 10
 
 [log]
 # Log level: debug, info, warn, error, fatal.
-level = "info"
+level = "debug"
 # Log format, one of json, text, console.
 format = "console"
 
