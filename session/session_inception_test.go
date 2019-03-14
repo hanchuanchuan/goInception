@@ -66,8 +66,10 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
 
-	config.GetGlobalConfig().Inc.Lang = "zh-CN"
-	session.SetLanguage("zh-CN")
+	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
+	// session.SetLanguage("zh-CN")
+	config.GetGlobalConfig().Inc.Lang = "en-US"
+	session.SetLanguage("en-US")
 }
 
 func (s *testSessionIncSuite) TearDownSuite(c *C) {
@@ -187,7 +189,7 @@ func (s *testSessionIncSuite) TestNoSourceInfo(c *C) {
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "不正确的数据源信息.")
+		c.Assert(row[4], Equals, "Invalid source infomation.")
 	}
 }
 
@@ -200,7 +202,7 @@ inception_magic_start;create table t1(id int);inception_magic_commit;`)
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "不正确的的数据库名 ''.")
+		c.Assert(row[4], Equals, "Incorrect database name ''.")
 	}
 }
 
@@ -248,45 +250,39 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckPrimaryKey = false
 
 	// 数据类型 警告
-	res = makeSQL(tk, "create table t1(id int,c1 bit);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
+	sql = "create table t1(id int,c1 bit);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
 
-	res = makeSQL(tk, "create table t1(id int,c1 enum('red', 'blue', 'black'));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
+	sql = "create table t1(id int,c1 enum('red', 'blue', 'black'));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
 
-	res = makeSQL(tk, "create table t1(id int,c1 set('red', 'blue', 'black'));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
+	sql = "create table t1(id int,c1 set('red', 'blue', 'black'));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeSQL(tk, `create table t1(id int,c1 char(200));`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
+	sql = `create table t1(id int,c1 char(200));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
 
 	// 字符集
-	res = makeSQL(tk, `create table t1(id int,c1 varchar(20) character set utf8,
-		c2 varchar(20) COLLATE utf8_bin);`)
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!\n表 't1' 列 'c2' 禁止设置字符集!")
+	sql = `create table t1(id int,c1 varchar(20) character set utf8,
+		c2 varchar(20) COLLATE utf8_bin);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = false
-	res = makeSQL(tk, `create table t1(id int,c1 varchar(20)) character set utf8;`)
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 禁止设置字符集!")
+	sql = `create table t1(id int,c1 varchar(20)) character set utf8;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
 
-	res = makeSQL(tk, `create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`)
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 禁止设置字符集!")
+	sql = `create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -295,14 +291,13 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	res = makeSQL(tk, "create table t1(id int, TABLES varchar(20),`c1$` varchar(20),c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20));")
 	row = res.Rows()[1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\n标识符 'c1$' 无效, 允许字符为 [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
+	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\nIdentifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = makeSQL(tk, "create table t1(c1 varchar(20));")
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
+	sql = "create table t1(c1 varchar(20));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_HAVE_NO_COMMENT, "c1", "t1"))
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 
@@ -544,32 +539,24 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[4], Equals, "Column 't1.c1' not existed.")
 
 	// 数据类型 警告
-	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 bit;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c2 bit;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2"))
 
-	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 enum('red', 'blue', 'black');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c2 enum('red', 'blue', 'black');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2"))
 
-	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 set('red', 'blue', 'black');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c2 set('red', 'blue', 'black');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2"))
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeSQL(tk, `drop table if exists t1;create table t1(id int);
-		alter table t1 add column c1 char(200);
-		alter table t1 add column c2 varchar(200);`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
-
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
+	sql = `drop table if exists t1;create table t1(id int);
+		alter table t1 add column c1 char(200);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
 
 	// 字符集
 	res = makeSQL(tk, `drop table if exists t1;create table t1(id int);
@@ -577,11 +564,11 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 		alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`)
 	row = res.Rows()[int(tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c1'.")
 
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c2' 禁止设置字符集!")
+	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c2'.")
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -593,18 +580,16 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.")
 	row = res.Rows()[int(tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "标识符 'c1$' 无效, 允许字符为 [a-z|A-Z|0-9|_].")
+	c.Assert(row[4], Equals, "Identifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Identifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(20);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
-
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(20);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_HAVE_NO_COMMENT, "c1", "t1"))
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 
 	// 无效默认值
@@ -717,56 +702,45 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	}
 
 	// after 不存在的列
-	res = makeSQL(tk, "create table t1(id int);alter table t1 modify column c1 int after id;")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column 't1.c1' not existed.")
+	sql = "create table t1(id int);alter table t1 modify column c1 int after id;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c1"))
 
-	res = makeSQL(tk, "create table t1(id int,c1 int);alter table t1 modify column c1 int after id1;")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Column 't1.id1' not existed.")
+	sql = "create table t1(id int,c1 int);alter table t1 modify column c1 int after id1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.id1"))
 
 	// 数据类型 警告
-	res = makeSQL(tk, "create table t1(id bit);alter table t1 modify column id bit;")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+	sql = "create table t1(id bit);alter table t1 modify column id bit;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
 
-	res = makeSQL(tk, "create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+	sql = "create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
 
-	res = makeSQL(tk, "create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');")
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+	sql = "create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeSQL(tk, `create table t1(id int,c1 char(10));
-		alter table t1 modify column c1 char(200);`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
+	sql = `create table t1(id int,c1 char(10));
+		alter table t1 modify column c1 char(200);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
 
 	// 字符集
 	res = makeSQL(tk, `create table t1(id int,c1 varchar(20));
 		alter table t1 modify column c1 varchar(20) character set utf8;
 		alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
+	row := res.Rows()[int(tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c1'.")
 
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "表 't1' 列 'c1' 禁止设置字符集!")
+	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c1'.")
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
@@ -1109,11 +1083,11 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	// 不存在
 	sql = "drop database if exists test1111111111111111111;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+		session.NewErr(session.ER_CANT_DROP_DATABASE, "test1111111111111111111"))
 
 	sql = "drop database test1111111111111111111;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法删除数据库'test1111111111111111111'."))
+		session.NewErr(session.ER_CANT_DROP_DATABASE, "test1111111111111111111"))
 	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
 	sql = "drop database if exists test1111111111111111111;create database test1111111111111111111;"
