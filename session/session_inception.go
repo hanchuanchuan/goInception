@@ -645,7 +645,7 @@ func (s *session) executeCommit() {
 			}
 		}
 
-		if s.opt.middlewareExtend == "" {
+		if !s.isMiddleware() {
 			// 解析binlog生成回滚语句
 			s.Parser()
 		}
@@ -656,7 +656,9 @@ func (s *session) mysqlBackupSql(record *Record) {
 	if s.checkSqlIsDDL(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
 
-		// s.mysqlExecuteBackupSqlForDDL(record)
+		if s.isMiddleware() {
+			s.mysqlExecuteBackupSqlForDDL(record)
+		}
 	} else if s.checkSqlIsDML(record) {
 		s.mysqlExecuteBackupInfoInsertSql(record)
 	}
@@ -1116,7 +1118,7 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	log.Debug("mysqlFetchMasterBinlogPosition")
 
 	sql := "SHOW MASTER STATUS;"
-	if s.opt.middlewareExtend != "" {
+	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
 	}
 
@@ -1226,7 +1228,7 @@ func (s *session) fetchThreadID() (threadId uint32) {
 	log.Debug("fetchThreadID")
 
 	sql := "select connection_id();"
-	if s.opt.middlewareExtend != "" {
+	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
 	}
 
@@ -3976,7 +3978,7 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 
 	var explain []string
 
-	if s.opt.middlewareExtend != "" {
+	if s.isMiddleware() {
 		explain = append(explain, s.opt.middlewareExtend)
 	}
 
@@ -4664,4 +4666,8 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 	}
 
 	return !s.hasError()
+}
+
+func (s *session) isMiddleware() bool {
+	return s.opt.middlewareExtend != ""
 }
