@@ -547,8 +547,8 @@ var defaultConf = Config{
 	Port:             4000,
 	Store:            "mocktikv",
 	Path:             "/tmp/tidb",
-	// 关闭ddl线程
-	RunDDL:     false,
+	// 关闭ddl线程(不能直接使用该设置,在main中启动服务后自动关闭)
+	RunDDL:     true,
 	SplitTable: true,
 	// 更新远程架构的时间
 	Lease:           "0s",

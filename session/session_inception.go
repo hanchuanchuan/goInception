@@ -1219,7 +1219,7 @@ func (s *session) mysqlServerVersion() {
 		s.AppendErrorMessage(fmt.Sprintf("无法解析版本号:%s", value))
 	}
 
-	log.Debug(s.DBType, "---", s.DBVersion)
+	log.Debug("db version: ", s.DBVersion)
 }
 
 func (s *session) fetchThreadID() (threadId uint32) {
@@ -3927,7 +3927,7 @@ func (s *session) checkCharset(charset string) bool {
 }
 
 func (s *session) checkChangeDB(node *ast.UseStmt) {
-	log.Debug("checkChangeDB", node.DBName)
+	log.Debug("checkChangeDB")
 
 	s.DBName = node.DBName
 	if s.checkDBExists(node.DBName, true) {

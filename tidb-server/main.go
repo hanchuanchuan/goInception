@@ -143,6 +143,13 @@ func main() {
 	createStoreAndDomain()
 	createServer()
 	signal.SetupSignalHandler(serverShutdown)
+
+	// 在启动完成后关闭DDL线程(goInception用不到该线程)
+	ddl := dom.DDL()
+	if ddl != nil {
+		terror.Log(errors.Trace(ddl.Stop()))
+	}
+
 	runServer()
 	cleanup()
 	os.Exit(0)
@@ -162,6 +169,7 @@ func registerMetrics() {
 
 func createStoreAndDomain() {
 	fullPath := fmt.Sprintf("%s://%s", cfg.Store, cfg.Path)
+	log.Warning(fullPath)
 	var err error
 	storage, err = session.NewStore(fullPath)
 	terror.MustNil(err)

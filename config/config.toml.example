@@ -19,7 +19,7 @@ path = "/tmp/tidb"
 socket = ""
 
 # Run ddl worker on this tidb-server.
-run-ddl = false
+run-ddl = true
 
 # Schema lease duration, very dangerous to change only if you know what you do.
 lease = "0s"
