@@ -84,6 +84,10 @@ func (s *session) GetNextBackupRecord() *Record {
 
 			} else if r.AffectedRows > 0 && s.checkSqlIsDML(r) {
 
+				// if s.opt.middlewareExtend != "" {
+				// 	continue
+				// }
+
 				// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
 				if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
 					continue

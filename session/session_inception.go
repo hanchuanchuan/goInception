@@ -1331,14 +1331,14 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	// options := strings.Replace(strings.Replace(firsts[1], "-", "", -1), "_", "", -1)
-	options := strings.Replace(firsts[1], "=", ": ", -1)
-	options = strings.Replace(options, "remote", "", -1)
+	// options := strings.Replace(firsts[1], "=", ": ", -1)
+	options := strings.Replace(firsts[1], "remote", "", -1)
 
 	var buf strings.Builder
 
 	for _, line := range strings.Split(options, ";") {
-		if strings.Contains(line, ": ") {
-			v := strings.SplitN(line, ": ", 2)
+		if strings.Contains(line, "=") {
+			v := strings.SplitN(line, "=", 2)
 			param, value := v[0], v[1]
 			param = strings.Replace(strings.Replace(param, "-", "", -1), "_", "", -1)
 

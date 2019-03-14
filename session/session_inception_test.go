@@ -1019,6 +1019,12 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
+
+	// res = makeSQL(tk, "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
+	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	// c.Assert(row[2], Equals, "0")
+	// c.Assert(row[6], Equals, "1")
+
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
