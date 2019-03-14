@@ -169,7 +169,6 @@ func registerMetrics() {
 
 func createStoreAndDomain() {
 	fullPath := fmt.Sprintf("%s://%s", cfg.Store, cfg.Path)
-	log.Warning(fullPath)
 	var err error
 	storage, err = session.NewStore(fullPath)
 	terror.MustNil(err)
