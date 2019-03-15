@@ -33,18 +33,22 @@ before_install:
   # See https://github.com/golang/go/issues/12933
   - bash gitcookie.sh
   - sudo chmod +x cmd/explaintest/run-tests.sh
-  - mysql -e 'select version()'
-  - mysql -e "create database test_inc;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
 
-# before_script:
-#   - |
-#     until mysql -u${MYSQL_USER} -e 'SELECT 1' > /dev/null; do
-#       >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} for user ${MYSQL_USER} is unavailable - sleeping"
-#       sleep 1
-#     done
-#     >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} is up"
+  - mysql -e 'select version()'
+  - mysql -e "create database test_inc DEFAULT CHARACTER SET utf8;create database 127_0_0_1_3306_test_inc DEFAULT CHARACTER SET utf8;"
+  - mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
+
+  # 关闭数据库,重启并开启binlog,设置字符集
+  - ps -ef|grep mysql
+  - sudo service mysql stop
+  - sudo mysqld --log-bin=on --server_id=111 --character-set-server=utf8 &
+  - ps -ef|grep mysql
 
 script:
   # - rm -f go.sum
   # - docker ps
   - make dev upload-coverage
+
+after_failure:
+  - netstat -nltp
+  - ps -ef|grep mysql
