@@ -234,7 +234,7 @@ func (s *testSessionIncSuite) TestNoSourceInfo(c *C) {
 
 func (s *testSessionIncSuite) TestWrongDBName(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;create table t1(id int);inception_magic_commit;`)
 
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 1)
@@ -247,7 +247,7 @@ inception_magic_start;create table t1(id int);inception_magic_commit;`)
 
 func (s *testSessionIncSuite) TestEnd(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;use test_inc;create table t1(id int);`)
 
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
