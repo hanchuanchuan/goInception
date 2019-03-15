@@ -27,9 +27,12 @@ check_index_prefix = false
 
 
 backup_host = "127.0.0.1"
-backup_port = 20001
-backup_user = "inception"
-backup_password = "inception"
+# backup_port = 20001
+# backup_user = "inception"
+# backup_password = "inception"
+backup_port = 3306
+backup_user = "test"
+backup_password = "test"
 
 
 # 安全更新是否开启.
@@ -43,7 +46,7 @@ sql_safe_updates = 0
 
 [osc]
 osc_on = false
-osc_min_table_size = 0
+osc_min_table_size = 16
 osc_print_none = false
 osc_bin_dir = "/usr/local/bin"
 

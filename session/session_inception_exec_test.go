@@ -36,14 +36,6 @@ func TestExec(t *testing.T) {
 	TestingT(t)
 }
 
-// func TestT(t *testing.T) {
-//  logutil.InitLogger(&logutil.LogConfig{
-//      Level: "warn",
-//  })
-//  CustomVerboseFlag = true
-//  TestingT(t)
-// }
-
 type testSessionIncExecSuite struct {
 	cluster   *mocktikv.Cluster
 	mvccStore mocktikv.MVCCStore
@@ -101,13 +93,6 @@ func (s *testSessionIncExecSuite) TearDownSuite(c *C) {
 func (s *testSessionIncExecSuite) TearDownTest(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
-	}
-
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	r := tk.MustQuery("show tables")
-	for _, tb := range r.Rows() {
-		tableName := tb[0]
-		tk.MustExec(fmt.Sprintf("drop table %v", tableName))
 	}
 }
 
@@ -187,7 +172,7 @@ func (s *testSessionIncExecSuite) TestNoSourceInfo(c *C) {
 
 func (s *testSessionIncExecSuite) TestWrongDBName(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;create table t1(id int);inception_magic_commit;`)
 
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 1)
@@ -200,7 +185,7 @@ inception_magic_start;create table t1(id int);inception_magic_commit;`)
 
 func (s *testSessionIncExecSuite) TestEnd(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;use test_inc;create table t1(id int);`)
 
 	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
