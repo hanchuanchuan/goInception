@@ -438,32 +438,45 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_MULTIPLE_PRI_KEY))
 
-	// config.GetGlobalConfig().Inc.EnableBlobType = false
-	// sql = "drop table if exists t1;create table t1(pt text ,primary key (pt));"
-	// s.testErrorCode(c, sql,
-	// 	session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
-	// 	session.NewErr(session.ER_TOO_LONG_KEY, "", 3072))
+	fmt.Println("数据库版本: ", s.getDBVersion(c))
+
+	indexMaxLength := 767
+	if s.getDBVersion(c) >= 50700 {
+		indexMaxLength = 3072
+	}
+
+	config.GetGlobalConfig().Inc.EnableBlobType = false
+	sql = "drop table if exists t1;create table t1(pt text ,primary key (pt));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
+		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	// 索引长度
+	sql = "drop table if exists t1;create table t1(a text, unique (a(3073)));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "t1"),
+		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+
+	sql = "drop table if exists t1;create table t1(c1 int,c2 text, unique uq_1(c1,c2(3069)));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	// sql = "drop table if exists t1;create table t1(c1 int,c2 text, unique uq_1(c1,c2(3068)));"
+	// if indexMaxLength == 3072 {
+	// 	s.testErrorCode(c, sql)
+	// } else {
+	// 	s.testErrorCode(c, sql,
+	// 		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+	// }
+
+	config.GetGlobalConfig().Inc.EnableBlobType = false
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	sql = "drop table if exists t1;create table t1(pt blob ,primary key (pt));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_BLOB_USED_AS_KEY, "pt"))
-
-	// // 索引长度
-	// sql = "drop table if exists t1;create table t1(a text, unique (a(3073)));"
-	// s.testErrorCode(c, sql,
-	// 	session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "t1"),
-	// 	session.NewErr(session.ER_TOO_LONG_KEY, "", 3072))
-
-	// sql = "drop table if exists t1;create table t1(c1 int,c2 text, unique uq_1(c1,c2(3069)));"
-	// s.testErrorCode(c, sql,
-	// 	session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", 3072))
-
-	// config.GetGlobalConfig().Inc.EnableBlobType = true
-	// sql = "drop table if exists t1;create table t1(c1 int,c2 text, unique uq_1(c1,c2(3068)));"
-	// s.testErrorCode(c, sql,
-	// 	session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", 3072))
-	// config.GetGlobalConfig().Inc.EnableBlobType = false
 
 	sql = "drop table if exists t1;create table t1(`id` int, key `primary`(`id`));"
 	s.testErrorCode(c, sql,
@@ -1313,4 +1326,43 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	if res != nil {
 		c.Assert(res.Close(), IsNil)
 	}
+}
+
+func (s *testSessionIncExecSuite) getDBVersion(c *C) int {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	sql := "show variables like 'version'"
+
+	res := makeExecSQL(s.tk, sql)
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	versionStr := row[5].(string)
+
+	versionStr = strings.SplitN(versionStr, "|", 2)[1]
+	value := strings.Replace(versionStr, "'", "", -1)
+	value = strings.TrimSpace(value)
+
+	// if strings.Contains(strings.ToLower(value), "mariadb") {
+	// 	return DBTypeMariaDB
+	// }
+
+	versionStr = strings.Split(value, "-")[0]
+	versionSeg := strings.Split(versionStr, ".")
+	if len(versionSeg) == 3 {
+		versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
+		version, err := strconv.Atoi(versionStr)
+		if err != nil {
+			fmt.Println(err)
+		}
+		return version
+	}
+
+	return 50700
 }

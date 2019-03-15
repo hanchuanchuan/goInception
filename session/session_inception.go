@@ -3032,6 +3032,11 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 
 			maxLength := foundField.GetDataBytes(s.DBVersion)
 
+			// Length must be specified for BLOB and TEXT column indexes.
+			// if types.IsTypeBlob(col.FieldType.Tp) && ic.Length == types.UnspecifiedLength {
+			// 	return nil, errors.Trace(errBlobKeyWithoutLength)
+			// }
+
 			if col.Length != types.UnspecifiedLength {
 				if !strings.Contains(strings.ToLower(foundField.Type), "blob") &&
 					!strings.Contains(strings.ToLower(foundField.Type), "char") &&
@@ -3051,7 +3056,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			if col.Length == types.UnspecifiedLength {
 				keyMaxLen += maxLength
 			} else {
-				keyMaxLen += col.Length
+				keyMaxLen += col.Length * 3
 			}
 
 			if tp == ast.ConstraintPrimaryKey {
