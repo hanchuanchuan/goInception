@@ -1389,8 +1389,8 @@ func (s *session) parseOptions(sql string) {
 
 	// log.Infof("%#v", s.opt)
 
-	if s.opt.host == "" || s.opt.port == 0 ||
-		s.opt.user == "" || s.opt.password == "" {
+	// 不再检查密码是否为空
+	if s.opt.host == "" || s.opt.port == 0 || s.opt.user == "" {
 		log.Warning(s.opt)
 		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
 		return
@@ -1429,8 +1429,8 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	if s.opt.backup {
-		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 ||
-			s.Inc.BackupUser == "" || s.Inc.BackupPassword == "" {
+		// 不再检查密码是否为空
+		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 || s.Inc.BackupUser == "" {
 			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
 		} else {
 			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
