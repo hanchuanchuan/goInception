@@ -6,14 +6,18 @@ go:
   - "1.11.3"
 
 services:
-- docker
+# - docker
+- mysql
+
+# SHORT=1 跳过goInception审核和执行测试
 
 env:
-    - TRAVIS_COVERAGE=0 SHORT=1
-    - TRAVIS_COVERAGE=1 SHORT=1
+  - TRAVIS_COVERAGE=0
+  - TRAVIS_COVERAGE=1
 
-install:
-  docker run -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7
+# install:
+#   - netstat -nltp
+#   - docker run -p 4306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=travis -d mysql:5.7
 
 # Run coverage tests.
 matrix:
@@ -29,9 +33,18 @@ before_install:
   # See https://github.com/golang/go/issues/12933
   - bash gitcookie.sh
   - sudo chmod +x cmd/explaintest/run-tests.sh
+  - mysql -e 'select version()'
+  - mysql -e "create database test_inc;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
+
+# before_script:
+#   - |
+#     until mysql -u${MYSQL_USER} -e 'SELECT 1' > /dev/null; do
+#       >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} for user ${MYSQL_USER} is unavailable - sleeping"
+#       sleep 1
+#     done
+#     >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} is up"
+
 script:
   # - rm -f go.sum
-  - docker ps
-  - netstat -ntlp
-  - ps -ef|grep mysql
+  # - docker ps
   - make dev upload-coverage
