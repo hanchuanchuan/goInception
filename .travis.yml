@@ -5,9 +5,15 @@ go_import_path: github.com/hanchuanchuan/goInception
 go:
   - "1.11.3"
 
+services:
+- docker
+
 env:
     - TRAVIS_COVERAGE=0 SHORT=1
     - TRAVIS_COVERAGE=1 SHORT=1
+
+install:
+  docker run -p 3306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql:5.7
 
 # Run coverage tests.
 matrix:
@@ -25,4 +31,7 @@ before_install:
   - sudo chmod +x cmd/explaintest/run-tests.sh
 script:
   # - rm -f go.sum
+  - docker ps
+  - netstat -ntlp
+  - ps -ef|grep mysql
   - make dev upload-coverage
