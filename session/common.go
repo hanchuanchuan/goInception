@@ -117,7 +117,11 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 
 	case "char", "binary", "varchar", "varbinary", "enum", "set":
 		// string
-		return StringStorageReq(col.Type, "utf8mb4")
+		charset := "utf8mb4"
+		if col.Collation != "" {
+			charset = strings.SplitN(col.Collation, "_", 2)[0]
+		}
+		return StringStorageReq(col.Type, charset)
 	case "tibyblob", "tinytext":
 		return 1<<8 - 1
 	case "blob", "text":

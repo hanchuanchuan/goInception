@@ -3056,7 +3056,12 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			if col.Length == types.UnspecifiedLength {
 				keyMaxLen += maxLength
 			} else {
-				keyMaxLen += col.Length * 3
+				// log.Info(foundField)
+				if foundField.Collation == "" || strings.HasPrefix(foundField.Collation, "utf8mb4") {
+					keyMaxLen += col.Length * 4
+				} else {
+					keyMaxLen += col.Length * 3
+				}
 			}
 
 			if tp == ast.ConstraintPrimaryKey {
