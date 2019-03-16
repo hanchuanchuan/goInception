@@ -97,15 +97,15 @@ type ExplainInfo struct {
 type FieldInfo struct {
 	gorm.Model
 
-	Field      string `gorm:"Column:Field"`
-	Type       string `gorm:"Column:Type"`
-	Collation  string `gorm:"Column:Collation"`
-	Null       string `gorm:"Column:Null"`
-	Key        string `gorm:"Column:Key"`
-	Default    string `gorm:"Column:Default"`
-	Extra      string `gorm:"Column:Extra"`
-	Privileges string `gorm:"Column:Privileges"`
-	Comment    string `gorm:"Column:Comment"`
+	Field      string  `gorm:"Column:Field"`
+	Type       string  `gorm:"Column:Type"`
+	Collation  string  `gorm:"Column:Collation"`
+	Null       string  `gorm:"Column:Null"`
+	Key        string  `gorm:"Column:Key"`
+	Default    *string `gorm:"Column:Default"`
+	Extra      string  `gorm:"Column:Extra"`
+	Privileges string  `gorm:"Column:Privileges"`
+	Comment    string  `gorm:"Column:Comment"`
 
 	IsDeleted bool `gorm:"-"`
 	IsNew     bool `gorm:"-"`
@@ -2183,12 +2183,21 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 		if !found {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 		} else {
+			if s.opt.execute {
+				if foundField.Default == nil {
+					s.myRecord.DDLRollback += "DROP DEFAULT,"
+				} else {
+					s.myRecord.DDLRollback += fmt.Sprintf("SET DEFAULT '%s',", *foundField.Default)
+				}
+			}
+
 			if nc.Options == nil {
 				// drop default . 不需要判断,可以删除本身为null的默认值
+				foundField.Default = nil
 			} else {
 				// "SET" "DEFAULT" SignedLiteral
 				for _, op := range nc.Options {
-					defaultValue := (op.Expr.GetDatum().GetString())
+					defaultValue := fmt.Sprint(op.Expr.GetValue())
 
 					if len(defaultValue) == 0 {
 						switch strings.Split(foundField.Type, "(")[0] {
@@ -2197,8 +2206,11 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 							s.AppendErrorNo(ER_INVALID_DEFAULT, nc.Name.Name)
 						}
 					}
+
+					foundField.Default = &defaultValue
 				}
 			}
+
 		}
 	}
 
@@ -2332,11 +2344,13 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					if foundField.Null == "NO" {
 						buf.WriteString(" NOT NULL")
 					}
-					if foundField.Default != "" {
-						buf.WriteString(" DEFALUT '")
-						buf.WriteString(foundField.Default)
+
+					if foundField.Default != nil {
+						buf.WriteString(" DEFAULT '")
+						buf.WriteString(*foundField.Default)
 						buf.WriteString("'")
 					}
+
 					if foundField.Comment != "" {
 						buf.WriteString(" COMMENT '")
 						buf.WriteString(foundField.Comment)
@@ -2438,9 +2452,9 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					if foundField.Null == "NO" {
 						buf.WriteString(" NOT NULL")
 					}
-					if foundField.Default != "" {
-						buf.WriteString(" DEFALUT '")
-						buf.WriteString(foundField.Default)
+					if foundField.Default != nil {
+						buf.WriteString(" DEFAULT '")
+						buf.WriteString(*foundField.Default)
 						buf.WriteString("'")
 					}
 					if foundField.Comment != "" {
@@ -2958,9 +2972,9 @@ func (s *session) mysqlDropColumnRollback(field FieldInfo) {
 	if field.Null == "NO" {
 		buf.WriteString(" NOT NULL")
 	}
-	if field.Default != "" {
-		buf.WriteString(" DEFALUT '")
-		buf.WriteString(field.Default)
+	if field.Default != nil {
+		buf.WriteString(" DEFAULT '")
+		buf.WriteString(*field.Default)
 		buf.WriteString("'")
 	}
 	if field.Comment != "" {
@@ -3069,11 +3083,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 					s.AppendErrorNo(ER_PK_COLS_NOT_INT, foundField.Field, t.Schema, t.Name)
 				}
 
-				if foundField.Null == "YES" || foundField.Default == "NULL" {
+				if foundField.Null == "YES" {
 					s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
 				}
 			}
-
 		}
 	}
 
@@ -4535,11 +4548,14 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			field.Tp.Flag |= mysql.UniqueKeyFlag
 
 		case ast.ColumnOptionDefaultValue:
+
 			if op.Expr.GetDatum().IsNull() {
 				c.Null = "YES"
-				c.Default = "NULL"
+				// *c.Default = "NULL"
+				c.Default = nil
 			} else {
-				c.Default = op.Expr.GetDatum().GetString()
+				c.Default = new(string)
+				*c.Default = fmt.Sprint(op.Expr.GetValue())
 			}
 		case ast.ColumnOptionAutoIncrement:
 			if strings.ToLower(c.Field) != "id" {
