@@ -631,6 +631,8 @@ func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
 			buf = strconv.AppendInt(buf, int64(v), 10)
 		case int64:
 			buf = strconv.AppendInt(buf, v, 10)
+		case int:
+			buf = strconv.AppendInt(buf, int64(v), 10)
 		case float32:
 			buf = strconv.AppendFloat(buf, float64(v), 'g', -1, 32)
 		case float64:

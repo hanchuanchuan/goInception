@@ -79,6 +79,7 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Ghost.GhostOn = false
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
+	config.GetGlobalConfig().Inc.EnableBlobType = true
 
 	inc.EnableDropTable = true
 
@@ -381,24 +382,93 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 			"INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(2,2);",
 		}, "\n"), Commentf("%v", res.Rows()))
 
-	// res = s.makeSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
-	//        create table t2(id int primary key,c1 int,c2 int);
-	//        delete t2 from t1 inner join t2 on t1.id=t2.id2 where c11=1;`)
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "2")
-	// c.Assert(row[4], Equals, "Column 't2.id2' not existed.")
+	s.makeSQL(tk, "drop table if exists t1;create table t1(id int primary key,c1 blob);insert into t1 values(1,X'010203');")
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'\x01\x02\x03');", Commentf("%v", res.Rows()))
 
-	// res = s.makeSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
-	//        create table t2(id int primary key,c1 int,c2 int);
-	//        delete t2 from t1 inner join t2 on t1.id=t2.id where t1.c1=1;`)
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 json);
+	insert into t1 values(1,'{"time":"2015-01-01 13:00:00","result":"fail"}');`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
 
-	// // 受影响行数
-	// res = s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1;")
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-	// c.Assert(row[6], Equals, "0")
+	s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');")
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 enum('type1','type2','type3','type4'));
+	insert into t1 values(1,'type2');`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 bit);
+	insert into t1 values(1,1);`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1);", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 decimal(10,2));
+	insert into t1 values(1,1.11);`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11);", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 double);
+	insert into t1 values(1,1.11e100);`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 date);
+	insert into t1 values(1,'2019-1-1');`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'2019-01-01');", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
+	insert into t1(id) values(1);`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 time);
+	insert into t1 values(1,'00:01:01');`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'00:01:01');", Commentf("%v", res.Rows()))
+
+	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 year);
+	insert into t1 values(1,2019);`)
+	res = s.makeSQL(tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2019);", Commentf("%v", res.Rows()))
+
 }
 
 // func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
