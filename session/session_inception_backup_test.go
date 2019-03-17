@@ -489,12 +489,12 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'2019-01-01');", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
-	insert into t1(id) values(1);`)
-	res = s.makeSQL(tk, "delete from t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+	// s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
+	// insert into t1(id) values(1);`)
+	// res = s.makeSQL(tk, "delete from t1;")
+	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	// backup = s.query("t1", row[7].(string))
+	// c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
 
 	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 time);
 	insert into t1 values(1,'00:01:01');`)
