@@ -489,12 +489,14 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'2019-01-01');", Commentf("%v", res.Rows()))
 
-	// s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
-	// insert into t1(id) values(1);`)
-	// res = s.makeSQL(tk, "delete from t1;")
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	// backup = s.query("t1", row[7].(string))
-	// c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+	if s.getDBVersion(c) >= 50700 {
+		s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
+	insert into t1(id) values(1);`)
+		res = s.makeSQL(tk, "delete from t1;")
+		row = res.Rows()[int(tk.Se.AffectedRows())-1]
+		backup = s.query("t1", row[7].(string))
+		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+	}
 
 	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 time);
 	insert into t1 values(1,'00:01:01');`)
@@ -512,187 +514,73 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 
 }
 
-// func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
-// 	saved := config.GetGlobalConfig().Inc
-// 	defer func() {
-// 		config.GetGlobalConfig().Inc = saved
-// 	}()
+func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
-// 	config.GetGlobalConfig().Inc.EnableDropDatabase = true
+	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
-// 	sql := ""
+	s.makeSQL(tk, "drop database if exists test123456;")
+	res := s.makeSQL(tk, "create database test123456;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup := s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "", Commentf("%v", res.Rows()))
 
-// 	sql = "drop database if exists test1111111111111111111;create database if not exists test1111111111111111111;"
-// 	s.testErrorCode(c, sql)
+	s.makeSQL(tk, "drop database if exists test123456;")
+}
 
-// 	// 存在
-// 	sql = "create database test1111111111111111111;create database test1111111111111111111;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErrf("数据库'test1111111111111111111'已存在."))
+func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
-// 	config.GetGlobalConfig().Inc.EnableDropDatabase = false
-// 	// 不存在
-// 	sql = "drop database if exists test1111111111111111111;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_CANT_DROP_DATABASE, "test1111111111111111111"))
+	s.makeSQL(tk, "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);")
+	res := s.makeSQL(tk, "rename table t1 to t2;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup := s.query("t2", row[7].(string))
+	c.Assert(backup, Equals, "RENAME TABLE `test_inc`.`t2` TO `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
-// 	sql = "drop database test1111111111111111111;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_CANT_DROP_DATABASE, "test1111111111111111111"))
+	res = s.makeSQL(tk, "alter table t2 rename to t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "RENAME TABLE `test_inc`.`t1` TO `test_inc`.`t2`;", Commentf("%v", res.Rows()))
 
-// 	config.GetGlobalConfig().Inc.EnableDropDatabase = true
+}
 
-// 	// if not exists 创建
-// 	sql = "create database if not exists test1111111111111111111;create database if not exists test1111111111111111111;"
-// 	s.testErrorCode(c, sql)
+func (s *testSessionIncBackupSuite) TestAlterTableAddIndex(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
-// 	// create database
-// 	sql = "create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);")
+	res := s.makeSQL(tk, "alter table t1 add index idx (c1);")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup := s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP INDEX `idx`;", Commentf("%v", res.Rows()))
 
-// 	sql = "create database mysql"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErrf("数据库'%s'已存在.", "mysql"))
+}
 
-// 	// 字符集
-// 	config.GetGlobalConfig().Inc.EnableSetCharset = false
-// 	config.GetGlobalConfig().Inc.SupportCharset = ""
-// 	sql = "drop database if exists test123456;create database test123456 character set utf8;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
+func (s *testSessionIncBackupSuite) TestAlterTableDropIndex(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
-// 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
-// 	sql = "drop database if exists test123456;create database test123456 character set utf8;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
-// 		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);")
+	res := s.makeSQL(tk, "alter table t1 drop index idx;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup := s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD INDEX `idx`(`c1`);", Commentf("%v", res.Rows()))
 
-// 	config.GetGlobalConfig().Inc.EnableSetCharset = true
-// 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-// 	sql = "drop database if exists test123456;create database test123456 character set utf8;"
-// 	s.testErrorCode(c, sql)
-
-// 	config.GetGlobalConfig().Inc.EnableSetCharset = true
-// 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-// 	sql = "drop database if exists test123456;create database test123456 character set laitn1;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
-// }
-
-// func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
-// 	sql := ""
-// 	// 不存在
-// 	sql = "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);alter table t1 rename t2;"
-// 	s.testErrorCode(c, sql)
-
-// 	sql = "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);rename table t1 to t2;"
-// 	s.testErrorCode(c, sql)
-
-// 	// 存在
-// 	sql = "drop table if exists t1;create table t1(id int primary key);rename table t1 to t1;"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_TABLE_EXISTS_ERROR, "t1"))
-// }
-
-// func (s *testSessionIncBackupSuite) TestAlterTableAddIndex(c *C) {
-// 	saved := config.GetGlobalConfig().Inc
-// 	defer func() {
-// 		config.GetGlobalConfig().Inc = saved
-// 	}()
-
-// 	config.GetGlobalConfig().Inc.CheckColumnComment = false
-// 	config.GetGlobalConfig().Inc.CheckTableComment = false
-// 	sql := ""
-// 	// add index
-// 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add index idx (c1)"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c1"))
-
-// 	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);"
-// 	s.testErrorCode(c, sql)
-
-// 	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);alter table t1 add index idx (c1);"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_DUP_INDEX, "idx", "test_inc", "t1"))
-// }
-
-// func (s *testSessionIncBackupSuite) TestAlterTableDropIndex(c *C) {
-// 	saved := config.GetGlobalConfig().Inc
-// 	defer func() {
-// 		config.GetGlobalConfig().Inc = saved
-// 	}()
-
-// 	config.GetGlobalConfig().Inc.CheckColumnComment = false
-// 	config.GetGlobalConfig().Inc.CheckTableComment = false
-// 	sql := ""
-// 	// drop index
-// 	sql = "drop table if exists t1;create table t1(id int);alter table t1 drop index idx"
-// 	s.testErrorCode(c, sql,
-// 		session.NewErr(session.ER_CANT_DROP_FIELD_OR_KEY, "t1.idx"))
-
-// 	sql = "drop table if exists t1;create table t1(c1 int);alter table t1 add index idx (c1);alter table t1 drop index idx;"
-// 	s.testErrorCode(c, sql)
-// }
-
-// func (s *testSessionIncBackupSuite) TestShowVariables(c *C) {
-// 	tk := testkit.NewTestKitWithInit(c, s.store)
-
-// 	sql := ""
-// 	sql = "inception show variables;"
-// 	tk.MustQueryInc(sql)
-// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
-
-// 	sql = "inception get variables;"
-// 	tk.MustQueryInc(sql)
-// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
-
-// 	sql = "inception show variables like 'backup_password';"
-// 	res := tk.MustQueryInc(sql)
-// 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-// 	if row[1].(string) != "" {
-// 		c.Assert(row[1].(string)[:1], Equals, "*")
-// 	}
-// }
-
-// func (s *testSessionIncBackupSuite) TestSetVariables(c *C) {
-// 	tk := testkit.NewTestKitWithInit(c, s.store)
-
-// 	sql := ""
-// 	sql = "inception show variables;"
-// 	tk.MustQueryInc(sql)
-// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
-
-// 	// 不区分session和global.所有会话全都global级别
-// 	tk.MustExecInc("inception set global max_keys = 20;")
-// 	tk.MustExecInc("inception set session max_keys = 10;")
-// 	result := tk.MustQueryInc("inception show variables like 'max_keys';")
-// 	result.Check(testkit.Rows("max_keys 10"))
-
-// 	tk.MustExecInc("inception set ghost_default_retries = 70;")
-// 	result = tk.MustQueryInc("inception show variables like 'ghost_default_retries';")
-// 	result.Check(testkit.Rows("ghost_default_retries 70"))
-
-// 	tk.MustExecInc("inception set osc_max_thread_running = 100;")
-// 	result = tk.MustQueryInc("inception show variables like 'osc_max_thread_running';")
-// 	result.Check(testkit.Rows("osc_max_thread_running 100"))
-
-// 	// 无效参数
-// 	res, err := tk.ExecInc("inception set osc_max_thread_running1 = 100;")
-// 	c.Assert(err, NotNil)
-// 	c.Assert(err.Error(), Equals, "无效参数")
-// 	if res != nil {
-// 		c.Assert(res.Close(), IsNil)
-// 	}
-
-// 	// 无效参数
-// 	res, err = tk.ExecInc("inception set osc_max_thread_running = 'abc';")
-// 	c.Assert(err, NotNil)
-// 	c.Assert(err.Error(), Equals, "[variable:1232]Incorrect argument type to variable 'osc_max_thread_running'")
-// 	if res != nil {
-// 		c.Assert(res.Close(), IsNil)
-// 	}
-// }
+}
 
 func (s *testSessionIncBackupSuite) query(table, opid string) string {
 	inc := config.GetGlobalConfig().Inc
