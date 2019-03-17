@@ -939,6 +939,11 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 	case *ast.CreateTableStmt,
 		*ast.AlterTableStmt,
 		*ast.DropTableStmt,
+		*ast.RenameTableStmt,
+		*ast.TruncateTableStmt,
+
+		// *ast.CreateDatabaseStmt,
+		// *ast.DropDatabaseStmt,
 
 		*ast.CreateIndexStmt,
 		*ast.DropIndexStmt:
@@ -992,8 +997,8 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		s.executeRemoteStatementAndBackup(record)
 
 	case *ast.UseStmt,
-		*ast.DropDatabaseStmt,
 		*ast.CreateDatabaseStmt,
+		*ast.DropDatabaseStmt,
 
 		*ast.CreateTableStmt,
 		*ast.AlterTableStmt,
@@ -3449,10 +3454,10 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
 	}
 
 	if s.checkDBExists(node.Name, !node.IfExists) {
-		if s.opt.execute {
-			// 生成回滚语句
-			s.mysqlShowCreateDatabase(node.Name)
-		}
+		// if s.opt.execute {
+		// 	// 生成回滚语句
+		// 	s.mysqlShowCreateDatabase(node.Name)
+		// }
 		s.dbCacheList[strings.ToLower(node.Name)] = false
 	}
 }
@@ -3932,9 +3937,9 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 
 		s.dbCacheList[strings.ToLower(node.Name)] = true
 
-		if s.opt.execute {
-			s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)
-		}
+		// if s.opt.execute {
+		// 	s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)
+		// }
 	}
 }
 
