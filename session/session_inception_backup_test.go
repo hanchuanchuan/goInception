@@ -118,6 +118,45 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
 }
 
+func (s *testSessionIncSuite) getDBVersion(c *C) int {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	sql := "show variables like 'version'"
+
+	res := makeSQL(s.tk, sql)
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	versionStr := row[5].(string)
+
+	versionStr = strings.SplitN(versionStr, "|", 2)[1]
+	value := strings.Replace(versionStr, "'", "", -1)
+	value = strings.TrimSpace(value)
+
+	// if strings.Contains(strings.ToLower(value), "mariadb") {
+	// 	return DBTypeMariaDB
+	// }
+
+	versionStr = strings.Split(value, "-")[0]
+	versionSeg := strings.Split(versionStr, ".")
+	if len(versionSeg) == 3 {
+		versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
+		version, err := strconv.Atoi(versionStr)
+		if err != nil {
+			fmt.Println(err)
+		}
+		return version
+	}
+
+	return 50700
+}
+
 func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
@@ -388,18 +427,20 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'\x01\x02\x03');", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 json);
+	if s.getDBVersion(c) >= 50708 {
+		s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 json);
 	insert into t1 values(1,'{"time":"2015-01-01 13:00:00","result":"fail"}');`)
-	res = s.makeSQL(tk, "delete from t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
+		res = s.makeSQL(tk, "delete from t1;")
+		row = res.Rows()[int(tk.Se.AffectedRows())-1]
+		backup = s.query("t1", row[7].(string))
+		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');")
-	res = s.makeSQL(tk, "delete from t1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
+		s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');")
+		res = s.makeSQL(tk, "delete from t1;")
+		row = res.Rows()[int(tk.Se.AffectedRows())-1]
+		backup = s.query("t1", row[7].(string))
+		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
+	}
 
 	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 enum('type1','type2','type3','type4'));
 	insert into t1 values(1,'type2');`)
