@@ -15,7 +15,7 @@ package session_test
 
 import (
 	"fmt"
-	// "strconv"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -118,7 +118,7 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
 }
 
-func (s *testSessionIncSuite) getDBVersion(c *C) int {
+func (s *testSessionIncBackupSuite) getDBVersion(c *C) int {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
@@ -129,7 +129,7 @@ func (s *testSessionIncSuite) getDBVersion(c *C) int {
 
 	sql := "show variables like 'version'"
 
-	res := makeSQL(s.tk, sql)
+	res := s.makeSQL(s.tk, sql)
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
 
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
