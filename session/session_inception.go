@@ -1056,7 +1056,6 @@ func (s *session) executeRemoteStatement(record *Record) {
 			} else {
 				s.AppendErrorMessage(err.Error())
 			}
-			log.Error(err)
 			record.StageStatus = StatusExecFail
 		} else {
 			record.AffectedRows = int(res.RowsAffected)
@@ -2399,6 +2398,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				t := s.cacheTableSnapshot(t)
 
 				t.Fields[foundIndexOld].Field = nc.Name.Name.O
+				// 修改列名后标记有新列
+				t.IsNewColumns = true
 
 				if c.Position.Tp != ast.ColumnPositionNone {
 
