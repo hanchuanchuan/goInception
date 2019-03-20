@@ -538,6 +538,13 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table t2 (id int null, age int, primary key(id));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
+
+	sql = `drop table if exists t1;create table t1(
+id int auto_increment comment 'test',
+crtTime datetime not null DEFAULT CURRENT_TIMESTAMP comment 'test',
+uptTime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment 'test',
+primary key(id)) comment 'test';`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
@@ -1229,6 +1236,7 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 	sql = "create table t1(id int,c1 int);alter table t1 add index idx (c1);alter table t1 add index idx (c1);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_DUP_INDEX, "idx", "test_inc", "t1"))
+
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
