@@ -53,11 +53,11 @@ import (
 // MasterStatus 主库状态信息,包括当前日志文件,位置等
 type MasterStatus struct {
 	gorm.Model
-	File              string `gorm:"Column:File"`
-	Position          int    `gorm:"Column:Position"`
-	Binlog_Do_DB      string `gorm:"Column:Binlog_Do_DB"`
-	Binlog_Ignore_DB  string `gorm:"Column:Binlog_Ignore_DB"`
-	Executed_Gtid_Set string `gorm:"Column:Executed_Gtid_Set"`
+	File            string `gorm:"Column:File"`
+	Position        int    `gorm:"Column:Position"`
+	BinlogDoDB      string `gorm:"Column:Binlog_Do_DB"`
+	BinlogIgnoreDB  string `gorm:"Column:Binlog_Ignore_DB"`
+	ExecutedGtidSet string `gorm:"Column:Executed_Gtid_Set"`
 }
 
 // sourceOptions 线上数据库信息和审核或执行的参数
@@ -197,8 +197,22 @@ func init() {
 
 func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
 
-	// log.Infof("%#v", ctx)
-	// log.Infof("%#v", s.sessionManager)
+	// 跳过mysql客户端发送的sql
+	// 跳过tidb测试时发送的sql
+	if sql == "select @@version_comment limit 1" || sql == "SELECT @@max_allowed_packet" {
+		return s.execute(ctx, sql)
+	} else if sql == "SET AUTOCOMMIT = 0" {
+		return s.execute(ctx, sql)
+	} else if sql == "show warnings" {
+		return s.execute(ctx, sql)
+	} else if strings.HasPrefix(sql, "select HIGH_PRIORITY") {
+		return s.execute(ctx, sql)
+	} else if strings.HasPrefix(sql,
+		`select variable_value from mysql.tidb where variable_name = "system_tz"`) {
+		return s.execute(ctx, sql)
+	} else if strings.HasPrefix(sql, "SELECT HIGH_PRIORITY") {
+		return s.execute(ctx, sql)
+	}
 
 	s.DBName = ""
 	s.haveBegin = false
@@ -215,24 +229,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.Ghost = config.GetGlobalConfig().Ghost
 
 	s.recordSets = NewRecordSets()
-
-	// 	s := &session{
-	// 	store:           store,
-	// 	parser:          parser.New(),
-	// 	sessionVars:     variable.NewSessionVars(),
-	// 	ddlOwnerChecker: dom.DDL().OwnerManager(),
-
-	// 	haveBegin:  false,
-	// 	haveCommit: false,
-
-	// 	tableCacheList: make(map[string]*TableInfo),
-	// 	dbCacheList:    make(map[string]bool),
-
-	// 	backupDBCacheList:    make(map[string]bool),
-	// 	backupTableCacheList: make(map[string]bool),
-
-	// 	Inc: config.GetGlobalConfig().Inc,
-	// }
 
 	if recordSets, err = s.executeInc(ctx, sql); err != nil {
 		err = errors.Trace(err)
@@ -256,23 +252,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
 
 	sqlList := strings.Split(sql, "\n")
-
-	if !s.haveBegin {
-		if sql == "select @@version_comment limit 1" || sql == "SELECT @@max_allowed_packet" {
-			return s.execute(ctx, sql)
-		} else if sql == "SET AUTOCOMMIT = 0" {
-			return s.execute(ctx, sql)
-		} else if sql == "show warnings" {
-			return s.execute(ctx, sql)
-		} else if strings.HasPrefix(sql, "select HIGH_PRIORITY") {
-			return s.execute(ctx, sql)
-		} else if strings.HasPrefix(sql,
-			`select variable_value from mysql.tidb where variable_name = "system_tz"`) {
-			return s.execute(ctx, sql)
-		} else if strings.HasPrefix(sql, "SELECT HIGH_PRIORITY") {
-			return s.execute(ctx, sql)
-		}
-	}
 
 	defer func() {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
@@ -1757,6 +1736,8 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		s.myRecord.DBName = node.Table.Schema.O
 		s.myRecord.TableName = node.Table.Name.O
 
+		s.checkCreateTableGrammar(node)
+
 		s.checkAutoIncrement(node)
 		s.checkContainDotColumn(node)
 
@@ -1886,9 +1867,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
 			}
 
-			if len(node.Cols) == 0 {
-				s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
-			} else {
+			if len(node.Cols) > 0 {
 				table = s.buildTableInfo(node)
 
 				currentTimestampCount := 0
@@ -1981,43 +1960,6 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 		table.Fields = append(table.Fields, *c)
 	}
 	table.IsNewColumns = true
-
-	autoIncrement := 0
-	primaryKey := 0
-	for _, field := range node.Cols {
-		isKey := false
-		isAutoIncrement := false
-		for _, op := range field.Options {
-			switch op.Tp {
-			case ast.ColumnOptionAutoIncrement:
-				autoIncrement += 1
-				isAutoIncrement = true
-			case ast.ColumnOptionPrimaryKey:
-				primaryKey += 1
-				isKey = true
-			case ast.ColumnOptionUniqKey:
-				isKey = true
-			}
-		}
-		// 自增列必须是key
-		if isAutoIncrement && !isKey {
-			s.AppendErrorNo(ER_WRONG_AUTO_KEY)
-		}
-	}
-
-	for _, ct := range node.Constraints {
-		if ct.Tp == ast.ConstraintPrimaryKey {
-			primaryKey += 1
-		}
-	}
-
-	if primaryKey > 1 {
-		s.AppendErrorNo(ER_MULTIPLE_PRI_KEY)
-	}
-
-	if autoIncrement > 1 {
-		s.AppendErrorNo(ER_WRONG_AUTO_KEY)
-	}
 
 	return table
 }
@@ -2591,6 +2533,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	autoIncrement := false
 	hasDefaultValue := false
 	var defaultValue *types.Datum
+	var defaultExpr ast.ExprNode
 
 	isPrimary := false
 
@@ -2609,12 +2552,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionAutoIncrement:
 				autoIncrement = true
 			case ast.ColumnOptionDefaultValue:
+				defaultExpr = op.Expr
 				defaultValue = op.Expr.GetDatum()
-				// if funcCall, ok := op.Expr.(*ast.FuncCallExpr); ok {
-				// 	defaultValue = funcCall.FnName.O
-				// } else {
-				// 	defaultValue = op.Expr.GetDatum().GetString()
-				// }
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
@@ -2632,12 +2571,12 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	//有默认值，且为NULL，且有NOT NULL约束，如(not null default null)
-	if hasDefaultValue && defaultValue.IsNull() && notNullFlag {
+	if _, ok := defaultExpr.(*ast.ValueExpr); ok && hasDefaultValue && defaultValue.IsNull() && notNullFlag {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
 
 	//有默认值，且不为NULL
-	if hasDefaultValue && !defaultValue.IsNull() {
+	if _, ok := defaultExpr.(*ast.ValueExpr); ok && hasDefaultValue && !defaultValue.IsNull() {
 		switch field.Tp.Tp {
 		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
 			mysql.TypeLong, mysql.TypeLonglong,
