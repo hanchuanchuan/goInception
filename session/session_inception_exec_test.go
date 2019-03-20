@@ -486,6 +486,13 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	sql = "drop table if exists t1;create table t1(id int null, age int, primary key(id));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
+
+	sql = `drop table if exists t1;create table t1(
+id int auto_increment comment 'test',
+crtTime datetime not null DEFAULT CURRENT_TIMESTAMP comment 'test',
+uptTime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment 'test',
+primary key(id)) comment 'test';`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncExecSuite) TestDropTable(c *C) {
