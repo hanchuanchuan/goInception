@@ -183,6 +183,7 @@ const (
 	ErrNotFoundTableInfo
 	ErrNotFoundThreadId
 	ErrNotFoundMasterStatus
+	ErrNonUniqTable
 	ER_ERROR_LAST
 )
 
@@ -332,6 +333,7 @@ var ErrorsDefault = map[int]string{
 	ErrNotFoundTableInfo:                   "Skip backup because there is no table structure information.",
 	ErrNotFoundThreadId:                    "MariaDB v%d not supported yet,please confirm that the rollback sql is correct",
 	ErrNotFoundMasterStatus:                "Can't found master binlog position.",
+	ErrNonUniqTable:                        mysql.MySQLErrName[mysql.ErrNonuniqTable],
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 }
 
@@ -480,6 +482,7 @@ var ErrorsChinese = map[int]string{
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
 	ErrNotFoundThreadId:                    "MariaDB v%d 对回滚支持不完美,请注意确认回滚语句是否正确",
 	ErrNotFoundMasterStatus:                "无法获取master binlog信息.",
+	ErrNonUniqTable:                        "表名或别名: '%-.192s' 不唯一.",
 }
 
 func GetErrorLevel(errorNo int) uint8 {

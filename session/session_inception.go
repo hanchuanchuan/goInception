@@ -3283,8 +3283,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	if x.Select != nil {
 		if sel, ok := x.Select.(*ast.SelectStmt); ok {
 
-			// s.checkSubSelectItem(sel)
-
 			// log.Infof("%#v", sel.SelectStmtOpts)
 			// log.Infof("%#v", sel.From)
 			// log.Infof("%#v", sel)
@@ -3328,16 +3326,13 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			// 	}
 			// }
 
+			if !s.hasError() {
+				s.checkSubSelectItem(sel)
+			}
+
 			if from == nil || (fromTable != nil && !fromTable.IsNew) {
 				i := strings.Index(strings.ToLower(sql), "select")
 				selectSql := sql[i:]
-				// var explain []string
-
-				// explain = append(explain, "EXPLAIN ")
-				// explain = append(explain, selectSql)
-
-				// rows := s.getExplainInfo(strings.Join(explain, ""))
-				// s.AnlyzeExplain(rows)
 
 				s.explainOrAnalyzeSql(selectSql)
 
@@ -3356,7 +3351,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			if sel.OrderBy != nil {
 				for _, item := range sel.OrderBy.Items {
-					// log.Infof("%#v", item)
 					if f, ok := item.Expr.(*ast.FuncCallExpr); ok {
 						if f.FnName.L == "rand" {
 							s.AppendErrorNo(ER_ORDERY_BY_RAND)
@@ -4594,6 +4588,8 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 	var tableList []*ast.TableSource
 	if node.From != nil {
 		tableList = extractTableList(node.From.TableRefs, tableList)
+
+		s.checkTableAliasDuplicate(node.From.TableRefs, make(map[string]interface{}))
 	}
 
 	var tableInfoList []*TableInfo
