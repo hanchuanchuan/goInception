@@ -336,6 +336,38 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 	return nil
 }
 
+// func (s *session) checkNonUniqTableAlias(stmt *ast.Join, tableAliases map[string]interface{}) {
+// 	if err := isTableAliasDuplicate(stmt.Left, tableAliases); err != nil {
+// 		return
+// 	}
+// 	if err := isTableAliasDuplicate(stmt.Right, tableAliases); err != nil {
+// 		return
+// 	}
+// }
+
+// checkTableAliasDuplicate 检查表名/别名是否重复
+func (s *session) checkTableAliasDuplicate(node ast.ResultSetNode, tableAliases map[string]interface{}) {
+	switch x := node.(type) {
+	case *ast.Join:
+		s.checkTableAliasDuplicate(x.Left, tableAliases)
+		s.checkTableAliasDuplicate(x.Right, tableAliases)
+	case *ast.TableSource:
+		name := ""
+		if x.AsName.L != "" {
+			name = x.AsName.L
+		} else if s, ok := x.Source.(*ast.TableName); ok {
+			name = s.Name.L
+		}
+
+		_, ok := tableAliases[name]
+		if len(name) != 0 && ok {
+			s.AppendErrorNo(ErrNonUniqTable, name)
+			return
+		}
+		tableAliases[name] = nil
+	}
+}
+
 func isPrimary(ops []*ast.ColumnOption) int {
 	for _, op := range ops {
 		if op.Tp == ast.ColumnOptionPrimaryKey {
