@@ -982,6 +982,18 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	sql = "create table t1(c1 char(100) not null);insert into t1(c1) values(null);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_BAD_NULL_ERROR, "test_inc.t1.c1", 1))
+
+	sql = "create table t1(c1 char(100) not null);insert into t1(c1) select t1.c1 from t1 inner join t1 on t1.id=t1.id;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrNonUniqTable, "t1"))
+
+	sql = "create table t1(c1 char(100) not null);insert into t1(c1) select t1.c1 from t1 limit 1 union all select t1.c1 from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrWrongUsage, "UNION", "LIMIT"))
+
+	sql = "create table t1(c1 char(100) not null);insert into t1(c1) select t1.c1 from t1 order by 1 union all select t1.c1 from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrWrongUsage, "UNION", "ORDER BY"))
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
