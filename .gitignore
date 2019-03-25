@@ -21,3 +21,4 @@ _tools/
 site/
 util/logutil/slow_query
 test/
+release/

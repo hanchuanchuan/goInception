@@ -4008,10 +4008,8 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 						break
 					}
 				}
-			} else {
-				if originTable == tblName.Name.L {
-					s.myRecord.TableInfo = t
-				}
+			} else if originTable == tblName.Name.L || originTable == tblSource.AsName.L {
+				s.myRecord.TableInfo = t
 			}
 		}
 
