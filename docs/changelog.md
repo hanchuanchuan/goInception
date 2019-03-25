@@ -1,5 +1,16 @@
 # goInception 更新日志
 
+## [v0.5.3-beta] - 2019-3-25
+### Update
+* 变更列名时使用逻辑校验,避免explain update失败
+* 添加union子句校验
+* 添加表名别名重复性校验
+
+### Fix
+* 修复update set子句指定表别名时校验问题
+* 修复自增列校验问题
+* 修复default value为表达式时的校验问题
+
 
 ## [v0.5.2-beta] - 2019-3-17
 ### Update
