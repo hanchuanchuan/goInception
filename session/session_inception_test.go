@@ -1057,6 +1057,12 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	// c.Assert(row[2], Equals, "0")
 	// c.Assert(row[6], Equals, "1")
 
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id int primary key,c1 int);
+		create table table2(id int primary key,c1 int,c2 int);
+		update table1 t1,table2 t2 set t1.c1=t2.c1 where t1.id=t2.id;`
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
