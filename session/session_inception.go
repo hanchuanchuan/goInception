@@ -3281,14 +3281,17 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	// insert select 语句
 	if x.Select != nil {
-		if sel, ok := x.Select.(*ast.SelectStmt); ok {
+		// log.Info(x.Select)
+		// log.Infof("%#v", x.Select)
 
-			// s.checkSubSelectItem(sel)
+		sel, ok := x.Select.(*ast.SelectStmt)
+		if !ok {
+			if u, ok := x.Select.(*ast.UnionStmt); ok {
+				sel = u.SelectList.Selects[0]
+			}
+		}
 
-			// log.Infof("%#v", sel.SelectStmtOpts)
-			// log.Infof("%#v", sel.From)
-			// log.Infof("%#v", sel)
-			// log.Infof("%#v", sel.Fields)
+		if sel != nil {
 
 			// 只考虑insert select单表时,表不存在的情况
 			from := getSingleTableName(sel.From)
@@ -3328,16 +3331,14 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			// 	}
 			// }
 
+			if !s.hasError() {
+				// s.checkSelectItem(sel)
+				s.checkSelectItem(x.Select)
+			}
+
 			if from == nil || (fromTable != nil && !fromTable.IsNew) {
 				i := strings.Index(strings.ToLower(sql), "select")
 				selectSql := sql[i:]
-				// var explain []string
-
-				// explain = append(explain, "EXPLAIN ")
-				// explain = append(explain, selectSql)
-
-				// rows := s.getExplainInfo(strings.Join(explain, ""))
-				// s.AnlyzeExplain(rows)
 
 				s.explainOrAnalyzeSql(selectSql)
 
@@ -3356,7 +3357,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			if sel.OrderBy != nil {
 				for _, item := range sel.OrderBy.Items {
-					// log.Infof("%#v", item)
 					if f, ok := item.Expr.(*ast.FuncCallExpr); ok {
 						if f.FnName.L == "rand" {
 							s.AppendErrorNo(ER_ORDERY_BY_RAND)
@@ -4375,6 +4375,10 @@ func (s *session) checkInceptionVariables(number int) bool {
 }
 
 func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.TableSource {
+	if node == nil {
+		return input
+	}
+
 	switch x := node.(type) {
 	case *ast.Join:
 		input = extractTableList(x.Left, input)
@@ -4391,6 +4395,9 @@ func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.T
 		// 	}
 		// }
 		input = append(input, x)
+	default:
+		log.Info(x)
+		log.Infof("%#v", x)
 	}
 	return input
 }
@@ -4586,12 +4593,40 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 	return p
 }
 
+func (s *session) checkSelectItem(node ast.ResultSetNode) bool {
+	switch x := node.(type) {
+	case *ast.UnionStmt:
+		stmt := x.SelectList
+		for _, sel := range stmt.Selects[:len(stmt.Selects)-1] {
+			if sel.Limit != nil {
+				s.AppendErrorNo(ErrWrongUsage, "UNION", "LIMIT")
+			}
+			if sel.OrderBy != nil {
+				s.AppendErrorNo(ErrWrongUsage, "UNION", "ORDER BY")
+			}
+		}
+
+		for _, sel := range stmt.Selects {
+			s.checkSubSelectItem(sel)
+		}
+
+	case *ast.SelectStmt:
+		s.checkSubSelectItem(x)
+	default:
+		log.Info(x)
+		log.Infof("%#v", x)
+	}
+	return !s.hasError()
+}
+
 func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 	log.Debug("checkSubSelectItem")
 
 	var tableList []*ast.TableSource
 	if node.From != nil {
 		tableList = extractTableList(node.From.TableRefs, tableList)
+
+		s.checkTableAliasDuplicate(node.From.TableRefs, make(map[string]interface{}))
 	}
 
 	var tableInfoList []*TableInfo
@@ -4605,10 +4640,6 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 			tableInfoList = append(tableInfoList, t)
 		}
 	}
-
-	// if len(tableInfoList) == 0 {
-	// 	return false
-	// }
 
 	if node.Fields != nil {
 		for _, field := range node.Fields.Fields {
