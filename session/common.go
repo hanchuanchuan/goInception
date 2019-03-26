@@ -6,6 +6,7 @@ package session
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"strconv"
 	"strings"
@@ -409,4 +410,26 @@ func GetDataTypeLength(dataType string) []int {
 // 	}
 
 // 	return v.ToString()
+// }
+
+// func (b *BinlogSyncer) isClosed(ctx context.Context) bool {
+// 	select {
+// 	case <-ctx.Done():
+// 		return true
+// 	default:
+// 		return false
+// 	}
+// }
+
+func checkClose(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
+	}
+}
+
+// if err := checkGoContext(ctx); err != nil {
+// 	return nil, err
 // }
