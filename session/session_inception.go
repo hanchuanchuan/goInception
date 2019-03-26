@@ -371,7 +371,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					need := s.needDataSource(stmtNode)
 
 					if !s.haveBegin && need {
-						// log.Errorf("%#v", stmtNode)
+						log.Warnf("%#v", stmtNode)
 						s.AppendErrorMessage("Must start as begin statement.")
 						s.recordSets.Append(s.myRecord)
 						return s.recordSets.Rows(), nil
@@ -410,8 +410,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				}
 
 				if !s.haveBegin && s.needDataSource(stmtNode) {
-					// log.Error(stmtNode)
-					// log.Errorf("%#v", stmtNode)
+					log.Warnf("%#v", stmtNode)
 					s.AppendErrorMessage("Must start as begin statement.")
 					s.recordSets.Append(s.myRecord)
 					return s.recordSets.Rows(), nil
@@ -459,9 +458,7 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 		if node.IsInception {
 			return false
 		}
-	case *ast.InceptionSetStmt:
-		return false
-	case *ast.ShowOscStmt:
+	case *ast.InceptionSetStmt, *ast.ShowOscStmt, *ast.KillStmt:
 		return false
 	}
 
@@ -542,6 +539,10 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 		default:
 			return s.executeLocalShowOscProcesslist(node)
 		}
+
+	case *ast.KillStmt:
+		log.Info(node)
+		log.Infof("%#v", node)
 	default:
 		log.Info("无匹配类型...")
 		log.Infof("%T\n", stmtNode)
@@ -603,26 +604,28 @@ func (s *session) executeCommit() {
 			s.processInfo.Store(pi)
 		}
 
-		for _, record := range s.recordSets.All() {
+		s.runBackup()
 
-			if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
-				s.myRecord = record
+		// for _, record := range s.recordSets.All() {
 
-				errno := s.mysqlCreateBackupTable(record)
-				if errno == 2 {
-					break
-				}
-				if record.TableInfo == nil {
-					s.AppendErrorNo(ErrNotFoundTableInfo)
-				} else {
-					s.mysqlBackupSql(record)
-				}
+		// 	if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
+		// 		s.myRecord = record
 
-				if s.hasError() {
-					break
-				}
-			}
-		}
+		// 		errno := s.mysqlCreateBackupTable(record)
+		// 		if errno == 2 {
+		// 			break
+		// 		}
+		// 		if record.TableInfo == nil {
+		// 			s.AppendErrorNo(ErrNotFoundTableInfo)
+		// 		} else {
+		// 			s.mysqlBackupSql(record)
+		// 		}
+
+		// 		if s.hasError() {
+		// 			break
+		// 		}
+		// 	}
+		// }
 
 		if !s.isMiddleware() {
 			// 解析binlog生成回滚语句
@@ -678,82 +681,134 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 
 	record.OPID = makeOPIDByTime(record.ExecTimestamp, record.ThreadId, record.SeqNo)
 
-	var buf strings.Builder
-
-	buf.WriteString("INSERT INTO ")
-	dbname := s.getRemoteBackupDBName(record)
-	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
-	buf.WriteString(" VALUES('")
-	buf.WriteString(record.OPID)
-	buf.WriteString("','")
-	buf.WriteString(record.StartFile)
-	buf.WriteString("',")
-	buf.WriteString(strconv.Itoa(record.StartPosition))
-	buf.WriteString(",'")
-	buf.WriteString(record.EndFile)
-	buf.WriteString("',")
-	buf.WriteString(strconv.Itoa(record.EndPosition))
-	// buf.WriteString(",?,'")
-	buf.WriteString(",'")
-	buf.WriteString(HTMLEscapeString(record.Sql))
-	buf.WriteString("','")
-	buf.WriteString(s.opt.host)
-	buf.WriteString("','")
-	buf.WriteString(record.TableInfo.Schema)
-	buf.WriteString("','")
-	buf.WriteString(record.TableInfo.Name)
-	buf.WriteString("',")
-	buf.WriteString(strconv.Itoa(s.opt.port))
-	buf.WriteString(",NOW(),'")
-
+	typeStr := "UNKNOWN"
 	switch record.Type.(type) {
 	case *ast.InsertStmt:
-		buf.WriteString("INSERT")
+		typeStr = "INSERT"
 	case *ast.DeleteStmt:
-		buf.WriteString("DELETE")
+		typeStr = "DELETE"
 	case *ast.UpdateStmt:
-		buf.WriteString("UPDATE")
+		typeStr = "UPDATE"
 	case *ast.CreateDatabaseStmt:
-		buf.WriteString("CREATEDB")
+		typeStr = "CREATEDB"
 	case *ast.CreateTableStmt:
-		buf.WriteString("CREATETABLE")
+		typeStr = "CREATETABLE"
 	case *ast.AlterTableStmt:
-		buf.WriteString("ALTERTABLE")
+		typeStr = "ALTERTABLE"
 	case *ast.DropTableStmt:
-		buf.WriteString("DROPTABLE")
+		typeStr = "DROPTABLE"
 	case *ast.RenameTableStmt:
-		buf.WriteString("RENAMETABLE")
+		typeStr = "RENAMETABLE"
 	case *ast.CreateIndexStmt:
-		buf.WriteString("CREATEINDEX")
+		typeStr = "CREATEINDEX"
 	case *ast.DropIndexStmt:
-		buf.WriteString("DROPINDEX")
+		typeStr = "DROPINDEX"
 	default:
-		buf.WriteString("UNKNOWN")
+		log.Warning("类型未知: ", record.Type)
 	}
 
-	buf.WriteString("')")
+	values := []interface{}{
+		record.OPID,
+		record.StartFile,
+		strconv.Itoa(record.StartPosition),
+		record.EndFile,
+		strconv.Itoa(record.EndPosition),
+		HTMLEscapeString(record.Sql),
+		s.opt.host,
+		record.TableInfo.Schema,
+		record.TableInfo.Name,
+		strconv.Itoa(s.opt.port),
+		typeStr,
+	}
 
-	// var err error
-	// // 参数化
-	// byteSql := []byte(record.Sql)
-	// buf.Reset()
-	// byteSql, err = InterpolateParams(buf.String(), []driver.Value{byteSql})
-	// buf.Write(byteSql)
-	// if err != nil {
-	// 	log.Error(err)
+	dbName := s.getRemoteBackupDBName(record)
+
+	if s.lastBackupTable == "" {
+		s.lastBackupTable = dbName
+	}
+	// 库名改变时强制flush
+	if s.lastBackupTable != dbName {
+		s.chBackupRecord <- &chanBackup{
+			dbname: dbName,
+			record: record,
+			values: nil,
+		}
+		s.lastBackupTable = dbName
+	}
+
+	s.chBackupRecord <- &chanBackup{
+		dbname: dbName,
+		record: record,
+		values: values,
+	}
+
+	// s.lastBackupTable = lastBackupTable
+
+	// var buf strings.Builder
+
+	// buf.WriteString("INSERT INTO ")
+	// dbname := s.getRemoteBackupDBName(record)
+	// buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
+	// buf.WriteString(" VALUES('")
+	// buf.WriteString(record.OPID)
+	// buf.WriteString("','")
+	// buf.WriteString(record.StartFile)
+	// buf.WriteString("',")
+	// buf.WriteString(strconv.Itoa(record.StartPosition))
+	// buf.WriteString(",'")
+	// buf.WriteString(record.EndFile)
+	// buf.WriteString("',")
+	// buf.WriteString(strconv.Itoa(record.EndPosition))
+	// // buf.WriteString(",?,'")
+	// buf.WriteString(",'")
+	// buf.WriteString(HTMLEscapeString(record.Sql))
+	// buf.WriteString("','")
+	// buf.WriteString(s.opt.host)
+	// buf.WriteString("','")
+	// buf.WriteString(record.TableInfo.Schema)
+	// buf.WriteString("','")
+	// buf.WriteString(record.TableInfo.Name)
+	// buf.WriteString("',")
+	// buf.WriteString(strconv.Itoa(s.opt.port))
+	// buf.WriteString(",NOW(),'")
+
+	// switch record.Type.(type) {
+	// case *ast.InsertStmt:
+	// 	buf.WriteString("INSERT")
+	// case *ast.DeleteStmt:
+	// 	buf.WriteString("DELETE")
+	// case *ast.UpdateStmt:
+	// 	buf.WriteString("UPDATE")
+	// case *ast.CreateDatabaseStmt:
+	// 	buf.WriteString("CREATEDB")
+	// case *ast.CreateTableStmt:
+	// 	buf.WriteString("CREATETABLE")
+	// case *ast.AlterTableStmt:
+	// 	buf.WriteString("ALTERTABLE")
+	// case *ast.DropTableStmt:
+	// 	buf.WriteString("DROPTABLE")
+	// case *ast.RenameTableStmt:
+	// 	buf.WriteString("RENAMETABLE")
+	// case *ast.CreateIndexStmt:
+	// 	buf.WriteString("CREATEINDEX")
+	// case *ast.DropIndexStmt:
+	// 	buf.WriteString("DROPINDEX")
+	// default:
+	// 	buf.WriteString("UNKNOWN")
 	// }
 
-	if err := s.backupdb.Exec(buf.String()).Error; err != nil {
-		log.Error(err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+	// buf.WriteString("')")
 
-			record.StageStatus = StatusBackupFail
-			return 2
-		}
-	}
+	// if err := s.backupdb.Exec(buf.String()).Error; err != nil {
+	// 	log.Error(err)
+	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 		s.AppendErrorMessage(myErr.Message)
 
-	// record.StageStatus = StatusBackupOK
+	// 		record.StageStatus = StatusBackupFail
+	// 		return 2
+	// 	}
+	// }
+
 	return 0
 }
 
