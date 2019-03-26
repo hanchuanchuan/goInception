@@ -307,6 +307,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 			if tmp != nil {
 				pi := tmp.(util.ProcessInfo)
 				pi.OperState = "CHECKING"
+				pi.Percent = 0
 				s.processInfo.Store(pi)
 			}
 
@@ -592,14 +593,29 @@ func (s *session) executeCommit(ctx context.Context) {
 
 	if s.opt.backup {
 
-		// log.Info("开始备份")
-		// 如果有错误时,把错误输出放在第一行
-		// s.myRecord = s.recordSets.All()[0]
+		// 如果连接已断开
+		if err := s.backupdb.DB().Ping(); err != nil {
+			log.Error(err)
+			addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
+				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort)
+			db, err := gorm.Open("mysql", addr)
+			if err != nil {
+				log.Error(err)
+				s.AppendErrorMessage(err.Error())
+				return
+			}
+			// 禁用日志记录器，不显示任何日志
+			db.LogMode(false)
+			s.backupdb = db
+		}
+
+		log.Debug("开始备份")
 
 		tmp := s.processInfo.Load()
 		if tmp != nil {
 			pi := tmp.(util.ProcessInfo)
 			pi.OperState = "BACKUP"
+			pi.Percent = 0
 			s.processInfo.Store(pi)
 		}
 
@@ -996,6 +1012,7 @@ func (s *session) executeAllStatement() {
 	if tmp != nil {
 		pi := tmp.(util.ProcessInfo)
 		pi.OperState = "EXECUTING"
+		pi.Percent = 0
 		s.processInfo.Store(pi)
 	}
 
