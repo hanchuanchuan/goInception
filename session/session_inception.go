@@ -365,7 +365,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					}
 
 					s.haveCommit = true
-					s.executeCommit()
+					s.executeCommit(ctx)
 					return s.recordSets.Rows(), nil
 				default:
 					need := s.needDataSource(stmtNode)
@@ -541,8 +541,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 		}
 
 	case *ast.KillStmt:
-		log.Info(node)
-		log.Infof("%#v", node)
+		return s.executeKillStmt(node)
 	default:
 		log.Info("无匹配类型...")
 		log.Infof("%T\n", stmtNode)
@@ -554,7 +553,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]
 	return nil, nil
 }
 
-func (s *session) executeCommit() {
+func (s *session) executeCommit(ctx context.Context) {
 	if s.opt.check {
 		return
 	}
@@ -4725,4 +4724,19 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 
 func (s *session) isMiddleware() bool {
 	return s.opt.middlewareExtend != ""
+}
+
+func (s *session) executeKillStmt(node *ast.KillStmt) ([]ast.RecordSet, error) {
+	conf := config.GetGlobalConfig()
+	if node.TiDBExtension || conf.CompatibleKillQuery {
+		sm := s.GetSessionManager()
+		if sm == nil {
+			return nil, nil
+		}
+		sm.Kill(node.ConnectionID, node.Query)
+	} else {
+		err := errors.New("Invalid operation. Please use 'KILL TIDB [CONNECTION | QUERY] connectionID' instead")
+		s.sessionVars.StmtCtx.AppendWarning(err)
+	}
+	return nil, nil
 }
