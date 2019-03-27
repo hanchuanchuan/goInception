@@ -408,6 +408,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 							return result, nil
 						}
 					}
+
+					// 进程Killed
+					if err := checkClose(ctx); err != nil {
+						log.Warn("Killed: ", err)
+						s.AppendErrorMessage("Operation has been killed!")
+						s.recordSets.Append(s.myRecord)
+						return s.recordSets.Rows(), nil
+					}
 				}
 
 				if !s.haveBegin && s.needDataSource(stmtNode) {
@@ -583,7 +591,7 @@ func (s *session) executeCommit(ctx context.Context) {
 		return
 	}
 
-	s.executeAllStatement()
+	s.executeAllStatement(ctx)
 
 	// 只要有执行成功的,就添加备份
 	// if s.recordSets.MaxLevel == 2 ||
@@ -619,7 +627,7 @@ func (s *session) executeCommit(ctx context.Context) {
 			s.processInfo.Store(pi)
 		}
 
-		s.runBackup()
+		s.runBackup(ctx)
 
 		// for _, record := range s.recordSets.All() {
 
@@ -644,7 +652,7 @@ func (s *session) executeCommit(ctx context.Context) {
 
 		if !s.isMiddleware() {
 			// 解析binlog生成回滚语句
-			s.Parser()
+			s.Parser(ctx)
 		}
 	}
 }
@@ -1006,7 +1014,7 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 	}
 }
 
-func (s *session) executeAllStatement() {
+func (s *session) executeAllStatement(ctx context.Context) {
 
 	tmp := s.processInfo.Load()
 	if tmp != nil {
@@ -1029,6 +1037,13 @@ func (s *session) executeAllStatement() {
 
 		errno := s.executeRemoteCommand(record)
 		if errno == 2 {
+			break
+		}
+
+		// 进程Killed
+		if err := checkClose(ctx); err != nil {
+			log.Warn("Killed: ", err)
+			s.AppendErrorMessage("Operation has been killed!")
 			break
 		}
 	}
@@ -4744,16 +4759,21 @@ func (s *session) isMiddleware() bool {
 }
 
 func (s *session) executeKillStmt(node *ast.KillStmt) ([]ast.RecordSet, error) {
-	conf := config.GetGlobalConfig()
-	if node.TiDBExtension || conf.CompatibleKillQuery {
-		sm := s.GetSessionManager()
-		if sm == nil {
-			return nil, nil
-		}
-		sm.Kill(node.ConnectionID, node.Query)
-	} else {
-		err := errors.New("Invalid operation. Please use 'KILL TIDB [CONNECTION | QUERY] connectionID' instead")
-		s.sessionVars.StmtCtx.AppendWarning(err)
+	sm := s.GetSessionManager()
+	if sm == nil {
+		return nil, nil
 	}
+	sm.Kill(node.ConnectionID, node.Query)
+	// conf := config.GetGlobalConfig()
+	// if node.TiDBExtension || conf.CompatibleKillQuery {
+	// 	sm := s.GetSessionManager()
+	// 	if sm == nil {
+	// 		return nil, nil
+	// 	}
+	// 	sm.Kill(node.ConnectionID, node.Query)
+	// } else {
+	// 	err := errors.New("Invalid operation. Please use 'KILL TIDB [CONNECTION | QUERY] connectionID' instead")
+	// 	s.sessionVars.StmtCtx.AppendWarning(err)
+	// }
 	return nil, nil
 }

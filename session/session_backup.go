@@ -1,6 +1,7 @@
 package session
 
 import (
+    "context"
     "fmt"
     "strings"
     "sync"
@@ -38,7 +39,7 @@ func (s *session) ProcessChanBackup(wg *sync.WaitGroup) {
     }
 }
 
-func (s *session) runBackup() {
+func (s *session) runBackup(ctx context.Context) {
 
     var wg sync.WaitGroup
     wg.Add(1)
@@ -69,6 +70,13 @@ func (s *session) runBackup() {
             if s.hasError() {
                 break
             }
+        }
+
+        // 进程Killed
+        if err := checkClose(ctx); err != nil {
+            log.Warn("Killed: ", err)
+            s.AppendErrorMessage("Operation has been killed!")
+            break
         }
     }
 }
