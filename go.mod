@@ -42,7 +42,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.5.1 // indirect
-	github.com/gusto/gh-ost v0.0.0-20180412203128-4aff5966f226
 	github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
@@ -101,5 +100,4 @@ require (
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
-	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
