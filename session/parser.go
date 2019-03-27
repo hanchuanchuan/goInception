@@ -155,7 +155,7 @@ func clearDeleteColumns(t *TableInfo) {
 	t.IsClear = true
 }
 
-func (s *session) Parser() {
+func (s *session) Parser(ctx context.Context) {
 
 	// var err error
 	var wg sync.WaitGroup
@@ -305,6 +305,13 @@ func (s *session) Parser() {
 			} else {
 				break
 			}
+		}
+
+		// 进程Killed
+		if err := checkClose(ctx); err != nil {
+			log.Warn("Killed: ", err)
+			s.AppendErrorMessage("Operation has been killed!")
+			break
 		}
 	}
 }
