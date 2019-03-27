@@ -45,7 +45,7 @@ before_install:
   - ps -ef|grep mysql
 
 script:
-  # - rm -f go.sum
+  - rm -f go.sum
   # - docker ps
   - make dev upload-coverage
 
