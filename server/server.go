@@ -364,6 +364,8 @@ func (s *Server) Kill(connectionID uint64, query bool) {
 	}
 
 	if !query {
+		// 带 query 是 kill 掉正在执行中的请求
+		// 不带 query 是 kill 掉 session 连接
 		// Mark the client connection status as WaitShutdown, when the goroutine detect
 		// this, it will end the dispatch loop and exit.
 		atomic.StoreInt32(&conn.status, connStatusWaitShutdown)
