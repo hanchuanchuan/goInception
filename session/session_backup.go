@@ -72,12 +72,12 @@ func (s *session) runBackup(ctx context.Context) {
             }
         }
 
-        // 进程Killed
-        if err := checkClose(ctx); err != nil {
-            log.Warn("Killed: ", err)
-            s.AppendErrorMessage("Operation has been killed!")
-            break
-        }
+        // // 进程Killed
+        // if err := checkClose(ctx); err != nil {
+        //     log.Warn("Killed: ", err)
+        //     s.AppendErrorMessage("Operation has been killed!")
+        //     break
+        // }
     }
 }
 
