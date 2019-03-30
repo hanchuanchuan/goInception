@@ -4009,17 +4009,65 @@ func getSingleTableName(tableRefs *ast.TableRefsClause) *ast.TableName {
 	return tblName
 }
 
-func (s *session) getExplainInfo(sql string) []ExplainInfo {
-	var rows []ExplainInfo
-	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+func (s *session) getExplainInfo(sql string) {
+
+	// selectType   string  `gorm:"Column:select_type"`
+	// table        string  `gorm:"Column:table"`
+	// partitions   string  `gorm:"Column:partitions"`
+	// type         string  `gorm:"Column:type"`
+	// possibleKeys string  `gorm:"Column:possible_keys"`
+	// key          string  `gorm:"Column:key"`
+	// keyLen       string  `gorm:"Column:key_len"`
+	// ref          string  `gorm:"Column:ref"`
+	// rows         int     `gorm:"Column:rows"`
+	// filtered     float32 `gorm:"Column:filtered"`
+	// extra        string  `gorm:"Column:Extra"`
+
+	rows, err := s.db.DB().Query(sql)
+	defer rows.Close()
+
+	var rowLength int
+
+	if err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			var str interface{}
+			// | id | select_type | table | partitions | type  | possible_keys | key     | key_len | ref   | rows | filtered | Extra
+			if err := rows.Scan(&str, &str, &str, &str, &str, &str, &str, &str, &str, &rowLength, &str, &str); err != nil {
+				log.Error(err)
+				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+					s.AppendErrorMessage(myErr.Message)
+				}
+			}
+			break
+		}
+		rows.Close()
+	}
+
+	r := s.myRecord
+	r.AffectedRows = rowLength
+
+	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= int(s.Inc.MaxUpdateRows) {
+		switch r.Type.(type) {
+		case *ast.DeleteStmt, *ast.UpdateStmt:
+			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
 		}
 	}
-	return rows
+
+	// var rows []ExplainInfo
+	// if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+	// 	log.Error(err)
+	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 		s.AppendErrorMessage(myErr.Message)
+	// 	} else {
+	// 		s.AppendErrorMessage(err.Error())
+	// 	}
+	// }
+	// return rows
 }
 
 func (s *session) explainOrAnalyzeSql(sql string) {
@@ -4039,9 +4087,10 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	explain = append(explain, "EXPLAIN ")
 	explain = append(explain, sql)
 
-	rows := s.getExplainInfo(strings.Join(explain, ""))
+	// rows := s.getExplainInfo(strings.Join(explain, ""))
+	s.getExplainInfo(strings.Join(explain, ""))
 
-	s.AnlyzeExplain(rows)
+	// s.AnlyzeExplain(rows)
 }
 
 func (s *session) AnlyzeExplain(rows []ExplainInfo) {
