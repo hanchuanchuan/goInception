@@ -19,10 +19,14 @@ package session
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/terror"
+	log "github.com/sirupsen/logrus"
 )
+
+var ErrorsMessage = map[int]string{}
 
 var (
 	ErrWrongValueForVar = terror.ClassVariable.New(mysql.ErrWrongValueForVar,
@@ -179,26 +183,28 @@ const (
 	ErrNotFoundTableInfo
 	ErrNotFoundThreadId
 	ErrNotFoundMasterStatus
+	ErrNonUniqTable
+	ErrWrongUsage
 	ER_ERROR_LAST
 )
 
-var MyErrors = map[int]string{
+var ErrorsDefault = map[int]string{
 	ER_ERROR_FIRST:                         "HelloWorld",
-	ER_NOT_SUPPORTED_YET:                   "不支持的语法类型.",
-	ER_SQL_NO_SOURCE:                       "sql没有源信息.",
-	ER_SQL_NO_OP_TYPE:                      "sql没有操作类型设置.",
-	ER_SQL_INVALID_OP_TYPE:                 "无效的sql操作类型.",
+	ER_NOT_SUPPORTED_YET:                   "Not supported statement type.",
+	ER_SQL_NO_SOURCE:                       "The sql have no source information.",
+	ER_SQL_NO_OP_TYPE:                      "The sql have no operation type.",
+	ER_SQL_INVALID_OP_TYPE:                 "Invalid sql operation type.",
 	ER_PARSE_ERROR:                         "%s near '%s' at line %d",
 	ER_SYNTAX_ERROR:                        "You have an error in your SQL syntax, ",
 	ER_REMOTE_EXE_ERROR:                    "Execute in source server failed.",
 	ER_SHUTDOWN_COMPLETE:                   "Shutdown complete.",
-	ER_WITH_INSERT_FIELD:                   "insert语句需要指定字段列表.",
-	ER_WITH_INSERT_VALUES:                  "insert语句需要指定值列表.",
+	ER_WITH_INSERT_FIELD:                   "Set the field list for insert statements.",
+	ER_WITH_INSERT_VALUES:                  "Set the values list for insert statements.",
 	ER_WRONG_VALUE_COUNT_ON_ROW:            "Column count doesn't match value count at row %d.",
 	ER_BAD_FIELD_ERROR:                     "Unknown column '%s' in '%s'.",
 	ER_FIELD_SPECIFIED_TWICE:               "Column '%s' specified twice in table '%s'.",
 	ER_BAD_NULL_ERROR:                      "Column '%s' cannot be null in %d row.",
-	ER_NO_WHERE_CONDITION:                  "selete语句请指定where条件.",
+	ER_NO_WHERE_CONDITION:                  "set the where condition for select statement.",
 	ER_NORMAL_SHUTDOWN:                     "%s: Normal shutdown\n",
 	ER_FORCING_CLOSE:                       "%s: Forcing close of thread %ld  user: '%s'\n",
 	ER_CON_COUNT_ERROR:                     "Too many connections",
@@ -237,7 +243,7 @@ var MyErrors = map[int]string{
 	ER_TEMP_TABLE_TMP_PREFIX:               "Set 'tmp' prefix for temporary table.",
 	ER_TABLE_MUST_INNODB:                   "Set engine to innodb for table '%s'.",
 	ER_TABLE_CHARSET_MUST_UTF8:             "Set charset to one of '%s' for table '%s'.",
-	ER_TABLE_CHARSET_MUST_NULL:             "表 '%s' 禁止设置字符集!",
+	ER_TABLE_CHARSET_MUST_NULL:             "Not allowed set charset for table '%s'.",
 	ER_NAMES_MUST_UTF8:                     "Set charset to one of '%s'.",
 	ER_TABLE_MUST_HAVE_COMMENT:             "Set comments for table '%s'.",
 	ER_COLUMN_HAVE_NO_COMMENT:              "Column '%s' in table '%s' have no comments.",
@@ -285,16 +291,16 @@ var MyErrors = map[int]string{
 	ER_WRONG_ARGUMENTS:                     "Incorrect arguments to %s.",
 	ER_SET_DATA_TYPE_INT_BIGINT:            "Set auto-increment data type to int or bigint.",
 	ER_TIMESTAMP_DEFAULT:                   "Set default value for timestamp column '%s'.",
-	ER_CHARSET_ON_COLUMN:                   "表 '%s' 列 '%s' 禁止设置字符集!",
+	ER_CHARSET_ON_COLUMN:                   "Not Allowed set charset for column '%s.%s'.",
 	ER_AUTO_INCR_ID_WARNING:                "Auto increment column '%s' is meaningful? it's dangerous!",
-	ER_ALTER_TABLE_ONCE:                    "表 '%s' 的多个alter操作请合并成一个.",
+	ER_ALTER_TABLE_ONCE:                    "Merge the alter statement for table '%s' to ONE.",
 	ER_BLOB_CANT_HAVE_DEFAULT:              "BLOB, TEXT, GEOMETRY or JSON column '%s' can't have a default value.",
 	ER_END_WITH_SEMICOLON:                  "Add ';' after the last sql statement.",
 	ER_NON_UNIQ_ERROR:                      "Column '%s' in %s is ambiguous.",
 	ER_TABLE_NOT_EXISTED_ERROR:             "Table '%s' doesn't exist.",
 	ER_UNKNOWN_TABLE:                       "Unknown table '%s' in %s.",
 	ER_INVALID_GROUP_FUNC_USE:              "Invalid use of group function.",
-	ER_INDEX_USE_ALTER_TABLE:               "暂不支持create/drop index和rename语法,请使用alter语句替换.",
+	ER_INDEX_USE_ALTER_TABLE:               "Create/drop index and rename is not allowed, please replace with alter statement.",
 	ER_WITH_DEFAULT_ADD_COLUMN:             "Set Default value for column '%s' in table '%s'",
 	ER_TRUNCATED_WRONG_VALUE:               "Truncated incorrect %s value: '%s'",
 	ER_TEXT_NOT_NULLABLE_ERROR:             "TEXT/BLOB Column '%s' in table '%s' can't  been not null.",
@@ -316,20 +322,170 @@ var MyErrors = map[int]string{
 	ER_PK_COLS_NOT_INT:                     "Primary key column '%s' is not int or bigint type in table '%s'.'%s'.",
 	ER_PK_TOO_MANY_PARTS:                   "Too many primary key part in table '%s'.'%s', max parts: %d",
 	ER_REMOVED_SPACES:                      "Leading spaces are removed from name '%s'",
-	ER_CHANGE_COLUMN_TYPE:                  "类型转换警告: 列 '%s' %s -> %s.",
-	ER_CANT_DROP_TABLE:                     "禁用【DROP】|【TRUNCATE】删除/清空表 '%s', 请改用RENAME重写.",
-	ER_CANT_DROP_DATABASE:                  "命令禁止! 无法删除数据库'%s'.",
+	ER_CHANGE_COLUMN_TYPE:                  "Type conversion warning for column '%s' %s -> %s.",
+	ER_CANT_DROP_TABLE:                     "Drop/truncate '%s' is not allowed, please replace with alter rename statement.",
+	ER_CANT_DROP_DATABASE:                  "Command is forbidden! Cannot delete database '%s'.",
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
-	ER_CANT_SET_CHARSET:                    "禁止指定字符集: '%s'",
-	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
+	ER_CANT_SET_CHARSET:                    "Cannot set charset '%s'",
+	ER_CANT_SET_COLLATION:                  "Cannot set collation '%s'",
 	ER_MUST_HAVE_COLUMNS:                   "A table must have at least 1 column",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
-	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
+	ErrNotFoundTableInfo:                   "Skip backup because there is no table structure information.",
 	ErrNotFoundThreadId:                    "MariaDB v%d not supported yet,please confirm that the rollback sql is correct",
 	ErrNotFoundMasterStatus:                "Can't found master binlog position.",
-	// ErrNotFoundThreadId:                    "MariaDB v%d 暂不支持,请注意确认回滚语句是否正确",
-	ER_ERROR_LAST: "TheLastError,ByeBye",
+	ErrNonUniqTable:                        mysql.MySQLErrName[mysql.ErrNonuniqTable],
+	ErrWrongUsage:                          "Incorrect usage of %s and %s",
+	ER_ERROR_LAST:                          "TheLastError,ByeBye",
+}
+
+var ErrorsChinese = map[int]string{
+	ER_NOT_SUPPORTED_YET:                "不支持的语法类型.",
+	ER_SQL_NO_SOURCE:                    "sql没有源信息.",
+	ER_SQL_NO_OP_TYPE:                   "sql没有操作类型设置.",
+	ER_SQL_INVALID_OP_TYPE:              "无效的sql操作类型.",
+	ER_PARSE_ERROR:                      "%s near '%s' at line %d",
+	ER_SYNTAX_ERROR:                     "SQL语法有错误, ",
+	ER_REMOTE_EXE_ERROR:                 "Execute in source server failed.",
+	ER_SHUTDOWN_COMPLETE:                "Shutdown complete.",
+	ER_WITH_INSERT_FIELD:                "insert语句需要指定字段列表.",
+	ER_WITH_INSERT_VALUES:               "insert语句需要指定值列表.",
+	ER_WRONG_VALUE_COUNT_ON_ROW:         "行 %d 的列数和值列表不匹配.",
+	ER_BAD_FIELD_ERROR:                  "Unknown column '%s' in '%s'.",
+	ER_FIELD_SPECIFIED_TWICE:            "列 '%s' 指定重复(表 '%s').",
+	ER_BAD_NULL_ERROR:                   "列 '%s' 不能为null(第 %d 行).",
+	ER_NO_WHERE_CONDITION:               "selete语句请指定where条件.",
+	ER_NORMAL_SHUTDOWN:                  "%s: Normal shutdown\n",
+	ER_FORCING_CLOSE:                    "%s: Forcing close of thread %ld  user: '%s'\n",
+	ER_CON_COUNT_ERROR:                  "Too many connections",
+	ER_INVALID_COMMAND:                  "Invalid command.",
+	ER_SQL_INVALID_SOURCE:               "不正确的数据源信息.",
+	ER_WRONG_DB_NAME:                    "不正确的的数据库名 '%s'.",
+	EXIT_UNKNOWN_VARIABLE:               "Exist incorrect variable.",
+	EXIT_UNKNOWN_OPTION:                 "Exist incorrect option.",
+	ER_NO_DB_ERROR:                      "没有选择数据库.",
+	ER_WITH_LIMIT_CONDITION:             "update/delete语句不允许Limit.",
+	ER_WITH_ORDERBY_CONDITION:           "update/delete语句不允许Order by.",
+	ER_SELECT_ONLY_STAR:                 "不允许'select *'语法.",
+	ER_ORDERY_BY_RAND:                   "不允许'Order by rand'语法.",
+	ER_ID_IS_UPER:                       "标识符不允许大写.",
+	ER_UNKNOWN_COLLATION:                "未知的排序规则: '%s'.",
+	ER_INVALID_DATA_TYPE:                "列 '%s' 数据类型不支持.",
+	ER_NOT_ALLOWED_NULLABLE:             "列 '%s' 不允许为null(表 '%s').",
+	ER_DUP_FIELDNAME:                    "重复的列名: '%s'.",
+	ER_WRONG_COLUMN_NAME:                "不正确的列名: '%s'.",
+	ER_WRONG_AUTO_KEY:                   "不正确的表定义,只能有一个自增列且必须为索引键.",
+	ER_TABLE_CANT_HANDLE_AUTO_INCREMENT: "使用的表类型不支持自增列.",
+	ER_FOREIGN_KEY:                      "不允许使用外键(表 '%s').",
+	ER_TOO_MANY_KEY_PARTS:               "索引 '%s'指定了太多的字段(表 '%s'), 最多允许 %d 个字段.",
+	ER_TOO_LONG_IDENT:                   "名称 '%s' 过长.",
+	ER_UDPATE_TOO_MUCH_ROWS:             "更新行超过 %d .",
+	ER_WRONG_NAME_FOR_INDEX:             "索引 '%s' 名称不正确(表 '%s').",
+	ER_TOO_MANY_KEYS:                    "表 '%s' 指定了太多索引, 最多允许 %d 个.",
+	ER_NOT_SUPPORTED_KEY_TYPE:           "不允许的键类型: '%s'.",
+	ER_WRONG_SUB_KEY:                    "索引列不能指定长度或指定的长度超出字段长度.",
+	// ER_WRONG_KEY_COLUMN:                    "The used storage engine can't index column '%s'.",
+	ER_TOO_LONG_KEY:                        "索引 '%s' 过长; 最大长度为 %d 字节.",
+	ER_MULTIPLE_PRI_KEY:                    "定义了多个主键.",
+	ER_DUP_KEYNAME:                         "索引名 '%s' 重复.",
+	ER_TOO_LONG_INDEX_COMMENT:              "索引 '%s' 注释过长(max = %lu).",
+	ER_DUP_INDEX:                           "索引 '%s' 定义重复(表'%s.%s').",
+	ER_TEMP_TABLE_TMP_PREFIX:               "临时表需要指定'tmp'前缀",
+	ER_TABLE_MUST_INNODB:                   "仅支持innodb存储引擎(表'%s').",
+	ER_TABLE_CHARSET_MUST_UTF8:             "允许的字符集为: '%s'(表'%s').",
+	ER_TABLE_CHARSET_MUST_NULL:             "表 '%s' 禁止设置字符集!",
+	ER_NAMES_MUST_UTF8:                     "允许的字符集为: '%s'.",
+	ER_TABLE_MUST_HAVE_COMMENT:             "表 '%s' 需要设置注释.",
+	ER_COLUMN_HAVE_NO_COMMENT:              "列 '%s' 需要设置注释(表'%s').",
+	ER_TABLE_MUST_HAVE_PK:                  "表 '%s' 需要设置主键.",
+	ER_PARTITION_NOT_ALLOWED:               "不允许创建分区表.",
+	ER_USE_ENUM:                            "不允许使用enum类型.",
+	ER_USE_TEXT_OR_BLOB:                    "不允许使用 blob/text 类型(列'%s').",
+	ER_COLUMN_EXISTED:                      "列 '%s' 已存在.",
+	ER_COLUMN_NOT_EXISTED:                  "列 '%s' 不存在.",
+	ER_CANT_DROP_FIELD_OR_KEY:              "无法删除 '%s'; 请检查字段/键是否存在.",
+	ER_INVALID_DEFAULT:                     "列 '%s' 默认值无效.",
+	ER_USERNAME:                            "user name",
+	ER_HOSTNAME:                            "host name",
+	ER_NOT_VALID_PASSWORD:                  "Your password does not satisfy the current policy requirements.",
+	ER_WRONG_STRING_LENGTH:                 "String '%s' is too long for %s (should be no longer than %d).",
+	ER_BLOB_USED_AS_KEY:                    "BLOB列 '%s' 不允许作为索引列.",
+	ER_TOO_LONG_BAKDB_NAME:                 "备份库名 '%-s-%d-%s' 过长.",
+	ER_INVALID_BACKUP_HOST_INFO:            "无效备份库信息.",
+	ER_BINLOG_CORRUPTED:                    "Binlog is corrupted.",
+	ER_NET_READ_ERROR:                      "Got an error reading communication packets.",
+	ER_NETWORK_READ_EVENT_CHECKSUM_FAILURE: "Replication event checksum verification failed while reading from network.",
+	ER_SLAVE_RELAY_LOG_WRITE_FAILURE:       "Relay log write failure: %s.",
+	ER_INCORRECT_GLOBAL_LOCAL_VAR:          "Variable '%s' is a %s variable.",
+	ER_START_AS_BEGIN:                      "必须以begin语句开始.",
+	ER_OUTOFMEMORY:                         "Out of memory; restart server and try again (needed %d bytes).",
+	ER_HAVE_BEGIN:                          "指定了多次begin.",
+	ER_NET_READ_INTERRUPTED:                "Got timeout reading communication packets.",
+	ER_BINLOG_FORMAT_STATEMENT:             "The binlog_format is statement, backup is disabled.",
+	EXIT_NO_ARGUMENT_ALLOWED:               "Not allow set argument.",
+	EXIT_ARGUMENT_REQUIRED:                 "Require argument.",
+	EXIT_AMBIGUOUS_OPTION:                  "Ambiguous argument.",
+	ER_ERROR_EXIST_BEFORE:                  "Exist error at before statement.",
+	ER_UNKNOWN_SYSTEM_VARIABLE:             "Unknown system variable '%s'.",
+	ER_UNKNOWN_CHARACTER_SET:               "Unknown character set: '%s'.",
+	ER_END_WITH_COMMIT:                     "Must end with commit.",
+	ER_DB_NOT_EXISTED_ERROR:                "选择的数据库 '%s' 不存在.",
+	ER_TABLE_EXISTS_ERROR:                  "表 '%s' 已存在.",
+	ER_INDEX_NAME_IDX_PREFIX:               "索引 '%s' 需要以'idx_'为前缀(表'%s').",
+	ER_INDEX_NAME_UNIQ_PREFIX:              "索引 '%s' 需要以'uniq_'为前缀(表'%s').",
+	ER_AUTOINC_UNSIGNED:                    "自增列建议设置无符号标志unsigned(表'%s').",
+	ER_VARCHAR_TO_TEXT_LEN:                 "列 '%s' 建议设置为text类型.",
+	ER_CHAR_TO_VARCHAR_LEN:                 "列 '%s' 建议设置为varchar类型.",
+	ER_KEY_COLUMN_DOES_NOT_EXITS:           "列 '%s' 不存在.",
+	ER_INC_INIT_ERR:                        "建议自增列初始值置为 1.",
+	ER_WRONG_ARGUMENTS:                     "Incorrect arguments to %s.",
+	ER_SET_DATA_TYPE_INT_BIGINT:            "自增列需要设置为int或bigint类型.",
+	ER_TIMESTAMP_DEFAULT:                   "请设置timestamp列 '%s' 的默认值.",
+	ER_CHARSET_ON_COLUMN:                   "表 '%s' 列 '%s' 禁止设置字符集!",
+	ER_AUTO_INCR_ID_WARNING:                "自增列建议命名为'ID'.",
+	ER_ALTER_TABLE_ONCE:                    "表 '%s' 的多个alter操作请合并成一个.",
+	ER_BLOB_CANT_HAVE_DEFAULT:              "BLOB,TEXT,GEOMETRY或JSON列 '%s' 禁止设置默认值.",
+	ER_END_WITH_SEMICOLON:                  "Add ';' after the last sql statement.",
+	ER_NON_UNIQ_ERROR:                      "Column '%s' in %s is ambiguous.",
+	ER_TABLE_NOT_EXISTED_ERROR:             "表 '%s' 不存在.",
+	ER_UNKNOWN_TABLE:                       "Unknown table '%s' in %s.",
+	ER_INVALID_GROUP_FUNC_USE:              "Invalid use of group function.",
+	ER_INDEX_USE_ALTER_TABLE:               "暂不支持create/drop index和rename语法,请使用alter语句替换.",
+	ER_WITH_DEFAULT_ADD_COLUMN:             "表 '%s' 请设置默认值(表'%s')",
+	ER_TRUNCATED_WRONG_VALUE:               "Truncated incorrect %s value: '%s'",
+	ER_TEXT_NOT_NULLABLE_ERROR:             "TEXT/BLOB 列 '%s' 禁止设置为not null(表'%s').",
+	ER_WRONG_VALUE_FOR_VAR:                 "Variable '%s' can't be set to the value of '%s'",
+	ER_TOO_MUCH_AUTO_TIMESTAMP_COLS:        "表定义不正确,只能有一个TIMESTAMP字段在DEFAULT或ON UPDATE指定CURRENT_TIMESTAMP.",
+	ER_INVALID_ON_UPDATE:                   "列 %s' ON UPDATE 设置无效",
+	ER_DDL_DML_COEXIST:                     "DDL can not coexist with the DML for table '%s'.",
+	ER_SLAVE_CORRUPT_EVENT:                 "Corrupted replication event was detected.",
+	ER_COLLATION_CHARSET_MISMATCH:          "COLLATION '%s' is not valid for CHARACTER SET '%s'",
+	ER_NOT_SUPPORTED_ALTER_OPTION:          "Not supported statement of alter option",
+	ER_CONFLICTING_DECLARATIONS:            "Conflicting declarations: '%s%s' and '%s%s'",
+	ER_IDENT_USE_KEYWORD:                   "标识符 '%s' 是MySQL关键字.",
+	ER_VIEW_SELECT_CLAUSE:                  "View's SELECT contains a '%s' clause",
+	ER_OSC_KILL_FAILED:                     "Can not find OSC executing task",
+	ER_NET_PACKETS_OUT_OF_ORDER:            "Got packets out of order",
+	ER_NOT_SUPPORTED_ITEM_TYPE:             "Not supported expression type '%s'.",
+	ER_INVALID_IDENT:                       "标识符 '%s' 无效, 允许字符为 [a-z|A-Z|0-9|_].",
+	ER_INCEPTION_EMPTY_QUERY:               "Inception error, Query was empty.",
+	ER_PK_COLS_NOT_INT:                     "主键列 '%s' 建议使用int或bigint类型(表'%s'.'%s').",
+	ER_PK_TOO_MANY_PARTS:                   "表 '%s'.'%s' 主键指定了太多的字段, 最多允许 %d 个字段",
+	ER_REMOVED_SPACES:                      "Leading spaces are removed from name '%s'",
+	ER_CHANGE_COLUMN_TYPE:                  "类型转换警告: 列 '%s' %s -> %s.",
+	ER_CANT_DROP_TABLE:                     "禁用【DROP】|【TRUNCATE】删除/清空表 '%s', 请改用RENAME重写.",
+	ER_CANT_DROP_DATABASE:                  "命令禁止! 无法删除数据库'%s'.",
+	ER_WRONG_TABLE_NAME:                    "不正确的表名: '%-.100s'",
+	ER_CANT_SET_CHARSET:                    "禁止指定字符集: '%s'",
+	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
+	ER_MUST_HAVE_COLUMNS:                   "表至少需要有一个列.",
+	ER_PRIMARY_CANT_HAVE_NULL:              "主键的所有列必须为NOT NULL,如需要NULL列,请改用唯一索引",
+	ErrCantRemoveAllFields:                 "禁止删除表的所有列.",
+	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
+	ErrNotFoundThreadId:                    "MariaDB v%d 对回滚支持不完美,请注意确认回滚语句是否正确",
+	ErrNotFoundMasterStatus:                "无法获取master binlog信息.",
+	ErrNonUniqTable:                        "表名或别名: '%-.192s' 不唯一.",
+	ErrWrongUsage:                          "%s子句无法使用%s",
 }
 
 func GetErrorLevel(errorNo int) uint8 {
@@ -442,13 +598,13 @@ func GetErrorLevel(errorNo int) uint8 {
 }
 
 func GetErrorMessage(errorNo int) string {
-	if v, ok := MyErrors[errorNo]; ok {
+	if v, ok := ErrorsMessage[errorNo]; ok {
 		return v
-	} else {
-		return "Invalid error code!"
 	}
-	// if errorNo >= ER_ERROR_FIRST && errorNo <= ER_ERROR_LAST {
-	// }
+	if v, ok := ErrorsDefault[errorNo]; ok {
+		return v
+	}
+	return "Invalid error code!"
 }
 
 // SQLError records an error information, from executing SQL.
@@ -474,4 +630,16 @@ func NewErrf(format string, args ...interface{}) *SQLError {
 	e := &SQLError{Code: 0}
 	e.Message = fmt.Sprintf(format, args...)
 	return e
+}
+
+func SetLanguage(langStr string) {
+	lang := strings.Replace(strings.ToLower(langStr), "-", "_", 1)
+	if lang == "zh_cn" {
+		ErrorsMessage = ErrorsChinese
+	} else {
+		ErrorsMessage = ErrorsDefault
+		if lang != "en_us" {
+			log.Warning("Lang set Error! use default en-US.")
+		}
+	}
 }

@@ -84,6 +84,10 @@ func (s *session) GetNextBackupRecord() *Record {
 
 			} else if r.AffectedRows > 0 && s.checkSqlIsDML(r) {
 
+				// if s.opt.middlewareExtend != "" {
+				// 	continue
+				// }
+
 				// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
 				if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
 					continue
@@ -151,7 +155,7 @@ func clearDeleteColumns(t *TableInfo) {
 	t.IsClear = true
 }
 
-func (s *session) Parser() {
+func (s *session) Parser(ctx context.Context) {
 
 	// var err error
 	var wg sync.WaitGroup
@@ -302,6 +306,13 @@ func (s *session) Parser() {
 				break
 			}
 		}
+
+		// // 进程Killed
+		// if err := checkClose(ctx); err != nil {
+		// 	log.Warn("Killed: ", err)
+		// 	s.AppendErrorMessage("Operation has been killed!")
+		// 	break
+		// }
 	}
 }
 
@@ -316,7 +327,9 @@ func (s *session) checkFilter(event *replication.RowsEvent,
 	}
 
 	if currentThreadID == 0 && s.DBType == DBTypeMariaDB {
-		record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+		if record.ErrLevel != 1 {
+			record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+		}
 		return true
 	} else if record.ThreadId != currentThreadID {
 		return false
@@ -625,6 +638,8 @@ func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
 			buf = strconv.AppendInt(buf, int64(v), 10)
 		case int64:
 			buf = strconv.AppendInt(buf, v, 10)
+		case int:
+			buf = strconv.AppendInt(buf, int64(v), 10)
 		case float32:
 			buf = strconv.AppendFloat(buf, float64(v), 'g', -1, 32)
 		case float64:

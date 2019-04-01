@@ -3,17 +3,27 @@ language: go
 go_import_path: github.com/hanchuanchuan/goInception
 
 go:
-  - "1.11.3"
+  - "1.12"
+
+services:
+# - docker
+- mysql
+
+# SHORT=1 跳过goInception审核和执行测试
 
 env:
-    - TRAVIS_COVERAGE=0 SHORT=1
-    - TRAVIS_COVERAGE=1 SHORT=1
+  - TRAVIS_COVERAGE=0
+  - TRAVIS_COVERAGE=1
+
+# install:
+#   - netstat -nltp
+#   - docker run -p 4306:3306 --name mysql -e MYSQL_ROOT_PASSWORD=travis -d mysql:5.7
 
 # Run coverage tests.
 matrix:
   fast_finish: true
   allow_failures:
-    - go: "1.11.3"
+    - go: "1.12"
       env: TRAVIS_COVERAGE=1
 
 before_install:
@@ -23,6 +33,22 @@ before_install:
   # See https://github.com/golang/go/issues/12933
   - bash gitcookie.sh
   - sudo chmod +x cmd/explaintest/run-tests.sh
+
+  - mysql -e 'select version()'
+  - mysql -e "create database test_inc DEFAULT CHARACTER SET utf8;create database 127_0_0_1_3306_test_inc DEFAULT CHARACTER SET utf8;"
+  - mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
+
+  # 关闭数据库,重启并开启binlog,设置字符集
+  - ps -ef|grep mysql
+  - sudo service mysql stop
+  - sudo mysqld --log-bin=on --server_id=111 --character-set-server=utf8 &
+  - ps -ef|grep mysql
+
 script:
-  # - rm -f go.sum
+  - rm -f go.sum
+  # - docker ps
   - make dev upload-coverage
+
+after_failure:
+  - netstat -nltp
+  - ps -ef|grep mysql

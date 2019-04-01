@@ -143,6 +143,13 @@ func main() {
 	createStoreAndDomain()
 	createServer()
 	signal.SetupSignalHandler(serverShutdown)
+
+	// 在启动完成后关闭DDL线程(goInception用不到该线程)
+	ddl := dom.DDL()
+	if ddl != nil {
+		terror.Log(errors.Trace(ddl.Stop()))
+	}
+
 	runServer()
 	cleanup()
 	os.Exit(0)
@@ -380,6 +387,10 @@ func setGlobalVars() {
 	runtime.GOMAXPROCS(int(cfg.Performance.MaxProcs))
 	statsLeaseDuration := parseDuration(cfg.Performance.StatsLease)
 	session.SetStatsLease(statsLeaseDuration)
+
+	// 设置错误信息语言
+	session.SetLanguage(cfg.Inc.Lang)
+
 	domain.RunAutoAnalyze = cfg.Performance.RunAutoAnalyze
 	statistics.FeedbackProbability = cfg.Performance.FeedbackProbability
 	statistics.MaxQueryFeedbackCount = int(cfg.Performance.QueryFeedbackLimit)
