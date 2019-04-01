@@ -2725,8 +2725,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if field.Tp.Tp == mysql.TypeTimestamp {
-		if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
-			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, tableName)
+		// if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
+		if !hasDefaultValue {
+			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, field.Name.Name.O)
 		}
 	}
 
@@ -4659,6 +4660,9 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 		}
 	}
 
+	if c.Default == nil {
+		field.Tp.Flag |= mysql.NoDefaultValueFlag
+	}
 	c.IsNew = true
 	return c
 }
