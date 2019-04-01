@@ -2764,14 +2764,14 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	if name == "" {
 		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, "NULL", table.Name)
 	} else {
-		found := false
-		for _, field := range table.Fields {
-			if strings.EqualFold(field.Field, name) {
-				found = true
-				break
-			}
-		}
-		if found {
+		// found := false
+		// for _, field := range table.Fields {
+		// 	if strings.EqualFold(field.Field, name) {
+		// 		found = true
+		// 		break
+		// 	}
+		// }
+		if isIncorrectName(name) {
 			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 		} else {
 			if len(name) > mysql.MaxIndexIdentifierLen {
