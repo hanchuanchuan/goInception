@@ -1039,10 +1039,15 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
 
-	res = makeExecSQL(tk, "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
+	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
-	c.Assert(row[6], Equals, "1")
+	c.Assert(row[6], Equals, "0", Commentf("%v", res.Rows()))
+
+	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 10 where id = 1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "1", Commentf("%v", res.Rows()))
 }
 
 func (s *testSessionIncExecSuite) TestDelete(c *C) {
