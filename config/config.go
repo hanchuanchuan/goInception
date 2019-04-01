@@ -314,10 +314,11 @@ type Inc struct {
 	// 是否允许设置字符集和排序规则
 	EnableSetCharset bool `toml:"enable_set_charset" json:"enable_set_charset"`
 
-	MaxCharLength uint `toml:"max_char_length" json:"max_char_length"`
-	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
-	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
-	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
+	Lang          string `toml:"lang" json:"lang"`
+	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
+	MaxKeys       uint   `toml:"max_keys" json:"max_keys"`
+	MaxKeyParts   uint   `toml:"max_key_parts" json:"max_key_parts"`
+	MaxUpdateRows uint   `toml:"max_update_rows" json:"max_update_rows"`
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
@@ -330,6 +331,8 @@ type Inc struct {
 
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
+
+	// Version *string
 }
 
 // Osc online schema change 工具参数配置
@@ -544,13 +547,15 @@ var defaultConf = Config{
 	Port:             4000,
 	Store:            "mocktikv",
 	Path:             "/tmp/tidb",
-	RunDDL:           true,
-	SplitTable:       true,
-	Lease:            "45s",
-	TokenLimit:       1000,
-	OOMAction:        "log",
-	MemQuotaQuery:    32 << 30,
-	EnableStreaming:  false,
+	// 关闭ddl线程(不能直接使用该设置,在main中启动服务后自动关闭)
+	RunDDL:     true,
+	SplitTable: true,
+	// 更新远程架构的时间
+	Lease:           "0s",
+	TokenLimit:      1000,
+	OOMAction:       "log",
+	MemQuotaQuery:   32 << 30,
+	EnableStreaming: false,
 	TxnLocalLatches: TxnLocalLatches{
 		Enabled:  true,
 		Capacity: 2048000,
@@ -573,13 +578,16 @@ var defaultConf = Config{
 		MetricsInterval: 15,
 	},
 	Performance: Performance{
-		TCPKeepAlive:        false,
-		CrossJoin:           true,
-		StatsLease:          "3s",
-		RunAutoAnalyze:      false,
-		StmtCountLimit:      5000,
-		FeedbackProbability: 0.05,
-		QueryFeedbackLimit:  1024,
+		TCPKeepAlive: false,
+		CrossJoin:    true,
+		// 设置0s时关闭统计信息更新
+		StatsLease:     "0s",
+		RunAutoAnalyze: false,
+		StmtCountLimit: 5000,
+		// 统计直方图采样率,为0时不作采样
+		FeedbackProbability: 0.0,
+		// 内存最大采样数
+		QueryFeedbackLimit:  0,
 		PseudoEstimateRatio: 0.8,
 		ForcePriority:       "NO_PRIORITY",
 	},
@@ -623,6 +631,8 @@ var defaultConf = Config{
 		CheckColumnComment: false,
 		SqlSafeUpdates:     -1,
 		SupportCharset:     "utf8,utf8mb4",
+		Lang:               "en-US",
+		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{
 		OscPrintNone:               false,

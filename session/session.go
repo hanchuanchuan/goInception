@@ -182,6 +182,10 @@ type session struct {
 
 	// 异步备份的通道
 	ch chan *ChanData
+
+	// 批量写入表$_$Inception_backup_information$_$
+	chBackupRecord chan *chanBackup
+
 	// 批量insert
 	insertBuffer []interface{}
 

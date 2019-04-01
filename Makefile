@@ -14,6 +14,8 @@ export PATH := $(path_to_add):$(PATH)
 GO        := GO111MODULE=on go
 GOBUILD   := CGO_ENABLED=0 $(GO) build $(BUILD_FLAG)
 
+VERSION := $(shell git describe --tags --dirty)
+
 # 指定部分单元测试跳过
 ifeq ("$(SHORT)", "1")
 	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3 -short
@@ -36,7 +38,7 @@ GOFAIL_ENABLE  := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gof
 GOFAIL_DISABLE := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail disable)
 
 LDFLAGS += -X "github.com/hanchuanchuan/goInception/mysql.TiDBReleaseVersion=$(shell git describe --tags --dirty)"
-LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBBuildTS=$(shell date -u '+%Y-%m-%d %I:%M:%S')"
+LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBBuildTS=$(shell date '+%Y-%m-%d %H:%M:%S')"
 LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBGitHash=$(shell git rev-parse HEAD)"
 LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.TiDBGitBranch=$(shell git rev-parse --abbrev-ref HEAD)"
 LDFLAGS += -X "github.com/hanchuanchuan/goInception/util/printer.GoVersion=$(shell go version)"
@@ -246,3 +248,18 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 	mv overalls.coverprofile coverage.txt
 	bash <(curl -s https://codecov.io/bash)
 endif
+
+
+# 	windows无法build,github.com/outbrain/golib有引用syslog.Writer,其在windows未实现.
+.PHONY: release
+release:
+	@echo "$(CGREEN)Cross platform building for release ...$(CEND)"
+	@mkdir -p release
+	@for GOOS in darwin linux; do \
+		for GOARCH in amd64; do \
+			echo "Building $${GOOS}-$${GOARCH} ..."; \
+			CGO_ENABLED=0 GOOS=$${GOOS} GOARCH=amd64 go build -ldflags="-s -w" -o goInception tidb-server/main.go; \
+			tar -czf release/goInception-$${GOOS}-amd64-${VERSION}.tar.gz goInception; \
+			rm -f goInception; \
+		done ;\
+	done

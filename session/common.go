@@ -6,6 +6,7 @@ package session
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ var (
 	htmlApos = []byte(`\'`) // shorter than "&apos;" and apos was not in HTML until HTML5
 )
 
-var CharSets = map[string]int{
+var charSets = map[string]int{
 	"armscii8": 1,
 	"ascii":    1,
 	"big5":     2,
@@ -117,7 +118,11 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 
 	case "char", "binary", "varchar", "varbinary", "enum", "set":
 		// string
-		return StringStorageReq(col.Type, "utf8mb4")
+		charset := "utf8mb4"
+		if col.Collation != "" {
+			charset = strings.SplitN(col.Collation, "_", 2)[0]
+		}
+		return StringStorageReq(col.Type, charset)
 	case "tibyblob", "tinytext":
 		return 1<<8 - 1
 	case "blob", "text":
@@ -141,8 +146,8 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 func StringStorageReq(dataType string, charset string) int {
 	// get bytes per character, default 1
 	bysPerChar := 1
-	if _, ok := CharSets[strings.ToLower(charset)]; ok {
-		bysPerChar = CharSets[strings.ToLower(charset)]
+	if _, ok := charSets[strings.ToLower(charset)]; ok {
+		bysPerChar = charSets[strings.ToLower(charset)]
 	}
 
 	// get length
@@ -405,4 +410,26 @@ func GetDataTypeLength(dataType string) []int {
 // 	}
 
 // 	return v.ToString()
+// }
+
+// func (b *BinlogSyncer) isClosed(ctx context.Context) bool {
+// 	select {
+// 	case <-ctx.Done():
+// 		return true
+// 	default:
+// 		return false
+// 	}
+// }
+
+func checkClose(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
+	}
+}
+
+// if err := checkGoContext(ctx); err != nil {
+// 	return nil, err
 // }

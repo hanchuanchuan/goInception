@@ -19,10 +19,13 @@ package session
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/pingcap/errors"
 	// log "github.com/sirupsen/logrus"
 )
@@ -145,30 +148,26 @@ func checkAutoIncrementOp(colDef *ast.ColumnDef, num int) (bool, error) {
 	return hasAutoIncrement, nil
 }
 
-func (s *session) checkDuplicateColumnName(indexColNames []*ast.IndexColName) error {
+func (s *session) checkDuplicateColumnName(indexColNames []*ast.IndexColName) {
 	colNames := make(map[string]struct{}, len(indexColNames))
 	for _, indexColName := range indexColNames {
 		name := indexColName.Column.Name
 		if _, ok := colNames[name.L]; ok {
 			s.AppendErrorNo(ER_DUP_FIELDNAME, name)
-			return errors.New("")
 		}
 		colNames[name.L] = struct{}{}
 	}
-	return nil
 }
 
 // checkIndexInfo checks index name and index column names.
-func (s *session) checkIndexInfo(indexName string, indexColNames []*ast.IndexColName) error {
-	if strings.EqualFold(indexName, mysql.PrimaryKeyName) {
-		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, indexName, "")
-		return errors.New("")
-	}
+func (s *session) checkIndexInfo(tableName, indexName string, indexColNames []*ast.IndexColName) {
+	// if strings.EqualFold(indexName, mysql.PrimaryKeyName) {
+	// 	s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, indexName, tableName)
+	// }
 	if s.Inc.MaxKeyParts > 0 && len(indexColNames) > int(s.Inc.MaxKeyParts) {
 		s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, indexName, "", s.Inc.MaxKeyParts)
-		return errors.New("")
 	}
-	return s.checkDuplicateColumnName(indexColNames)
+	s.checkDuplicateColumnName(indexColNames)
 }
 
 // isDefaultValNowSymFunc checks whether defaul value is a NOW() builtin function.
@@ -230,4 +229,150 @@ func isIncorrectName(name string) bool {
 		return true
 	}
 	return false
+}
+
+func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
+	tName := stmt.Table.Name.String()
+	if isIncorrectName(tName) {
+		s.AppendErrorNo(ER_WRONG_TABLE_NAME, tName)
+	}
+	countPrimaryKey := 0
+	for _, colDef := range stmt.Cols {
+		if err := s.checkColumn(colDef); err != nil {
+			s.AppendErrorMessage(err.Error())
+		}
+		countPrimaryKey += isPrimary(colDef.Options)
+	}
+	for _, constraint := range stmt.Constraints {
+		switch tp := constraint.Tp; tp {
+		// case ast.ConstraintKey, ast.ConstraintIndex, ast.ConstraintUniq, ast.ConstraintUniqKey, ast.ConstraintUniqIndex:
+		// 	s.checkIndexInfo(tName, constraint.Name, constraint.Keys)
+		case ast.ConstraintPrimaryKey:
+			countPrimaryKey++
+			// s.checkIndexInfo(tName, constraint.Name, constraint.Keys)
+		}
+	}
+
+	if countPrimaryKey > 1 {
+		s.AppendErrorNo(ER_MULTIPLE_PRI_KEY)
+	}
+
+	if len(stmt.Cols) == 0 && stmt.ReferTable == nil {
+		s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
+	}
+}
+
+func (s *session) checkColumn(colDef *ast.ColumnDef) error {
+	// Check column name.
+	cName := colDef.Name.Name.String()
+	if isIncorrectName(cName) {
+		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, colDef.Name.Name.O)
+	}
+
+	// if isInvalidDefaultValue(colDef) {
+	// 	s.AppendErrorNo(ER_INVALID_DEFAULT, colDef.Name.Name.O)
+	// }
+
+	// Check column type.
+	tp := colDef.Tp
+	if tp == nil {
+		return nil
+	}
+	if tp.Flen > math.MaxUint32 {
+		s.AppendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", colDef.Name.Name.O, math.MaxUint32))
+	}
+
+	switch tp.Tp {
+	case mysql.TypeString:
+		if tp.Flen != types.UnspecifiedLength && tp.Flen > mysql.MaxFieldCharLength {
+			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", colDef.Name.Name.O, mysql.MaxFieldCharLength))
+		}
+	case mysql.TypeVarchar:
+		maxFlen := mysql.MaxFieldVarCharLength
+		cs := tp.Charset
+		// TODO: TableDefaultCharset-->DatabaseDefaultCharset-->SystemDefaultCharset.
+		// TODO: Change TableOption parser to parse collate.
+		// Reference https://github.com/hanchuanchuan/goInception/blob/b091e828cfa1d506b014345fb8337e424a4ab905/ddl/ddl_api.go#L185-L204
+		if len(tp.Charset) == 0 {
+			cs = mysql.DefaultCharset
+		}
+		desc, err := charset.GetCharsetDesc(cs)
+		if err != nil {
+			return errors.Trace(err)
+		}
+		maxFlen /= desc.Maxlen
+		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
+			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", colDef.Name.Name.O, maxFlen))
+		}
+	case mysql.TypeFloat, mysql.TypeDouble:
+		if tp.Decimal > mysql.MaxFloatingTypeScale {
+			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, colDef.Name.Name.O, mysql.MaxFloatingTypeScale))
+		}
+		if tp.Flen > mysql.MaxFloatingTypeWidth {
+
+			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, colDef.Name.Name.O, mysql.MaxFloatingTypeWidth))
+		}
+	case mysql.TypeSet:
+		if len(tp.Elems) > mysql.MaxTypeSetMembers {
+			s.AppendErrorMessage(fmt.Sprintf("Too many strings for column %s and SET", colDef.Name.Name.O))
+		}
+		// Check set elements. See https://dev.mysql.com/doc/refman/5.7/en/set.html .
+		for _, str := range colDef.Tp.Elems {
+			if strings.Contains(str, ",") {
+				s.AppendErrorMessage(fmt.Sprintf("Illegal %s '%-.192s' value found during parsing", types.TypeStr(tp.Tp), str))
+			}
+		}
+	case mysql.TypeNewDecimal:
+		if tp.Decimal > mysql.MaxDecimalScale {
+			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, colDef.Name.Name.O, mysql.MaxDecimalScale))
+		}
+
+		if tp.Flen > mysql.MaxDecimalWidth {
+			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, colDef.Name.Name.O, mysql.MaxDecimalWidth))
+		}
+	default:
+		// TODO: Add more types.
+	}
+	return nil
+}
+
+// func (s *session) checkNonUniqTableAlias(stmt *ast.Join, tableAliases map[string]interface{}) {
+// 	if err := isTableAliasDuplicate(stmt.Left, tableAliases); err != nil {
+// 		return
+// 	}
+// 	if err := isTableAliasDuplicate(stmt.Right, tableAliases); err != nil {
+// 		return
+// 	}
+// }
+
+// checkTableAliasDuplicate 检查表名/别名是否重复
+func (s *session) checkTableAliasDuplicate(node ast.ResultSetNode, tableAliases map[string]interface{}) {
+	switch x := node.(type) {
+	case *ast.Join:
+		s.checkTableAliasDuplicate(x.Left, tableAliases)
+		s.checkTableAliasDuplicate(x.Right, tableAliases)
+	case *ast.TableSource:
+		name := ""
+		if x.AsName.L != "" {
+			name = x.AsName.L
+		} else if s, ok := x.Source.(*ast.TableName); ok {
+			name = s.Name.L
+		}
+
+		_, ok := tableAliases[name]
+		if len(name) != 0 && ok {
+			s.AppendErrorNo(ErrNonUniqTable, name)
+			return
+		}
+		tableAliases[name] = nil
+	}
+}
+
+func isPrimary(ops []*ast.ColumnOption) int {
+	for _, op := range ops {
+		if op.Tp == ast.ColumnOptionPrimaryKey {
+			return 1
+		}
+	}
+	return 0
 }
