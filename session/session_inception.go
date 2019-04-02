@@ -1198,7 +1198,6 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	}
 	if err != nil {
 		log.Error(err)
-		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
@@ -1335,7 +1334,6 @@ func (s *session) modifyBinlogFormatRow() {
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
-		log.Error(err)
 	}
 }
 
@@ -1360,7 +1358,6 @@ func (s *session) setSqlSafeUpdates() {
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
-		log.Error(err)
 	}
 }
 
@@ -1456,7 +1453,7 @@ func (s *session) parseOptions(sql string) {
 		s.opt.backup = false
 	}
 
-	log.Infof("%#v", s.opt)
+	// log.Infof("%#v", s.opt)
 
 	// 不再检查密码是否为空
 	if s.opt.host == "" || s.opt.port == 0 || s.opt.user == "" {
@@ -2709,7 +2706,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if types.IsTypeBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
-		if !notNullFlag && !hasGenerated{
+		if !notNullFlag && !hasGenerated {
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
 		}
 
