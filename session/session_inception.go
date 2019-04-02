@@ -2665,7 +2665,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	//有默认值，且归类无效，如(default CURRENT_TIMESTAMP)
-	if hasDefaultValue && isInvalidDefaultValue(field) {
+	if hasDefaultValue && s.isInvalidDefaultValue(field) {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
 
@@ -4499,6 +4499,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 
 	case ER_TIMESTAMP_DEFAULT:
 		return s.Inc.CheckTimestampDefault
+
+	case ER_TOO_MUCH_AUTO_TIMESTAMP_COLS:
+		return s.Inc.CheckTimestampCount
 
 	case ER_CHARSET_ON_COLUMN:
 		if s.Inc.EnableColumnCharset {
