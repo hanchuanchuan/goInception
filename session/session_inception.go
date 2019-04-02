@@ -4500,6 +4500,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 	case ER_TIMESTAMP_DEFAULT:
 		return s.Inc.CheckTimestampDefault
 
+	case ER_TOO_MUCH_AUTO_TIMESTAMP_COLS:
+		return s.Inc.CheckTimestampCount
+
 	case ER_CHARSET_ON_COLUMN:
 		if s.Inc.EnableColumnCharset {
 			return false

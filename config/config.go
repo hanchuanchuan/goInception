@@ -295,6 +295,7 @@ type Inc struct {
 	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
+	CheckTimestampCount			bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
@@ -629,6 +630,7 @@ var defaultConf = Config{
 		EnableDropTable:    false,
 		CheckTableComment:  false,
 		CheckColumnComment: false,
+		CheckTimestampCount:true,
 		SqlSafeUpdates:     -1,
 		SupportCharset:     "utf8,utf8mb4",
 		Lang:               "en-US",
