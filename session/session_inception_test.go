@@ -555,6 +555,72 @@ crtTime datetime not null DEFAULT CURRENT_TIMESTAMP comment 'test',
 uptTime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment 'test',
 primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql)
+
+	// 5.7版本新增计算列
+	if s.getDBVersion(c) >= 50700 {
+		sql = `CREATE TABLE t1(c1 json DEFAULT '{}' COMMENT '日志记录',
+	  type tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
+
+		sql = `CREATE TABLE t1(c1 json DEFAULT NULL COMMENT '日志记录',
+	  type          tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql)
+
+		sql = `CREATE TABLE t1(c1 json COMMENT '日志记录',
+	  type  tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql)
+
+		// 计算列移除默认值校验
+		config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
+
+		sql = `CREATE TABLE t1(c1 json DEFAULT '{}' COMMENT '日志记录',
+	  type tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
+
+		sql = `CREATE TABLE t1(c1 json DEFAULT NULL COMMENT '日志记录',
+	  type          tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql)
+
+		sql = `CREATE TABLE t1(c1 json COMMENT '日志记录',
+	  type  tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql)
+
+		config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
+
+	} else {
+		sql = `CREATE TABLE t1(c1 json DEFAULT '{}' COMMENT '日志记录') ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
+
+		sql = `CREATE TABLE t1(c1 json DEFAULT NULL COMMENT '日志记录') ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql)
+
+		sql = `CREATE TABLE t1(c1 json COMMENT '日志记录') ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		s.testErrorCode(c, sql)
+	}
+
+	config.GetGlobalConfig().Inc.EnableNullable = false
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NOT_ALLOWED_NULLABLE, "c1", "t1"))
+
+	if s.getDBVersion(c) >= 50700 {
+		sql = `CREATE TABLE t1(c1 tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL);`
+		s.testErrorCode(c, sql)
+	}
+
+	config.GetGlobalConfig().Inc.EnableNullable = true
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
