@@ -2631,6 +2631,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	notNullFlag := false
 	autoIncrement := false
 	hasDefaultValue := false
+	hasGenerated := false
 	var defaultValue *types.Datum
 	var defaultExpr ast.ExprNode
 
@@ -2656,6 +2657,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
+			case ast.ColumnOptionGenerated:
+				hasGenerated = true
 			}
 		}
 	}
@@ -2745,9 +2748,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if !hasDefaultValue && field.Tp.Tp != mysql.TypeTimestamp &&
-		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary && field.Tp.Tp != mysql.TypeJSON {
+		!types.IsTypeBlob(field.Tp.Tp) && !autoIncrement && !isPrimary && field.Tp.Tp != mysql.TypeJSON && !hasGenerated {
 		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
-
 	}
 
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
