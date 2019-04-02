@@ -2665,7 +2665,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	//有默认值，且归类无效，如(default CURRENT_TIMESTAMP)
-	if hasDefaultValue && isInvalidDefaultValue(field) {
+	if hasDefaultValue && s.isInvalidDefaultValue(field) {
 		s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
 
