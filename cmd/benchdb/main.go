@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
 	"github.com/hanchuanchuan/goInception/store/tikv"
@@ -113,6 +114,10 @@ func newBenchDB() *benchDB {
 	_, err = se.Execute(context.Background(), "use test")
 	terror.MustNil(err)
 
+	config.GetGlobalConfig().Inc.Lang = "en-US"
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
 	return &benchDB{
 		store:   store.(tikv.Storage),
 		session: se,
@@ -120,11 +125,16 @@ func newBenchDB() *benchDB {
 }
 
 func (ut *benchDB) makeSQL(sql string) string {
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--check=` + strconv.FormatBool(*check) + `;--execute==` + strconv.FormatBool(*execute) + `;--remote-backup=` + strconv.FormatBool(*backup) + `;--port=3306;--enable-ignore-warnings;*/
+	checkStr := "0"
+	if *check && !(*execute || *backup) {
+		checkStr = "1"
+	}
+	a := `/*--user=test;--password=test;--host=127.0.0.1;--check=` + checkStr + `;--execute=` + strconv.FormatBool(*execute) + `;--remote-backup=` + strconv.FormatBool(*backup) + `;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
+	log.Info(fmt.Sprintf(a, sql))
 	return fmt.Sprintf(a, sql)
 }
 
@@ -228,13 +238,26 @@ func (ut *benchDB) createTable() {
   PRIMARY KEY (id),
   UNIQUE KEY name (name)
 );`
+
 	res, _ := ut.mustExec(createSQL)
-	cLogf("%s", res)
+	for _, row := range res {
+		if row[2] == "2" {
+			log.Fatal(res)
+			log.Fatal(row)
+		}
+	}
+
+	log.Info(res)
 }
 
 func (ut *benchDB) truncateTable() {
 	cLog("truncate table")
-	ut.mustExec("truncate table " + *tableName)
+	res, _ := ut.mustExec("truncate table " + *tableName)
+	for _, row := range res {
+		if row[2] == "2" {
+			log.Warn(row)
+		}
+	}
 }
 
 func (ut *benchDB) runCountTimes(name string, count int, f func()) {
@@ -281,7 +304,13 @@ func (ut *benchDB) insertRows(spec string) {
 				*tableName, id, id, buf))
 			id++
 		}
-		ut.mustExec(bufSQL.String())
+		res, _ := ut.mustExec(bufSQL.String())
+		for _, row := range res {
+			if row[2] == "2" {
+				log.Fatal(res)
+				log.Fatal(row)
+			}
+		}
 	})
 }
 
@@ -299,7 +328,13 @@ func (ut *benchDB) updateRandomRows(spec string) {
 			bufSQL.WriteString(fmt.Sprintf("update %s set exp = exp + 1 where id = %d;", *tableName, id))
 			runCount++
 		}
-		ut.mustExec(bufSQL.String())
+		res, _ := ut.mustExec(bufSQL.String())
+		for _, row := range res {
+			if row[2] == "2" {
+				log.Fatal(res)
+				log.Fatal(row)
+			}
+		}
 	})
 }
 
@@ -309,7 +344,13 @@ func (ut *benchDB) updateRangeRows(spec string) {
 		// ut.mustExec("begin")
 		bufSQL := bytes.NewBufferString("")
 		bufSQL.WriteString(fmt.Sprintf("update %s set exp = exp + 1 where id >= %d and id < %d;", *tableName, start, end))
-		ut.mustExec(bufSQL.String())
+		res, _ := ut.mustExec(bufSQL.String())
+		for _, row := range res {
+			if row[2] == "2" {
+				log.Fatal(res)
+				log.Fatal(row)
+			}
+		}
 	})
 }
 

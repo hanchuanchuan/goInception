@@ -1456,7 +1456,7 @@ func (s *session) parseOptions(sql string) {
 		s.opt.backup = false
 	}
 
-	// log.Infof("%#v", s.opt)
+	log.Infof("%#v", s.opt)
 
 	// 不再检查密码是否为空
 	if s.opt.host == "" || s.opt.port == 0 || s.opt.user == "" {
@@ -1570,6 +1570,11 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 	if !s.Inc.EnableDropTable {
 		s.AppendErrorNo(ER_CANT_DROP_TABLE, t.Name)
 	} else {
+
+		if t.Schema.O == "" {
+			t.Schema = model.NewCIStr(s.DBName)
+		}
+
 		table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
 
 		if table == nil {
@@ -1590,6 +1595,10 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 		if !s.Inc.EnableDropTable {
 			s.AppendErrorNo(ER_CANT_DROP_TABLE, t.Name)
 		} else {
+
+			if t.Schema.O == "" {
+				t.Schema = model.NewCIStr(s.DBName)
+			}
 
 			table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
 
@@ -2088,6 +2097,10 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	// AlterTableForce = 15
 	// AlterTableAddPartitions = 16
 	// AlterTableDropPartition = 17
+
+	if node.Table.Schema.O == "" {
+		node.Table.Schema = model.NewCIStr(s.DBName)
+	}
 
 	if !s.checkDBExists(node.Table.Schema.O, true) {
 		return
@@ -2725,8 +2738,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if field.Tp.Tp == mysql.TypeTimestamp {
-		if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
-			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, tableName)
+		// if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
+		if !hasDefaultValue {
+			s.AppendErrorNo(ER_TIMESTAMP_DEFAULT, field.Name.Name.O)
 		}
 	}
 
@@ -4659,6 +4673,9 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 		}
 	}
 
+	if c.Default == nil {
+		field.Tp.Flag |= mysql.NoDefaultValueFlag
+	}
 	c.IsNew = true
 	return c
 }
