@@ -254,6 +254,7 @@ ignore-error = false
 enable_nullable = true
 enable_drop_table = false
 
+check_timestamp_count = true
 check_table_comment = false
 check_column_comment = false
 
