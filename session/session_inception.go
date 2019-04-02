@@ -2709,7 +2709,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if types.IsTypeBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
-		if !notNullFlag {
+		if !notNullFlag && !hasGenerated{
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
 		}
 
