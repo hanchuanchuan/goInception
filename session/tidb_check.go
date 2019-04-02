@@ -21,13 +21,16 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	// "time"
 
 	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/mysql"
+	// "github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/pingcap/errors"
-	// log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // checkContainDotColumn checks field contains the table name.
@@ -181,16 +184,36 @@ func isDefaultValNowSymFunc(expr ast.ExprNode) bool {
 	return false
 }
 
-func isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
+func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 	tp := colDef.Tp
+
+	// utc := &stmtctx.StatementContext{TimeZone: time.UTC}
 	// Check the last default value.
 	for i := len(colDef.Options) - 1; i >= 0; i-- {
 		columnOpt := colDef.Options[i]
 		if columnOpt.Tp == ast.ColumnOptionDefaultValue {
-			// log.Infof("%#v", columnOpt.Expr)
+
 			if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime) && isDefaultValNowSymFunc(columnOpt.Expr) {
 				return true
+			} else {
+				if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime || tp.Tp == mysql.TypeDate) ||
+					columnOpt.Expr.GetDatum().IsNull() || isDefaultValNowSymFunc(columnOpt.Expr) {
+					return false
+				}
+
+				d, err := expression.GetTimeValue(s, columnOpt.Expr, tp.Tp, tp.Decimal)
+				if err != nil {
+					log.Warning(err)
+					return true
+				}
+
+				// 不允许零值日期
+				t := d.GetMysqlTime()
+				if t.InvalidZero() || t.IsZero() {
+					return true
+				}
 			}
+
 			break
 		}
 	}
