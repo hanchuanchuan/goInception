@@ -410,6 +410,23 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErrf("Invalid default value for column '%s'.", "t2"))
 
+	// 时间戳 timestamp数量
+	config.GetGlobalConfig().Inc.CheckTimestampCount = false
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.CheckTimestampCount = true
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);"
+	s.testErrorCode(c, sql,
+		session.NewErrf("Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause"))
+
+
 	sql = "create table test_error_code1 (c1 int, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int)"
 	s.testErrorCode(c, sql, session.NewErr(session.ER_TOO_LONG_IDENT, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
 
@@ -1292,6 +1309,89 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	sql = "drop database test1;create database test1 character set laitn1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+}
+
+func (s *testSessionIncSuite) TestTimestampColumn(c *C) {
+	sql := ""
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '0');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '0000-0-0');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '0000-0-0 00:00:00');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '2100-1-1 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '1900-1-1 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '2000-1-0 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '0');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '0000-0-0');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '0000-0-0 00:00:00');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '2000-1-0 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '2100-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+	sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '1900-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '0');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '0000-0-0');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '0000-0-0 00:00:00');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '2000-1-0 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '2100-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+	sql = `drop table if exists timeTable;create table timeTable(c1 date default '1900-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(6) default '1900-1-1 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(7) default '2000-1-1 1:1:1');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(0) default '2000-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(3) default '2000-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(6) default '2000-1-1 1:1:1');`
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestRenameTable(c *C) {
