@@ -283,8 +283,29 @@ func (ut *benchDB) runCountTimes(name string, count int, f func()) {
 		}
 		sum += dur
 	}
+	// cLogf("%s done, avg %s, count %d, sum %s, first %s, last %s, max %s, min %s\n\n",
+	// 	name, (sum / time.Duration(count)), count, (sum),
+	// 	(first), (last), (max), (min))
+
 	cLogf("%s done, avg %s, count %d, sum %s, first %s, last %s, max %s, min %s\n\n",
-		name, sum/time.Duration(count), count, sum, first, last, max, min)
+		name, format(sum/time.Duration(count)), count, format(sum),
+		format(first), format(last), format(max), format(min))
+}
+
+func format(t time.Duration) string {
+	str := ""
+
+	// str += fmt.Sprintf("%.3fs", t.Seconds())
+
+	if t.Minutes() > 1 {
+		str += fmt.Sprintf("%dm", int(t.Minutes()))
+	}
+	if t.Seconds() > 1 {
+		str += fmt.Sprintf("%ds", int(t.Seconds()))
+	}
+
+	str += fmt.Sprintf("%.0fms", float64(t.Nanoseconds()%1000000000)/1000000.0)
+	return str
 }
 
 func (ut *benchDB) insertRows(spec string) {
