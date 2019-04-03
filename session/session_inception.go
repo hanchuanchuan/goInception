@@ -39,6 +39,7 @@ import (
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/parser/opcode"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
@@ -48,6 +49,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
+	// "os"
+	// "runtime/pprof"
 )
 
 // MasterStatus 主库状态信息,包括当前日志文件,位置等
@@ -214,6 +217,12 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 		return s.execute(ctx, sql)
 	}
 
+	// f, err := os.Create("profile_cpu")
+	// if err != nil {
+	// 	log.Error(err)
+	// }
+	// pprof.StartCPUProfile(f)
+
 	s.DBName = ""
 	s.haveBegin = false
 	s.haveCommit = false
@@ -234,6 +243,9 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 		err = errors.Trace(err)
 		s.sessionVars.StmtCtx.AppendError(err)
 	}
+
+	// pprof.StopCPUProfile()
+
 	// else {
 	// 	if s.sessionVars.StmtCtx.AffectedRows() == 0 {
 	// 		log.Info(s.recordSets.rc.count)
@@ -355,6 +367,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					}
 
 					s.mysqlServerVersion()
+					s.initMysqlSQLMode()
 
 					continue
 				case *ast.InceptionCommitStmt:
@@ -1290,6 +1303,44 @@ func (s *session) mysqlServerVersion() {
 	}
 
 	log.Debug("db version: ", s.DBVersion)
+}
+
+func (s *session) initMysqlSQLMode() {
+	log.Debug("initMysqlSQLMode")
+
+	// sc := s.GetSessionVars().StmtCtx
+
+	var value string
+	sql := "show variables like 'sql_mode';"
+
+	rows, err := s.db.Raw(sql).Rows()
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	if err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&value, &value)
+		}
+	}
+
+	if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
+		log.Error(err)
+		log.Warning(value)
+	} else {
+		sc := s.GetSessionVars().StmtCtx
+		vars := s.sessionVars
+		// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
+		sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
+	}
+
 }
 
 func (s *session) fetchThreadID() (threadId uint32) {
