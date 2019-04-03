@@ -1,5 +1,24 @@
 # goInception 更新日志
 
+## [v0.6-beta] - 2019-4-3
+### Update
+* 备份操作性能优化,备份信息改为批量写入
+* 添加备份库连接超时检查
+* explain函数性能优化
+* 优化部分函数未指定架构名时的默认处理
+* 优化默认值检查,添加计算列支持 (#12, #13, #14)
+* 优化时间格式和范围检查,根据数据库sql_mode校验零值日期
+* 升级到go 1.12
+
+### Fix
+* 修复index name校验逻辑,其可与列名一致
+* 修复timestamp默认值校验不准确的问题
+
+### New Features
+* 添加kill功能支持,在审核和执行时可以kill,备份阶段无法kill (#10)
+* 添加`check_timestamp_count`参数,可配置是否检查current_timestamp数量 (#11, #15)
+
+
 ## [v0.5.3-beta] - 2019-3-25
 ### Update
 * 变更列名时使用逻辑校验,避免explain update失败
