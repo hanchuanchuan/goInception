@@ -196,7 +196,7 @@ func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 			if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime) && isDefaultValNowSymFunc(columnOpt.Expr) {
 				return true
 			} else {
-				if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime || tp.Tp == mysql.TypeDate) ||
+				if !types.IsTypeTime(tp.Tp) ||
 					columnOpt.Expr.GetDatum().IsNull() || isDefaultValNowSymFunc(columnOpt.Expr) {
 					return false
 				}
@@ -207,10 +207,16 @@ func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 					return true
 				}
 
-				// 不允许零值日期
+				vars := s.sessionVars
+
+				// 根据服务器sql_mode设置处理零值日期
 				t := d.GetMysqlTime()
-				if t.InvalidZero() || t.IsZero() {
-					return true
+				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroDateMode(), t.IsZero())
+				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroInDateMode(), t.InvalidZero())
+				if t.IsZero() {
+					return vars.StrictSQLMode && vars.SQLMode.HasNoZeroDateMode()
+				} else if t.InvalidZero() {
+					return vars.StrictSQLMode && vars.SQLMode.HasNoZeroInDateMode()
 				}
 			}
 
