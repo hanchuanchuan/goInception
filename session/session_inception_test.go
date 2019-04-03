@@ -1460,7 +1460,8 @@ func (s *testSessionIncSuite) TestTimestampColumn(c *C) {
 			session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
 	} else {
 		sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '2000-1-0 1:1:1');`
-		s.testErrorCode(c, sql)
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
 
 		sql = `drop table if exists timeTable;create table timeTable(c1 datetime default '2000-1-0 1:1:1');`
 		s.testErrorCode(c, sql)
