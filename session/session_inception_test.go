@@ -43,6 +43,9 @@ type testSessionIncSuite struct {
 	store     kv.Storage
 	dom       *domain.Domain
 	tk        *testkit.TestKit
+
+	version int
+	sqlMode string
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
@@ -132,6 +135,10 @@ func (s *testSessionIncSuite) getDBVersion(c *C) int {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
 
+	if s.version > 0 {
+		return s.version
+	}
+
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
@@ -160,10 +167,40 @@ func (s *testSessionIncSuite) getDBVersion(c *C) int {
 		if err != nil {
 			fmt.Println(err)
 		}
+		s.version = version
 		return version
 	}
 
 	return 50700
+}
+
+func (s *testSessionIncSuite) getSQLMode(c *C) string {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
+	if s.sqlMode != "" {
+		return s.sqlMode
+	}
+
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	sql := "show variables like 'sql_mode'"
+
+	res := makeSQL(s.tk, sql)
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	versionStr := row[5].(string)
+
+	versionStr = strings.SplitN(versionStr, "|", 2)[1]
+	value := strings.Replace(versionStr, "'", "", -1)
+	value = strings.TrimSpace(value)
+
+	s.sqlMode = value
+	return value
 }
 
 func makeSQL(tk *testkit.TestKit, sql string) *testkit.Result {
@@ -1312,6 +1349,8 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 
 func (s *testSessionIncSuite) TestTimestampColumn(c *C) {
 	sql := ""
+
+	fmt.Println("SQLMode: ", s.getSQLMode(c))
 
 	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp default '');`
 	s.testErrorCode(c, sql,
