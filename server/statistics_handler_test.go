@@ -100,7 +100,7 @@ func (ds *testDumpStatsSuite) prepareData(c *C) {
 func (ds *testDumpStatsSuite) checkData(c *C, path string) {
 	db, err := sql.Open("mysql", getDSN(func(config *mysql.Config) {
 		config.AllowAllFiles = true
-		config.Strict = false
+		// config.Strict = false
 	}))
 	c.Assert(err, IsNil, Commentf("Error connecting"))
 	dbt := &DBTest{c, db}
