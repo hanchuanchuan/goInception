@@ -18,6 +18,8 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -73,6 +75,14 @@ func main() {
 
 	ut := newBenchDB()
 	works := strings.Split(*runJobs, "|")
+
+	f, err := os.Create("/root/hcc/github.com/hanchuanchuan/goInception/profile_cpu")
+	if err != nil {
+		log.Error(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	for _, v := range works {
 		work := strings.ToLower(strings.TrimSpace(v))
 		name, spec := ut.mustParseWork(work)
