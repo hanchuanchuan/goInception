@@ -222,10 +222,12 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	// 	log.Error(err)
 	// }
 	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
 
 	s.DBName = ""
 	s.haveBegin = false
 	s.haveCommit = false
+	s.threadID = 0
 
 	s.tableCacheList = make(map[string]*TableInfo)
 	s.dbCacheList = make(map[string]bool)
@@ -246,18 +248,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 
 	// pprof.StopCPUProfile()
 
-	// else {
-	// 	if s.sessionVars.StmtCtx.AffectedRows() == 0 {
-	// 		log.Info(s.recordSets.rc.count)
-	// 		s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
-	// 	}
-	// }
-	// else {
-	// 	fmt.Println("---------------")
-	// 	fmt.Println(len(recordSets))
-	// 	fmt.Printf("%#v", recordSets)
-	// 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(len(recordSets)))
-	// }
 	return
 }
 
@@ -286,11 +276,17 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	startTS := time.Now()
 
 	lineCount := len(sqlList) - 1
+	// batchSize := 1
 
 	var buf []string
 	for i, sql_line := range sqlList {
+
+		// 100行解析一次
 		// 如果以分号结尾,或者是最后一行,就做解析
+		// strings.HasSuffix(sql_line, ";")
+		// && batchSize >= 100)
 		if strings.HasSuffix(sql_line, ";") || i == lineCount {
+			// batchSize = 1
 			buf = append(buf, sql_line)
 			s1 := strings.Join(buf, "\n")
 			s1 = strings.TrimRight(s1, ";")
@@ -445,6 +441,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 		} else if i < lineCount {
 			buf = append(buf, sql_line)
+			// batchSize++
 		}
 	}
 
@@ -971,7 +968,7 @@ func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) stri
 }
 
 func (s *session) mysqlRealQueryBackup(sql string) error {
-	res := s.db.Exec(sql)
+	res := s.Exec(sql)
 	err := res.Error
 	if err != nil {
 		log.Error(err)
@@ -1113,14 +1110,11 @@ func (s *session) executeRemoteStatement(record *Record) {
 		record.ExecTimestamp = time.Now().Unix()
 		record.ThreadId = s.fetchThreadID()
 		if record.ThreadId == 0 {
-			record.ThreadId = s.fetchThreadID()
-		}
-		if record.ThreadId == 0 {
 			s.AppendErrorMessage("无法获取线程号")
 		}
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 	} else {
-		res := s.db.Exec(sql)
+		res := s.Exec(sql)
 
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 
@@ -1137,15 +1131,14 @@ func (s *session) executeRemoteStatement(record *Record) {
 			record.StageStatus = StatusExecFail
 		} else {
 			record.AffectedRows = int(res.RowsAffected)
-			if record.ThreadId == 0 {
-				record.ThreadId = s.fetchThreadID()
-			}
+			record.ThreadId = s.fetchThreadID()
 			if record.ThreadId == 0 {
 				s.AppendErrorMessage("无法获取线程号")
 			} else {
-				record.StageStatus = StatusExecOK
 				record.ExecComplete = true
 			}
+
+			record.StageStatus = StatusExecOK
 
 			switch record.Type.(type) {
 			case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
@@ -1188,6 +1181,11 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 			// 开始位置和结束位置一样,无变更
 			if record.StartFile == record.EndFile &&
 				record.StartPosition == record.EndPosition {
+
+				record.StartFile = ""
+				record.StartPosition = 0
+				record.EndFile = ""
+				record.EndPosition = 0
 				return
 			}
 		}
@@ -1205,7 +1203,7 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	}
 
 	var r MasterStatus
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1235,7 +1233,7 @@ func (s *session) checkBinlogFormatIsRow() bool {
 
 	var format string
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1268,7 +1266,7 @@ func (s *session) mysqlServerVersion() {
 	// sql := "select @@version;"
 	sql := "show variables like 'version';"
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1313,7 +1311,7 @@ func (s *session) initMysqlSQLMode() {
 	var value string
 	sql := "show variables like 'sql_mode';"
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1343,24 +1341,27 @@ func (s *session) initMysqlSQLMode() {
 
 }
 
-func (s *session) fetchThreadID() (threadId uint32) {
+func (s *session) fetchThreadID() uint32 {
 	log.Debug("fetchThreadID")
+
+	if s.threadID > 0 {
+		return s.threadID
+	}
 
 	sql := "select connection_id();"
 	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
 	}
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
-		defer rows.Close()
-
 		for rows.Next() {
-			rows.Scan(&threadId)
+			rows.Scan(&s.threadID)
 		}
+		rows.Close()
 	}
 	if err != nil {
-		log.Error(err, threadId)
+		log.Error(err, s.threadID)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
@@ -1368,7 +1369,8 @@ func (s *session) fetchThreadID() (threadId uint32) {
 		}
 	}
 
-	return
+	// log.Info(s.sessionVars.ConnectionID, ",", s.threadID)
+	return s.threadID
 }
 
 func (s *session) modifyBinlogFormatRow() {
@@ -1376,7 +1378,7 @@ func (s *session) modifyBinlogFormatRow() {
 
 	sql := "set session binlog_format=row;"
 
-	res := s.db.Exec(sql)
+	res := s.Exec(sql)
 
 	if err := res.Error; err != nil {
 		log.Error(err)
@@ -1400,7 +1402,7 @@ func (s *session) setSqlSafeUpdates() {
 		return
 	}
 
-	res := s.db.Exec(sql)
+	res := s.Exec(sql)
 
 	if err := res.Error; err != nil {
 		log.Error(err)
@@ -1419,7 +1421,7 @@ func (s *session) checkBinlogIsOn() bool {
 
 	var format string
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1582,33 +1584,6 @@ func (s *session) parseOptions(sql string) {
 	s.setSqlSafeUpdates()
 }
 
-// createNewConnection 用来创建新的连接
-// 注意: 该方法可能导致driver: bad connection异常
-func (s *session) createNewConnection(dbName string) {
-	addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
-		s.opt.user, s.opt.password, s.opt.host, s.opt.port, dbName)
-
-	db, err := gorm.Open("mysql", addr)
-
-	if err != nil {
-		log.Error(err)
-		s.AppendErrorMessage(err.Error())
-		return
-	}
-
-	if s.db != nil {
-		s.db.Close()
-	}
-
-	// 禁用日志记录器，不显示任何日志
-	db.LogMode(false)
-
-	// 为保证连接成功关闭,此处等待10ms
-	time.Sleep(10 * time.Millisecond)
-
-	s.db = db
-}
-
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 
 	log.Debug("checkTruncateTable")
@@ -1687,7 +1662,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 
 	var res uint
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1719,7 +1694,7 @@ func (s *session) mysqlGetTableSize(t *TableInfo) {
 
 	var res uint
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1749,7 +1724,7 @@ func (s *session) mysqlShowCreateTable(t *TableInfo) {
 
 	var res string
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -1778,7 +1753,7 @@ func (s *session) mysqlShowCreateDatabase(name string) {
 
 	var res string
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -3297,10 +3272,10 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 
 	sql := "show databases like '%s';"
 
-	// count:= s.db.Exec(fmt.Sprintf(sql,db)).AffectedRows
+	// count:= s.Exec(fmt.Sprintf(sql,db)).AffectedRows
 	var name string
 
-	rows, err := s.db.Raw(fmt.Sprintf(sql, db)).Rows()
+	rows, err := s.Raw(fmt.Sprintf(sql, db))
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -3940,7 +3915,7 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]ast.RecordSet,
 func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
 	log.Debug("executeInceptionShow")
 
-	rows, err := s.db.Raw(sql).Rows()
+	rows, err := s.Raw(sql)
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -4051,7 +4026,7 @@ func (s *session) checkChangeDB(node *ast.UseStmt) {
 
 	s.DBName = node.DBName
 	if s.checkDBExists(node.DBName, true) {
-		s.db.Exec(fmt.Sprintf("USE `%s`", node.DBName))
+		s.Exec(fmt.Sprintf("USE `%s`", node.DBName))
 	}
 }
 
@@ -4087,8 +4062,8 @@ func (s *session) getExplainInfo(sql string) {
 	// filtered     float32 `gorm:"Column:filtered"`
 	// extra        string  `gorm:"Column:Extra"`
 
-	rows, err := s.db.DB().Query(sql)
-	defer rows.Close()
+	// rows, err := s.db.DB().Query(sql)
+	rows, err := s.Raw(sql)
 
 	var rowLength int
 
@@ -4391,7 +4366,7 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	var rows []FieldInfo
 	sql := fmt.Sprintf("SHOW FULL FIELDS FROM `%s`.`%s`", db, tableName)
 
-	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+	if err := s.RawScan(sql, &rows); err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 {
 				log.Error(err)
@@ -4414,7 +4389,7 @@ func (s *session) QueryIndexFromDB(db string, tableName string, reportNotExists 
 	var rows []*IndexInfo
 	sql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", db, tableName)
 
-	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+	if err := s.RawScan(sql, &rows); err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 {
 				log.Error(err)
