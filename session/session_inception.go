@@ -967,10 +967,10 @@ func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) stri
 	return buf.String()
 }
 
-func (s *session) mysqlRealQueryBackup(sql string) error {
-	res := s.Exec(sql)
-	err := res.Error
-	if err != nil {
+func (s *session) mysqlRealQueryBackup(sql string) (err error) {
+
+	// err := res.Error
+	if _, err = s.Exec(sql); err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1114,13 +1114,13 @@ func (s *session) executeRemoteStatement(record *Record) {
 		}
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 	} else {
-		res := s.Exec(sql)
+		res, err := s.Exec(sql)
 
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 
 		record.ExecTimestamp = time.Now().Unix()
 
-		err := res.Error
+		// err := res.Error
 		if err != nil {
 			log.Error(err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -1130,7 +1130,11 @@ func (s *session) executeRemoteStatement(record *Record) {
 			}
 			record.StageStatus = StatusExecFail
 		} else {
-			record.AffectedRows = int(res.RowsAffected)
+			affectedRows, err := res.RowsAffected()
+			if err != nil {
+				s.AppendErrorMessage(err.Error())
+			}
+			record.AffectedRows = int(affectedRows)
 			record.ThreadId = s.fetchThreadID()
 			if record.ThreadId == 0 {
 				s.AppendErrorMessage("无法获取线程号")
@@ -1378,9 +1382,7 @@ func (s *session) modifyBinlogFormatRow() {
 
 	sql := "set session binlog_format=row;"
 
-	res := s.Exec(sql)
-
-	if err := res.Error; err != nil {
+	if _, err := s.Exec(sql); err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1402,9 +1404,7 @@ func (s *session) setSqlSafeUpdates() {
 		return
 	}
 
-	res := s.Exec(sql)
-
-	if err := res.Error; err != nil {
+	if _, err := s.Exec(sql); err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -4026,7 +4026,14 @@ func (s *session) checkChangeDB(node *ast.UseStmt) {
 
 	s.DBName = node.DBName
 	if s.checkDBExists(node.DBName, true) {
-		s.Exec(fmt.Sprintf("USE `%s`", node.DBName))
+		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName))
+		if err != nil {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.AppendErrorMessage(myErr.Message)
+			} else {
+				s.AppendErrorMessage(err.Error())
+			}
+		}
 	}
 }
 
@@ -4258,9 +4265,9 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		found := false
 
 		db := e.Name.Schema.L
-		if db == "" {
-			db = s.DBName
-		}
+		// if db == "" {
+		// 	db = s.DBName
+		// }
 
 		for _, t := range tables {
 			var tName string
@@ -4270,7 +4277,7 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 				tName = t.Name
 			}
 
-			if e.Name.Table.L != "" && strings.EqualFold(t.Schema, db) &&
+			if e.Name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
 				(strings.EqualFold(tName, e.Name.Table.L)) ||
 				e.Name.Table.L == "" {
 				for _, field := range t.Fields {
