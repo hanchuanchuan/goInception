@@ -321,7 +321,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 			for i, stmtNode := range stmtNodes {
 
-				currentSql := strings.TrimSpace(stmtNode.Text())
+				currentSql := strings.Trim(stmtNode.Text(), " ;")
 
 				s.myRecord = &Record{
 					Sql:   currentSql,
