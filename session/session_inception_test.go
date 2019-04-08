@@ -113,7 +113,7 @@ use test_inc;
 %s;
 inception_magic_commit;`
 	for _, name := range strings.Split(sql.(string), "\n") {
-		if strings.HasPrefix(name, "show tables:") {
+		if strings.HasPrefix(name, "show tables") {
 			continue
 		}
 		n := strings.Replace(name, "'", "", -1)

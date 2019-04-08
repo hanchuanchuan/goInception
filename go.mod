@@ -28,7 +28,7 @@ require (
 	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/github/gh-ost v1.0.48
-	github.com/go-sql-driver/mysql v0.0.0-20170715192408-3955978caca4
+	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
@@ -42,7 +42,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.5.1 // indirect
-	github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff
+	github.com/hanchuanchuan/go-mysql v0.0.0-20190404011851-0853abc18c35
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect

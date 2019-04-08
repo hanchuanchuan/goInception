@@ -114,9 +114,16 @@ func newBenchDB() *benchDB {
 	_, err = se.Execute(context.Background(), "use test")
 	terror.MustNil(err)
 
-	config.GetGlobalConfig().Inc.Lang = "en-US"
-	config.GetGlobalConfig().Inc.EnableBlobType = true
-	config.GetGlobalConfig().Inc.EnableDropTable = true
+	inc := &config.GetGlobalConfig().Inc
+
+	inc.Lang = "en-US"
+	inc.EnableBlobType = true
+	inc.EnableDropTable = true
+
+	inc.BackupHost = "127.0.0.1"
+	inc.BackupPort = 3306
+	inc.BackupUser = "test"
+	inc.BackupPassword = "test"
 
 	return &benchDB{
 		store:   store.(tikv.Storage),
