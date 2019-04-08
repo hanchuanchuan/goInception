@@ -35,7 +35,7 @@ before_install:
   - sudo chmod +x cmd/explaintest/run-tests.sh
 
   - mysql -e 'select version()'
-  - mysql -e "create database test_inc DEFAULT CHARACTER SET utf8;create database 127_0_0_1_3306_test_inc DEFAULT CHARACTER SET utf8;"
+  - mysql -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;create database 127_0_0_1_3306_test_inc DEFAULT CHARACTER SET utf8;"
   - mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
 
   # 关闭数据库,重启并开启binlog,设置字符集
