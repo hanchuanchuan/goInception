@@ -88,12 +88,12 @@ func (s *session) Raw(sqlStr string) (rows *sql.Rows, err error) {
 }
 
 // Raw 执行sql语句,连接失败时自动重连,自动重置当前数据库
-func (s *session) Exec(sqlStr string) (res *gorm.DB) {
+func (s *session) Exec(sqlStr string) (res sql.Result, err error) {
 
     // 连接断开无效时,自动重试
     for i := 0; i < maxBadConnRetries; i++ {
-        res = s.db.Exec(sqlStr)
-        err := res.Error
+        res, err = s.db.DB().Exec(sqlStr)
+        // err = res.Error
         if err == nil {
             return
         } else {

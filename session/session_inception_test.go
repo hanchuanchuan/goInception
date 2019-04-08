@@ -1210,6 +1210,17 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 		update table1 t1,table2 t2 set t1.c1=t2.c2 where t1.id1=t2.id2;`
 	s.testErrorCode(c, sql)
 
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int);
+		create table table2(id2 int primary key,c2 int,c22 int);
+		update table1 a1,table2 a2 set a1.c1=a2.c2 where a1.id1=a2.id2 and a1.c1=a2.c2 and a1.id1 in (1,2,3);`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int);
+		create table test.table2(id2 int primary key,c2 int,c22 int);
+		update table1 a1,test.table2 a2 set a1.c1=a2.c2 where a1.id1=a2.id2 and a1.c1=a2.c2 and a1.id1 in (1,2,3);`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
