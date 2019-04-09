@@ -295,7 +295,7 @@ type Inc struct {
 	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
-	CheckTimestampCount			bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
+	CheckTimestampCount         bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
@@ -303,14 +303,17 @@ type Inc struct {
 	EnableDropDatabase          bool `toml:"enable_drop_database" json:"enable_drop_database"`
 	EnableDropTable             bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
 	EnableEnumSetBit            bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
-	EnableForeignKey            bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
-	EnableIdentiferKeyword      bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
-	EnableNotInnodb             bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
-	EnableNullable              bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
-	EnableOrderByRand           bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
-	EnablePartitionTable        bool `toml:"enable_partition_table" json:"enable_partition_table"`
-	EnablePKColumnsOnlyInt      bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
-	EnableSelectStar            bool `toml:"enable_select_star" json:"enable_select_star"`
+
+	// DML指纹功能,开启后,在审核时,类似DML将直接复用审核结果,可大幅优化审核效率
+	EnableFingerprint      bool `toml:"enable_fingerprint" json:"enable_fingerprint"`
+	EnableForeignKey       bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
+	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
+	EnableNotInnodb        bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
+	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
+	EnableOrderByRand      bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
+	EnablePartitionTable   bool `toml:"enable_partition_table" json:"enable_partition_table"`
+	EnablePKColumnsOnlyInt bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
+	EnableSelectStar       bool `toml:"enable_select_star" json:"enable_select_star"`
 
 	// 是否允许设置字符集和排序规则
 	EnableSetCharset bool `toml:"enable_set_charset" json:"enable_set_charset"`
@@ -626,14 +629,14 @@ var defaultConf = Config{
 		SkipGrantTable: true,
 	},
 	Inc: Inc{
-		EnableNullable:     true,
-		EnableDropTable:    false,
-		CheckTableComment:  false,
-		CheckColumnComment: false,
-		CheckTimestampCount:true,
-		SqlSafeUpdates:     -1,
-		SupportCharset:     "utf8,utf8mb4",
-		Lang:               "en-US",
+		EnableNullable:      true,
+		EnableDropTable:     false,
+		CheckTableComment:   false,
+		CheckColumnComment:  false,
+		CheckTimestampCount: true,
+		SqlSafeUpdates:      -1,
+		SupportCharset:      "utf8,utf8mb4",
+		Lang:                "en-US",
 		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{

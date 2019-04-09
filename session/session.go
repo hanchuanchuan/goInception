@@ -206,6 +206,8 @@ type session struct {
 
 	// 远程数据库线程ID,在启用备份功能时,用以记录线程ID来解析binlog
 	threadID uint32
+
+	sqlFingerprint map[string]*Record
 	// // osc进程解析通道
 	// chanOsc chan *ChanOscData
 }
