@@ -72,6 +72,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
 	// session.SetLanguage("zh-CN")
 	config.GetGlobalConfig().Inc.Lang = "en-US"
+	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	session.SetLanguage("en-US")
 }
 

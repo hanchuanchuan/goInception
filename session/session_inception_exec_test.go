@@ -73,6 +73,7 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	inc.BackupPassword = "inception"
 
 	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Inc.EnableFingerprint = true
 
 	inc.EnableDropTable = true
 

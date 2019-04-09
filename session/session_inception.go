@@ -3332,7 +3332,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	log.Debug("checkInsert")
 
-	sqlId, ok := s.checkFingerprint(sql)
+	sqlId, ok := s.checkFingerprint(strings.Replace(strings.ToLower(sql), "values", "values ", 1))
 	if ok {
 		return
 	}
