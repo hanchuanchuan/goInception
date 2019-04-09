@@ -77,6 +77,7 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 
 	config.GetGlobalConfig().Osc.OscOn = false
 	config.GetGlobalConfig().Ghost.GhostOn = false
+	config.GetGlobalConfig().Inc.EnableFingerprint = true
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	config.GetGlobalConfig().Inc.EnableBlobType = true
