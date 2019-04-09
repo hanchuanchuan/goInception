@@ -64,6 +64,7 @@ require (
 	github.com/opentracing/basictracer-go v1.0.0
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502
+	github.com/percona/go-mysql v0.0.0-20190307200310-f5cfaf6a5e55
 	github.com/pingcap/check v0.0.0-20171206051426-1c287c953996
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/goleveldb v0.0.0-20171020122428-b9ff6c35079e

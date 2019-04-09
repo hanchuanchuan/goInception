@@ -45,6 +45,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/auth"
 	"github.com/hanchuanchuan/goInception/util/stringutil"
 	"github.com/jinzhu/gorm"
+	"github.com/percona/go-mysql/query"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -77,6 +78,9 @@ type sourceOptions struct {
 	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
 	middlewareExtend string
 	middlewareDB     string
+
+	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
+	fingerprint bool
 }
 
 // ExplainInfo 执行计划信息
@@ -239,6 +243,8 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.Osc = config.GetGlobalConfig().Osc
 	s.Ghost = config.GetGlobalConfig().Ghost
 
+	s.sqlFingerprint = nil
+
 	s.recordSets = NewRecordSets()
 
 	if recordSets, err = s.executeInc(ctx, sql); err != nil {
@@ -246,6 +252,13 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 		s.sessionVars.StmtCtx.AppendError(err)
 	}
 
+	defer func() {
+		s.tableCacheList = nil
+		s.dbCacheList = nil
+		s.backupDBCacheList = nil
+		s.backupTableCacheList = nil
+		s.sqlFingerprint = nil
+	}()
 	// pprof.StopCPUProfile()
 
 	return
@@ -364,6 +377,15 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					s.mysqlServerVersion()
 					s.initMysqlSQLMode()
+
+					// sql指纹设置取并集
+					if s.opt.fingerprint {
+						s.Inc.EnableFingerprint = true
+					}
+
+					if s.Inc.EnableFingerprint {
+						s.sqlFingerprint = make(map[string]*Record, 64)
+					}
 
 					continue
 				case *ast.InceptionCommitStmt:
@@ -1499,6 +1521,8 @@ func (s *session) parseOptions(sql string) {
 
 		middlewareExtend: viper.GetString("middlewareExtend"),
 		middlewareDB:     viper.GetString("middlewareDB"),
+
+		fingerprint: viper.GetBool("fingerprint"),
 	}
 
 	if s.opt.check {
@@ -3308,6 +3332,11 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	log.Debug("checkInsert")
 
+	sqlId, ok := s.checkFingerprint(sql)
+	if ok {
+		return
+	}
+
 	x := node
 
 	fieldCount := len(x.Columns)
@@ -3508,6 +3537,8 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		// 	return nil, errors.Errorf("INSERT INTO %s: empty column", node.Table.Meta().Name.O)
 		// }
 	}
+
+	s.saveFingerprint(sqlId)
 }
 
 func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
@@ -4155,6 +4186,11 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	log.Debug("checkUpdate")
 
+	sqlId, ok := s.checkFingerprint(sql)
+	if ok {
+		return
+	}
+
 	// 从set列表读取要更新的表
 	var originTable string
 	var firstColumnName string
@@ -4250,6 +4286,8 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	if node.Order != nil {
 		s.AppendErrorNo(ER_WITH_ORDERBY_CONDITION)
 	}
+
+	s.saveFingerprint(sqlId)
 }
 
 func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
@@ -4311,6 +4349,11 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	log.Debug("checkDelete")
 
+	sqlId, ok := s.checkFingerprint(sql)
+	if ok {
+		return
+	}
+
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
 			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
@@ -4364,6 +4407,8 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	if node.Order != nil {
 		s.AppendErrorNo(ER_WITH_ORDERBY_CONDITION)
 	}
+
+	s.saveFingerprint(sqlId)
 }
 
 func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists bool) []FieldInfo {
@@ -4877,4 +4922,30 @@ func (s *session) executeKillStmt(node *ast.KillStmt) ([]ast.RecordSet, error) {
 	// 	s.sessionVars.StmtCtx.AppendWarning(err)
 	// }
 	return nil, nil
+}
+
+// checkFingerprint 检查sql指纹,如果指纹存在,则直接跳过
+func (s *session) checkFingerprint(sql string) (string, bool) {
+	if s.Inc.EnableFingerprint {
+		fingerprint := query.Fingerprint(sql)
+		id := query.Id(fingerprint)
+
+		if record, ok := s.sqlFingerprint[id]; ok {
+			s.myRecord.TableInfo = record.TableInfo
+			s.myRecord.AffectedRows = record.AffectedRows
+			s.myRecord.ErrLevel = record.ErrLevel
+			s.myRecord.Buf = bytes.NewBuffer(record.Buf.Bytes())
+			return id, true
+		}
+		return id, false
+	}
+
+	return "", false
+}
+
+// saveFingerprint 保存sql指纹
+func (s *session) saveFingerprint(sqlId string) {
+	if s.Inc.EnableFingerprint && sqlId != "" {
+		s.sqlFingerprint[sqlId] = s.myRecord
+	}
 }

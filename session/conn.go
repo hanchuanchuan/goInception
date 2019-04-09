@@ -127,7 +127,7 @@ func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
         if err == nil {
             return
         } else {
-            log.Error(err)
+            // log.Error(err)
             if err == mysqlDriver.ErrInvalidConn {
                 err = s.initConnection()
                 if err != nil {

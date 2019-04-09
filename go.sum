@@ -159,6 +159,8 @@ github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502 h1:oS2s2j8GP70jE0ID
 github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502/go.mod h1:JDhu//MMvcPVPH889Xr7DyamEbTLumgDBALGUyXrz1g=
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
+github.com/percona/go-mysql v0.0.0-20190307200310-f5cfaf6a5e55 h1:kx48fD4K+GXb7YqwykiWirM8GRtoMcpWbGlaAb3IsqE=
+github.com/percona/go-mysql v0.0.0-20190307200310-f5cfaf6a5e55/go.mod h1:/SGLf9OMxlnK6jq4mkFiImBcJXXk5jwD+lDrwDaGXcw=
 github.com/pingcap/check v0.0.0-20171206051426-1c287c953996 h1:ZBdiJCMan6GSo/aPAM7gywcUKa0z58gczVrnG6TQnAQ=
 github.com/pingcap/check v0.0.0-20171206051426-1c287c953996/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
 github.com/pingcap/errors v0.11.0 h1:DCJQB8jrHbQ1VVlMFIrbj2ApScNNotVmkSNplu2yUt4=
