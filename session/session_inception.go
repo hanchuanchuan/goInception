@@ -3332,10 +3332,10 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	log.Debug("checkInsert")
 
-	sqlId, ok := s.checkFingerprint(strings.Replace(strings.ToLower(sql), "values", "values ", 1))
-	if ok {
-		return
-	}
+	// sqlId, ok := s.checkFingerprint(strings.Replace(strings.ToLower(sql), "values", "values ", 1))
+	// if ok {
+	// 	return
+	// }
 
 	x := node
 
@@ -3538,7 +3538,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		// }
 	}
 
-	s.saveFingerprint(sqlId)
+	// s.saveFingerprint(sqlId)
 }
 
 func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
@@ -4086,19 +4086,14 @@ func getSingleTableName(tableRefs *ast.TableRefsClause) *ast.TableName {
 	return tblName
 }
 
-func (s *session) getExplainInfo(sql string) {
+func (s *session) getExplainInfo(sql string, sqlId string) {
 
-	// selectType   string  `gorm:"Column:select_type"`
-	// table        string  `gorm:"Column:table"`
-	// partitions   string  `gorm:"Column:partitions"`
-	// type         string  `gorm:"Column:type"`
-	// possibleKeys string  `gorm:"Column:possible_keys"`
-	// key          string  `gorm:"Column:key"`
-	// keyLen       string  `gorm:"Column:key_len"`
-	// ref          string  `gorm:"Column:ref"`
-	// rows         int     `gorm:"Column:rows"`
-	// filtered     float32 `gorm:"Column:filtered"`
-	// extra        string  `gorm:"Column:Extra"`
+	var newRecord *Record
+	if s.Inc.EnableFingerprint && sqlId != "" {
+		newRecord = &Record{
+			Buf: new(bytes.Buffer),
+		}
+	}
 
 	// rows, err := s.db.DB().Query(sql)
 	rows, err := s.Raw(sql)
@@ -4109,6 +4104,9 @@ func (s *session) getExplainInfo(sql string) {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
+			if newRecord != nil {
+				newRecord.AppendErrorMessage(myErr.Message)
+			}
 		}
 	} else {
 		for rows.Next() {
@@ -4118,6 +4116,9 @@ func (s *session) getExplainInfo(sql string) {
 				log.Error(err)
 				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 					s.AppendErrorMessage(myErr.Message)
+					if newRecord != nil {
+						newRecord.AppendErrorMessage(myErr.Message)
+					}
 				}
 			}
 			break
@@ -4127,12 +4128,22 @@ func (s *session) getExplainInfo(sql string) {
 
 	r := s.myRecord
 	r.AffectedRows = rowLength
+	if newRecord != nil {
+		newRecord.AffectedRows = rowLength
+	}
 
 	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= int(s.Inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
+			if newRecord != nil {
+				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
+			}
 		}
+	}
+
+	if newRecord != nil {
+		s.sqlFingerprint[sqlId] = newRecord
 	}
 
 	// var rows []ExplainInfo
@@ -4155,6 +4166,11 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 		return
 	}
 
+	sqlId, ok := s.checkFingerprint(sql)
+	if ok {
+		return
+	}
+
 	var explain []string
 
 	if s.isMiddleware() {
@@ -4165,7 +4181,7 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	explain = append(explain, sql)
 
 	// rows := s.getExplainInfo(strings.Join(explain, ""))
-	s.getExplainInfo(strings.Join(explain, ""))
+	s.getExplainInfo(strings.Join(explain, ""), sqlId)
 
 	// s.AnlyzeExplain(rows)
 }
@@ -4186,10 +4202,10 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	log.Debug("checkUpdate")
 
-	sqlId, ok := s.checkFingerprint(sql)
-	if ok {
-		return
-	}
+	// sqlId, ok := s.checkFingerprint(sql)
+	// if ok {
+	// 	return
+	// }
 
 	// 从set列表读取要更新的表
 	var originTable string
@@ -4287,7 +4303,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		s.AppendErrorNo(ER_WITH_ORDERBY_CONDITION)
 	}
 
-	s.saveFingerprint(sqlId)
+	// s.saveFingerprint(sqlId)
 }
 
 func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
@@ -4349,10 +4365,10 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	log.Debug("checkDelete")
 
-	sqlId, ok := s.checkFingerprint(sql)
-	if ok {
-		return
-	}
+	// sqlId, ok := s.checkFingerprint(sql)
+	// if ok {
+	// 	return
+	// }
 
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
@@ -4408,7 +4424,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 		s.AppendErrorNo(ER_WITH_ORDERBY_CONDITION)
 	}
 
-	s.saveFingerprint(sqlId)
+	// s.saveFingerprint(sqlId)
 }
 
 func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists bool) []FieldInfo {
@@ -4931,10 +4947,15 @@ func (s *session) checkFingerprint(sql string) (string, bool) {
 		id := query.Id(fingerprint)
 
 		if record, ok := s.sqlFingerprint[id]; ok {
-			s.myRecord.TableInfo = record.TableInfo
+			// s.myRecord.TableInfo = record.TableInfo
 			s.myRecord.AffectedRows = record.AffectedRows
-			s.myRecord.ErrLevel = record.ErrLevel
-			s.myRecord.Buf = bytes.NewBuffer(record.Buf.Bytes())
+			if record.ErrLevel > s.myRecord.ErrLevel {
+				s.myRecord.ErrLevel = record.ErrLevel
+			}
+			msg := record.Buf.String()
+			if msg != "" {
+				s.myRecord.AppendErrorMessage(strings.TrimSpace(msg))
+			}
 			return id, true
 		}
 		return id, false
