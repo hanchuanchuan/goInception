@@ -97,8 +97,8 @@ func (s *session) Exec(sqlStr string) (res sql.Result, err error) {
         if err == nil {
             return
         } else {
-            log.Error(err)
             if err == mysqlDriver.ErrInvalidConn {
+                log.Error(err)
                 err = s.initConnection()
                 if err != nil {
                     return
@@ -127,8 +127,8 @@ func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
         if err == nil {
             return
         } else {
-            // log.Error(err)
             if err == mysqlDriver.ErrInvalidConn {
+                log.Error(err)
                 err = s.initConnection()
                 if err != nil {
                     return
@@ -157,8 +157,6 @@ func (s *session) initConnection() (err error) {
             s.threadID = 0
             return
         } else {
-            log.Info(i)
-            log.Error(err)
             if err != mysqlDriver.ErrInvalidConn {
                 if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
                     s.AppendErrorMessage(myErr.Message)
@@ -167,6 +165,7 @@ func (s *session) initConnection() (err error) {
                 }
                 return
             }
+            log.Error(err)
         }
     }
 
