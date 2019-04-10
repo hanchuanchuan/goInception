@@ -19,6 +19,7 @@ package session
 
 import (
 	"bytes"
+	Sql "database/sql"
 	"database/sql/driver"
 	"fmt"
 	// "io"
@@ -4098,7 +4099,7 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 	// rows, err := s.db.DB().Query(sql)
 	rows, err := s.Raw(sql)
 
-	var rowLength int
+	var rowLength Sql.NullInt64
 
 	if err != nil {
 		log.Error(err)
@@ -4110,7 +4111,7 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 		}
 	} else {
 		for rows.Next() {
-			var str interface{}
+			var str Sql.NullString
 			// | id | select_type | table | partitions | type  | possible_keys | key     | key_len | ref   | rows | filtered | Extra
 			if err := rows.Scan(&str, &str, &str, &str, &str, &str, &str, &str, &str, &rowLength, &str, &str); err != nil {
 				log.Error(err)
@@ -4127,9 +4128,11 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 	}
 
 	r := s.myRecord
-	r.AffectedRows = rowLength
-	if newRecord != nil {
-		newRecord.AffectedRows = rowLength
+	if rowLength.Valid {
+		r.AffectedRows = int(rowLength.Int64)
+		if newRecord != nil {
+			newRecord.AffectedRows = r.AffectedRows
+		}
 	}
 
 	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= int(s.Inc.MaxUpdateRows) {
