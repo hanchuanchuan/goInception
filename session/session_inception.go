@@ -424,7 +424,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 							return nil, errors.Trace(err)
 						}
 
-						return s.processCommand(ctx, stmtNode)
+						return s.processCommand(ctx, stmtNode, currentSql)
 						// if err != nil {
 						// 	return nil, err
 						// }
@@ -432,7 +432,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						// 	return result, nil
 						// }
 					} else {
-						result, err := s.processCommand(ctx, stmtNode)
+						result, err := s.processCommand(ctx, stmtNode, currentSql)
 						if err != nil {
 							return nil, err
 						}
@@ -507,10 +507,11 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 	return true
 }
 
-func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode) ([]ast.RecordSet, error) {
+func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
+	currentSql string) ([]ast.RecordSet, error) {
 	log.Debug("processCommand")
 
-	currentSql := strings.TrimSpace(stmtNode.Text())
+	// currentSql := strings.TrimSpace(stmtNode.Text())
 
 	switch node := stmtNode.(type) {
 	case *ast.InsertStmt:
@@ -2050,6 +2051,11 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 		if node.Partition != nil {
 			s.AppendErrorNo(ER_PARTITION_NOT_ALLOWED)
+		}
+
+		if node.Select != nil {
+			log.Error("暂不支持语法: ", sql)
+			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		}
 
 		if node.ReferTable != nil || len(node.Cols) > 0 {
@@ -4060,6 +4066,7 @@ func (s *session) checkChangeDB(node *ast.UseStmt) {
 	if s.checkDBExists(node.DBName, true) {
 		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName))
 		if err != nil {
+			log.Error(err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				s.AppendErrorMessage(myErr.Message)
 			} else {
