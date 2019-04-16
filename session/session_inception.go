@@ -3257,13 +3257,20 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			ColumnName: col.Column.Name.O,
 			IndexType:  "BTREE",
 		}
+		if !unique && (tp == ast.ConstraintPrimaryKey || tp == ast.ConstraintUniq ||
+			tp == ast.ConstraintUniqIndex || tp == ast.ConstraintUniqKey) {
+			unique = true
+		}
 		if unique {
+			index.NonUnique = 0
+		} else {
 			index.NonUnique = 1
 		}
 		t.Indexes = append(t.Indexes, index)
 	}
 
-	if !t.IsNew && s.opt.execute {
+	// !t.IsNew &&
+	if s.opt.execute {
 		if IndexName == "PRIMARY" {
 			s.myRecord.DDLRollback += fmt.Sprintf("DROP PRIMARY KEY,")
 		} else {
