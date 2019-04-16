@@ -1545,3 +1545,29 @@ func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
 	sql = "create table t1(c1 int);alter table t1 add index idx (c1);alter table t1 drop index idx;"
 	s.testErrorCode(c, sql)
 }
+
+func (s *testSessionIncSuite) TestAlterTable(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	// 删除后添加列
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1,add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	// 删除后添加索引
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix;alter table t1 add index ix(c1);"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
+	s.testErrorCode(c, sql)
+
+}
