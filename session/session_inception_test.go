@@ -73,6 +73,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	// session.SetLanguage("zh-CN")
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
+	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 	session.SetLanguage("en-US")
 }
 
@@ -236,10 +237,10 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 		for _, e := range errors {
 			errMsgs = append(errMsgs, e.Error())
 		}
-		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"))
+		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", row))
 	}
 
-	c.Assert(row[2], Equals, strconv.Itoa(errCode))
+	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
 }
 
 func (s *testSessionIncSuite) TestBegin(c *C) {
