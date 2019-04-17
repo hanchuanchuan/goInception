@@ -74,6 +74,7 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 
 	config.GetGlobalConfig().Osc.OscOn = false
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
+	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 
 	inc.EnableDropTable = true
 
@@ -129,10 +130,10 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		for _, e := range errors {
 			errMsgs = append(errMsgs, e.Error())
 		}
-		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"))
+		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", row))
 	}
 
-	c.Assert(row[2], Equals, strconv.Itoa(errCode))
+	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
 	// 无错误时需要校验结果是否标记为已执行
 	if errCode == 0 {
 		if !strings.Contains(row[3].(string), "Execute Successfully") {
@@ -1324,6 +1325,32 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	if res != nil {
 		c.Assert(res.Close(), IsNil)
 	}
+}
+
+func (s *testSessionIncExecSuite) TestAlterTable(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+	sql := ""
+	// 删除后添加列
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1,add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	// 删除后添加索引
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix;alter table t1 add index ix(c1);"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncExecSuite) getDBVersion(c *C) int {
