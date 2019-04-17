@@ -2221,7 +2221,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			table.Schema, table.Name)
 	}
 
-	for _, alter := range node.Specs {
+	for i, alter := range node.Specs {
 		switch alter.Tp {
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
@@ -2254,6 +2254,14 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		default:
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 			log.Info("未定义的解析: ", alter.Tp)
+		}
+
+		// 由于表结构快照机制,需要在添加/删除列后重新获取一次表结构
+		if i < len(node.Specs)-1 {
+			table = s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
+			if table == nil {
+				return
+			}
 		}
 	}
 
@@ -3249,13 +3257,20 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			ColumnName: col.Column.Name.O,
 			IndexType:  "BTREE",
 		}
+		if !unique && (tp == ast.ConstraintPrimaryKey || tp == ast.ConstraintUniq ||
+			tp == ast.ConstraintUniqIndex || tp == ast.ConstraintUniqKey) {
+			unique = true
+		}
 		if unique {
+			index.NonUnique = 0
+		} else {
 			index.NonUnique = 1
 		}
 		t.Indexes = append(t.Indexes, index)
 	}
 
-	if !t.IsNew && s.opt.execute {
+	// !t.IsNew &&
+	if s.opt.execute {
 		if IndexName == "PRIMARY" {
 			s.myRecord.DDLRollback += fmt.Sprintf("DROP PRIMARY KEY,")
 		} else {
