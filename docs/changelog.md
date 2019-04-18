@@ -4,7 +4,6 @@
 ### Update
 * 添加不支持的语法警告(create table as和create table select)
 * 实现alter多子句时的表结构变化支持,如drop column后跟add column
-* 优化sql内容解析，移除多余分号和空格
 
 ### Fix
 * 修复explain返回null列时报错的问题
