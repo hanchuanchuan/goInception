@@ -1,5 +1,16 @@
 # goInception 更新日志
 
+## [v0.6.2-beta] - 2019-4-18
+### Update
+* 添加不支持的语法警告(create table as和create table select)
+* 实现alter多子句时的表结构变化支持,如drop column后跟add column
+* 优化sql内容解析，移除多余分号和空格
+
+### Fix
+* 修复explain返回null列时报错的问题
+* 修复索引的唯一标识设置错误问题
+
+
 ## [v0.6.1-beta] - 2019-4-9
 ### Update
 * 添加远端数据库断开重连机制，优化线程号和master status查询速度
