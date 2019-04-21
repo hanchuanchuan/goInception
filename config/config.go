@@ -67,7 +67,6 @@ type Config struct {
 	Security            Security          `toml:"security" json:"security"`
 	Status              Status            `toml:"status" json:"status"`
 	Performance         Performance       `toml:"performance" json:"performance"`
-	XProtocol           XProtocol         `toml:"xprotocol" json:"xprotocol"`
 	PreparedPlanCache   PreparedPlanCache `toml:"prepared-plan-cache" json:"prepared-plan-cache"`
 	OpenTracing         OpenTracing       `toml:"opentracing" json:"opentracing"`
 	ProxyProtocol       ProxyProtocol     `toml:"proxy-protocol" json:"proxy-protocol"`
@@ -164,13 +163,6 @@ type Performance struct {
 	ForcePriority       string  `toml:"force-priority" json:"force-priority"`
 }
 
-// XProtocol is the XProtocol section of the config.
-type XProtocol struct {
-	XServer bool   `toml:"xserver" json:"xserver"`
-	XHost   string `toml:"xhost" json:"xhost"`
-	XPort   uint   `toml:"xport" json:"xport"`
-	XSocket string `toml:"xsocket" json:"xsocket"`
-}
 
 // PlanCache is the PlanCache section of the config.
 type PlanCache struct {
@@ -594,10 +586,6 @@ var defaultConf = Config{
 		QueryFeedbackLimit:  0,
 		PseudoEstimateRatio: 0.8,
 		ForcePriority:       "NO_PRIORITY",
-	},
-	XProtocol: XProtocol{
-		XHost: "",
-		XPort: 0,
 	},
 	ProxyProtocol: ProxyProtocol{
 		Networks:      "",
