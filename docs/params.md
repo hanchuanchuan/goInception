@@ -24,3 +24,4 @@ check | false | bool | 开启审核功能
 execute | false | bool | 开启执行功能
 backup | false | bool | 开启备份功能，仅在执行时生效
 ignore_warnings | false | bool | 是否忽略警告，仅在执行时生效。该参数控制有警告时是继续执行还是中止
+fingerprint `v0.6.2` | false | bool | 开启sql指纹功能。dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，并提高审核速度
