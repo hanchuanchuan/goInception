@@ -59,11 +59,13 @@ enable_select_star   |  false    |   true,false     |     Select*时是不是要
 enable_set_charset   |  false    |   true,false     |     是否允许指定表和数据库的字符集
 lang `v0.5.1` | en-US             | en-US,zh-CN | 返回的信息使用语言,可选值`en-US`,`zh-CN`
 max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
+max_insert_rows   `v0.6.3`              | 0           | int  | 设置insert values允许的最大行数.0为不限制
 max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
 max_keys                       | 3              | int | 单表允许的最大索引数
 max_primary_key_parts          | 3              | int | 主键最多可指定的列数
 max_update_rows                | 5000           | int  | 当update/delete预估受影响行数超出设置值时警告
 merge_alter_table   |  false    |   true,false     |  在多个改同一个表的语句出现是，报错，提示合成一个
+must_have_columns  `v0.6.3` | ''    |   string  | 用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
 sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表示不做操作,基于远端数据库,0表示关闭安全更新,1表示开启安全更新
 support_charset | utf8,utf8mb4              | string | 支持的字符集集合,多个字符集以逗号分隔
 
