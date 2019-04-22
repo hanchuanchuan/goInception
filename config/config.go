@@ -322,6 +322,9 @@ type Inc struct {
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
 
+	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
+	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
+
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
 	// 0  表示关闭安全更新

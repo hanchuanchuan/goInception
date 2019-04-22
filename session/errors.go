@@ -178,6 +178,7 @@ const (
 	ER_WRONG_TABLE_NAME
 	ER_CANT_SET_CHARSET
 	ER_CANT_SET_COLLATION
+	ER_MUST_AT_LEAST_ONE_COLUMN
 	ER_MUST_HAVE_COLUMNS
 	ER_PRIMARY_CANT_HAVE_NULL
 	ErrCantRemoveAllFields
@@ -330,7 +331,8 @@ var ErrorsDefault = map[int]string{
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "Cannot set charset '%s'",
 	ER_CANT_SET_COLLATION:                  "Cannot set collation '%s'",
-	ER_MUST_HAVE_COLUMNS:                   "A table must have at least 1 column",
+	ER_MUST_AT_LEAST_ONE_COLUMN:            "A table must have at least 1 column.",
+	ER_MUST_HAVE_COLUMNS:                   "Must have the specified column: '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ErrNotFoundTableInfo:                   "Skip backup because there is no table structure information.",
@@ -481,7 +483,8 @@ var ErrorsChinese = map[int]string{
 	ER_WRONG_TABLE_NAME:                    "不正确的表名: '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "禁止指定字符集: '%s'",
 	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
-	ER_MUST_HAVE_COLUMNS:                   "表至少需要有一个列.",
+	ER_MUST_AT_LEAST_ONE_COLUMN:            "表至少需要有一个列.",
+	ER_MUST_HAVE_COLUMNS:                   "表必须包含以下列: '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "主键的所有列必须为NOT NULL,如需要NULL列,请改用唯一索引",
 	ErrCantRemoveAllFields:                 "禁止删除表的所有列.",
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
@@ -537,6 +540,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_CANT_SET_COLLATION,
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
+		ER_MUST_HAVE_COLUMNS,
 		ER_CHANGE_COLUMN_TYPE:
 		return 1
 

@@ -2012,7 +2012,12 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			}
 
 			if len(node.Cols) > 0 {
+
 				table = s.buildTableInfo(node)
+
+				if s.Inc.MustHaveColumns != "" {
+					s.checkMustHaveColumns(table)
+				}
 
 				currentTimestampCount := 0
 				onUpdateTimestampCount := 0
@@ -2087,6 +2092,44 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	if !s.hasError() && s.opt.execute {
 		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
+	}
+}
+
+// checkMustHaveColumns 检查表是否包含有必须的字段
+func (s *session) checkMustHaveColumns(table *TableInfo) {
+	columns := strings.Split(s.Inc.MustHaveColumns, ",")
+	if len(columns) == 0 {
+		return
+	}
+
+	var notFountColumns []string
+	for _, must_col := range columns {
+		col := strings.TrimSpace(must_col)
+		col_name := col
+		col_type := ""
+		if strings.Contains(col, " ") {
+			column_name_type := strings.SplitN(col, " ", 2)
+			col_name = column_name_type[0]
+			col_type = GetDataTypeBase(column_name_type[1])
+		}
+
+		found := false
+		for _, field := range table.Fields {
+			if strings.EqualFold(field.Field, col_name) {
+				found = true
+				if col_type != "" && col_type != GetDataTypeBase(field.Type) {
+					notFountColumns = append(notFountColumns, col)
+				}
+				break
+			}
+		}
+		if !found {
+			notFountColumns = append(notFountColumns, col)
+		}
+	}
+
+	if len(notFountColumns) > 0 {
+		s.AppendErrorNo(ER_MUST_HAVE_COLUMNS, strings.Join(notFountColumns, ","))
 	}
 }
 
