@@ -79,6 +79,7 @@ const (
 	ER_TOO_MANY_KEY_PARTS
 	ER_TOO_LONG_IDENT
 	ER_UDPATE_TOO_MUCH_ROWS
+	ER_INSERT_TOO_MUCH_ROWS
 	ER_WRONG_NAME_FOR_INDEX
 	ER_TOO_MANY_KEYS
 	ER_NOT_SUPPORTED_KEY_TYPE
@@ -229,7 +230,8 @@ var ErrorsDefault = map[int]string{
 	ER_FOREIGN_KEY:                         "Foreign key is not allowed in table '%s'.",
 	ER_TOO_MANY_KEY_PARTS:                  "Too many key parts in Key '%s' in table '%s' specified, max %d parts allowed.",
 	ER_TOO_LONG_IDENT:                      "Identifier name '%s' is too long.",
-	ER_UDPATE_TOO_MUCH_ROWS:                "Update rows more then %d.",
+	ER_UDPATE_TOO_MUCH_ROWS:                "Update(%d) more then %d rows.",
+	ER_INSERT_TOO_MUCH_ROWS:                "Insert(%d) more then %d rows.",
 	ER_WRONG_NAME_FOR_INDEX:                "Incorrect index name '%s' in table '%s'.",
 	ER_TOO_MANY_KEYS:                       "Too many keys specified in table '%s', max %d keys allowed.",
 	ER_NOT_SUPPORTED_KEY_TYPE:              "Not supported key type: '%s'.",
@@ -379,7 +381,8 @@ var ErrorsChinese = map[int]string{
 	ER_FOREIGN_KEY:                      "不允许使用外键(表 '%s').",
 	ER_TOO_MANY_KEY_PARTS:               "索引 '%s'指定了太多的字段(表 '%s'), 最多允许 %d 个字段.",
 	ER_TOO_LONG_IDENT:                   "名称 '%s' 过长.",
-	ER_UDPATE_TOO_MUCH_ROWS:             "更新行超过 %d .",
+	ER_UDPATE_TOO_MUCH_ROWS:             "一次更新(%d)超过 %d 行.",
+	ER_INSERT_TOO_MUCH_ROWS:             "一次新增(%d)超过 %d 行.",
 	ER_WRONG_NAME_FOR_INDEX:             "索引 '%s' 名称不正确(表 '%s').",
 	ER_TOO_MANY_KEYS:                    "表 '%s' 指定了太多索引, 最多允许 %d 个.",
 	ER_NOT_SUPPORTED_KEY_TYPE:           "不允许的键类型: '%s'.",
@@ -500,6 +503,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_NOT_ALLOWED_NULLABLE,
 		ER_TOO_MANY_KEY_PARTS,
 		ER_UDPATE_TOO_MUCH_ROWS,
+		ER_INSERT_TOO_MUCH_ROWS,
 		ER_TOO_MANY_KEYS,
 		ER_PK_TOO_MANY_PARTS,
 		ER_PK_COLS_NOT_INT,

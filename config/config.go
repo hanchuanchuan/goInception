@@ -163,7 +163,6 @@ type Performance struct {
 	ForcePriority       string  `toml:"force-priority" json:"force-priority"`
 }
 
-
 // PlanCache is the PlanCache section of the config.
 type PlanCache struct {
 	Enabled  bool `toml:"enabled" json:"enabled"`
@@ -312,9 +311,13 @@ type Inc struct {
 
 	Lang          string `toml:"lang" json:"lang"`
 	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
-	MaxKeys       uint   `toml:"max_keys" json:"max_keys"`
-	MaxKeyParts   uint   `toml:"max_key_parts" json:"max_key_parts"`
-	MaxUpdateRows uint   `toml:"max_update_rows" json:"max_update_rows"`
+
+	// 一次最多写入的行数, 仅判断insert values语法
+	MaxInsertRows uint `toml:"max_insert_rows" json:"max_insert_rows"`
+
+	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
+	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
+	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`

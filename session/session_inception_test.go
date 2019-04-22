@@ -1125,6 +1125,24 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	sql = "create table t1(c1 char(100) not null);insert into t1(c1) select t1.c1 from t1 order by 1 union all select t1.c1 from t1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrWrongUsage, "UNION", "ORDER BY"))
+
+	// insert 行数
+	config.GetGlobalConfig().Inc.MaxInsertRows = 1
+
+	sql = `drop table if exists t1;create table t1(id int);
+insert into t1 values(1);`
+	s.testErrorCode(c, sql)
+	sql = `drop table if exists t1;create table t1(id int);
+insert into t1 values(1),(2);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INSERT_TOO_MUCH_ROWS, 2, 1))
+
+	config.GetGlobalConfig().Inc.MaxInsertRows = 3
+	sql = `drop table if exists t1;create table t1(id int);
+insert into t1 values(1),(2),(3);`
+
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
