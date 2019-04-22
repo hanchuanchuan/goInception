@@ -3419,6 +3419,12 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		if fieldCount == 0 {
 			fieldCount = len(table.Fields)
 		}
+
+		if s.Inc.MaxInsertRows > 0 && len(x.Lists) > int(s.Inc.MaxInsertRows) {
+			s.AppendErrorNo(ER_INSERT_TOO_MUCH_ROWS,
+				len(x.Lists), s.Inc.MaxInsertRows)
+		}
+
 		for i, list := range x.Lists {
 			if len(list) == 0 {
 				s.AppendErrorNo(ER_WITH_INSERT_VALUES)
@@ -4157,12 +4163,14 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 		}
 	}
 
-	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= int(s.Inc.MaxUpdateRows) {
+	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.Inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
-			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
+			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+				r.AffectedRows, s.Inc.MaxUpdateRows)
 			if newRecord != nil {
-				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
+				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+					r.AffectedRows, s.Inc.MaxUpdateRows)
 			}
 		}
 	}
@@ -4216,10 +4224,11 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 	if len(rows) > 0 {
 		r.AffectedRows = rows[0].Rows
 	}
-	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows >= int(s.Inc.MaxUpdateRows) {
+	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.Inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
-			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS, s.Inc.MaxUpdateRows)
+			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+				r.AffectedRows, s.Inc.MaxUpdateRows)
 		}
 	}
 }
