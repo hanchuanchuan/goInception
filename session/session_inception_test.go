@@ -534,11 +534,11 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	sql = "create table test_error_code_2;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "create table test_error_code_2 (unique(c1));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
 	s.testErrorCode(c, sql,
@@ -674,6 +674,28 @@ primary key(id)) comment 'test';`
 
 	config.GetGlobalConfig().Inc.EnableNullable = true
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
+	s.testErrorCode(c, sql)
+
+	// 检查必须的字段
+	config.GetGlobalConfig().Inc.MustHaveColumns = "c1"
+	sql = `drop table if exists t1;CREATE TABLE t1(id int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.MustHaveColumns = "c1 int,c2 datetime"
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 bigint,c2 int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)
 
 }
