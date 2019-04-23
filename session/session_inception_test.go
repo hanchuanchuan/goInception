@@ -1612,3 +1612,52 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	s.testErrorCode(c, sql)
 
 }
+
+func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	sql := ""
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	// EnablePKColumnsOnlyInt
+	config.GetGlobalConfig().Inc.EnablePKColumnsOnlyInt = true
+
+	sql = "create table t1(id tinyint, primary key(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+
+	sql = "create table t1(id mediumint, primary key(id));"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int, primary key(id));"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id bigint, primary key(id));"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id varchar(10), primary key(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+
+	sql = "create table t1(id tinyint primary key);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+
+	sql = "create table t1(id mediumint primary key);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int primary key);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id bigint primary key);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id varchar(10) primary key);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+}
