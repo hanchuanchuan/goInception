@@ -3231,7 +3231,11 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			}
 
 			if tp == ast.ConstraintPrimaryKey {
-				if strings.Contains(strings.ToLower(foundField.Type), "int") {
+				fieldType := GetDataTypeBase(strings.ToLower(foundField.Type))
+
+				// if !strings.Contains(strings.ToLower(foundField.Type), "int") {
+				if fieldType != "mediumint" && fieldType != "int" &&
+					fieldType != "bigint" {
 					s.AppendErrorNo(ER_PK_COLS_NOT_INT, foundField.Field, t.Schema, t.Name)
 				}
 
