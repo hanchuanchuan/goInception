@@ -1,6 +1,10 @@
 # Builder image
 FROM golang:1.12-alpine as builder
 
+ENV TZ=Asia/Shanghai
+
+ENV LANG="en_US.UTF-8"
+
 RUN apk add --no-cache \
     wget \
     make \
@@ -12,10 +16,9 @@ RUN wget -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/
  && chmod +x /usr/local/bin/dumb-init
 
 COPY bin/goInception /goInception
+
 COPY config/config.toml.example /etc/config.toml
 
-
-WORKDIR /
 
 # Executable image
 FROM alpine
