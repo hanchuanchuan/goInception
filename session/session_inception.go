@@ -19,7 +19,7 @@ package session
 
 import (
 	"bytes"
-	Sql "database/sql"
+	// Sql "database/sql"
 	"database/sql/driver"
 	"fmt"
 	// "io"
@@ -4166,13 +4166,47 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 			Buf: new(bytes.Buffer),
 		}
 	}
+	r := s.myRecord
 
-	// rows, err := s.db.DB().Query(sql)
-	rows, err := s.Raw(sql)
+	// rows, err := s.Raw(sql)
 
-	var rowLength Sql.NullInt64
+	// var rowLength Sql.NullInt64
 
-	if err != nil {
+	// if err != nil {
+	// 	log.Error(err)
+	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 		s.AppendErrorMessage(myErr.Message)
+	// 		if newRecord != nil {
+	// 			newRecord.AppendErrorMessage(myErr.Message)
+	// 		}
+	// 	}
+	// } else {
+	// 	for rows.Next() {
+	// 		var str Sql.NullString
+	// 		// | id | select_type | table | partitions | type  | possible_keys | key     | key_len | ref   | rows | filtered | Extra
+	// 		if err := rows.Scan(&str, &str, &str, &str, &str, &str, &str, &str, &str, &rowLength, &str, &str); err != nil {
+	// 			log.Error(err)
+	// 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+	// 				s.AppendErrorMessage(myErr.Message)
+	// 				if newRecord != nil {
+	// 					newRecord.AppendErrorMessage(myErr.Message)
+	// 				}
+	// 			}
+	// 		}
+	// 		break
+	// 	}
+	// 	rows.Close()
+	// }
+
+	// if rowLength.Valid {
+	// 	r.AffectedRows = int(rowLength.Int64)
+	// 	if newRecord != nil {
+	// 		newRecord.AffectedRows = r.AffectedRows
+	// 	}
+	// }
+
+	var rows []ExplainInfo
+	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -4180,27 +4214,10 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 				newRecord.AppendErrorMessage(myErr.Message)
 			}
 		}
-	} else {
-		for rows.Next() {
-			var str Sql.NullString
-			// | id | select_type | table | partitions | type  | possible_keys | key     | key_len | ref   | rows | filtered | Extra
-			if err := rows.Scan(&str, &str, &str, &str, &str, &str, &str, &str, &str, &rowLength, &str, &str); err != nil {
-				log.Error(err)
-				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-					s.AppendErrorMessage(myErr.Message)
-					if newRecord != nil {
-						newRecord.AppendErrorMessage(myErr.Message)
-					}
-				}
-			}
-			break
-		}
-		rows.Close()
 	}
 
-	r := s.myRecord
-	if rowLength.Valid {
-		r.AffectedRows = int(rowLength.Int64)
+	if len(rows) > 0 {
+		r.AffectedRows = rows[0].Rows
 		if newRecord != nil {
 			newRecord.AffectedRows = r.AffectedRows
 		}
@@ -4221,17 +4238,6 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 	if newRecord != nil {
 		s.sqlFingerprint[sqlId] = newRecord
 	}
-
-	// var rows []ExplainInfo
-	// if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
-	// 	log.Error(err)
-	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-	// 		s.AppendErrorMessage(myErr.Message)
-	// 	} else {
-	// 		s.AppendErrorMessage(err.Error())
-	// 	}
-	// }
-	// return rows
 }
 
 func (s *session) explainOrAnalyzeSql(sql string) {
