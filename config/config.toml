@@ -75,4 +75,4 @@ format = "console"
 # File logging.
 [log.file]
 # Log file name.
-filename = "go.log"
+filename = ""

@@ -4375,7 +4375,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	} else if !catchError {
 		// 如果没有表结构,或者新增表 or 新增列时,不做explain
 		if s.myRecord.TableInfo != nil && !s.myRecord.TableInfo.IsNew &&
-			s.myRecord.TableInfo.IsNewColumns {
+			!s.myRecord.TableInfo.IsNewColumns {
 			s.explainOrAnalyzeSql(sql)
 		}
 	}
@@ -4505,7 +4505,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	if !s.hasError() {
 		// 如果没有表结构,或者新增表 or 新增列时,不做explain
 		if s.myRecord.TableInfo != nil && !s.myRecord.TableInfo.IsNew &&
-			s.myRecord.TableInfo.IsNewColumns {
+			!s.myRecord.TableInfo.IsNewColumns {
 			s.explainOrAnalyzeSql(sql)
 		}
 	}
