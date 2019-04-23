@@ -4160,6 +4160,10 @@ func getSingleTableName(tableRefs *ast.TableRefsClause) *ast.TableName {
 
 func (s *session) getExplainInfo(sql string, sqlId string) {
 
+	if s.hasError() {
+		return
+	}
+
 	var newRecord *Record
 	if s.Inc.EnableFingerprint && sqlId != "" {
 		newRecord = &Record{
@@ -4242,11 +4246,11 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 
 func (s *session) explainOrAnalyzeSql(sql string) {
 
-	// 如果没有表结构,或者新增表 or 新增列时,不做explain
-	if s.myRecord.TableInfo == nil || s.myRecord.TableInfo.IsNew ||
-		s.myRecord.TableInfo.IsNewColumns {
-		return
-	}
+	// // 如果没有表结构,或者新增表 or 新增列时,不做explain
+	// if s.myRecord.TableInfo == nil || s.myRecord.TableInfo.IsNew ||
+	// 	s.myRecord.TableInfo.IsNewColumns {
+	// 	return
+	// }
 
 	sqlId, ok := s.checkFingerprint(sql)
 	if ok {
@@ -4306,6 +4310,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 	var tableInfoList []*TableInfo
 
+	haveNewTable := false
 	catchError := false
 	for _, tblSource := range tableList {
 		tblName, ok := tblSource.Source.(*ast.TableName)
@@ -4334,6 +4339,9 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				t.AsName = tblSource.AsName.O
 			}
 			tableInfoList = append(tableInfoList, t)
+			if t.IsNew {
+				haveNewTable = true
+			}
 		}
 
 		// if i == len(tableList) - 1 && s.myRecord.TableInfo == nil {
@@ -4348,7 +4356,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 				fmt.Sprintf("%s.%s", originTable, firstColumnName))
 		}
-	} else if !catchError && (s.myRecord.TableInfo.IsNew || s.myRecord.TableInfo.IsNewColumns) {
+	} else if !catchError && (s.myRecord.TableInfo.IsNew || s.myRecord.TableInfo.IsNewColumns || haveNewTable) {
 		for _, l := range node.List {
 			found := false
 			for _, field := range s.myRecord.TableInfo.Fields {
@@ -4365,7 +4373,11 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 			s.checkItem(l.Expr, tableInfoList)
 		}
 	} else if !catchError {
-		s.explainOrAnalyzeSql(sql)
+		// 如果没有表结构,或者新增表 or 新增列时,不做explain
+		if s.myRecord.TableInfo != nil && !s.myRecord.TableInfo.IsNew &&
+			s.myRecord.TableInfo.IsNewColumns {
+			s.explainOrAnalyzeSql(sql)
+		}
 	}
 
 	if node.TableRefs.TableRefs.On != nil {
@@ -4492,7 +4504,10 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
 	if !s.hasError() {
 		// 如果没有表结构,或者新增表 or 新增列时,不做explain
-		s.explainOrAnalyzeSql(sql)
+		if s.myRecord.TableInfo != nil && !s.myRecord.TableInfo.IsNew &&
+			s.myRecord.TableInfo.IsNewColumns {
+			s.explainOrAnalyzeSql(sql)
+		}
 	}
 
 	if node.Where == nil {
