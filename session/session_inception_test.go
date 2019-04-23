@@ -46,6 +46,8 @@ type testSessionIncSuite struct {
 
 	version int
 	sqlMode string
+
+	rows [][]interface{}
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
@@ -214,6 +216,22 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
 }
 
+func (s *testSessionIncSuite) execSQL(c *C, sql string) {
+
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, sql))
+
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+}
+
 func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
@@ -241,6 +259,19 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 	}
 
 	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
+
+	s.rows = res.Rows()
+}
+
+func (s *testSessionIncSuite) testAffectedRows(c *C, affectedRows ...int) {
+	if len(s.rows) == 0 {
+		return
+	}
+	count := len(affectedRows)
+	for i, affectedRow := range affectedRows {
+		row := s.rows[len(s.rows)-(count-i)]
+		c.Assert(row[6], Equals, strconv.Itoa(affectedRow), Commentf("%v", row))
+	}
 }
 
 func (s *testSessionIncSuite) TestBegin(c *C) {
@@ -1154,6 +1185,8 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	sql = `drop table if exists t1;create table t1(id int);
 insert into t1 values(1);`
 	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
+
 	sql = `drop table if exists t1;create table t1(id int);
 insert into t1 values(1),(2);`
 	s.testErrorCode(c, sql,
@@ -1164,6 +1197,13 @@ insert into t1 values(1),(2);`
 insert into t1 values(1),(2),(3);`
 
 	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 3)
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int);")
+	sql = `drop table if exists t2;create table t2 like t1;
+insert into t2 select id from t1;`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
 
 }
 
@@ -1263,6 +1303,11 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 		create table test.table2(id2 int primary key,c2 int,c22 int);
 		update table1 a1,test.table2 a2 set a1.c1=a2.c2 where a1.id1=a2.id2 and a1.c1=a2.c2 and a1.id1 in (1,2,3);`
 	s.testErrorCode(c, sql)
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1);")
+	sql = `update t1 set c1=1 where id =1;`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
@@ -1335,6 +1380,11 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1);")
+	sql = `delete from t1 where id =1;`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
