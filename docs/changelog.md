@@ -1,6 +1,12 @@
 # goInception 更新日志
 
 
+## [v0.6.4-beta] - 2019-4-23
+
+### Fix
+* 修复mysql 5.6和mariadb无法获取受影响行数的问题
+
+
 ## [v0.6.3-beta] - 2019-4-22
 
 ### New Features
