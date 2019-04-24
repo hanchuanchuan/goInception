@@ -35,6 +35,11 @@ go build -o goInception tidb-server/main.go
 ./goInception -config=config/config.toml
 ```
 
+#### Docker镜像
+```
+docker pull hanchuanchuan/goinception
+```
+
 #### 关联SQL审核平台 `已集成goInception`
 
 * [Archery](https://github.com/hhyo/Archery) `查询支持(MySQL/MsSQL/Redis/PostgreSQL)、MySQL优化(SQLAdvisor|SOAR|SQLTuning)、慢日志管理、表结构对比、会话管理、阿里云RDS管理等`
