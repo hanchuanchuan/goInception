@@ -601,8 +601,7 @@ func (s *session) executeCommit(ctx context.Context) {
 		return
 	}
 
-	if s.recordSets.MaxLevel == 2 ||
-		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+	if s.hasErrorBefore() {
 		return
 	}
 
@@ -620,8 +619,7 @@ func (s *session) executeCommit(ctx context.Context) {
 		}
 	}
 
-	if s.recordSets.MaxLevel == 2 ||
-		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+	if s.hasErrorBefore() {
 		return
 	}
 
@@ -1530,6 +1528,9 @@ func (s *session) parseOptions(sql string) {
 	if s.opt.check {
 		s.opt.execute = false
 		s.opt.backup = false
+
+		// 审核阶段自动忽略警告,以免审核过早中止
+		s.opt.ignoreWarnings = true
 	}
 
 	// log.Infof("%#v", s.opt)
