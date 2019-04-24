@@ -1944,23 +1944,19 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 			hasPrimary := false
 			for _, ct := range node.Constraints {
-				// log.Infof("%#v", ct)
 				switch ct.Tp {
 				case ast.ConstraintPrimaryKey:
 					hasPrimary = len(ct.Keys) > 0
-					// for _, col := range ct.Keys {
-					// 	found := false
-					// 	for _, field := range node.Cols {
-					// 		if field.Name.Name.L == col.Column.Name.L {
-					// 			found = true
-					// 			break
-					// 		}
-					// 	}
-					// 	if !found {
-					// 		s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-					// 			fmt.Sprintf("%s.%s", node.Table.Name.O, col.Column.Name.O))
-					// 	}
-					// }
+
+					for _, col := range ct.Keys {
+						for _, field := range node.Cols {
+							if field.Name.Name.L == col.Column.Name.L {
+								// 设置主键标志
+								field.Tp.Flag |= mysql.PriKeyFlag
+								break
+							}
+						}
+					}
 					break
 				}
 			}
@@ -2766,6 +2762,12 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
 			}
+		}
+	}
+
+	if !isPrimary {
+		if field.Tp != nil && field.Tp.Flag&mysql.PriKeyFlag == mysql.PriKeyFlag {
+			isPrimary = true
 		}
 	}
 
@@ -4870,6 +4872,10 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			}
 			field.Tp.Flag |= mysql.OnUpdateNowFlag
 		}
+	}
+
+	if c.Key != "PRI" && field.Tp.Flag&mysql.PriKeyFlag == mysql.PriKeyFlag {
+		c.Key = "PRI"
 	}
 
 	if c.Default == nil {
