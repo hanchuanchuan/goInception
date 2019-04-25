@@ -187,6 +187,7 @@ const (
 	ErrNotFoundMasterStatus
 	ErrNonUniqTable
 	ErrWrongUsage
+	ErrDataTooLong
 	ER_ERROR_LAST
 )
 
@@ -340,6 +341,7 @@ var ErrorsDefault = map[int]string{
 	ErrNotFoundMasterStatus:                "Can't found master binlog position.",
 	ErrNonUniqTable:                        mysql.MySQLErrName[mysql.ErrNonuniqTable],
 	ErrWrongUsage:                          "Incorrect usage of %s and %s",
+	ErrDataTooLong:                         "Data too long for column '%s' at row %d",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 }
 
@@ -491,6 +493,7 @@ var ErrorsChinese = map[int]string{
 	ErrNotFoundThreadId:                    "MariaDB v%d 对回滚支持不完美,请注意确认回滚语句是否正确",
 	ErrNotFoundMasterStatus:                "无法获取master binlog信息.",
 	ErrNonUniqTable:                        "表名或别名: '%-.192s' 不唯一.",
+	ErrDataTooLong:                         "数据过长!(列 '%s',行 '%d')",
 	ErrWrongUsage:                          "%s子句无法使用%s",
 }
 
