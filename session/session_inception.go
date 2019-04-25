@@ -22,6 +22,7 @@ import (
 	// Sql "database/sql"
 	"database/sql/driver"
 	"fmt"
+	"unicode/utf8"
 	// "io"
 	"math"
 	"reflect"
@@ -332,6 +333,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				pi.Percent = 0
 				s.processInfo.Store(pi)
 			}
+
+			s.stage = StageCheck
 
 			for i, stmtNode := range stmtNodes {
 
@@ -659,6 +662,8 @@ func (s *session) executeCommit(ctx context.Context) {
 			s.processInfo.Store(pi)
 		}
 
+		s.stage = StageBackup
+
 		s.runBackup(ctx)
 
 		// for _, record := range s.recordSets.All() {
@@ -762,13 +767,32 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 		log.Warning("类型未知: ", record.Type)
 	}
 
+	sql_stmt := HTMLEscapeString(record.Sql)
+	// 最大可存储65535个字节(64KB-1)
+	if len(sql_stmt) > (1<<16)-1 {
+
+		s.AppendWarning(ErrDataTooLong, "sql_statement", 1)
+
+		sql_stmt = sql_stmt[:(1<<16)-4]
+		// 如果误截取了utf8字符,则往前找最后一个有效字符
+		for {
+			ch, _ := utf8.DecodeLastRuneInString(sql_stmt)
+			if ch != utf8.RuneError {
+				break
+			} else {
+				sql_stmt = sql_stmt[:len(sql_stmt)-1]
+			}
+		}
+		sql_stmt = sql_stmt + "..."
+	}
+
 	values := []interface{}{
 		record.OPID,
 		record.StartFile,
 		strconv.Itoa(record.StartPosition),
 		record.EndFile,
 		strconv.Itoa(record.EndPosition),
-		HTMLEscapeString(record.Sql),
+		sql_stmt,
 		s.opt.host,
 		record.TableInfo.Schema,
 		record.TableInfo.Name,
@@ -1055,6 +1079,8 @@ func (s *session) executeAllStatement(ctx context.Context) {
 		pi.Percent = 0
 		s.processInfo.Store(pi)
 	}
+
+	s.stage = StageExec
 
 	count := len(s.recordSets.All())
 	for i, record := range s.recordSets.All() {
@@ -4598,13 +4624,36 @@ func (r *Record) AppendErrorNo(number int, values ...interface{}) {
 	r.Buf.WriteString("\n")
 }
 
+// AppendWarning 添加警告. 错误级别指定为警告
+func (r *Record) AppendWarning(number int, values ...interface{}) {
+	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
+
+	if len(values) == 0 {
+		r.Buf.WriteString(GetErrorMessage(number))
+	} else {
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+	}
+	r.Buf.WriteString("\n")
+}
+
 func (s *session) AppendErrorMessage(msg string) {
 	s.recordSets.MaxLevel = 2
 	s.myRecord.AppendErrorMessage(msg)
 }
 
+func (s *session) AppendWarning(number int, values ...interface{}) {
+	if s.stage == StageBackup {
+		s.myRecord.Buf.WriteString("Backup: ")
+	}
+	s.myRecord.AppendWarning(number, values...)
+	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+}
+
 func (s *session) AppendErrorNo(number int, values ...interface{}) {
 	if s.checkInceptionVariables(number) {
+		if s.stage == StageBackup {
+			s.myRecord.Buf.WriteString("Backup: ")
+		}
 		s.myRecord.AppendErrorNo(number, values...)
 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 	}

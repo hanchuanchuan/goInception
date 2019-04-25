@@ -210,6 +210,9 @@ type session struct {
 	sqlFingerprint map[string]*Record
 	// // osc进程解析通道
 	// chanOsc chan *ChanOscData
+
+	// 当前阶段 [Check,Execute,Backup]
+	stage byte
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
