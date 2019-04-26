@@ -18,6 +18,8 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"os"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -73,6 +75,14 @@ func main() {
 
 	ut := newBenchDB()
 	works := strings.Split(*runJobs, "|")
+
+	f, err := os.Create("/root/hcc/github.com/hanchuanchuan/goInception/profile_cpu")
+	if err != nil {
+		log.Error(err)
+	}
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
 	for _, v := range works {
 		work := strings.ToLower(strings.TrimSpace(v))
 		name, spec := ut.mustParseWork(work)
@@ -114,9 +124,16 @@ func newBenchDB() *benchDB {
 	_, err = se.Execute(context.Background(), "use test")
 	terror.MustNil(err)
 
-	config.GetGlobalConfig().Inc.Lang = "en-US"
-	config.GetGlobalConfig().Inc.EnableBlobType = true
-	config.GetGlobalConfig().Inc.EnableDropTable = true
+	inc := &config.GetGlobalConfig().Inc
+
+	inc.Lang = "en-US"
+	inc.EnableBlobType = true
+	inc.EnableDropTable = true
+
+	inc.BackupHost = "127.0.0.1"
+	inc.BackupPort = 3306
+	inc.BackupUser = "test"
+	inc.BackupPassword = "test"
 
 	return &benchDB{
 		store:   store.(tikv.Storage),

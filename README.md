@@ -15,6 +15,7 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 
 **[更新日志](https://github.com/hanchuanchuan/goInception/blob/master/docs/changelog.md)**
 
+
 #### 安装说明
 
 ##### 二进制免安装
@@ -26,13 +27,23 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 ***go version 1.11.3(go mod)***
 
 ```bash
-git clone https://github.com/hanchuanchuan/goInception
+git clone https://github.com/hanchuanchuan/goInception.git
 cd goInception
 make parser
 go build -o goInception tidb-server/main.go
 
 ./goInception -config=config/config.toml
 ```
+
+#### Docker镜像
+```
+docker pull hanchuanchuan/goinception
+```
+
+#### 关联SQL审核平台 `已集成goInception`
+
+* [Archery](https://github.com/hhyo/Archery) `查询支持(MySQL/MsSQL/Redis/PostgreSQL)、MySQL优化(SQLAdvisor|SOAR|SQLTuning)、慢日志管理、表结构对比、会话管理、阿里云RDS管理等`
+
 
 #### 致谢
     goInception基于TiDB的语法解析器，和业内有名的inpcetion审核工具重构。

@@ -39,6 +39,7 @@ check_index_prefix   |  false    |   true,false     |     是不是要检查索�
 check_insert_field   |  false    |   true,false     |     是不是要检查插入语句中的列链表的存在性
 check_primary_key   |  false    |   true,false     |  建表时，如果没有主键，则报错
 check_table_comment   |  false    |   true,false     |    建表时，表没有注释时报错
+check_timestamp_count `v0.6.0`   |  false    |   true,false     |    配置是否检查current_timestamp数量
 check_timestamp_default   |  false    |   true,false     |    建表时，如果没有为timestamp类型指定默认值，则报错
 enable_autoincrement_unsigned   |  false    |   true,false     |  自增列是不是要为无符号型
 enable_blob_type   |  false    |   true,false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
@@ -46,6 +47,7 @@ enable_column_charset   |  false    |   true,false     |  允许列自己设置�
 enable_drop_database |  false    |   true,false     |  是否允许删除数据库
 enable_drop_table   |  false    |   true,false     |  是否允许删除表
 enable_enum_set_bit   |  false    |   true,false     |    是不是支持enum,set,bit数据类型
+enable_fingerprint `v0.6.2`   |  false    |   true,false     |    sql指纹功能。dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，并提高审核速度
 enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
 enable_not_innodb   |  false    |   true,false     |  建表指定的存储引擎不为Innodb，不报错
@@ -55,15 +57,19 @@ enable_partition_table   |  false    |   true,false     |     是不是支持分
 enable_pk_columns_only_int  |  false    |   true,false     |     是否强制主键列必须是int
 enable_select_star   |  false    |   true,false     |     Select*时是不是要报错
 enable_set_charset   |  false    |   true,false     |     是否允许指定表和数据库的字符集
-lang | en-US             | en-US,zh-CN | 返回的信息使用语言,可选值`en-US`,`zh-CN`
+enable_set_collation `v0.7` |  false    |   true,false     |     是否允许指定表和数据库的排序规则
+lang `v0.5.1` | en-US             | en-US,zh-CN | 返回的信息使用语言,可选值`en-US`,`zh-CN`
 max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
+max_insert_rows   `v0.6.3`              | 0           | int  | 设置insert values允许的最大行数.0为不限制
 max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
 max_keys                       | 3              | int | 单表允许的最大索引数
 max_primary_key_parts          | 3              | int | 主键最多可指定的列数
 max_update_rows                | 5000           | int  | 当update/delete预估受影响行数超出设置值时警告
 merge_alter_table   |  false    |   true,false     |  在多个改同一个表的语句出现是，报错，提示合成一个
+must_have_columns  `v0.6.3` | ''    |   string  | 用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
 sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表示不做操作,基于远端数据库,0表示关闭安全更新,1表示开启安全更新
-support_charset | utf8,utf8mb4              | string | 支持的字符集集合,多个字符集以逗号分隔
+support_charset | utf8,utf8mb4              | string | 支持的字符集,多个时以逗号分隔
+support_collation `v0.7` | ''             | string | 支持的排序规则,多个时以逗号分隔
 
 <!--
 auto_commit     这个参数的作用是为了匹配Python客户端每次自动设置auto_commit=0的，如果取消则会报错，针对Inception本身没有实际意义

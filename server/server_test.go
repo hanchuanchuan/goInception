@@ -50,7 +50,7 @@ var defaultDSNConfig = mysql.Config{
 	Net:    "tcp",
 	Addr:   "127.0.0.1:4001",
 	DBName: "test",
-	Strict: true,
+	// Strict: true,
 }
 
 type configOverrider func(*mysql.Config)
@@ -372,7 +372,7 @@ func runTestLoadData(c *C, server *Server) {
 	// support ClientLocalFiles capability
 	runTestsOnNewDB(c, func(config *mysql.Config) {
 		config.AllowAllFiles = true
-		config.Strict = false
+		// config.Strict = false
 	}, "LoadData", func(dbt *DBTest) {
 		dbt.mustExec("create table test (a varchar(255), b varchar(255) default 'default value', c int not null auto_increment, primary key(c))")
 		rs, err1 := dbt.db.Exec("load data local infile '/tmp/load_data_test.csv' into table test")

@@ -45,7 +45,6 @@ import (
 	"github.com/hanchuanchuan/goInception/util/printer"
 	"github.com/hanchuanchuan/goInception/util/signal"
 	"github.com/hanchuanchuan/goInception/util/systimemon"
-	"github.com/hanchuanchuan/goInception/x-server"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
@@ -119,7 +118,6 @@ var (
 	storage  kv.Storage
 	dom      *domain.Domain
 	svr      *server.Server
-	xsvr     *xserver.Server
 	graceful bool
 )
 
@@ -368,10 +366,6 @@ func validateConfig() {
 		log.Errorf("log max-size should not be larger than %d MB", config.MaxLogFileSize)
 		os.Exit(-1)
 	}
-	if cfg.XProtocol.XServer {
-		log.Error("X Server is not available")
-		os.Exit(-1)
-	}
 	cfg.OOMAction = strings.ToLower(cfg.OOMAction)
 
 	// lower_case_table_names is allowed to be 0, 1, 2
@@ -438,23 +432,11 @@ func createServer() {
 	svr, err = server.NewServer(cfg, driver)
 	// Both domain and storage have started, so we have to clean them before exiting.
 	terror.MustNil(err, closeDomainAndStorage)
-	if cfg.XProtocol.XServer {
-		xcfg := &xserver.Config{
-			Addr:       fmt.Sprintf("%s:%d", cfg.XProtocol.XHost, cfg.XProtocol.XPort),
-			Socket:     cfg.XProtocol.XSocket,
-			TokenLimit: cfg.TokenLimit,
-		}
-		xsvr, err = xserver.NewServer(xcfg)
-		terror.MustNil(err, closeDomainAndStorage)
-	}
 }
 
 func serverShutdown(isgraceful bool) {
 	if isgraceful {
 		graceful = true
-	}
-	if xsvr != nil {
-		xsvr.Close() // Should close xserver before server.
 	}
 	svr.Close()
 }
@@ -491,10 +473,6 @@ func setupTracing() {
 func runServer() {
 	err := svr.Run()
 	terror.MustNil(err)
-	if cfg.XProtocol.XServer {
-		err := xsvr.Run()
-		terror.MustNil(err)
-	}
 }
 
 func closeDomainAndStorage() {

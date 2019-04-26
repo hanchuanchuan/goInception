@@ -72,3 +72,7 @@ level = "info"
 # Log format, one of json, text, console.
 format = "console"
 
+# File logging.
+[log.file]
+# Log file name.
+filename = ""

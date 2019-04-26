@@ -67,7 +67,6 @@ type Config struct {
 	Security            Security          `toml:"security" json:"security"`
 	Status              Status            `toml:"status" json:"status"`
 	Performance         Performance       `toml:"performance" json:"performance"`
-	XProtocol           XProtocol         `toml:"xprotocol" json:"xprotocol"`
 	PreparedPlanCache   PreparedPlanCache `toml:"prepared-plan-cache" json:"prepared-plan-cache"`
 	OpenTracing         OpenTracing       `toml:"opentracing" json:"opentracing"`
 	ProxyProtocol       ProxyProtocol     `toml:"proxy-protocol" json:"proxy-protocol"`
@@ -162,14 +161,6 @@ type Performance struct {
 	QueryFeedbackLimit  uint    `toml:"query-feedback-limit" json:"query-feedback-limit"`
 	PseudoEstimateRatio float64 `toml:"pseudo-estimate-ratio" json:"pseudo-estimate-ratio"`
 	ForcePriority       string  `toml:"force-priority" json:"force-priority"`
-}
-
-// XProtocol is the XProtocol section of the config.
-type XProtocol struct {
-	XServer bool   `toml:"xserver" json:"xserver"`
-	XHost   string `toml:"xhost" json:"xhost"`
-	XPort   uint   `toml:"xport" json:"xport"`
-	XSocket string `toml:"xsocket" json:"xsocket"`
 }
 
 // PlanCache is the PlanCache section of the config.
@@ -295,7 +286,7 @@ type Inc struct {
 	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
-	CheckTimestampCount			bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
+	CheckTimestampCount         bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
@@ -303,26 +294,37 @@ type Inc struct {
 	EnableDropDatabase          bool `toml:"enable_drop_database" json:"enable_drop_database"`
 	EnableDropTable             bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
 	EnableEnumSetBit            bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
-	EnableForeignKey            bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
-	EnableIdentiferKeyword      bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
-	EnableNotInnodb             bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
-	EnableNullable              bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
-	EnableOrderByRand           bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
-	EnablePartitionTable        bool `toml:"enable_partition_table" json:"enable_partition_table"`
-	EnablePKColumnsOnlyInt      bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
-	EnableSelectStar            bool `toml:"enable_select_star" json:"enable_select_star"`
+
+	// DML指纹功能,开启后,在审核时,类似DML将直接复用审核结果,可大幅优化审核效率
+	EnableFingerprint      bool `toml:"enable_fingerprint" json:"enable_fingerprint"`
+	EnableForeignKey       bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
+	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
+	EnableNotInnodb        bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
+	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
+	EnableOrderByRand      bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
+	EnablePartitionTable   bool `toml:"enable_partition_table" json:"enable_partition_table"`
+	EnablePKColumnsOnlyInt bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
+	EnableSelectStar       bool `toml:"enable_select_star" json:"enable_select_star"`
 
 	// 是否允许设置字符集和排序规则
-	EnableSetCharset bool `toml:"enable_set_charset" json:"enable_set_charset"`
+	EnableSetCharset   bool `toml:"enable_set_charset" json:"enable_set_charset"`
+	EnableSetCollation bool `toml:"enable_set_collation" json:"enable_set_collation"`
 
 	Lang          string `toml:"lang" json:"lang"`
 	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
-	MaxKeys       uint   `toml:"max_keys" json:"max_keys"`
-	MaxKeyParts   uint   `toml:"max_key_parts" json:"max_key_parts"`
-	MaxUpdateRows uint   `toml:"max_update_rows" json:"max_update_rows"`
+
+	// 一次最多写入的行数, 仅判断insert values语法
+	MaxInsertRows uint `toml:"max_insert_rows" json:"max_insert_rows"`
+
+	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
+	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
+	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
+
+	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
+	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
 
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
@@ -333,6 +335,8 @@ type Inc struct {
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
 
+	// 支持的排序规则
+	SupportCollation string `toml:"support_collation" json:"support_collation"`
 	// Version *string
 }
 
@@ -592,10 +596,6 @@ var defaultConf = Config{
 		PseudoEstimateRatio: 0.8,
 		ForcePriority:       "NO_PRIORITY",
 	},
-	XProtocol: XProtocol{
-		XHost: "",
-		XPort: 0,
-	},
 	ProxyProtocol: ProxyProtocol{
 		Networks:      "",
 		HeaderTimeout: 5,
@@ -626,14 +626,14 @@ var defaultConf = Config{
 		SkipGrantTable: true,
 	},
 	Inc: Inc{
-		EnableNullable:     true,
-		EnableDropTable:    false,
-		CheckTableComment:  false,
-		CheckColumnComment: false,
-		CheckTimestampCount:true,
-		SqlSafeUpdates:     -1,
-		SupportCharset:     "utf8,utf8mb4",
-		Lang:               "en-US",
+		EnableNullable:      true,
+		EnableDropTable:     false,
+		CheckTableComment:   false,
+		CheckColumnComment:  false,
+		CheckTimestampCount: true,
+		SqlSafeUpdates:      -1,
+		SupportCharset:      "utf8,utf8mb4",
+		Lang:                "en-US",
 		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{

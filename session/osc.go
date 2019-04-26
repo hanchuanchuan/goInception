@@ -710,5 +710,5 @@ func (s *session) getAlterTablePostPart(sql string) string {
 
 	sql = parts[3]
 
-	return sql
+	return strings.Replace(sql, "\"", "\\\"", -1)
 }
