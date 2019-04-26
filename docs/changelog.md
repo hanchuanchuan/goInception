@@ -1,5 +1,29 @@
 # goInception 更新日志
 
+
+## [v0.6.4-beta] - 2019-4-23
+
+### Fix
+* 修复mysql 5.6和mariadb无法获取受影响行数的问题
+
+
+## [v0.6.3-beta] - 2019-4-22
+
+### New Features
+* 添加`max_insert_rows`参数，设置insert values允许的最大行数。
+* 添加`must_have_columns`参数，用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
+
+
+## [v0.6.2-beta] - 2019-4-18
+### Update
+* 添加不支持的语法警告(create table as和create table select)
+* 实现alter多子句时的表结构变化支持,如drop column后跟add column
+
+### Fix
+* 修复explain返回null列时报错的问题
+* 修复索引的唯一标识设置错误问题
+
+
 ## [v0.6.1-beta] - 2019-4-9
 ### Update
 * 添加远端数据库断开重连机制，优化线程号和master status查询速度

@@ -79,6 +79,7 @@ const (
 	ER_TOO_MANY_KEY_PARTS
 	ER_TOO_LONG_IDENT
 	ER_UDPATE_TOO_MUCH_ROWS
+	ER_INSERT_TOO_MUCH_ROWS
 	ER_WRONG_NAME_FOR_INDEX
 	ER_TOO_MANY_KEYS
 	ER_NOT_SUPPORTED_KEY_TYPE
@@ -177,6 +178,7 @@ const (
 	ER_WRONG_TABLE_NAME
 	ER_CANT_SET_CHARSET
 	ER_CANT_SET_COLLATION
+	ER_MUST_AT_LEAST_ONE_COLUMN
 	ER_MUST_HAVE_COLUMNS
 	ER_PRIMARY_CANT_HAVE_NULL
 	ErrCantRemoveAllFields
@@ -185,6 +187,7 @@ const (
 	ErrNotFoundMasterStatus
 	ErrNonUniqTable
 	ErrWrongUsage
+	ErrDataTooLong
 	ER_ERROR_LAST
 )
 
@@ -229,7 +232,8 @@ var ErrorsDefault = map[int]string{
 	ER_FOREIGN_KEY:                         "Foreign key is not allowed in table '%s'.",
 	ER_TOO_MANY_KEY_PARTS:                  "Too many key parts in Key '%s' in table '%s' specified, max %d parts allowed.",
 	ER_TOO_LONG_IDENT:                      "Identifier name '%s' is too long.",
-	ER_UDPATE_TOO_MUCH_ROWS:                "Update rows more then %d.",
+	ER_UDPATE_TOO_MUCH_ROWS:                "Update(%d) more then %d rows.",
+	ER_INSERT_TOO_MUCH_ROWS:                "Insert(%d) more then %d rows.",
 	ER_WRONG_NAME_FOR_INDEX:                "Incorrect index name '%s' in table '%s'.",
 	ER_TOO_MANY_KEYS:                       "Too many keys specified in table '%s', max %d keys allowed.",
 	ER_NOT_SUPPORTED_KEY_TYPE:              "Not supported key type: '%s'.",
@@ -328,7 +332,8 @@ var ErrorsDefault = map[int]string{
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "Cannot set charset '%s'",
 	ER_CANT_SET_COLLATION:                  "Cannot set collation '%s'",
-	ER_MUST_HAVE_COLUMNS:                   "A table must have at least 1 column",
+	ER_MUST_AT_LEAST_ONE_COLUMN:            "A table must have at least 1 column.",
+	ER_MUST_HAVE_COLUMNS:                   "Must have the specified column: '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ErrNotFoundTableInfo:                   "Skip backup because there is no table structure information.",
@@ -336,6 +341,7 @@ var ErrorsDefault = map[int]string{
 	ErrNotFoundMasterStatus:                "Can't found master binlog position.",
 	ErrNonUniqTable:                        mysql.MySQLErrName[mysql.ErrNonuniqTable],
 	ErrWrongUsage:                          "Incorrect usage of %s and %s",
+	ErrDataTooLong:                         "Data too long for column '%s' at row %d",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 }
 
@@ -379,7 +385,8 @@ var ErrorsChinese = map[int]string{
 	ER_FOREIGN_KEY:                      "不允许使用外键(表 '%s').",
 	ER_TOO_MANY_KEY_PARTS:               "索引 '%s'指定了太多的字段(表 '%s'), 最多允许 %d 个字段.",
 	ER_TOO_LONG_IDENT:                   "名称 '%s' 过长.",
-	ER_UDPATE_TOO_MUCH_ROWS:             "更新行超过 %d .",
+	ER_UDPATE_TOO_MUCH_ROWS:             "一次更新(%d)超过 %d 行.",
+	ER_INSERT_TOO_MUCH_ROWS:             "一次新增(%d)超过 %d 行.",
 	ER_WRONG_NAME_FOR_INDEX:             "索引 '%s' 名称不正确(表 '%s').",
 	ER_TOO_MANY_KEYS:                    "表 '%s' 指定了太多索引, 最多允许 %d 个.",
 	ER_NOT_SUPPORTED_KEY_TYPE:           "不允许的键类型: '%s'.",
@@ -478,13 +485,15 @@ var ErrorsChinese = map[int]string{
 	ER_WRONG_TABLE_NAME:                    "不正确的表名: '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "禁止指定字符集: '%s'",
 	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
-	ER_MUST_HAVE_COLUMNS:                   "表至少需要有一个列.",
+	ER_MUST_AT_LEAST_ONE_COLUMN:            "表至少需要有一个列.",
+	ER_MUST_HAVE_COLUMNS:                   "表必须包含以下列: '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "主键的所有列必须为NOT NULL,如需要NULL列,请改用唯一索引",
 	ErrCantRemoveAllFields:                 "禁止删除表的所有列.",
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
 	ErrNotFoundThreadId:                    "MariaDB v%d 对回滚支持不完美,请注意确认回滚语句是否正确",
 	ErrNotFoundMasterStatus:                "无法获取master binlog信息.",
 	ErrNonUniqTable:                        "表名或别名: '%-.192s' 不唯一.",
+	ErrDataTooLong:                         "数据过长!(列 '%s',行 '%d')",
 	ErrWrongUsage:                          "%s子句无法使用%s",
 }
 
@@ -500,6 +509,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_NOT_ALLOWED_NULLABLE,
 		ER_TOO_MANY_KEY_PARTS,
 		ER_UDPATE_TOO_MUCH_ROWS,
+		ER_INSERT_TOO_MUCH_ROWS,
 		ER_TOO_MANY_KEYS,
 		ER_PK_TOO_MANY_PARTS,
 		ER_PK_COLS_NOT_INT,
@@ -533,6 +543,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_CANT_SET_COLLATION,
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
+		ER_MUST_HAVE_COLUMNS,
 		ER_CHANGE_COLUMN_TYPE:
 		return 1
 

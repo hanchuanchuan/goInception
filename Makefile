@@ -263,3 +263,12 @@ release:
 			rm -f goInception; \
 		done ;\
 	done
+
+docker:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/goInception tidb-server/main.go
+	v1=$(shell git tag|tail -1) && docker build -t hanchuanchuan/goinception:$${v1} . \
+	&& docker tag hanchuanchuan/goinception:$${v1} hanchuanchuan/goinception:latest
+
+docker-push:
+	v1=$(shell git tag|tail -1) && docker push hanchuanchuan/goinception:$${v1} \
+	&& docker push hanchuanchuan/goinception:latest

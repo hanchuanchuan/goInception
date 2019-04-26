@@ -415,11 +415,11 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 
 	sql = "drop table if exists t1;create table test_error_code_2;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "drop table if exists t1;create table test_error_code_2 (unique(c1));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "drop table if exists t1;create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
 	s.testErrorCode(c, sql,

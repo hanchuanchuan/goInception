@@ -70,3 +70,27 @@ inception show processlist;
 ```
 
 ![variables列表](./images/processlist.png)
+
+
+
+
+### 中止进程(`*new`)
+
+** 在审核和执行阶段可以kill,备份阶段不再允许kill ** `v0.6.2 新增`
+
+相关链接： [kill 操作支持](https://github.com/hanchuanchuan/goInception/issues/10)
+
+```bash
+mysql -h127.0.0.1 -P4000
+```
+
+```sql
+inception show processlist;
+```
+
+```sql
+kill 2;
+```
+
+
+

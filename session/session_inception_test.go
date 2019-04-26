@@ -46,6 +46,8 @@ type testSessionIncSuite struct {
 
 	version int
 	sqlMode string
+
+	rows [][]interface{}
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
@@ -214,6 +216,22 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
 }
 
+func (s *testSessionIncSuite) execSQL(c *C, sql string) {
+
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, sql))
+
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+}
+
 func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
@@ -241,6 +259,19 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 	}
 
 	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
+
+	s.rows = res.Rows()
+}
+
+func (s *testSessionIncSuite) testAffectedRows(c *C, affectedRows ...int) {
+	if len(s.rows) == 0 {
+		return
+	}
+	count := len(affectedRows)
+	for i, affectedRow := range affectedRows {
+		row := s.rows[len(s.rows)-(count-i)]
+		c.Assert(row[6], Equals, strconv.Itoa(affectedRow), Commentf("%v", row))
+	}
 }
 
 func (s *testSessionIncSuite) TestBegin(c *C) {
@@ -534,11 +565,11 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	sql = "create table test_error_code_2;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "create table test_error_code_2 (unique(c1));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
 	s.testErrorCode(c, sql,
@@ -674,6 +705,28 @@ primary key(id)) comment 'test';`
 
 	config.GetGlobalConfig().Inc.EnableNullable = true
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
+	s.testErrorCode(c, sql)
+
+	// 检查必须的字段
+	config.GetGlobalConfig().Inc.MustHaveColumns = "c1"
+	sql = `drop table if exists t1;CREATE TABLE t1(id int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.MustHaveColumns = "c1 int,c2 datetime"
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 bigint,c2 int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)
 
 }
@@ -1125,6 +1178,33 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	sql = "create table t1(c1 char(100) not null);insert into t1(c1) select t1.c1 from t1 order by 1 union all select t1.c1 from t1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrWrongUsage, "UNION", "ORDER BY"))
+
+	// insert 行数
+	config.GetGlobalConfig().Inc.MaxInsertRows = 1
+
+	sql = `drop table if exists t1;create table t1(id int);
+insert into t1 values(1);`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
+
+	sql = `drop table if exists t1;create table t1(id int);
+insert into t1 values(1),(2);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INSERT_TOO_MUCH_ROWS, 2, 1))
+
+	config.GetGlobalConfig().Inc.MaxInsertRows = 3
+	sql = `drop table if exists t1;create table t1(id int);
+insert into t1 values(1),(2),(3);`
+
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 3)
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int);")
+	sql = `drop table if exists t2;create table t2 like t1;
+insert into t2 select id from t1;`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
+
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
@@ -1223,6 +1303,11 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 		create table test.table2(id2 int primary key,c2 int,c22 int);
 		update table1 a1,test.table2 a2 set a1.c1=a2.c2 where a1.id1=a2.id2 and a1.c1=a2.c2 and a1.id1 in (1,2,3);`
 	s.testErrorCode(c, sql)
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1);")
+	sql = `update t1 set c1=1 where id =1;`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
@@ -1295,6 +1380,11 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1);")
+	sql = `delete from t1 where id =1;`
+	s.testErrorCode(c, sql)
+	s.testAffectedRows(c, 1)
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
@@ -1571,4 +1661,53 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
 	s.testErrorCode(c, sql)
 
+}
+
+func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	sql := ""
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	// EnablePKColumnsOnlyInt
+	config.GetGlobalConfig().Inc.EnablePKColumnsOnlyInt = true
+
+	sql = "create table t1(id tinyint, primary key(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+
+	sql = "create table t1(id mediumint, primary key(id));"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int, primary key(id));"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id bigint, primary key(id));"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id varchar(10), primary key(id));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+
+	sql = "create table t1(id tinyint primary key);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
+
+	sql = "create table t1(id mediumint primary key);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int primary key);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id bigint primary key);"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id varchar(10) primary key);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
 }

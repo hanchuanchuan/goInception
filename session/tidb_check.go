@@ -287,7 +287,7 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 
 	if len(stmt.Cols) == 0 && stmt.ReferTable == nil {
-		s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
+		s.AppendErrorNo(ER_MUST_AT_LEAST_ONE_COLUMN)
 	}
 }
 

@@ -20,7 +20,7 @@ import (
 	"github.com/hanchuanchuan/goInception/meta"
 	"github.com/hanchuanchuan/goInception/meta/autoid"
 	"github.com/hanchuanchuan/goInception/model"
-	"github.com/hanchuanchuan/goInception/perfschema"
+	// "github.com/hanchuanchuan/goInception/perfschema"
 	"github.com/hanchuanchuan/goInception/table"
 	"github.com/hanchuanchuan/goInception/table/tables"
 	"github.com/pingcap/errors"
@@ -260,7 +260,7 @@ func (b *Builder) InitWithDBInfos(dbInfos []*model.DBInfo, schemaVersion int64) 
 			return nil, errors.Trace(err)
 		}
 	}
-	b.createSchemaTablesForPerfSchemaDB()
+	// b.createSchemaTablesForPerfSchemaDB()
 	b.createSchemaTablesForInfoSchemaDB()
 	for _, v := range info.sortedTablesBuckets {
 		sort.Sort(v)
@@ -289,23 +289,23 @@ func (b *Builder) createSchemaTablesForDB(di *model.DBInfo) error {
 	return nil
 }
 
-func (b *Builder) createSchemaTablesForPerfSchemaDB() {
-	perfSchemaDB := perfschema.GetDBMeta()
-	perfSchemaTblNames := &schemaTables{
-		dbInfo: perfSchemaDB,
-		tables: make(map[string]table.Table, len(perfSchemaDB.Tables)),
-	}
-	b.is.schemaMap[perfSchemaDB.Name.L] = perfSchemaTblNames
-	for _, t := range perfSchemaDB.Tables {
-		tbl, ok := perfschema.GetTable(t.Name.O)
-		if !ok {
-			continue
-		}
-		perfSchemaTblNames.tables[t.Name.L] = tbl
-		bucketIdx := tableBucketIdx(t.ID)
-		b.is.sortedTablesBuckets[bucketIdx] = append(b.is.sortedTablesBuckets[bucketIdx], tbl)
-	}
-}
+// func (b *Builder) createSchemaTablesForPerfSchemaDB() {
+// 	perfSchemaDB := perfschema.GetDBMeta()
+// 	perfSchemaTblNames := &schemaTables{
+// 		dbInfo: perfSchemaDB,
+// 		tables: make(map[string]table.Table, len(perfSchemaDB.Tables)),
+// 	}
+// 	b.is.schemaMap[perfSchemaDB.Name.L] = perfSchemaTblNames
+// 	for _, t := range perfSchemaDB.Tables {
+// 		tbl, ok := perfschema.GetTable(t.Name.O)
+// 		if !ok {
+// 			continue
+// 		}
+// 		perfSchemaTblNames.tables[t.Name.L] = tbl
+// 		bucketIdx := tableBucketIdx(t.ID)
+// 		b.is.sortedTablesBuckets[bucketIdx] = append(b.is.sortedTablesBuckets[bucketIdx], tbl)
+// 	}
+// }
 
 func (b *Builder) createSchemaTablesForInfoSchemaDB() {
 	infoSchemaSchemaTables := &schemaTables{

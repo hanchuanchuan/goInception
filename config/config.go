@@ -67,7 +67,6 @@ type Config struct {
 	Security            Security          `toml:"security" json:"security"`
 	Status              Status            `toml:"status" json:"status"`
 	Performance         Performance       `toml:"performance" json:"performance"`
-	XProtocol           XProtocol         `toml:"xprotocol" json:"xprotocol"`
 	PreparedPlanCache   PreparedPlanCache `toml:"prepared-plan-cache" json:"prepared-plan-cache"`
 	OpenTracing         OpenTracing       `toml:"opentracing" json:"opentracing"`
 	ProxyProtocol       ProxyProtocol     `toml:"proxy-protocol" json:"proxy-protocol"`
@@ -162,14 +161,6 @@ type Performance struct {
 	QueryFeedbackLimit  uint    `toml:"query-feedback-limit" json:"query-feedback-limit"`
 	PseudoEstimateRatio float64 `toml:"pseudo-estimate-ratio" json:"pseudo-estimate-ratio"`
 	ForcePriority       string  `toml:"force-priority" json:"force-priority"`
-}
-
-// XProtocol is the XProtocol section of the config.
-type XProtocol struct {
-	XServer bool   `toml:"xserver" json:"xserver"`
-	XHost   string `toml:"xhost" json:"xhost"`
-	XPort   uint   `toml:"xport" json:"xport"`
-	XSocket string `toml:"xsocket" json:"xsocket"`
 }
 
 // PlanCache is the PlanCache section of the config.
@@ -320,12 +311,19 @@ type Inc struct {
 
 	Lang          string `toml:"lang" json:"lang"`
 	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
-	MaxKeys       uint   `toml:"max_keys" json:"max_keys"`
-	MaxKeyParts   uint   `toml:"max_key_parts" json:"max_key_parts"`
-	MaxUpdateRows uint   `toml:"max_update_rows" json:"max_update_rows"`
+
+	// 一次最多写入的行数, 仅判断insert values语法
+	MaxInsertRows uint `toml:"max_insert_rows" json:"max_insert_rows"`
+
+	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
+	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
+	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
+
+	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
+	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
 
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
@@ -594,10 +592,6 @@ var defaultConf = Config{
 		QueryFeedbackLimit:  0,
 		PseudoEstimateRatio: 0.8,
 		ForcePriority:       "NO_PRIORITY",
-	},
-	XProtocol: XProtocol{
-		XHost: "",
-		XPort: 0,
 	},
 	ProxyProtocol: ProxyProtocol{
 		Networks:      "",

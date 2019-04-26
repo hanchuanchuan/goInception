@@ -22,7 +22,7 @@ import (
 	"github.com/hanchuanchuan/goInception/meta"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/hanchuanchuan/goInception/perfschema"
+	// "github.com/hanchuanchuan/goInception/perfschema"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/testleak"
@@ -119,13 +119,13 @@ func (*testSuite) TestT(c *C) {
 	is := handle.Get()
 
 	schemaNames := is.AllSchemaNames()
-	c.Assert(schemaNames, HasLen, 3)
-	c.Assert(testutil.CompareUnorderedStringSlice(schemaNames, []string{infoschema.Name, perfschema.Name, "Test"}), IsTrue)
+	c.Assert(schemaNames, HasLen, 2)
+	c.Assert(testutil.CompareUnorderedStringSlice(schemaNames, []string{infoschema.Name, "Test"}), IsTrue)
 
 	schemas := is.AllSchemas()
-	c.Assert(schemas, HasLen, 3)
+	c.Assert(schemas, HasLen, 2)
 	schemas = is.Clone()
-	c.Assert(schemas, HasLen, 3)
+	c.Assert(schemas, HasLen, 2)
 
 	c.Assert(is.SchemaExists(dbName), IsTrue)
 	c.Assert(is.SchemaExists(noexist), IsFalse)
