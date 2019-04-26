@@ -307,7 +307,8 @@ type Inc struct {
 	EnableSelectStar       bool `toml:"enable_select_star" json:"enable_select_star"`
 
 	// 是否允许设置字符集和排序规则
-	EnableSetCharset bool `toml:"enable_set_charset" json:"enable_set_charset"`
+	EnableSetCharset   bool `toml:"enable_set_charset" json:"enable_set_charset"`
+	EnableSetCollation bool `toml:"enable_set_collation" json:"enable_set_collation"`
 
 	Lang          string `toml:"lang" json:"lang"`
 	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
@@ -334,6 +335,8 @@ type Inc struct {
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
 
+	// 支持的排序规则
+	SupportCollation string `toml:"support_collation" json:"support_collation"`
 	// Version *string
 }
 

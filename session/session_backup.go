@@ -101,7 +101,7 @@ func (s *session) flushBackupRecord(dbname string, record *Record) {
 	if len(s.insertBuffer) > 0 {
 		const backupRecordColumnCount int = 11
 		const rowSQL = "(?,?,?,?,?,?,?,?,?,?,NOW(),?),"
-		tableName := fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable)
+		tableName := fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable)
 
 		sql := "insert into %s values%s"
 		values := strings.TrimRight(

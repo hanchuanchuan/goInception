@@ -265,7 +265,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 
 	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
+		session.NewErr(session.ErrTableCollationNotSupport, "t1"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -390,7 +390,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop table if exists t1;create table t1(a int) character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8mb4"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -401,7 +401,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "drop table if exists t1;create table t1(a int) character set laitn1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 
 	// 外键
 	sql = "drop table if exists t1;create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
@@ -1191,8 +1191,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop database if exists test123456;create database test123456 character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -1203,7 +1202,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "drop database if exists test123456;create database test123456 character set laitn1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 }
 
 func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
