@@ -2845,8 +2845,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if hasDefaultValue && !defaultValue.IsNull() && (field.Tp.Tp == mysql.TypeJSON || types.IsTypeBlob(field.Tp.Tp)) {
 		s.AppendErrorNo(ER_BLOB_CANT_HAVE_DEFAULT, field.Name.Name.O)
 	}
-
-	if types.IsTypeBlob(field.Tp.Tp) {
+	//是否使用 text\blob\json 字段类型
+	//当EnableNullable=false，不强制text\blob\json使用NOT NULL
+	if types.IsTypeBlob(field.Tp.Tp) || field.Tp.Tp == mysql.TypeJSON {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
 		if !notNullFlag && !hasGenerated {
@@ -2863,8 +2864,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if isIncorrectName(field.Name.Name.O) {
 		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
 	}
-
-	if types.IsTypeBlob(field.Tp.Tp) && notNullFlag {
+	//text/blob/json 字段禁止设置NOT NULL
+	if (types.IsTypeBlob(field.Tp.Tp) || field.Tp.Tp == mysql.TypeJSON) && notNullFlag {
 		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
 	}
 
