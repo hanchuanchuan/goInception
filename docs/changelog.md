@@ -1,6 +1,23 @@
 # goInception 更新日志
 
 
+## [v0.7-beta] - 2019-4-26
+
+### Update
+* 优化update关联新建表时的审核，现在update时可以关联新建表了
+* 优化insert 新建 select语法审核，现在可以获取预估受影响行数了
+* 审核阶段自动忽略警告，优化审核逻辑
+* 优化`check_column_default_value`的审核逻辑，默认值审核时会跳过主键
+* 备份阶段sql过长时会自动截断(比如insert values很多行)，`返回警告但不影响执行和备份操作`
+
+### Fix
+* 修复开启`enable_pk_columns_only_int`选项时列类型审核错误的问题
+
+### New Features
+* 添加`enable_set_collation`参数，设置是否允许指定表和数据库的排序规则
+* 添加`support_collation`参数，设置支持的排序规则,多个时以逗号分隔
+
+
 ## [v0.6.4-beta] - 2019-4-23
 
 ### Fix
