@@ -181,10 +181,10 @@ var (
 // var Keywords map[string]int = parser.GetKeywords()
 
 const (
-	MaxKeyLength   = 767
-	MaxKeyLength57 = 3072
+	maxKeyLength   = 767
+	maxKeyLength57 = 3072
 
-	RemoteBackupTable              = "$_$Inception_backup_information$_$"
+	remoteBackupTable              = "$_$Inception_backup_information$_$"
 	TABLE_COMMENT_MAXLEN           = 2048
 	COLUMN_COMMENT_MAXLEN          = 1024
 	INDEX_COMMENT_MAXLEN           = 1024
@@ -827,7 +827,7 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 
 	// buf.WriteString("INSERT INTO ")
 	// dbname := s.getRemoteBackupDBName(record)
-	// buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
+	// buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable))
 	// buf.WriteString(" VALUES('")
 	// buf.WriteString(record.OPID)
 	// buf.WriteString("','")
@@ -954,7 +954,7 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 		s.backupTableCacheList[key] = true
 	}
 
-	key = fmt.Sprintf("%s.%s", backupDBName, RemoteBackupTable)
+	key = fmt.Sprintf("%s.%s", backupDBName, remoteBackupTable)
 	if _, ok := s.backupTableCacheList[key]; !ok {
 		createSql := s.mysqlCreateSqlBackupTable(backupDBName)
 		if err := s.backupdb.Exec(createSql).Error; err != nil {
@@ -977,7 +977,7 @@ func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
 
 	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
 
-	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
+	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable))
 	buf.WriteString("(")
 
 	buf.WriteString("opid_time varchar(50),")
@@ -1944,13 +1944,16 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
-					if !s.Inc.EnableSetCharset {
+					if s.Inc.EnableSetCharset {
+						s.checkCharset(opt.StrValue)
+					} else {
 						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
 					}
-					s.checkCharset(opt.StrValue)
 				case ast.TableOptionCollate:
-					if !s.Inc.EnableSetCharset {
-						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+					if s.Inc.EnableSetCollation {
+						s.checkCollation(opt.StrValue)
+					} else {
+						s.AppendErrorNo(ErrTableCollationNotSupport, node.Table.Name.O)
 					}
 				case ast.TableOptionComment:
 					if opt.StrValue != "" {
@@ -2249,13 +2252,16 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
-					if !s.Inc.EnableSetCharset {
+					if s.Inc.EnableSetCharset {
+						s.checkCharset(opt.StrValue)
+					} else {
 						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
 					}
-					s.checkCharset(opt.StrValue)
 				case ast.TableOptionCollate:
-					if !s.Inc.EnableSetCharset {
-						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+					if s.Inc.EnableSetCollation {
+						s.checkCollation(opt.StrValue)
+					} else {
+						s.AppendErrorNo(ErrTableCollationNotSupport, node.Table.Name.O)
 					}
 				case ast.TableOptionComment:
 					if opt.StrValue != "" {
@@ -2792,7 +2798,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if !isPrimary {
-		if field.Tp != nil && field.Tp.Flag&mysql.PriKeyFlag == mysql.PriKeyFlag {
+		if field.Tp != nil && mysql.HasPriKeyFlag(field.Tp.Flag) {
 			isPrimary = true
 		}
 	}
@@ -3282,10 +3288,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	if !isBlobColumn {
 		mysqlVersion := s.DBVersion
 		// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
-		if mysqlVersion < 50700 && keyMaxLen > MaxKeyLength {
-			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
-		} else if (mysqlVersion >= 50700) && keyMaxLen > MaxKeyLength57 {
-			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength57)
+		if mysqlVersion < 50700 && keyMaxLen > maxKeyLength {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
+		} else if (mysqlVersion >= 50700) && keyMaxLen > maxKeyLength57 {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
 		}
 	}
 
@@ -4121,13 +4127,17 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 		for _, opt := range node.Options {
 			switch opt.Tp {
 			case ast.DatabaseOptionCharset:
-				if !s.Inc.EnableSetCharset {
+				if s.Inc.EnableSetCharset {
+					s.checkCharset(opt.Value)
+				} else {
 					s.AppendErrorNo(ER_CANT_SET_CHARSET, opt.Value)
 				}
-
-				s.checkCharset(opt.Value)
 			case ast.DatabaseOptionCollate:
-				s.AppendErrorNo(ER_CANT_SET_COLLATION, opt.Value)
+				if s.Inc.EnableSetCollation {
+					s.checkCollation(opt.Value)
+				} else {
+					s.AppendErrorNo(ER_CANT_SET_COLLATION, opt.Value)
+				}
 			}
 		}
 
@@ -4150,7 +4160,20 @@ func (s *session) checkCharset(charset string) bool {
 				return true
 			}
 		}
-		s.AppendErrorNo(ER_NAMES_MUST_UTF8, s.Inc.SupportCharset)
+		s.AppendErrorNo(ErrCharsetNotSupport, s.Inc.SupportCharset)
+		return false
+	}
+	return true
+}
+
+func (s *session) checkCollation(collation string) bool {
+	if s.Inc.SupportCollation != "" {
+		for _, item := range strings.Split(s.Inc.SupportCollation, ",") {
+			if strings.EqualFold(item, collation) {
+				return true
+			}
+		}
+		s.AppendErrorNo(ErrCollationNotSupport, s.Inc.SupportCollation)
 		return false
 	}
 	return true
@@ -4923,7 +4946,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 		}
 	}
 
-	if c.Key != "PRI" && field.Tp.Flag&mysql.PriKeyFlag == mysql.PriKeyFlag {
+	if c.Key != "PRI" && mysql.HasPriKeyFlag(field.Tp.Flag) {
 		c.Key = "PRI"
 	}
 
