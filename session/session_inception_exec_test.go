@@ -73,6 +73,8 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	inc.BackupPassword = "inception"
 
 	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Inc.EnableFingerprint = true
+	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 
 	inc.EnableDropTable = true
 
@@ -128,10 +130,10 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		for _, e := range errors {
 			errMsgs = append(errMsgs, e.Error())
 		}
-		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"))
+		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", row))
 	}
 
-	c.Assert(row[2], Equals, strconv.Itoa(errCode))
+	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
 	// 无错误时需要校验结果是否标记为已执行
 	if errCode == 0 {
 		if !strings.Contains(row[3].(string), "Execute Successfully") {
@@ -263,7 +265,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 
 	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
+		session.NewErr(session.ErrTableCollationNotSupport, "t1"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -388,7 +390,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop table if exists t1;create table t1(a int) character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8mb4"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -399,7 +401,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "drop table if exists t1;create table t1(a int) character set laitn1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 
 	// 外键
 	sql = "drop table if exists t1;create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
@@ -413,11 +415,11 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 
 	sql = "drop table if exists t1;create table test_error_code_2;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "drop table if exists t1;create table test_error_code_2 (unique(c1));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "drop table if exists t1;create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
 	s.testErrorCode(c, sql,
@@ -1189,8 +1191,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop database if exists test123456;create database test123456 character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -1201,7 +1202,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "drop database if exists test123456;create database test123456 character set laitn1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 }
 
 func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
@@ -1323,6 +1324,32 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	if res != nil {
 		c.Assert(res.Close(), IsNil)
 	}
+}
+
+func (s *testSessionIncExecSuite) TestAlterTable(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+	sql := ""
+	// 删除后添加列
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1,add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	// 删除后添加索引
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix;alter table t1 add index ix(c1);"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncExecSuite) getDBVersion(c *C) int {

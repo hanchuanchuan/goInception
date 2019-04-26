@@ -1,5 +1,83 @@
 # goInception 更新日志
 
+
+## [v0.7-beta] - 2019-4-26
+
+### Update
+* 优化update关联新建表时的审核，现在update时可以关联新建表了
+* 优化insert 新建 select语法审核，现在可以获取预估受影响行数了
+* 审核阶段自动忽略警告，优化审核逻辑
+* 优化`check_column_default_value`的审核逻辑，默认值审核时会跳过主键
+* 备份阶段sql过长时会自动截断(比如insert values很多行)，`返回警告但不影响执行和备份操作`
+
+### Fix
+* 修复开启`enable_pk_columns_only_int`选项时列类型审核错误的问题
+
+### New Features
+* 添加`enable_set_collation`参数，设置是否允许指定表和数据库的排序规则
+* 添加`support_collation`参数，设置支持的排序规则,多个时以逗号分隔
+
+
+## [v0.6.4-beta] - 2019-4-23
+
+### Fix
+* 修复mysql 5.6和mariadb无法获取受影响行数的问题
+
+
+## [v0.6.3-beta] - 2019-4-22
+
+### New Features
+* 添加`max_insert_rows`参数，设置insert values允许的最大行数。
+* 添加`must_have_columns`参数，用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
+
+
+## [v0.6.2-beta] - 2019-4-18
+### Update
+* 添加不支持的语法警告(create table as和create table select)
+* 实现alter多子句时的表结构变化支持,如drop column后跟add column
+
+### Fix
+* 修复explain返回null列时报错的问题
+* 修复索引的唯一标识设置错误问题
+
+
+## [v0.6.1-beta] - 2019-4-9
+### Update
+* 添加远端数据库断开重连机制，优化线程号和master status查询速度
+* 优化远端数据库访问操作
+* 优化sql内容解析，移除多余分号和空格
+
+### Fix
+* 修复跨库update时无法找到列的问题
+* 修复osc子句有双引号时执行错误的问题
+
+### New Features
+* 添加sql指纹功能
+dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，并提高审核速度
+	- 可以通过```inception set enable_fingerprint=1;```或配置文件开启全局配置
+	- 也可以通过调用选项```--fingerprint=1;```开启单个配置
+	- 两种配置取并集，即开启任一配置，则启用sql指纹功能，默认关闭。
+
+
+## [v0.6-beta] - 2019-4-3
+### Update
+* 备份操作性能优化,备份信息改为批量写入
+* 添加备份库连接超时检查
+* explain函数性能优化
+* 优化部分函数未指定架构名时的默认处理
+* 优化默认值检查,添加计算列支持 (#12, #13, #14)
+* 优化时间格式和范围检查,根据数据库sql_mode校验零值日期
+* 升级到go 1.12
+
+### Fix
+* 修复index name校验逻辑,其可与列名一致
+* 修复timestamp默认值校验不准确的问题
+
+### New Features
+* 添加kill功能支持,在审核和执行时可以kill,备份阶段无法kill (#10)
+* 添加`check_timestamp_count`参数,可配置是否检查current_timestamp数量 (#11, #15)
+
+
 ## [v0.5.3-beta] - 2019-3-25
 ### Update
 * 变更列名时使用逻辑校验,避免explain update失败

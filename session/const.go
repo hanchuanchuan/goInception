@@ -29,6 +29,7 @@ const (
 	StageOK byte = iota
 	StageCheck
 	StageExec
+	StageBackup
 )
 
 // 审核状态
@@ -41,7 +42,7 @@ const (
 )
 
 var (
-	stageList  = [3]string{"RERUN", "CHECKED", "EXECUTED"}
+	stageList  = [4]string{"RERUN", "CHECKED", "EXECUTED", "BACKUP"}
 	statusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully",
 		"Execute Successfully\nBackup failed", "Execute Successfully\nBackup Successfully"}
 )

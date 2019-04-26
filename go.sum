@@ -55,8 +55,8 @@ github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMo
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-sql-driver/mysql v0.0.0-20161201115036-a0583e0143b1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
-github.com/go-sql-driver/mysql v0.0.0-20170715192408-3955978caca4 h1:3DFRjZdCDhzvxDf0U6/1qAryzOqD7Y5iAj0DJRRl1bs=
-github.com/go-sql-driver/mysql v0.0.0-20170715192408-3955978caca4/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
+github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZpNwpA=
+github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/gofrs/uuid v3.2.0+incompatible h1:y12jRkkFxsd7GpqdSZ+/KCs/fJbqpEXSGd4+jfEaewE=
 github.com/gofrs/uuid v3.2.0+incompatible/go.mod h1:b2aQJv3Z4Fp6yNu3cdSllBxTCLRxnplIgP/c0N/04lM=
 github.com/gogo/protobuf v0.0.0-20180717141946-636bf0302bc9/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
@@ -93,8 +93,8 @@ github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3 h1:PerDKRFKM
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3/go.mod h1:yesOnuUOFQAhST5vPY4nbZsb/huCgGGXlipJsBn0b3o=
 github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162 h1:GQzeUPDj/QvpOht1xMeCBG9IoGDvfcm6cX7THlpDjtY=
 github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162/go.mod h1:LjQSgtiA0sJLr4Z4CS/nctK+Ry2ca1O+Mug6zRP1iKQ=
-github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff h1:QQJzMLDLwtJCZd4tJ25I0Am/gJxSOak2PoPFxRkG48c=
-github.com/hanchuanchuan/go-mysql v0.0.0-20190121014721-087532fc00ff/go.mod h1:nzKLAw7EZz2i/B12qvbTmRM5+d+iIIDGqu6/2XWXH0U=
+github.com/hanchuanchuan/go-mysql v0.0.0-20190404011851-0853abc18c35 h1:D9JFrkCPXJKUmdNca4wC3+lD7VBPo1yT8JGbB3fFYrY=
+github.com/hanchuanchuan/go-mysql v0.0.0-20190404011851-0853abc18c35/go.mod h1:nzKLAw7EZz2i/B12qvbTmRM5+d+iIIDGqu6/2XWXH0U=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
@@ -153,6 +153,8 @@ github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502 h1:oS2s2j8GP70jE0ID
 github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502/go.mod h1:JDhu//MMvcPVPH889Xr7DyamEbTLumgDBALGUyXrz1g=
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
+github.com/percona/go-mysql v0.0.0-20190307200310-f5cfaf6a5e55 h1:kx48fD4K+GXb7YqwykiWirM8GRtoMcpWbGlaAb3IsqE=
+github.com/percona/go-mysql v0.0.0-20190307200310-f5cfaf6a5e55/go.mod h1:/SGLf9OMxlnK6jq4mkFiImBcJXXk5jwD+lDrwDaGXcw=
 github.com/pingcap/check v0.0.0-20171206051426-1c287c953996 h1:ZBdiJCMan6GSo/aPAM7gywcUKa0z58gczVrnG6TQnAQ=
 github.com/pingcap/check v0.0.0-20171206051426-1c287c953996/go.mod h1:B1+S9LNcuMyLH/4HMTViQOJevkGiik3wW2AN9zb2fNQ=
 github.com/pingcap/errors v0.11.0 h1:DCJQB8jrHbQ1VVlMFIrbj2ApScNNotVmkSNplu2yUt4=
