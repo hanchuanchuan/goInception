@@ -700,15 +700,16 @@ primary key(id)) comment 'test';`
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
 	s.testErrorCode(c, sql)
 
-	config.GetGlobalConfig().Inc.MustHaveColumns = "c1 int,c2 datetime"
+	// 配置参数时添加多余空格,判断对类型解析是否正确
+	config.GetGlobalConfig().Inc.MustHaveColumns = "c1  int,c2 datetime"
 
 	sql = `drop table if exists t1;CREATE TABLE t1(id int);`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1  int,c2 datetime"))
 
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 bigint,c2 int);`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1  int,c2 datetime"))
 
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)

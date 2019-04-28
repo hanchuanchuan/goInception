@@ -2134,9 +2134,11 @@ func (s *session) checkMustHaveColumns(table *TableInfo) {
 		col_name := col
 		col_type := ""
 		if strings.Contains(col, " ") {
-			column_name_type := strings.SplitN(col, " ", 2)
-			col_name = column_name_type[0]
-			col_type = GetDataTypeBase(column_name_type[1])
+			column_name_type := strings.Fields(col)
+			if len(column_name_type) > 1 {
+				col_name = column_name_type[0]
+				col_type = GetDataTypeBase(column_name_type[1])
+			}
 		}
 
 		found := false
