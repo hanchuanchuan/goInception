@@ -228,6 +228,12 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c2`;")
+
+	res = s.makeSQL(tk, "alter table t1 add column (c3 int,c4 varchar(20));")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c3`,DROP COLUMN `c4`;")
+
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableAlterColumn(c *C) {

@@ -670,6 +670,9 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	sql = "drop table if exists t1;create table t1(c2 int on update current_timestamp);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
+
+	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
