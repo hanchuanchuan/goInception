@@ -261,6 +261,10 @@ func loadConfig() {
 	if *configPath != "" {
 		err := cfg.Load(*configPath)
 		terror.MustNil(err)
+	} else {
+		fmt.Println("################################################")
+		fmt.Println("#     Warning: Unspecified config file!        #")
+		fmt.Println("################################################")
 	}
 }
 
