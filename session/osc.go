@@ -701,14 +701,43 @@ func (s *session) getAlterTablePostPart(sql string) string {
 		return sql
 	}
 
-	sql = string(sql[index:])
-	parts := strings.SplitN(sql, " ", 4)
-	if len(parts) != 4 {
+	sql = sql[index:]
+
+	parts := strings.Fields(sql)
+	if len(parts) < 4 {
 		s.AppendErrorMessage("无效alter语句!")
 		return sql
 	}
 
-	sql = parts[3]
+	supportOper := []string{
+		"add",
+		"modify",
+		"change",
+		"drop",
+		"alter",
+		"algorithm",
+		"character",
+		"default",
+		"disable",
+		"enable",
+		"discard",
+		"import",
+		"force",
+	}
+
+	support := false
+	for _, p := range supportOper {
+		if strings.ToLower(parts[3]) == p {
+			support = true
+			break
+		}
+	}
+	if !support {
+		s.AppendErrorMessage(fmt.Sprintf("不支持的osc操作!(%s)", sql))
+		return sql
+	}
+
+	sql = strings.Join(parts[3:], " ")
 
 	return strings.Replace(sql, "\"", "\\\"", -1)
 }
