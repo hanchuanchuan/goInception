@@ -22,3 +22,4 @@ site/
 util/logutil/slow_query
 test/
 release/
+config/config.toml
