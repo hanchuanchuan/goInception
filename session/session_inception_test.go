@@ -880,6 +880,8 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
 	s.testErrorCode(c, sql)
 
+	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {

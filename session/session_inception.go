@@ -3062,7 +3062,9 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			t := s.cacheTableSnapshot(t)
 			t.IsNewColumns = true
 
-			if c.Position.Tp == ast.ColumnPositionFirst {
+			if c.Position == nil || c.Position.Tp == ast.ColumnPositionNone {
+				t.Fields = append(t.Fields, *newColumn)
+			} else if c.Position.Tp == ast.ColumnPositionFirst {
 				tmp := make([]FieldInfo, 0, len(t.Fields)+1)
 				tmp = append(tmp, *newColumn)
 				tmp = append(tmp, t.Fields...)
@@ -3089,8 +3091,6 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					t.Fields = tmp
 					// log.Infof("%#v", t.Fields)
 				}
-			} else {
-				t.Fields = append(t.Fields, *newColumn)
 			}
 
 			if s.opt.execute {
