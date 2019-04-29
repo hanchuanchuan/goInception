@@ -559,6 +559,9 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_MULTIPLE_PRI_KEY))
 
+	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key cca(c2));"
+	s.testErrorCode(c, sql)
+
 	fmt.Println("数据库版本: ", s.getDBVersion(c))
 
 	indexMaxLength := 767
