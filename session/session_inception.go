@@ -2921,7 +2921,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	}
 
 	if name == "" {
-		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, "NULL", table.Name)
+		//s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, "NULL", table.Name)
+		s.AppendErrorNo(ER_NULL_NAME_FOR_INDEX, table.Name)
 	} else {
 		// found := false
 		// for _, field := range table.Fields {
@@ -3309,6 +3310,9 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 
 	if len(rows) > 0 {
 		for _, row := range rows {
+			if !s.Inc.CheckNullIndexName && row.IndexName == "" {
+                                continue
+                      	}
 			if strings.EqualFold(row.IndexName, IndexName) && !row.IsDeleted {
 				s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
 				break
@@ -4793,6 +4797,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 
 	case ER_WITH_DEFAULT_ADD_COLUMN:
 		return s.Inc.CheckColumnDefaultValue
+	
+	case ER_NULL_NAME_FOR_INDEX:
+                return s.Inc.CheckNullIndexName
 
 	}
 

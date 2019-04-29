@@ -338,7 +338,12 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-
+	
+	//索引名空/不空
+       	sql = "create table t1 (c1 int, c2 int, c2 int,key (c1))"
+       	s.testErrorCode(c, sql,
+       		session.NewErr(session.ER_NULL_NAME_FOR_INDEX, "t1"))
+	
 	// 表存在
 	res := makeSQL(tk, "create table t1(id int);create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
