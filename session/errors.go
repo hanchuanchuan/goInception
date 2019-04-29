@@ -191,6 +191,7 @@ const (
 	ErrCollationNotSupport
 	ErrTableCollationNotSupport
 	ER_ERROR_LAST
+	ER_NULL_NAME_FOR_INDEX
 )
 
 var ErrorsDefault = map[int]string{
@@ -347,6 +348,7 @@ var ErrorsDefault = map[int]string{
 	ErrCharsetNotSupport:                   "Set charset to one of '%s'.",
 	ErrCollationNotSupport:                 "Set collation to one of '%s'",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
+	ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 }
 
 var ErrorsChinese = map[int]string{
@@ -501,6 +503,7 @@ var ErrorsChinese = map[int]string{
 	ErrCharsetNotSupport:                   "允许的字符集: '%s'.",
 	ErrCollationNotSupport:                 "允许的排序规则: '%s'.",
 	ErrWrongUsage:                          "%s子句无法使用%s",
+	ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 }
 
 func GetErrorLevel(errorNo int) uint8 {
@@ -608,7 +611,8 @@ func GetErrorLevel(errorNo int) uint8 {
 		ErrCharsetNotSupport,
 		ErrCollationNotSupport,
 		ER_FOREIGN_KEY,
-		ER_INCEPTION_EMPTY_QUERY:
+		ER_INCEPTION_EMPTY_QUERY,
+		ER_NULL_NAME_FOR_INDEX:
 		return 2
 
 	default:
