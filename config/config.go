@@ -338,6 +338,8 @@ type Inc struct {
 	// 支持的排序规则
 	SupportCollation string `toml:"support_collation" json:"support_collation"`
 	// Version *string
+
+	EnableNullIndexName  bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
 }
 
 // Osc online schema change 工具参数配置
