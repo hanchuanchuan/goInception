@@ -339,6 +339,10 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
+	sql = "create table t1 (c1 int, c2 int, c2 int,key aa (c1))"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NULL_NAME_FOR_INDEX, "t1"))
+
 	// 表存在
 	res := makeSQL(tk, "create table t1(id int);create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -376,6 +380,22 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = `create table t1(id int,c1 char(200));`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
+
+	// 字符集
+	sql = `create table t1(id int,c1 varchar(20) character set utf8,
+		c2 varchar(20) COLLATE utf8_bin);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
+
+	config.GetGlobalConfig().Inc.EnableSetCharset = false
+	sql = `create table t1(id int,c1 varchar(20)) character set utf8;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
+
+	sql = `create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -524,7 +544,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "create table t1(a int) character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8mb4"))
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -535,7 +555,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "create table t1(a int) character set laitn1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
 
 	// 外键
 	sql = "create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
@@ -700,16 +720,15 @@ primary key(id)) comment 'test';`
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);`
 	s.testErrorCode(c, sql)
 
-	// 配置参数时添加多余空格,判断对类型解析是否正确
-	config.GetGlobalConfig().Inc.MustHaveColumns = "c1  int,c2 datetime"
+	config.GetGlobalConfig().Inc.MustHaveColumns = "c1 int,c2 datetime"
 
 	sql = `drop table if exists t1;CREATE TABLE t1(id int);`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1  int,c2 datetime"))
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
 
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 bigint,c2 int);`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1  int,c2 datetime"))
+		session.NewErr(session.ER_MUST_HAVE_COLUMNS, "c1 int,c2 datetime"))
 
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)
@@ -881,8 +900,6 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
 	s.testErrorCode(c, sql)
 
-	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
-	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
@@ -1422,7 +1439,8 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop database test1;create database test1 character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
+		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -1433,7 +1451,7 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "drop database test1;create database test1 character set laitn1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
 }
 
 func (s *testSessionIncSuite) TestTimestampColumn(c *C) {
@@ -1696,65 +1714,4 @@ func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
 	sql = "create table t1(id varchar(10) primary key);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PK_COLS_NOT_INT, "id", "test_inc", "t1"))
-}
-
-func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
-	sql := ""
-
-	config.GetGlobalConfig().Inc.CheckColumnComment = false
-	config.GetGlobalConfig().Inc.CheckTableComment = false
-
-	// 表存在
-	res := makeSQL(tk, "create table t1(id int);create table t1(id int);")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 't1' already exists.")
-
-	// 字符集
-	sql = `create table t1(id int,c1 varchar(20) character set utf8,
-		c2 varchar(20) COLLATE utf8_bin);`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
-		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
-
-	config.GetGlobalConfig().Inc.EnableSetCharset = false
-	sql = `create table t1(id int,c1 varchar(20)) character set utf8;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
-
-	config.GetGlobalConfig().Inc.EnableSetCollation = false
-	sql = `create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrTableCollationNotSupport, "t1"))
-
-	sql = `create table t1(id int,c1 varchar(20)) character set utf8 COLLATE utf8_bin;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"),
-		session.NewErr(session.ErrTableCollationNotSupport, "t1"))
-
-	config.GetGlobalConfig().Inc.EnableSetCharset = true
-	config.GetGlobalConfig().Inc.EnableSetCollation = true
-	config.GetGlobalConfig().Inc.SupportCharset = ""
-	config.GetGlobalConfig().Inc.SupportCollation = ""
-
-	sql = `create table t1(id int,c1 varchar(20)) character set utf8 COLLATE utf8_bin;`
-	s.testErrorCode(c, sql)
-
-	config.GetGlobalConfig().Inc.SupportCharset = "utf8"
-	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8_bin;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8"))
-
-	config.GetGlobalConfig().Inc.SupportCollation = "utf8_bin"
-	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8mb4_bin;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8"),
-		session.NewErr(session.ErrCollationNotSupport, "utf8_bin"))
-
 }

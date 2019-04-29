@@ -94,6 +94,7 @@ const (
 	ER_TABLE_MUST_INNODB
 	ER_TABLE_CHARSET_MUST_UTF8
 	ER_TABLE_CHARSET_MUST_NULL
+	ER_NAMES_MUST_UTF8
 	ER_TABLE_MUST_HAVE_COMMENT
 	ER_COLUMN_HAVE_NO_COMMENT
 	ER_TABLE_MUST_HAVE_PK
@@ -187,10 +188,8 @@ const (
 	ErrNonUniqTable
 	ErrWrongUsage
 	ErrDataTooLong
-	ErrCharsetNotSupport
-	ErrCollationNotSupport
-	ErrTableCollationNotSupport
 	ER_ERROR_LAST
+	ER_NULL_NAME_FOR_INDEX
 )
 
 var ErrorsDefault = map[int]string{
@@ -250,7 +249,7 @@ var ErrorsDefault = map[int]string{
 	ER_TABLE_MUST_INNODB:                   "Set engine to innodb for table '%s'.",
 	ER_TABLE_CHARSET_MUST_UTF8:             "Set charset to one of '%s' for table '%s'.",
 	ER_TABLE_CHARSET_MUST_NULL:             "Not allowed set charset for table '%s'.",
-	ErrTableCollationNotSupport:            "Not allowed set collation for table '%s'.",
+	ER_NAMES_MUST_UTF8:                     "Set charset to one of '%s'.",
 	ER_TABLE_MUST_HAVE_COMMENT:             "Set comments for table '%s'.",
 	ER_COLUMN_HAVE_NO_COMMENT:              "Column '%s' in table '%s' have no comments.",
 	ER_TABLE_MUST_HAVE_PK:                  "Set a primary key for table '%s'.",
@@ -344,9 +343,8 @@ var ErrorsDefault = map[int]string{
 	ErrNonUniqTable:                        mysql.MySQLErrName[mysql.ErrNonuniqTable],
 	ErrWrongUsage:                          "Incorrect usage of %s and %s",
 	ErrDataTooLong:                         "Data too long for column '%s' at row %d",
-	ErrCharsetNotSupport:                   "Set charset to one of '%s'.",
-	ErrCollationNotSupport:                 "Set collation to one of '%s'",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
+	ER_NULL_NAME_FOR_INDEX:					"Index name cannot be null in table '%s'.",
 }
 
 var ErrorsChinese = map[int]string{
@@ -405,7 +403,7 @@ var ErrorsChinese = map[int]string{
 	ER_TABLE_MUST_INNODB:                   "仅支持innodb存储引擎(表'%s').",
 	ER_TABLE_CHARSET_MUST_UTF8:             "允许的字符集为: '%s'(表'%s').",
 	ER_TABLE_CHARSET_MUST_NULL:             "表 '%s' 禁止设置字符集!",
-	ErrTableCollationNotSupport:            "表 '%s' 禁止设置排序规则!",
+	ER_NAMES_MUST_UTF8:                     "允许的字符集为: '%s'.",
 	ER_TABLE_MUST_HAVE_COMMENT:             "表 '%s' 需要设置注释.",
 	ER_COLUMN_HAVE_NO_COMMENT:              "列 '%s' 需要设置注释(表'%s').",
 	ER_TABLE_MUST_HAVE_PK:                  "表 '%s' 需要设置主键.",
@@ -498,9 +496,8 @@ var ErrorsChinese = map[int]string{
 	ErrNotFoundMasterStatus:                "无法获取master binlog信息.",
 	ErrNonUniqTable:                        "表名或别名: '%-.192s' 不唯一.",
 	ErrDataTooLong:                         "数据过长!(列 '%s',行 '%d')",
-	ErrCharsetNotSupport:                   "允许的字符集: '%s'.",
-	ErrCollationNotSupport:                 "允许的排序规则: '%s'.",
 	ErrWrongUsage:                          "%s子句无法使用%s",
+	ER_NULL_NAME_FOR_INDEX:					"在表 '%s' 中, 索引名称不能为空.",
 }
 
 func GetErrorLevel(errorNo int) uint8 {
@@ -528,7 +525,6 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_IDENT_USE_KEYWORD,
 		ER_TABLE_CHARSET_MUST_UTF8,
 		ER_TABLE_CHARSET_MUST_NULL,
-		ErrTableCollationNotSupport,
 		ER_AUTO_INCR_ID_WARNING,
 		ER_ALTER_TABLE_ONCE,
 		ER_BLOB_CANT_HAVE_DEFAULT,
@@ -605,10 +601,10 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_CANT_DROP_FIELD_OR_KEY,
 		ER_NOT_SUPPORTED_YET,
 		ER_TABLE_MUST_INNODB,
-		ErrCharsetNotSupport,
-		ErrCollationNotSupport,
+		ER_NAMES_MUST_UTF8,
 		ER_FOREIGN_KEY,
-		ER_INCEPTION_EMPTY_QUERY:
+		ER_INCEPTION_EMPTY_QUERY,
+		ER_NULL_NAME_FOR_INDEX:
 		return 2
 
 	default:

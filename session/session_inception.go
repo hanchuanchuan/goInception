@@ -181,10 +181,10 @@ var (
 // var Keywords map[string]int = parser.GetKeywords()
 
 const (
-	maxKeyLength   = 767
-	maxKeyLength57 = 3072
+	MaxKeyLength   = 767
+	MaxKeyLength57 = 3072
 
-	remoteBackupTable              = "$_$Inception_backup_information$_$"
+	RemoteBackupTable              = "$_$Inception_backup_information$_$"
 	TABLE_COMMENT_MAXLEN           = 2048
 	COLUMN_COMMENT_MAXLEN          = 1024
 	INDEX_COMMENT_MAXLEN           = 1024
@@ -827,7 +827,7 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record) int {
 
 	// buf.WriteString("INSERT INTO ")
 	// dbname := s.getRemoteBackupDBName(record)
-	// buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable))
+	// buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
 	// buf.WriteString(" VALUES('")
 	// buf.WriteString(record.OPID)
 	// buf.WriteString("','")
@@ -954,7 +954,7 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 		s.backupTableCacheList[key] = true
 	}
 
-	key = fmt.Sprintf("%s.%s", backupDBName, remoteBackupTable)
+	key = fmt.Sprintf("%s.%s", backupDBName, RemoteBackupTable)
 	if _, ok := s.backupTableCacheList[key]; !ok {
 		createSql := s.mysqlCreateSqlBackupTable(backupDBName)
 		if err := s.backupdb.Exec(createSql).Error; err != nil {
@@ -977,7 +977,7 @@ func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
 
 	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
 
-	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable))
+	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, RemoteBackupTable))
 	buf.WriteString("(")
 
 	buf.WriteString("opid_time varchar(50),")
@@ -1944,16 +1944,13 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
-					if s.Inc.EnableSetCharset {
-						s.checkCharset(opt.StrValue)
-					} else {
+					if !s.Inc.EnableSetCharset {
 						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
 					}
+					s.checkCharset(opt.StrValue)
 				case ast.TableOptionCollate:
-					if s.Inc.EnableSetCollation {
-						s.checkCollation(opt.StrValue)
-					} else {
-						s.AppendErrorNo(ErrTableCollationNotSupport, node.Table.Name.O)
+					if !s.Inc.EnableSetCharset {
+						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
 					}
 				case ast.TableOptionComment:
 					if opt.StrValue != "" {
@@ -2134,11 +2131,9 @@ func (s *session) checkMustHaveColumns(table *TableInfo) {
 		col_name := col
 		col_type := ""
 		if strings.Contains(col, " ") {
-			column_name_type := strings.Fields(col)
-			if len(column_name_type) > 1 {
-				col_name = column_name_type[0]
-				col_type = GetDataTypeBase(column_name_type[1])
-			}
+			column_name_type := strings.SplitN(col, " ", 2)
+			col_name = column_name_type[0]
+			col_type = GetDataTypeBase(column_name_type[1])
 		}
 
 		found := false
@@ -2254,16 +2249,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
-					if s.Inc.EnableSetCharset {
-						s.checkCharset(opt.StrValue)
-					} else {
+					if !s.Inc.EnableSetCharset {
 						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
 					}
+					s.checkCharset(opt.StrValue)
 				case ast.TableOptionCollate:
-					if s.Inc.EnableSetCollation {
-						s.checkCollation(opt.StrValue)
-					} else {
-						s.AppendErrorNo(ErrTableCollationNotSupport, node.Table.Name.O)
+					if !s.Inc.EnableSetCharset {
+						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
 					}
 				case ast.TableOptionComment:
 					if opt.StrValue != "" {
@@ -2800,7 +2792,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 
 	if !isPrimary {
-		if field.Tp != nil && mysql.HasPriKeyFlag(field.Tp.Flag) {
+		if field.Tp != nil && field.Tp.Flag&mysql.PriKeyFlag == mysql.PriKeyFlag {
 			isPrimary = true
 		}
 	}
@@ -2847,9 +2839,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if hasDefaultValue && !defaultValue.IsNull() && (field.Tp.Tp == mysql.TypeJSON || types.IsTypeBlob(field.Tp.Tp)) {
 		s.AppendErrorNo(ER_BLOB_CANT_HAVE_DEFAULT, field.Name.Name.O)
 	}
-	//是否使用 text\blob\json 字段类型
-	//当EnableNullable=false，不强制text\blob\json使用NOT NULL
-	if types.IsTypeBlob(field.Tp.Tp) || field.Tp.Tp == mysql.TypeJSON {
+
+	if types.IsTypeBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
 	} else {
 		if !notNullFlag && !hasGenerated {
@@ -2866,8 +2857,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if isIncorrectName(field.Name.Name.O) {
 		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
 	}
-	//text/blob/json 字段禁止设置NOT NULL
-	if (types.IsTypeBlob(field.Tp.Tp) || field.Tp.Tp == mysql.TypeJSON) && notNullFlag {
+
+	if types.IsTypeBlob(field.Tp.Tp) && notNullFlag {
 		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
 	}
 
@@ -2919,9 +2910,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 
 		return
 	}
-
 	if name == "" {
-		s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, "NULL", table.Name)
+		s.AppendErrorNo(ER_NULL_NAME_FOR_INDEX, table.Name)
 	} else {
 		// found := false
 		// for _, field := range table.Fields {
@@ -3064,9 +3054,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			t := s.cacheTableSnapshot(t)
 			t.IsNewColumns = true
 
-			if c.Position == nil || c.Position.Tp == ast.ColumnPositionNone {
-				t.Fields = append(t.Fields, *newColumn)
-			} else if c.Position.Tp == ast.ColumnPositionFirst {
+			if c.Position.Tp == ast.ColumnPositionFirst {
 				tmp := make([]FieldInfo, 0, len(t.Fields)+1)
 				tmp = append(tmp, *newColumn)
 				tmp = append(tmp, t.Fields...)
@@ -3093,6 +3081,8 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					t.Fields = tmp
 					// log.Infof("%#v", t.Fields)
 				}
+			} else {
+				t.Fields = append(t.Fields, *newColumn)
 			}
 
 			if s.opt.execute {
@@ -3291,10 +3281,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	if !isBlobColumn {
 		mysqlVersion := s.DBVersion
 		// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
-		if mysqlVersion < 50700 && keyMaxLen > maxKeyLength {
-			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
-		} else if (mysqlVersion >= 50700) && keyMaxLen > maxKeyLength57 {
-			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
+		if mysqlVersion < 50700 && keyMaxLen > MaxKeyLength {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength)
+		} else if (mysqlVersion >= 50700) && keyMaxLen > MaxKeyLength57 {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, MaxKeyLength57)
 		}
 	}
 
@@ -3309,6 +3299,9 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 
 	if len(rows) > 0 {
 		for _, row := range rows {
+			if !s.Inc.CheckNullIndexName && row.IndexName == "" {
+				continue
+			}
 			if strings.EqualFold(row.IndexName, IndexName) && !row.IsDeleted {
 				s.AppendErrorNo(ER_DUP_INDEX, IndexName, t.Schema, t.Name)
 				break
@@ -4130,17 +4123,13 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
 		for _, opt := range node.Options {
 			switch opt.Tp {
 			case ast.DatabaseOptionCharset:
-				if s.Inc.EnableSetCharset {
-					s.checkCharset(opt.Value)
-				} else {
+				if !s.Inc.EnableSetCharset {
 					s.AppendErrorNo(ER_CANT_SET_CHARSET, opt.Value)
 				}
+
+				s.checkCharset(opt.Value)
 			case ast.DatabaseOptionCollate:
-				if s.Inc.EnableSetCollation {
-					s.checkCollation(opt.Value)
-				} else {
-					s.AppendErrorNo(ER_CANT_SET_COLLATION, opt.Value)
-				}
+				s.AppendErrorNo(ER_CANT_SET_COLLATION, opt.Value)
 			}
 		}
 
@@ -4163,20 +4152,7 @@ func (s *session) checkCharset(charset string) bool {
 				return true
 			}
 		}
-		s.AppendErrorNo(ErrCharsetNotSupport, s.Inc.SupportCharset)
-		return false
-	}
-	return true
-}
-
-func (s *session) checkCollation(collation string) bool {
-	if s.Inc.SupportCollation != "" {
-		for _, item := range strings.Split(s.Inc.SupportCollation, ",") {
-			if strings.EqualFold(item, collation) {
-				return true
-			}
-		}
-		s.AppendErrorNo(ErrCollationNotSupport, s.Inc.SupportCollation)
+		s.AppendErrorNo(ER_NAMES_MUST_UTF8, s.Inc.SupportCharset)
 		return false
 	}
 	return true
@@ -4794,6 +4770,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 	case ER_WITH_DEFAULT_ADD_COLUMN:
 		return s.Inc.CheckColumnDefaultValue
 
+	case ER_NULL_NAME_FOR_INDEX:
+		return s.Inc.CheckNullIndexName
+
 	}
 
 	return true
@@ -4949,7 +4928,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 		}
 	}
 
-	if c.Key != "PRI" && mysql.HasPriKeyFlag(field.Tp.Flag) {
+	if c.Key != "PRI" && field.Tp.Flag&mysql.PriKeyFlag == mysql.PriKeyFlag {
 		c.Key = "PRI"
 	}
 
