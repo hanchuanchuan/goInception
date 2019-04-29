@@ -338,7 +338,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-	
+
 	// 表存在
 	res := makeSQL(tk, "create table t1(id int);create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -558,6 +558,9 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_MULTIPLE_PRI_KEY))
+
+	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key cca(c2));"
+	s.testErrorCode(c, sql)
 
 	fmt.Println("数据库版本: ", s.getDBVersion(c))
 

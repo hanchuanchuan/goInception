@@ -209,6 +209,9 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
+	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key a(c2));"
+	s.testErrorCode(c, sql)
+
 	// 表存在
 	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int);create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
