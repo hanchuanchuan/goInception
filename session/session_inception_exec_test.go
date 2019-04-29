@@ -209,7 +209,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	sql = "create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key a(c2));"
+	sql = "create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key ix_1(c2));"
 	s.testErrorCode(c, sql)
 
 	// 表存在
@@ -439,7 +439,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	sql = "drop table if exists t1;create table t1(pt text ,primary key (pt));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
-		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+		session.NewErr(session.ER_TOO_LONG_KEY, "PRIMARY", indexMaxLength))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	// 索引长度

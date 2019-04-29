@@ -562,6 +562,17 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key cca(c2));"
 	s.testErrorCode(c, sql)
 
+	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key(c2));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_2"))
+
+	config.GetGlobalConfig().Inc.EnableNullIndexName = true
+
+	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key(c2));"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.EnableNullIndexName = false
+
 	fmt.Println("数据库版本: ", s.getDBVersion(c))
 
 	indexMaxLength := 767
@@ -573,7 +584,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table test_error_code_3(pt text ,primary key (pt));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
-		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+		session.NewErr(session.ER_TOO_LONG_KEY, "PRIMARY", indexMaxLength))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	// 索引长度

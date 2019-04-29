@@ -2921,7 +2921,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	}
 
 	if name == "" {
-		if !s.Inc.EnableNullIndexName{
+		if !s.Inc.EnableNullIndexName {
 			//s.AppendErrorNo(ER_NULL_NAME_FOR_INDEX, table.Name)
 			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, "NULL", table.Name)
 		}
@@ -3205,6 +3205,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		if t == nil {
 			return
 		}
+	}
+
+	if tp == ast.ConstraintPrimaryKey && IndexName == "" {
+		IndexName = "PRIMARY"
 	}
 
 	s.checkIndexAttr(tp, IndexName, IndexColNames, t)
@@ -4800,9 +4804,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 
 	case ER_WITH_DEFAULT_ADD_COLUMN:
 		return s.Inc.CheckColumnDefaultValue
-	
-	/*case ER_NULL_NAME_FOR_INDEX:
-        return s.Inc.EnableNullIndexName*/
+
+		/*case ER_NULL_NAME_FOR_INDEX:
+		  return s.Inc.EnableNullIndexName*/
 	}
 
 	return true
