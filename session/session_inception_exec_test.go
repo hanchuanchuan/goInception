@@ -209,7 +209,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	sql = "create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), key a(c2));"
+	sql = "create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key a(c2));"
 	s.testErrorCode(c, sql)
 
 	// 表存在
@@ -416,11 +416,11 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
 
-	sql = "drop table if exists t1;create table test_error_code_2;"
+	sql = "drop table if exists test_error_code_2;create table test_error_code_2;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
-	sql = "drop table if exists t1;create table test_error_code_2 (unique(c1));"
+	sql = "drop table if exists test_error_code_2;create table test_error_code_2 (unique(c1));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
