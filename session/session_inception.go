@@ -3610,18 +3610,17 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			// }
 
 			if !s.hasError() {
-				// s.checkSelectItem(sel)
-				s.checkSelectItem(x.Select)
-			}
+				if from == nil || (fromTable != nil && !fromTable.IsNew) {
+					i := strings.Index(strings.ToLower(sql), "select")
+					selectSql := sql[i:]
 
-			if from == nil || (fromTable != nil && !fromTable.IsNew) {
-				i := strings.Index(strings.ToLower(sql), "select")
-				selectSql := sql[i:]
+					s.explainOrAnalyzeSql(selectSql)
 
-				s.explainOrAnalyzeSql(selectSql)
-
-				if from == nil && s.myRecord.AffectedRows == 0 {
-					s.myRecord.AffectedRows = 1
+					if from == nil && s.myRecord.AffectedRows == 0 {
+						s.myRecord.AffectedRows = 1
+					}
+				} else {
+					s.checkSelectItem(x.Select)
 				}
 			}
 
