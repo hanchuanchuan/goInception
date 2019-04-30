@@ -5076,13 +5076,19 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 
 	var tableInfoList []*TableInfo
 	for _, tblSource := range tableList {
-		tblName, _ := tblSource.Source.(*ast.TableName)
-		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
-		if t != nil {
-			if tblSource.AsName.L != "" {
-				t.AsName = tblSource.AsName.O
+
+		switch x := tblSource.Source.(type) {
+		case *ast.TableName:
+			tblName := x
+			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+			if t != nil {
+				if tblSource.AsName.L != "" {
+					t.AsName = tblSource.AsName.O
+				}
+				tableInfoList = append(tableInfoList, t)
 			}
-			tableInfoList = append(tableInfoList, t)
+		case *ast.SelectStmt:
+			s.checkSubSelectItem(x)
 		}
 	}
 
