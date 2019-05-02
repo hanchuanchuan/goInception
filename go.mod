@@ -6,6 +6,7 @@ replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/CorgiMan/json2 v0.0.0-20150213135156-e72957aba209
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/blacktear23/go-proxyprotocol v0.0.0-20171102103907-62e368e1c470
 	github.com/boltdb/bolt v1.3.1 // indirect
