@@ -213,6 +213,9 @@ type session struct {
 
 	// 当前阶段 [Check,Execute,Backup]
 	stage byte
+
+	// 打印语法树
+	printSets *PrintSets
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.

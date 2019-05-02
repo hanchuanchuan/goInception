@@ -482,3 +482,53 @@ func NewOscProcessListSets(count int, hideCommand bool) *ProcessListSets {
 
 	return t
 }
+
+type PrintSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+}
+
+func NewPrintSets() *PrintSets {
+	t := &PrintSets{}
+
+	rc := &recordSet{
+		// data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 5)
+
+	rc.CreateFiled("id", mysql.TypeLong)
+	rc.CreateFiled("statement", mysql.TypeString)
+	rc.CreateFiled("errlevel", mysql.TypeLong)
+	rc.CreateFiled("query_tree", mysql.TypeString)
+	rc.CreateFiled("errmsg", mysql.TypeString)
+	t.rc = rc
+
+	return t
+}
+
+func (s *PrintSets) Append(errLevel int64, sql, tree, errmsg string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetInt64(int64(s.rc.count + 1))
+	row[1].SetString(sql)
+	row[2].SetInt64(errLevel)
+	row[3].SetString(tree)
+	if errmsg == "" {
+		row[4].SetNull()
+	} else {
+		row[4].SetString(errmsg)
+	}
+
+	s.rc.data = append(s.rc.data, row)
+	s.rc.count++
+}
+
+func (s *PrintSets) Rows() []ast.RecordSet {
+	return []ast.RecordSet{s.rc}
+}

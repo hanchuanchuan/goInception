@@ -83,6 +83,8 @@ type sourceOptions struct {
 
 	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
 	fingerprint bool
+
+	Print bool
 }
 
 // ExplainInfo 执行计划信息
@@ -272,7 +274,11 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 	defer func() {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
-			s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
+			if s.opt != nil && s.opt.Print {
+				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
+			} else {
+				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
+			}
 		}
 	}()
 
@@ -314,12 +320,16 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				if !s.haveBegin && strings.Contains(s1, "*/") {
 					s1 = s1[strings.Index(s1, "*/")+2:]
 				}
-				s.recordSets.Append(&Record{
-					Sql:          strings.TrimSpace(s1),
-					ErrLevel:     2,
-					ErrorMessage: err.Error(),
-				})
-				return s.recordSets.Rows(), nil
+				if s.opt != nil && s.opt.Print {
+					s.printSets.Append(2, strings.TrimSpace(s1), "", err.Error())
+				} else {
+					s.recordSets.Append(&Record{
+						Sql:          strings.TrimSpace(s1),
+						ErrLevel:     2,
+						ErrorMessage: err.Error(),
+					})
+				}
+				return s.makeResult()
 
 				s.rollbackOnError(ctx)
 				log.Warnf("con:%d parse error:\n%v\n%s", connID, err, s1)
@@ -352,10 +362,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					if s.haveBegin {
 						s.AppendErrorNo(ER_HAVE_BEGIN)
 						s.myRecord.Sql = ""
-						s.recordSets.Append(s.myRecord)
+						if s.opt != nil && s.opt.Print {
+							s.printSets.Append(2, currentSql, "", GetErrorMessage(ER_HAVE_BEGIN))
+						} else {
+							s.recordSets.Append(s.myRecord)
+						}
 
 						log.Error(sql)
-						return s.recordSets.Rows(), nil
+						return s.makeResult()
 					}
 
 					// 操作前重设上下文
@@ -375,12 +389,20 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					if s.myRecord.ErrLevel == 2 {
 						s.myRecord.Sql = ""
-						s.recordSets.Append(s.myRecord)
-						return s.recordSets.Rows(), nil
+						if s.opt != nil && s.opt.Print {
+							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else {
+							s.recordSets.Append(s.myRecord)
+						}
+						return s.makeResult()
 					}
 
 					s.mysqlServerVersion()
 					s.initMysqlSQLMode()
+
+					if s.opt.Print {
+						s.printSets = NewPrintSets()
+					}
 
 					// sql指纹设置取并集
 					if s.opt.fingerprint {
@@ -396,21 +418,29 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					if !s.haveBegin {
 						s.AppendErrorMessage("Must start as begin statement.")
-						s.recordSets.Append(s.myRecord)
-						return s.recordSets.Rows(), nil
+						if s.opt != nil && s.opt.Print {
+							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else {
+							s.recordSets.Append(s.myRecord)
+						}
+						return s.makeResult()
 					}
 
 					s.haveCommit = true
 					s.executeCommit(ctx)
-					return s.recordSets.Rows(), nil
+					return s.makeResult()
 				default:
 					need := s.needDataSource(stmtNode)
 
 					if !s.haveBegin && need {
 						log.Warnf("%#v", stmtNode)
 						s.AppendErrorMessage("Must start as begin statement.")
-						s.recordSets.Append(s.myRecord)
-						return s.recordSets.Rows(), nil
+						if s.opt != nil && s.opt.Print {
+							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else {
+							s.recordSets.Append(s.myRecord)
+						}
+						return s.makeResult()
 					}
 
 					s.SetMyProcessInfo(currentSql, time.Now(), float64(i)/float64(lineCount+1))
@@ -427,15 +457,19 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 							return nil, errors.Trace(err)
 						}
 
-						return s.processCommand(ctx, stmtNode, currentSql)
-						// if err != nil {
-						// 	return nil, err
-						// }
-						// if result != nil {
-						// 	return result, nil
-						// }
+						if s.opt != nil && s.opt.Print {
+							return s.printCommand(ctx, stmtNode, currentSql)
+						} else {
+							return s.processCommand(ctx, stmtNode, currentSql)
+						}
 					} else {
-						result, err := s.processCommand(ctx, stmtNode, currentSql)
+						var result []ast.RecordSet
+						var err error
+						if s.opt != nil && s.opt.Print {
+							result, err = s.printCommand(ctx, stmtNode, currentSql)
+						} else {
+							result, err = s.processCommand(ctx, stmtNode, currentSql)
+						}
 						if err != nil {
 							return nil, err
 						}
@@ -448,19 +482,31 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					if err := checkClose(ctx); err != nil {
 						log.Warn("Killed: ", err)
 						s.AppendErrorMessage("Operation has been killed!")
-						s.recordSets.Append(s.myRecord)
-						return s.recordSets.Rows(), nil
+						if s.opt != nil && s.opt.Print {
+							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else {
+							s.recordSets.Append(s.myRecord)
+						}
+						return s.makeResult()
 					}
 				}
 
 				if !s.haveBegin && s.needDataSource(stmtNode) {
 					log.Warnf("%#v", stmtNode)
 					s.AppendErrorMessage("Must start as begin statement.")
-					s.recordSets.Append(s.myRecord)
-					return s.recordSets.Rows(), nil
+					if s.opt != nil && s.opt.Print {
+						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+					} else {
+						s.recordSets.Append(s.myRecord)
+					}
+					return s.makeResult()
 				}
 
-				s.recordSets.Append(s.myRecord)
+				if s.opt != nil && s.opt.Print {
+					// s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+				} else {
+					s.recordSets.Append(s.myRecord)
+				}
 			}
 
 			buf = nil
@@ -485,7 +531,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 		})
 	}
 
-	return s.recordSets.Rows(), nil
+	return s.makeResult()
 
 	if s.sessionVars.ClientCapability&mysql.ClientMultiResults == 0 && len(recordSets) > 1 {
 		// return the first recordset if client doesn't support ClientMultiResults.
@@ -495,6 +541,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	// t := &testStatisticsSuite{}
 
 	return recordSets, nil
+}
+
+func (s *session) makeResult() (recordSets []ast.RecordSet, err error) {
+	if s.opt != nil && s.opt.Print && s.printSets != nil {
+		return s.printSets.Rows(), nil
+	} else {
+		return s.recordSets.Rows(), nil
+	}
 }
 
 func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
@@ -589,8 +643,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.KillStmt:
 		return s.executeKillStmt(node)
 	default:
-		log.Info("无匹配类型...")
-		log.Infof("%T\n", stmtNode)
+		log.Infof("无匹配类型:%T\n", stmtNode)
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
 
@@ -600,7 +653,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 }
 
 func (s *session) executeCommit(ctx context.Context) {
-	if s.opt.check {
+
+	if s.opt.check || s.opt.Print || !s.opt.execute {
 		return
 	}
 
@@ -1549,14 +1603,20 @@ func (s *session) parseOptions(sql string) {
 		middlewareDB:     viper.GetString("middlewareDB"),
 
 		fingerprint: viper.GetBool("fingerprint"),
+
+		Print: viper.GetBool("queryPrint"),
 	}
 
-	if s.opt.check {
+	if s.opt.check || s.opt.Print {
 		s.opt.execute = false
 		s.opt.backup = false
 
 		// 审核阶段自动忽略警告,以免审核过早中止
 		s.opt.ignoreWarnings = true
+	}
+
+	if s.opt.Print {
+		s.opt.check = false
 	}
 
 	// log.Infof("%#v", s.opt)
