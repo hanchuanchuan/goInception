@@ -19,13 +19,12 @@ func (s *session) printCommand(ctx context.Context, stmtNode ast.StmtNode,
 	log.Debug("printCommand")
 
 	// b, err := json.MarshalIndent(stmtNode, "", "  ")
-	b, err := json.Marshal(stmtNode)
+	tree, err := json.Marshal(stmtNode)
 	if err != nil {
 		log.Error(err)
 		s.printSets.Append(2, currentSql, "", err.Error())
 	} else {
-		str := string(b)
-		s.printSets.Append(0, currentSql, str, "")
+		s.printSets.Append(0, currentSql, string(tree), "")
 	}
 
 	return nil, nil

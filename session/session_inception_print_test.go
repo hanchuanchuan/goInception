@@ -144,3 +144,35 @@ func (s *testSessionPrintSuite) TestInsert(c *C) {
 	c.Assert(row[4], Equals, "line 1 column 21 near \"\" (total length 21)", Commentf("%v", row))
 
 }
+
+func (s *testSessionPrintSuite) TestUpdate(c *C) {
+
+	res := s.makeSQL(`update t1 set c1=1 where a=1;`)
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+
+	res = s.makeSQL("update t1 inner join t2 on t1.id=t2.id set c2=1 where t1.c1=1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+
+}
+
+func (s *testSessionPrintSuite) TestDelete(c *C) {
+
+	res := s.makeSQL(`delete from t1 where id=1;`)
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+
+	// res = s.makeSQL("update t1 inner join t2 on t1.id=t2.id set c2=1 where t1.c1=1;")
+	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	// c.Assert(row[2], Equals, "0", Commentf("%v", row))
+
+}
+
+func (s *testSessionPrintSuite) TestAlterTable(c *C) {
+
+	res := s.makeSQL(`alter table t1 add column c1 int;`)
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+
+}
