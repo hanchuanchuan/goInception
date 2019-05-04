@@ -1,6 +1,22 @@
 # goInception 更新日志
 
 
+## [v0.7.1-beta] - 2019-5-4
+
+### Update
+* 优化json类型字段处理逻辑，不再检查其默认值和NOT NULL约束 (#7, #22)
+* 优化must_have_columns参数值解析
+* 优化insert select审核逻辑
+
+### Fix
+* 修复和完善add column(...)语法支持
+* 修复开启osc时,alter语句有多余空格时执行失败的bug
+
+### New Features
+* 添加`enable_null_index_name`参数，允许不指定索引名 (#25)
+* 添加语法树打印功能(beta) (#21)
+
+
 ## [v0.7-beta] - 2019-4-26
 
 ### Update

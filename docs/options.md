@@ -52,6 +52,7 @@ enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
 enable_not_innodb   |  false    |   true,false     |  建表指定的存储引擎不为Innodb，不报错
 enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
+enable_null_index_name `v0.7.1`|  false    |   true,false     |    创建索引时是否允许空索引名
 enable_orderby_rand   |  false    |   true,false     |    order by rand时是不是报错
 enable_partition_table   |  false    |   true,false     |     是不是支持分区表
 enable_pk_columns_only_int  |  false    |   true,false     |     是否强制主键列必须是int
