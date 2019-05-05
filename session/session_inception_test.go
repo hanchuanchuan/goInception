@@ -484,7 +484,8 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckTimestampDefault = false
 	sql = "create table t1(id int primary key,c1 timestamp default CURRENT_TIMESTAMP,c2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) {
+	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "c2"))
@@ -495,14 +496,18 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	if s.getExplicitDefaultsForTimestamp(c) {
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_TIMESTAMP_DEFAULT, "c2"))
-	} else {
+	} else if strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE")) {
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_INVALID_DEFAULT, "c2"))
+	} else {
+		s.testErrorCode(c, sql)
 	}
 
 	config.GetGlobalConfig().Inc.CheckTimestampDefault = false
 	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp not null ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) {
+	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
@@ -515,7 +520,8 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	// 时间戳 timestamp数量
 	config.GetGlobalConfig().Inc.CheckTimestampCount = false
 	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) {
+	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
@@ -526,7 +532,8 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckTimestampCount = true
 	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) {
+	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
@@ -1092,7 +1099,8 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	s.testErrorCode(c, sql)
 
 	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) {
+	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
