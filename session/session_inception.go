@@ -399,6 +399,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					s.mysqlServerVersion()
 					s.initMysqlSQLMode()
+					s.mysqlExplicitDefaultsForTimestamp()
 
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
@@ -1444,7 +1445,37 @@ func (s *session) initMysqlSQLMode() {
 		// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
 		sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
 	}
+}
 
+func (s *session) mysqlExplicitDefaultsForTimestamp() {
+	log.Debug("mysqlExplicitDefaultsForTimestamp")
+
+	var value string
+	sql := "show variables where Variable_name='explicit_defaults_for_timestamp';"
+
+	rows, err := s.Raw(sql)
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	if err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&value, &value)
+		}
+	}
+
+	if value == "ON" {
+		s.explicitDefaultsForTimestamp = true
+	}
+
+	// log.Info("s.explicitDefaultsForTimestamp:", s.explicitDefaultsForTimestamp)
 }
 
 func (s *session) fetchThreadID() uint32 {
@@ -2099,6 +2130,53 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 			if len(node.Cols) > 0 {
 
+				// 处理explicitDefaultsForTimestamp逻辑
+				if !s.explicitDefaultsForTimestamp {
+					timestampColCount := 0
+					for _, field := range node.Cols {
+						if field.Tp.Tp == mysql.TypeTimestamp {
+							timestampColCount += 1
+							if timestampColCount == 1 {
+								hasNotNullFlag := false
+								hasDefault := false
+								for _, op := range field.Options {
+									switch op.Tp {
+									case ast.ColumnOptionNotNull:
+										hasNotNullFlag = true
+									case ast.ColumnOptionDefaultValue, ast.ColumnOptionOnUpdate:
+										hasDefault = true
+									}
+								}
+								// NOT NULL 并且 没有默认值时,自动设置DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+								if hasNotNullFlag && !hasDefault {
+									nowFunc := &ast.FuncCallExpr{FnName: model.NewCIStr("CURRENT_TIMESTAMP")}
+									field.Options = append(field.Options,
+										&ast.ColumnOption{Tp: ast.ColumnOptionDefaultValue, Expr: nowFunc})
+									field.Options = append(field.Options,
+										&ast.ColumnOption{Tp: ast.ColumnOptionOnUpdate, Expr: nowFunc})
+								}
+							} else {
+								hasNullFlag := false
+								hasDefault := false
+								for _, op := range field.Options {
+									switch op.Tp {
+									case ast.ColumnOptionNull:
+										hasNullFlag = true
+									case ast.ColumnOptionDefaultValue:
+										hasDefault = true
+									}
+								}
+								// NOT NULL 并且 没有默认值时,自动设置DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+								if !hasNullFlag && !hasDefault {
+									// 指定默认值为0000-00-00 00:00:00
+									field.Options = append(field.Options,
+										&ast.ColumnOption{Tp: ast.ColumnOptionDefaultValue, Expr: ast.NewValueExpr(types.ZeroDatetimeStr)})
+								}
+							}
+						}
+					}
+				}
+
 				table = s.buildTableInfo(node)
 
 				if s.Inc.MustHaveColumns != "" {
@@ -2107,6 +2185,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				currentTimestampCount := 0
 				onUpdateTimestampCount := 0
+
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
 

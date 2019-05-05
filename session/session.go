@@ -216,6 +216,9 @@ type session struct {
 
 	// 打印语法树
 	printSets *PrintSets
+
+	// 时间戳类型是否需要明确指定默认值
+	explicitDefaultsForTimestamp bool
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
