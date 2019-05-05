@@ -45,6 +45,10 @@ type testSessionIncBackupSuite struct {
 	dom       *domain.Domain
 	tk        *testkit.TestKit
 	db        *gorm.DB
+
+	sqlMode string
+	// 时间戳类型是否需要明确指定默认值
+	explicitDefaultsForTimestamp bool
 }
 
 func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
@@ -88,6 +92,8 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	session.SetLanguage("en-US")
 
+	fmt.Println("SQLMode: ", s.getSQLMode(c))
+	fmt.Println("ExplicitDefaultsForTimestamp: ", s.getExplicitDefaultsForTimestamp(c))
 }
 
 func (s *testSessionIncBackupSuite) TearDownSuite(c *C) {
@@ -503,7 +509,12 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 		res = s.makeSQL(tk, "delete from t1;")
 		row = res.Rows()[int(tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
-		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+		if s.getExplicitDefaultsForTimestamp(c) {
+			c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+		} else {
+			v := strings.HasPrefix(backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'20")
+			c.Assert(v, Equals, true, Commentf("%v", res.Rows()))
+		}
 	}
 
 	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 time);
@@ -670,4 +681,63 @@ func trim(s string) string {
 		return trim(strings.Replace(s, "  ", " ", -1))
 	}
 	return s
+}
+
+func (s *testSessionIncBackupSuite) getSQLMode(c *C) string {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
+	if s.sqlMode != "" {
+		return s.sqlMode
+	}
+
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	sql := "show variables like 'sql_mode'"
+
+	res := s.makeSQL(s.tk, sql)
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2, Commentf("%v", res.Rows()))
+
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	versionStr := row[5].(string)
+
+	versionStr = strings.SplitN(versionStr, "|", 2)[1]
+	value := strings.Replace(versionStr, "'", "", -1)
+	value = strings.TrimSpace(value)
+
+	s.sqlMode = value
+	return value
+}
+
+func (s *testSessionIncBackupSuite) getExplicitDefaultsForTimestamp(c *C) bool {
+	if testing.Short() {
+		c.Skip("skipping test; in TRAVIS mode")
+	}
+
+	if s.sqlMode != "" {
+		return s.explicitDefaultsForTimestamp
+	}
+
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	sql := "show variables where Variable_name='explicit_defaults_for_timestamp';"
+
+	res := s.makeSQL(s.tk, sql)
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2, Commentf("%v", res.Rows()))
+
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	versionStr := row[5].(string)
+
+	versionStr = strings.SplitN(versionStr, "|", 2)[1]
+	value := strings.Replace(versionStr, "'", "", -1)
+	value = strings.TrimSpace(value)
+	if value == "ON" {
+		s.explicitDefaultsForTimestamp = true
+	}
+	return s.explicitDefaultsForTimestamp
 }
