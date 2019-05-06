@@ -15,6 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build !windows,!nacl,!plan9
+
 package session
 
 import (
@@ -34,6 +36,7 @@ import (
 	// "github.com/hanchuanchuan/goInception/server"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
+
 	// "github.com/pingcap/errors"
 
 	"github.com/github/gh-ost/go/base"
