@@ -190,8 +190,9 @@ const (
 	ErrCharsetNotSupport
 	ErrCollationNotSupport
 	ErrTableCollationNotSupport
-	ER_ERROR_LAST
+	ErrJsonTypeSupport
 	//ER_NULL_NAME_FOR_INDEX
+	ER_ERROR_LAST
 )
 
 var ErrorsDefault = map[int]string{
@@ -347,6 +348,7 @@ var ErrorsDefault = map[int]string{
 	ErrDataTooLong:                         "Data too long for column '%s' at row %d",
 	ErrCharsetNotSupport:                   "Set charset to one of '%s'.",
 	ErrCollationNotSupport:                 "Set collation to one of '%s'",
+	ErrJsonTypeSupport:                     "Json type not allowed in column '%s'.",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 }
@@ -503,6 +505,7 @@ var ErrorsChinese = map[int]string{
 	ErrCharsetNotSupport:                   "允许的字符集: '%s'.",
 	ErrCollationNotSupport:                 "允许的排序规则: '%s'.",
 	ErrWrongUsage:                          "%s子句无法使用%s",
+	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 }
 

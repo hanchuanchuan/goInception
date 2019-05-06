@@ -299,6 +299,7 @@ type Inc struct {
 	EnableFingerprint      bool `toml:"enable_fingerprint" json:"enable_fingerprint"`
 	EnableForeignKey       bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
 	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
+	EnableJsonType         bool `toml:"enable_json_type" json:"enable_json_type"`
 	EnableNotInnodb        bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
 	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
 	EnableOrderByRand      bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
@@ -339,7 +340,7 @@ type Inc struct {
 	SupportCollation string `toml:"support_collation" json:"support_collation"`
 	// Version *string
 
-	EnableNullIndexName  bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
+	EnableNullIndexName bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
 }
 
 // Osc online schema change 工具参数配置
