@@ -1,9 +1,6 @@
 ---
 name: "\U0001F680 功能建议"
 about: 建议和想法
-title:
-labels:
-assignees:
 
 ---
 
