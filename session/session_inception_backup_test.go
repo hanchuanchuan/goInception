@@ -46,6 +46,7 @@ type testSessionIncBackupSuite struct {
 	tk        *testkit.TestKit
 	db        *gorm.DB
 
+	version int
 	sqlMode string
 	// 时间戳类型是否需要明确指定默认值
 	explicitDefaultsForTimestamp bool
@@ -86,6 +87,7 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	config.GetGlobalConfig().Inc.EnableBlobType = true
+	config.GetGlobalConfig().Inc.EnableJsonType = true
 
 	inc.EnableDropTable = true
 
@@ -94,6 +96,7 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 
 	fmt.Println("SQLMode: ", s.getSQLMode(c))
 	fmt.Println("ExplicitDefaultsForTimestamp: ", s.getExplicitDefaultsForTimestamp(c))
+	fmt.Println("version: ", s.getDBVersion(c))
 }
 
 func (s *testSessionIncBackupSuite) TearDownSuite(c *C) {
@@ -117,13 +120,20 @@ func (s *testSessionIncBackupSuite) TearDownTest(c *C) {
 	}
 }
 
-func (s *testSessionIncBackupSuite) makeSQL(tk *testkit.TestKit, sql string) *testkit.Result {
+func (s *testSessionIncBackupSuite) makeSQL(c *C, tk *testkit.TestKit, sql string) *testkit.Result {
 	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	return tk.MustQueryInc(fmt.Sprintf(a, sql))
+	res := tk.MustQueryInc(fmt.Sprintf(a, sql))
+
+	// 需要成功执行
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+
+	return res
 }
 
 func (s *testSessionIncBackupSuite) getDBVersion(c *C) int {
@@ -135,9 +145,12 @@ func (s *testSessionIncBackupSuite) getDBVersion(c *C) int {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
 
+	if s.version > 0 {
+		return s.version
+	}
 	sql := "show variables like 'version'"
 
-	res := s.makeSQL(s.tk, sql)
+	res := s.makeSQL(c, s.tk, sql)
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
 
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -159,6 +172,7 @@ func (s *testSessionIncBackupSuite) getDBVersion(c *C) int {
 		if err != nil {
 			fmt.Println(err)
 		}
+		s.version = version
 		return version
 	}
 
@@ -172,7 +186,7 @@ func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int);")
+	res := s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
@@ -186,24 +200,24 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-	res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int);")
+	res := s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;")
 
-	res = s.makeSQL(tk, "drop table t1;")
+	res = s.makeSQL(c, tk, "drop table t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
 
-	s.makeSQL(tk, "create table t1(id int) default charset utf8mb4;")
-	res = s.makeSQL(tk, "drop table t1;")
+	s.makeSQL(c, tk, "create table t1(id int) default charset utf8mb4;")
+	res = s.makeSQL(c, tk, "drop table t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
 
-	s.makeSQL(tk, "create table t1(id int not null default 0);")
-	res = s.makeSQL(tk, "drop table t1;")
+	s.makeSQL(c, tk, "create table t1(id int not null default 0);")
+	res = s.makeSQL(c, tk, "drop table t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) NOT NULL DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
@@ -220,22 +234,22 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int);")
+	res := s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
-	res = s.makeSQL(tk, "alter table t1 add column c1 int;")
+	res = s.makeSQL(c, tk, "alter table t1 add column c1 int;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
 
-	res = s.makeSQL(tk, "alter table t1 add column c2 bit first;")
+	res = s.makeSQL(c, tk, "alter table t1 add column c2 bit first;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c2`;")
 
-	res = s.makeSQL(tk, "alter table t1 add column (c3 int,c4 varchar(20));")
+	res = s.makeSQL(c, tk, "alter table t1 add column (c3 int,c4 varchar(20));")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c3`,DROP COLUMN `c4`;")
@@ -249,28 +263,28 @@ func (s *testSessionIncBackupSuite) TestAlterTableAlterColumn(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	// res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '';")
+	// res := s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '';")
 	// row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "2")
 	// c.Assert(row[4], Equals, "Invalid default value for column 'id'.")
 
-	// res = s.makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '1';")
+	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '1';")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")
 
-	// res = s.makeSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
+	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-2]
 	// c.Assert(row[2], Equals, "0")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")
 
-	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);")
-	res := s.makeSQL(tk, "alter table t1 alter column c1 set default '1';")
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);")
+	res := s.makeSQL(c, tk, "alter table t1 alter column c1 set default '1';")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP DEFAULT;", Commentf("%v", res.Rows()))
 
-	res = s.makeSQL(tk, "alter table t1 alter column c1 drop default;")
+	res = s.makeSQL(c, tk, "alter table t1 alter column c1 drop default;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` SET DEFAULT '1';")
@@ -286,47 +300,47 @@ func (s *testSessionIncBackupSuite) TestAlterTableModifyColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);")
+	res := s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 varchar(10);")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 varchar(10);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 varchar(100) not null;")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 varchar(100) not null;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(10);")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 int null;")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 int null;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(100) NOT NULL;")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 int first;")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 int first;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 varchar(200) not null comment '测试列';")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 varchar(200) not null comment '测试列';")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 int;")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 int;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(200) NOT NULL COMMENT '测试列';")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 varchar(20) character set utf8;")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 varchar(20) character set utf8;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
 
-	res = s.makeSQL(tk, "alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;")
+	res = s.makeSQL(c, tk, "alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(20);")
@@ -339,18 +353,18 @@ func (s *testSessionIncBackupSuite) TestAlterTableDropColumn(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);")
+	res := s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
-	res = s.makeSQL(tk, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
+	res = s.makeSQL(c, tk, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11);")
 
-	s.makeSQL(tk, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11) not null default 0 comment '测试列';")
-	res = s.makeSQL(tk, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
+	s.makeSQL(c, tk, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11) not null default 0 comment '测试列';")
+	res = s.makeSQL(c, tk, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11) NOT NULL DEFAULT '0' COMMENT '测试列';")
@@ -365,23 +379,23 @@ func (s *testSessionIncBackupSuite) TestInsert(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 
-	res := s.makeSQL(tk, "drop table if exists t1;create table t1(id int);")
+	res := s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
-	res = s.makeSQL(tk, "insert into t1 values(1);")
+	res = s.makeSQL(c, tk, "insert into t1 values(1);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1;", Commentf("%v", res.Rows()))
 
 	// // 受影响行数
-	// res = s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")
 	// c.Assert(row[6], Equals, "2")
 
-	// res = s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
+	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")
 	// c.Assert(row[6], Equals, "1")
@@ -398,20 +412,20 @@ func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 
-	res := s.makeSQL(tk, "update t1 set c1=10 where id = 1;")
+	res := s.makeSQL(c, tk, "update t1 set c1=10 where id = 1;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `id`=1, `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
 
 	// // 受影响行数
-	// res = s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;")
+	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")
 	// c.Assert(row[6], Equals, "0")
 
-	// res = s.makeSQL(tk, "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
+	// res = s.makeSQL(c,tk, "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")
 	// c.Assert(row[6], Equals, "1")
@@ -424,9 +438,9 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 
-	res := s.makeSQL(tk, "delete from t1 where id <= 2;")
+	res := s.makeSQL(c, tk, "delete from t1 where id <= 2;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals,
@@ -435,78 +449,78 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 			"INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(2,2);",
 		}, "\n"), Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, "drop table if exists t1;create table t1(id int primary key,c1 blob);insert into t1 values(1,X'010203');")
-	res = s.makeSQL(tk, "delete from t1;")
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int primary key,c1 blob);insert into t1 values(1,X'010203');")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'\x01\x02\x03');", Commentf("%v", res.Rows()))
 
 	if s.getDBVersion(c) >= 50708 {
-		s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 json);
+		s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 json);
 	insert into t1 values(1,'{"time":"2015-01-01 13:00:00","result":"fail"}');`)
-		res = s.makeSQL(tk, "delete from t1;")
+		res = s.makeSQL(c, tk, "delete from t1;")
 		row = res.Rows()[int(tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
 		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
 
-		s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');")
-		res = s.makeSQL(tk, "delete from t1;")
+		s.makeSQL(c, tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');")
+		res = s.makeSQL(c, tk, "delete from t1;")
 		row = res.Rows()[int(tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
 		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
 	}
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 enum('type1','type2','type3','type4'));
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 enum('type1','type2','type3','type4'));
 	insert into t1 values(1,'type2');`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
-	res = s.makeSQL(tk, "delete from t1;")
+	s.makeSQL(c, tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 bit);
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 bit);
 	insert into t1 values(1,1);`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1);", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 decimal(10,2));
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 decimal(10,2));
 	insert into t1 values(1,1.11);`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11);", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 double);
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 double);
 	insert into t1 values(1,1.11e100);`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
-	res = s.makeSQL(tk, "delete from t1;")
+	s.makeSQL(c, tk, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 date);
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 date);
 	insert into t1 values(1,'2019-1-1');`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'2019-01-01');", Commentf("%v", res.Rows()))
 
 	if s.getDBVersion(c) >= 50700 {
-		s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
+		s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
 	insert into t1(id) values(1);`)
-		res = s.makeSQL(tk, "delete from t1;")
+		res = s.makeSQL(c, tk, "delete from t1;")
 		row = res.Rows()[int(tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
 		if s.getExplicitDefaultsForTimestamp(c) {
@@ -517,16 +531,16 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 		}
 	}
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 time);
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 time);
 	insert into t1 values(1,'00:01:01');`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'00:01:01');", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, `drop table if exists t1;create table t1(id int primary key,c1 year);
+	s.makeSQL(c, tk, `drop table if exists t1;create table t1(id int primary key,c1 year);
 	insert into t1 values(1,2019);`)
-	res = s.makeSQL(tk, "delete from t1;")
+	res = s.makeSQL(c, tk, "delete from t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2019);", Commentf("%v", res.Rows()))
@@ -542,13 +556,13 @@ func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
-	s.makeSQL(tk, "drop database if exists test123456;")
-	res := s.makeSQL(tk, "create database test123456;")
+	s.makeSQL(c, tk, "drop database if exists test123456;")
+	res := s.makeSQL(c, tk, "create database test123456;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "", Commentf("%v", res.Rows()))
 
-	s.makeSQL(tk, "drop database if exists test123456;")
+	s.makeSQL(c, tk, "drop database if exists test123456;")
 }
 
 func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
@@ -558,13 +572,13 @@ func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	s.makeSQL(tk, "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);")
-	res := s.makeSQL(tk, "rename table t1 to t2;")
+	s.makeSQL(c, tk, "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);")
+	res := s.makeSQL(c, tk, "rename table t1 to t2;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t2", row[7].(string))
 	c.Assert(backup, Equals, "RENAME TABLE `test_inc`.`t2` TO `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
-	res = s.makeSQL(tk, "alter table t2 rename to t1;")
+	res = s.makeSQL(c, tk, "alter table t2 rename to t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "RENAME TABLE `test_inc`.`t1` TO `test_inc`.`t2`;", Commentf("%v", res.Rows()))
@@ -578,8 +592,8 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddIndex(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);")
-	res := s.makeSQL(tk, "alter table t1 add index idx (c1);")
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);")
+	res := s.makeSQL(c, tk, "alter table t1 add index idx (c1);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP INDEX `idx`;", Commentf("%v", res.Rows()))
@@ -593,8 +607,8 @@ func (s *testSessionIncBackupSuite) TestAlterTableDropIndex(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	s.makeSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);")
-	res := s.makeSQL(tk, "alter table t1 drop index idx;")
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);")
+	res := s.makeSQL(c, tk, "alter table t1 drop index idx;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD INDEX `idx`(`c1`);", Commentf("%v", res.Rows()))
@@ -616,26 +630,26 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 
 	// 删除后添加列
 	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
-	res := s.makeSQL(tk, sql)
+	res := s.makeSQL(c, tk, sql)
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;", Commentf("%v", res.Rows()))
 
 	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1,add column c1 varchar(20);"
-	res = s.makeSQL(tk, sql)
+	res = s.makeSQL(c, tk, sql)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11),DROP COLUMN `c1`;", Commentf("%v", res.Rows()))
 
 	// 删除后添加索引
 	sql = "drop table if exists t1;create table t1(id int ,c1 int,key ix(c1));alter table t1 drop index ix;alter table t1 add index ix(c1);"
-	res = s.makeSQL(tk, sql)
+	res = s.makeSQL(c, tk, sql)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP INDEX `ix`;", Commentf("%v", res.Rows()))
 
 	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
-	res = s.makeSQL(tk, sql)
+	res = s.makeSQL(c, tk, sql)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD INDEX `ix`(`c1`),DROP INDEX `ix`;", Commentf("%v", res.Rows()))
@@ -698,7 +712,7 @@ func (s *testSessionIncBackupSuite) getSQLMode(c *C) string {
 
 	sql := "show variables like 'sql_mode'"
 
-	res := s.makeSQL(s.tk, sql)
+	res := s.makeSQL(c, s.tk, sql)
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2, Commentf("%v", res.Rows()))
 
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -727,7 +741,7 @@ func (s *testSessionIncBackupSuite) getExplicitDefaultsForTimestamp(c *C) bool {
 
 	sql := "show variables where Variable_name='explicit_defaults_for_timestamp';"
 
-	res := s.makeSQL(s.tk, sql)
+	res := s.makeSQL(c, s.tk, sql)
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2, Commentf("%v", res.Rows()))
 
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]

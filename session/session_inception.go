@@ -2988,8 +2988,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	}
 	//是否使用 text\blob\json 字段类型
 	//当EnableNullable=false，不强制text\blob\json使用NOT NULL
-	if types.IsTypeBlob(field.Tp.Tp) || field.Tp.Tp == mysql.TypeJSON {
+	if types.IsTypeBlob(field.Tp.Tp) {
 		s.AppendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
+	} else if field.Tp.Tp == mysql.TypeJSON {
+		s.AppendErrorNo(ErrJsonTypeSupport, field.Name.Name)
 	} else {
 		if !notNullFlag && !hasGenerated {
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
@@ -4879,6 +4881,10 @@ func (s *session) checkInceptionVariables(number int) bool {
 		}
 	case ER_USE_TEXT_OR_BLOB:
 		if s.Inc.EnableBlobType {
+			return false
+		}
+	case ErrJsonTypeSupport:
+		if s.Inc.EnableJsonType {
 			return false
 		}
 	case ER_TABLE_MUST_INNODB:

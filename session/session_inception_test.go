@@ -708,6 +708,7 @@ primary key(id)) comment 'test';`
 		sql = `CREATE TABLE t1(c1 json DEFAULT '{}' COMMENT '日志记录',
 	  type tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
+		config.GetGlobalConfig().Inc.EnableJsonType = true
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
 
@@ -955,8 +956,13 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
 
+	config.GetGlobalConfig().Inc.EnableJsonType = true
 	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
 	s.testErrorCode(c, sql)
+	config.GetGlobalConfig().Inc.EnableJsonType = false
+	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrJsonTypeSupport, "c2"))
 
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
 	s.testErrorCode(c, sql)
