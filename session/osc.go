@@ -167,11 +167,11 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString(" --progress ")
 	buf.WriteString("percentage,1 ")
 
-	buf.WriteString(" --user=")
+	buf.WriteString(" --user=\"")
 	buf.WriteString(s.opt.user)
-	buf.WriteString(" --password=")
+	buf.WriteString("\" --password=\"")
 	buf.WriteString(s.opt.password)
-	buf.WriteString(" --host=")
+	buf.WriteString("\" --host=")
 	buf.WriteString(s.opt.host)
 	buf.WriteString(" --port=")
 	buf.WriteString(strconv.Itoa(s.opt.port))
@@ -742,5 +742,8 @@ func (s *session) getAlterTablePostPart(sql string) string {
 
 	sql = strings.Join(parts[3:], " ")
 
-	return strings.Replace(sql, "\"", "\\\"", -1)
+	sql = strings.Replace(sql, "\"", "\\\"", -1)
+	sql = strings.Replace(sql, "`", "\\`", -1)
+
+	return sql
 }
