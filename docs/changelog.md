@@ -1,6 +1,16 @@
 # goInception 更新日志
 
 
+## [v0.7.2-beta] - 2019-5-7
+
+### New Features
+* 添加`enable_json_type`参数，设置是否允许json类型字段 (#26)
+
+### Update
+* 实现基于系统变量explicit_defaults_for_timestamp的审核规则
+* 优化osc解析,转义密码和alter语句中的特殊字符
+
+
 ## [v0.7.1-beta] - 2019-5-4
 
 ### Update

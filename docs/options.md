@@ -50,6 +50,7 @@ enable_enum_set_bit   |  false    |   true,false     |    是不是支持enum,se
 enable_fingerprint `v0.6.2`   |  false    |   true,false     |    sql指纹功能。dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，并提高审核速度
 enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
+enable_json_type  `v0.7.2` |  false    |   true,false     |   设置是否允许json类型字段，包括建表、修改列、新增列操作
 enable_not_innodb   |  false    |   true,false     |  建表指定的存储引擎不为Innodb，不报错
 enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
 enable_null_index_name `v0.7.1`|  false    |   true,false     |    创建索引时是否允许空索引名
