@@ -36,6 +36,13 @@ go build -o goInception tidb-server/main.go
 ./goInception -config=config/config.toml
 ```
 
+## 贡献
+
+欢迎并非常感谢您的贡献。 有关提交PR的流程请参考 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+[贡献者列表](CONTRIBUTORS.md)
+
+
 #### Docker镜像
 ```
 docker pull hanchuanchuan/goinception
