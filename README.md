@@ -25,7 +25,7 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 
 ##### 源码编译
 
-***go version 1.11.3(go mod)***
+***go version 1.12 (go mod)***
 
 ```bash
 git clone https://github.com/hanchuanchuan/goInception.git
