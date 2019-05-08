@@ -4949,6 +4949,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 	case ER_WITH_DEFAULT_ADD_COLUMN:
 		return s.Inc.CheckColumnDefaultValue
 
+	case ER_CHANGE_COLUMN_TYPE:
+		return s.Inc.CheckColumnTypeChange
+
 		/*case ER_NULL_NAME_FOR_INDEX:
 		  return s.Inc.EnableNullIndexName*/
 	}

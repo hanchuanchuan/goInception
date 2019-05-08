@@ -94,8 +94,8 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	session.SetLanguage("en-US")
 
-	fmt.Println("SQLMode: ", s.getSQLMode(c))
 	fmt.Println("ExplicitDefaultsForTimestamp: ", s.getExplicitDefaultsForTimestamp(c))
+	fmt.Println("SQLMode: ", s.getSQLMode(c))
 	fmt.Println("version: ", s.getDBVersion(c))
 }
 
