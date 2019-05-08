@@ -80,8 +80,8 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 	session.SetLanguage("en-US")
 
-	fmt.Println("SQLMode: ", s.getSQLMode(c))
 	fmt.Println("ExplicitDefaultsForTimestamp: ", s.getExplicitDefaultsForTimestamp(c))
+	fmt.Println("SQLMode: ", s.getSQLMode(c))
 }
 
 func (s *testSessionIncSuite) TearDownSuite(c *C) {
@@ -1094,10 +1094,16 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
 	// 变更类型
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = false
+	sql = "create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
 	sql = "create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "varchar(10)"))
 
+	// 变更长度时不影响
 	sql = "create table t1(c1 char(100));alter table t1 modify column c1 char(20);"
 	s.testErrorCode(c, sql)
 
