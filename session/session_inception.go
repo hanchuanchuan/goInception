@@ -348,7 +348,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 			for i, stmtNode := range stmtNodes {
 
-				currentSql := strings.Trim(stmtNode.Text(), " ;\t\n")
+				currentSql := strings.Trim(stmtNode.Text(), " ;\t\r\n")
 
 				s.myRecord = &Record{
 					Sql:   currentSql,
@@ -568,8 +568,6 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	currentSql string) ([]ast.RecordSet, error) {
 	log.Debug("processCommand")
-
-	// currentSql := strings.TrimSpace(stmtNode.Text())
 
 	switch node := stmtNode.(type) {
 	case *ast.InsertStmt:
