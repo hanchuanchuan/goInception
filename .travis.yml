@@ -41,7 +41,7 @@ before_install:
   # 关闭数据库,重启并开启binlog,设置字符集
   - ps -ef|grep mysql
   - sudo service mysql stop
-  - sudo mysqld --log-bin=on --server_id=111 --character-set-server=utf8 &
+  - sudo mysqld --lower_case_table_names=1 --log-bin=on --server_id=111 --character-set-server=utf8 &
   - ps -ef|grep mysql
 
 script:
