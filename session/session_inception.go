@@ -1326,8 +1326,6 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 		}
 	}
 
-	log.Info(sql)
-	log.Infof("%#v", r)
 	return nil
 }
 
@@ -1754,7 +1752,6 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 	log.Debug("checkDropTable")
 
-	// log.Infof("%#v \n", node)
 	for _, t := range node.Tables {
 
 		if !s.Inc.EnableDropTable {
@@ -1920,8 +1917,6 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	log.Debug("checkRenameTable")
 
-	// log.Infof("%#v \n", node)
-
 	originTable := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
 	if originTable == nil {
 		s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.OldTable.Name.O)
@@ -2026,7 +2021,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 			hasComment := false
 			for _, opt := range node.Options {
-				// log.Infof("%#v", opt)
 				switch opt.Tp {
 				case ast.TableOptionEngine:
 					if !strings.EqualFold(opt.StrValue, "innodb") {
@@ -2053,7 +2047,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 							node.Table.Name.O, TABLE_COMMENT_MAXLEN))
 					}
 				case ast.TableOptionAutoIncrement:
-					// log.Infof("%#v", opt)
 					if opt.UintValue > 1 {
 						s.AppendErrorNo(ER_INC_INIT_ERR)
 					}
@@ -2098,11 +2091,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 									node.Table.Schema, node.Table.Name)
 							}
 						case ast.ColumnOptionDefaultValue:
-							// log.Infof("%#v", op)
-							// log.Info(op.Expr.GetDatum().GetString())
-							// log.Info(op.Expr.GetDatum().IsNull())
-
-							// op.Expr.GetDatum().GetString()
 							if op.Expr.GetDatum().IsNull() {
 								defaultNullValue = true
 							}
@@ -2384,7 +2372,6 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		if sepc.Options != nil {
 			hasComment := false
 			for _, opt := range sepc.Options {
-				// log.Infof("%#v", opt)
 				switch opt.Tp {
 				case ast.TableOptionEngine:
 					if !strings.EqualFold(opt.StrValue, "innodb") {
@@ -2882,8 +2869,6 @@ func (s *session) hasErrorBefore() bool {
 func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	log.Debug("mysqlCheckField")
 
-	// log.Infof("%#v", field.Tp)
-
 	tableName := t.Name
 	if field.Tp.Tp == mysql.TypeEnum ||
 		field.Tp.Tp == mysql.TypeSet ||
@@ -3234,7 +3219,6 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					tmp = append(tmp, *newColumn)
 					tmp = append(tmp, t.Fields[foundIndex+1:]...)
 					t.Fields = tmp
-					// log.Infof("%#v", t.Fields)
 				}
 			}
 
@@ -3323,7 +3307,6 @@ func (s *session) mysqlDropColumnRollback(field FieldInfo) {
 
 func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 	log.Debug("checkDropIndex")
-	// log.Infof("%#v \n", node)
 
 	t := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	if t == nil {
@@ -3789,7 +3772,6 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 		for _, tblSource := range tableList {
 			tblName, ok := tblSource.Source.(*ast.TableName)
 			if !ok {
-				// log.Infof("%#v", tblSource.Source)
 				continue
 			}
 			if tblName.Schema.L == "" {
@@ -3853,7 +3835,8 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 		}
 		return selectColumnCount, nil
 	default:
-		log.Error("未处理的类型: %#v", sel)
+		// log.Error("未处理的类型: %#v", sel)
+		log.Error(sel)
 	}
 	return 0, errors.New("未处理的类型")
 }
