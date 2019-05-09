@@ -78,6 +78,8 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
 	session.SetLanguage("en-US")
 
 	fmt.Println("ExplicitDefaultsForTimestamp: ", s.getExplicitDefaultsForTimestamp(c))
@@ -251,10 +253,8 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, sql))
 }
 
-func (s *testSessionIncSuite) execSQL(c *C, sql string) {
-
+func (s *testSessionIncSuite) execSQL(c *C, sql string) *testkit.Result {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-
 	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test_inc;
@@ -265,6 +265,8 @@ inception_magic_commit;`
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
+
+	return res
 }
 
 func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
@@ -1211,38 +1213,42 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	sql = "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t2;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t2"))
-	// select where
+
+	s.execSQL(c, "create table t1(id int,c1 int );")
+
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
-	sql = "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1;"
+	sql = "insert into t1(id,c1) select 1,null from t1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NO_WHERE_CONDITION))
 	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
 	// limit
 	config.GetGlobalConfig().Inc.CheckDMLLimit = true
-	sql = "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 limit 1;"
+	sql = "insert into t1(id,c1) select 1,null from t1 limit 1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_LIMIT_CONDITION))
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
 	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = true
-	sql = "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 order by rand();"
+	sql = "insert into t1(id,c1) select 1,null from t1 order by rand();"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_ORDERY_BY_RAND))
 
 	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
-	res := makeSQL(tk, "create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	res := makeSQL(tk, "insert into t1 values(1,1),(2,2);")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "2")
 
-	res = makeSQL(tk, "create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
+	res = makeSQL(tk, "insert into t1(id,c1) select 1,null;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "1")
+
+	s.execSQL(c, "drop table if exists t1; create table t1(c1 char(100) not null);")
 
 	sql = "create table t1(c1 char(100) not null);insert into t1(c1) values(null);"
 	s.testErrorCode(c, sql,
@@ -1285,6 +1291,29 @@ insert into t1 values(1),(2),(3);`
 insert into t2 select id from t1;`
 	s.testErrorCode(c, sql)
 	s.testAffectedRows(c, 1)
+
+	config.GetGlobalConfig().Inc.EnableSelectStar = true
+	s.execSQL(c, "drop table if exists tt1;create table tt1(id int,c1 int);insert into tt1 values(1,1);")
+	sql = `insert into tt1 select a.* from tt1 a inner join tt1 b on a.id=b.id;`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into tt1 select a.* from tt1 a inner join tt1 b on a.id=b.id;`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into tt1 select A.* from (select * from tt1) a inner join tt1 b on a.id=b.id;`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into tt1 select A.* from (select c2.* from tt1 c1 inner join tt1 c2 on c1.id=c2.id) a inner join test_inc.tt1 b on a.id=b.id;`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into test_inc.tt1 select A.* from (select * from tt1 c1 union all select * from tt1 c2) a inner join test_inc.tt1 b on a.id=b.id;`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into test_inc.tt1 select test_inc.B.* from tt1 a inner join test_inc.tt1 b on a.id=b.id;`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into test_inc.tt1 select * from test_inc.tt1 ;`
+	s.testErrorCode(c, sql)
 
 }
 

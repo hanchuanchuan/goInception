@@ -3630,6 +3630,9 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	s.myRecord.TableInfo = table
+	if fieldCount == 0 {
+		fieldCount = len(table.Fields)
+	}
 
 	columnsCannotNull := map[string]bool{}
 
@@ -3638,7 +3641,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, c.Name.O) && !field.IsDeleted {
 				found = true
-
 				if field.Null == "NO" {
 					columnsCannotNull[c.Name.L] = true
 				}
@@ -3651,15 +3653,13 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	if len(x.Lists) > 0 {
-		if fieldCount == 0 {
-			fieldCount = len(table.Fields)
-		}
 
 		if s.Inc.MaxInsertRows > 0 && len(x.Lists) > int(s.Inc.MaxInsertRows) {
 			s.AppendErrorNo(ER_INSERT_TOO_MUCH_ROWS,
 				len(x.Lists), s.Inc.MaxInsertRows)
 		}
 
+		// 审核列数是否匹配,是否为not null字段指定了NULL值
 		for i, list := range x.Lists {
 			if len(list) == 0 {
 				s.AppendErrorNo(ER_WITH_INSERT_VALUES)
@@ -3674,21 +3674,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 						}
 					}
 				}
-				// if i == 0 {
-
-				// 	for _, c := range x.Columns {
-				// 		found := false
-				// 		for _, field := range table.Fields {
-				// 			if strings.EqualFold(field.Field, c.Name.O) {
-				// 				found = true
-				// 				break
-				// 			}
-				// 		}
-				// 		if !found {
-				// 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", c.Table, c.Name))
-				// 		}
-				// 	}
-				// }
 			}
 		}
 		s.myRecord.AffectedRows = len(x.Lists)
@@ -3696,10 +3681,12 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		s.AppendErrorNo(ER_WITH_INSERT_VALUES)
 	}
 
+	if s.hasError() {
+		return
+	}
+
 	// insert select 语句
 	if x.Select != nil {
-		// log.Info(x.Select)
-		// log.Infof("%#v", x.Select)
 
 		sel, ok := x.Select.(*ast.SelectStmt)
 		if !ok {
@@ -3710,57 +3697,41 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 		if sel != nil {
 
-			// 只考虑insert select单表时,表不存在的情况
-			from := getSingleTableName(sel.From)
-			var fromTable *TableInfo
-			if from != nil {
-				fromTable = s.getTableFromCache(from.Schema.O, from.Name.O, true)
-			}
-
+			// 是否有星号列
 			isWildCard := false
-			if len(sel.Fields.Fields) > 0 {
-				f := sel.Fields.Fields[0]
+			for _, f := range sel.Fields.Fields {
 				if f.WildCard != nil {
 					isWildCard = true
+					break
 				}
 			}
 
 			if isWildCard {
 				s.AppendErrorNo(ER_SELECT_ONLY_STAR)
-			}
 
-			// 判断字段数是否匹配, *星号时跳过
-			if fieldCount > 0 && !isWildCard && len(sel.Fields.Fields) != fieldCount {
+				selectColumnCount, err := s.subSelectColumns(sel)
+
+				if err == nil && fieldCount != selectColumnCount {
+					s.AppendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, 1)
+				}
+			} else if fieldCount != len(sel.Fields.Fields) {
+				// 判断字段数是否匹配
 				s.AppendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, 1)
 			}
 
-			// if len(sel.Fields.Fields) > 0 {
-			// 	for _, f := range sel.Fields.Fields {
-			// 		// if c, ok := f.Expr.(*ast.ColumnNameExpr); ok {
-			// 		// 	// log.Info(c.Name)
-			// 		// }
-			// 		if f.Expr == nil {
-			// 			log.Info(node.Text())
-			// 			log.Info("Expr is NULL", f.WildCard, f.Expr, f.AsName)
-			// 			log.Info(f.Text())
-			// 			log.Info("是个*号")
-			// 		}
-			// 	}
-			// }
-
 			if !s.hasError() {
-				if from == nil || (fromTable != nil && !fromTable.IsNew) {
-					i := strings.Index(strings.ToLower(sql), "select")
-					selectSql := sql[i:]
+				// if from == nil || (fromTable != nil && !fromTable.IsNew) {
+				i := strings.Index(strings.ToLower(sql), "select")
+				selectSql := sql[i:]
 
-					s.explainOrAnalyzeSql(selectSql)
+				s.explainOrAnalyzeSql(selectSql)
 
-					if from == nil && s.myRecord.AffectedRows == 0 {
-						s.myRecord.AffectedRows = 1
-					}
-				} else {
-					s.checkSelectItem(x.Select)
+				if sel.From == nil && s.myRecord.AffectedRows == 0 {
+					s.myRecord.AffectedRows = 1
 				}
+				// } else {
+				// 	s.checkSelectItem(x.Select)
+				// }
 			}
 
 			if sel.Where == nil {
@@ -3784,23 +3755,107 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	if len(node.Setlist) > 0 {
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		// Process `set` type column.
 		// columns := make([]string, 0, len(node.Setlist))
 		for _, v := range node.Setlist {
 			log.Info(v.Column)
 			// columns = append(columns, v.Column)
 		}
-
-		// cols, err = table.FindCols(tableCols, columns, node.Table.Meta().PKIsHandle)
-		// if err != nil {
-		// 	return nil, errors.Errorf("INSERT INTO %s: %s", node.Table.Meta().Name.O, err)
-		// }
-		// if len(cols) == 0 {
-		// 	return nil, errors.Errorf("INSERT INTO %s: empty column", node.Table.Meta().Name.O)
-		// }
 	}
 
 	// s.saveFingerprint(sqlId)
+}
+
+// subSelectColumns 计算子查询的列数(包含有星号列)
+func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
+	switch sel := node.(type) {
+	case *ast.UnionStmt:
+		// 取第一个select的列数
+		return s.subSelectColumns(sel.SelectList.Selects[0])
+
+	case *ast.SelectStmt:
+
+		// from为空时,直接走explain,sql可能是错误的
+		if sel.From == nil {
+			return 0, errors.New("no from clause")
+		}
+
+		var tableList []*ast.TableSource
+		tableList = extractTableList(sel.From.TableRefs, tableList)
+
+		// 获取总列数,并校验表是否都已存在
+		totalFieldCount := 0
+		for _, tblSource := range tableList {
+			tblName, ok := tblSource.Source.(*ast.TableName)
+			if !ok {
+				// log.Infof("%#v", tblSource.Source)
+				continue
+			}
+			if tblName.Schema.L == "" {
+				tblName.Schema = model.NewCIStr(s.DBName)
+			}
+			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+			if t != nil {
+				totalFieldCount += len(t.Fields)
+			} else {
+				// return
+			}
+		}
+
+		selectColumnCount := 0
+
+		for _, f := range sel.Fields.Fields {
+			if f.WildCard == nil {
+				selectColumnCount += 1
+			} else {
+				db := f.WildCard.Schema.L
+				wildTable := f.WildCard.Table.L
+				if wildTable == "" {
+					selectColumnCount += totalFieldCount
+				} else {
+					found := false
+					for _, tblSource := range tableList {
+						var tName string
+						tblName, ok := tblSource.Source.(*ast.TableName)
+
+						if tblSource.AsName.L != "" {
+							tName = tblSource.AsName.L
+						} else if ok {
+							tName = tblName.Name.L
+						}
+
+						if (ok && (db == "" || db == tblName.Schema.L) &&
+							wildTable == tName) ||
+							(!ok && wildTable == tName) {
+							if ok {
+								t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, false)
+								if t != nil {
+									selectColumnCount += len(t.Fields)
+								}
+							} else {
+								length, err := s.subSelectColumns(tblSource.Source)
+								if err != nil {
+									return 0, err
+								}
+								selectColumnCount += length
+							}
+							found = true
+							break
+						}
+					}
+					// 别名未找到,说明sql语句有问题,则直接做explain即可
+					if !found {
+						return 0, errors.New("not found")
+					}
+				}
+			}
+		}
+		return selectColumnCount, nil
+	default:
+		log.Error("未处理的类型: %#v", sel)
+	}
+	return 0, errors.New("未处理的类型")
 }
 
 func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
@@ -4785,6 +4840,9 @@ func (r *Record) AppendErrorMessage(msg string) {
 	r.ErrLevel = 2
 
 	r.Buf.WriteString(msg)
+	if !strings.HasSuffix(msg, ".") && !strings.HasSuffix(msg, "!") {
+		r.Buf.WriteString(".")
+	}
 	r.Buf.WriteString("\n")
 }
 
