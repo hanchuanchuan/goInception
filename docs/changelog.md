@@ -1,6 +1,18 @@
 # goInception 更新日志
 
 
+## [v0.7.3-beta] - 2019-5-10
+
+### Fix
+* 修复在开启备份时,执行错误时偶尔出现的误标记执行/备份成功bug
+
+### New Features
+* 添加`check_column_type_change`参数，设置是否开启字段类型变更审核,默认`开启` (#27)
+
+### Update
+* 实现insert select * 列数审核
+
+
 ## [v0.7.2-beta] - 2019-5-7
 
 ### New Features
