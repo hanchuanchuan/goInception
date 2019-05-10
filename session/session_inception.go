@@ -1146,8 +1146,8 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 		s.SetMyProcessInfo(record.Sql, time.Now(), float64(i)/float64(count))
 
-		errno := s.executeRemoteCommand(record)
-		if errno == 2 {
+		s.executeRemoteCommand(record)
+		if s.hasErrorBefore() {
 			break
 		}
 
@@ -1274,29 +1274,31 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 
 	s.executeRemoteStatement(record)
 
-	if s.opt.backup {
-		masterStatus := s.mysqlFetchMasterBinlogPosition()
-		if masterStatus == nil {
-			s.AppendErrorNo(ErrNotFoundMasterStatus)
-			return
-		} else {
-			record.EndFile = masterStatus.File
-			record.EndPosition = masterStatus.Position
-
-			// 开始位置和结束位置一样,无变更
-			if record.StartFile == record.EndFile &&
-				record.StartPosition == record.EndPosition {
-
-				record.StartFile = ""
-				record.StartPosition = 0
-				record.EndFile = ""
-				record.EndPosition = 0
+	if !s.hasError() {
+		if s.opt.backup {
+			masterStatus := s.mysqlFetchMasterBinlogPosition()
+			if masterStatus == nil {
+				s.AppendErrorNo(ErrNotFoundMasterStatus)
 				return
+			} else {
+				record.EndFile = masterStatus.File
+				record.EndPosition = masterStatus.Position
+
+				// 开始位置和结束位置一样,无变更
+				if record.StartFile == record.EndFile &&
+					record.StartPosition == record.EndPosition {
+
+					record.StartFile = ""
+					record.StartPosition = 0
+					record.EndFile = ""
+					record.EndPosition = 0
+					return
+				}
 			}
 		}
-	}
 
-	record.ExecComplete = true
+		record.ExecComplete = true
+	}
 }
 
 func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
