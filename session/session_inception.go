@@ -2248,6 +2248,41 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 	}
 }
 
+// checkTableOptions 审核表选项
+func (s *session) checkTableOptions(options []*ast.TableOption, table string, isCreate bool) {
+	for _, opt := range options {
+		switch opt.Tp {
+		case ast.TableOptionEngine:
+			if !strings.EqualFold(opt.StrValue, "innodb") {
+				s.AppendErrorNo(ER_TABLE_MUST_INNODB, table)
+			}
+		case ast.TableOptionCharset:
+			if s.Inc.EnableSetCharset {
+				s.checkCharset(opt.StrValue)
+			} else {
+				s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, table)
+			}
+		case ast.TableOptionCollate:
+			if s.Inc.EnableSetCollation {
+				s.checkCollation(opt.StrValue)
+			} else {
+				s.AppendErrorNo(ErrTableCollationNotSupport, table)
+			}
+		case ast.TableOptionComment:
+			if len(opt.StrValue) > TABLE_COMMENT_MAXLEN {
+				s.AppendErrorMessage(fmt.Sprintf("Comment for table '%s' is too long (max = %d)",
+					table, TABLE_COMMENT_MAXLEN))
+			}
+		case ast.TableOptionAutoIncrement:
+			if opt.UintValue > 1 && isCreate {
+				s.AppendErrorNo(ER_INC_INIT_ERR)
+			}
+		default:
+			s.AppendErrorNo(ER_NOT_SUPPORTED_ALTER_OPTION)
+		}
+	}
+}
+
 // checkMustHaveColumns 检查表是否包含有必须的字段
 func (s *session) checkMustHaveColumns(table *TableInfo) {
 	columns := strings.Split(s.Inc.MustHaveColumns, ",")
@@ -2312,43 +2347,7 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 }
 
 func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
-
 	log.Debug("checkAlterTable")
-
-	// Table *TableName
-	// Specs []*AlterTableSpec
-
-	// Tp              AlterTableType
-	// Name            string
-	// Constraint      *Constraint
-	// Options         []*TableOption
-	// NewTable        *TableName
-	// NewColumns      []*ColumnDef
-	// OldColumnName   *ColumnName
-	// Position        *ColumnPosition
-	// LockType        LockType
-	// Comment         string
-	// FromKey         model.CIStr
-	// ToKey           model.CIStr
-	// PartDefinitions []*PartitionDefinition
-
-	// AlterTableOption = 1
-	// AlterTableAddColumns = 2
-	// AlterTableAddConstraint = 3
-	// AlterTableDropColumn = 4
-	// AlterTableDropPrimaryKey = 5
-	// AlterTableDropIndex = 6
-	// AlterTableDropForeignKey = 7
-	// AlterTableModifyColumn = 8
-	// AlterTableChangeColumn = 9
-	// AlterTableRenameTable = 10
-	// AlterTableAlterColumn = 11
-	// AlterTableLock = 12
-	// AlterTableAlgorithm = 13
-	// AlterTableRenameIndex = 14
-	// AlterTableForce = 15
-	// AlterTableAddPartitions = 16
-	// AlterTableDropPartition = 17
 
 	if node.Table.Schema.O == "" {
 		node.Table.Schema = model.NewCIStr(s.DBName)
@@ -2370,38 +2369,38 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		s.AppendErrorNo(ER_ALTER_TABLE_ONCE, node.Table.Name.O)
 	}
 
-	for _, sepc := range node.Specs {
-		if sepc.Options != nil {
-			hasComment := false
-			for _, opt := range sepc.Options {
-				switch opt.Tp {
-				case ast.TableOptionEngine:
-					if !strings.EqualFold(opt.StrValue, "innodb") {
-						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
-					}
-				case ast.TableOptionCharset:
-					if s.Inc.EnableSetCharset {
-						s.checkCharset(opt.StrValue)
-					} else {
-						s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
-					}
-				case ast.TableOptionCollate:
-					if s.Inc.EnableSetCollation {
-						s.checkCollation(opt.StrValue)
-					} else {
-						s.AppendErrorNo(ErrTableCollationNotSupport, node.Table.Name.O)
-					}
-				case ast.TableOptionComment:
-					if opt.StrValue != "" {
-						hasComment = true
-					}
-				}
-			}
-			if !hasComment {
-				s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
-			}
-		}
-	}
+	// for _, sepc := range node.Specs {
+	// 	if sepc.Options != nil {
+	// 		hasComment := false
+	// 		for _, opt := range sepc.Options {
+	// 			switch opt.Tp {
+	// 			case ast.TableOptionEngine:
+	// 				if !strings.EqualFold(opt.StrValue, "innodb") {
+	// 					s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
+	// 				}
+	// 			case ast.TableOptionCharset:
+	// 				if s.Inc.EnableSetCharset {
+	// 					s.checkCharset(opt.StrValue)
+	// 				} else {
+	// 					s.AppendErrorNo(ER_TABLE_CHARSET_MUST_NULL, node.Table.Name.O)
+	// 				}
+	// 			case ast.TableOptionCollate:
+	// 				if s.Inc.EnableSetCollation {
+	// 					s.checkCollation(opt.StrValue)
+	// 				} else {
+	// 					s.AppendErrorNo(ErrTableCollationNotSupport, node.Table.Name.O)
+	// 				}
+	// 			case ast.TableOptionComment:
+	// 				if opt.StrValue != "" {
+	// 					hasComment = true
+	// 				}
+	// 			}
+	// 		}
+	// 		if !hasComment {
+	// 			s.AppendErrorNo(ER_TABLE_MUST_HAVE_COMMENT, node.Table.Name.O)
+	// 		}
+	// 	}
+	// }
 
 	s.mysqlShowTableStatus(table)
 	s.mysqlGetTableSize(table)
@@ -2423,6 +2422,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	for i, alter := range node.Specs {
 		switch alter.Tp {
+		case ast.AlterTableOption:
+			s.checkTableOptions(alter.Options, node.Table.Name.String(), false)
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
 		case ast.AlterTableDropColumn:
