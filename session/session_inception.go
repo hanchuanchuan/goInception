@@ -299,6 +299,16 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	lineCount := len(sqlList) - 1
 	// batchSize := 1
 
+	tmp := s.processInfo.Load()
+	if tmp != nil {
+		pi := tmp.(util.ProcessInfo)
+		pi.OperState = "CHECKING"
+		pi.Percent = 0
+		s.processInfo.Store(pi)
+	}
+
+	s.stage = StageCheck
+
 	var buf []string
 	for i, sql_line := range sqlList {
 
@@ -335,16 +345,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				log.Warnf("con:%d parse error:\n%v\n%s", connID, err, s1)
 				return nil, errors.Trace(err)
 			}
-
-			tmp := s.processInfo.Load()
-			if tmp != nil {
-				pi := tmp.(util.ProcessInfo)
-				pi.OperState = "CHECKING"
-				pi.Percent = 0
-				s.processInfo.Store(pi)
-			}
-
-			s.stage = StageCheck
 
 			for i, stmtNode := range stmtNodes {
 

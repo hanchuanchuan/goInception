@@ -132,8 +132,8 @@ inception_magic_commit;`
 		// fmt.Println(res.Rows())
 		c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
 		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-		c.Assert(row[2], Equals, "0")
-		c.Assert(row[3], Equals, "Execute Successfully")
+		c.Assert(row[2], Equals, "0", Commentf("%v", row))
+		c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
 		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
 		// fmt.Println(row[4])
 		// c.Assert(row[4].(string), IsNil)
@@ -1878,5 +1878,27 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8"),
 		session.NewErr(session.ErrCollationNotSupport, "utf8_bin"))
+
+}
+
+func (s *testSessionIncSuite) TestForeignKey(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	sql := ""
+
+	config.GetGlobalConfig().Inc.EnableForeignKey = false
+
+	s.execSQL(c, "drop table if exists t2; create table t2(id int primary key);drop table if exists t1; ")
+
+	sql = `create table t1(id int primary key,pid int,constraint FK_1 foreign key (pid) references t2(id));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_FOREIGN_KEY, "t1"))
+
+	config.GetGlobalConfig().Inc.EnableForeignKey = true
+
+	s.testErrorCode(c, sql)
 
 }
