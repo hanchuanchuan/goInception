@@ -714,18 +714,25 @@ func (s *session) getAlterTablePostPart(sql string) string {
 
 	supportOper := []string{
 		"add",
-		"modify",
-		"change",
-		"drop",
-		"alter",
 		"algorithm",
+		"alter",
+		"auto_increment",
+		"avg_row_length",
+		"change",
 		"character",
+		"checksum",
+		"comment",
+		"convert",
+		"collate",
 		"default",
 		"disable",
-		"enable",
 		"discard",
-		"import",
+		"drop",
+		"enable",
+		"engine",
 		"force",
+		"import",
+		"modify",
 	}
 
 	support := false

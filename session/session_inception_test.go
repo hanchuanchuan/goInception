@@ -1769,6 +1769,10 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
 	s.testErrorCode(c, sql)
 
+	s.execSQL(c, "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int);")
+	sql = "alter table t1 auto_increment 20 comment '123';"
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
