@@ -33,7 +33,7 @@ import (
     log "github.com/sirupsen/logrus"
 )
 
-const maxBadConnRetries = 3
+const maxBadConnRetries = 1
 
 // createNewConnection 用来创建新的连接
 // 注意: 该方法可能导致driver: bad connection异常
