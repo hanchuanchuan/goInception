@@ -112,6 +112,7 @@ func (s *session) flushBackupRecord(dbname string, record *Record) {
 		if err != nil {
 			log.Error(err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.recordSets.MaxLevel = 2
 				record.StageStatus = StatusBackupFail
 				record.AppendErrorMessage(myErr.Message)
 			}

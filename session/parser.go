@@ -82,7 +82,7 @@ func (s *session) GetNextBackupRecord() *Record {
 
 				continue
 
-			} else if r.AffectedRows > 0 && s.checkSqlIsDML(r) {
+			} else if (r.AffectedRows > 0 || r.StageStatus == StatusExecFail) && s.checkSqlIsDML(r) {
 
 				// if s.opt.middlewareExtend != "" {
 				// 	continue
@@ -99,7 +99,10 @@ func (s *session) GetNextBackupRecord() *Record {
 				}
 
 				// 先置默认值为备份失败,在备份完成后置为成功
-				r.StageStatus = StatusBackupFail
+				// if r.AffectedRows > 0 {
+				if r.StageStatus != StatusExecFail {
+					r.StageStatus = StatusBackupFail
+				}
 				clearDeleteColumns(r.TableInfo)
 
 				return r
@@ -291,7 +294,14 @@ func (s *session) Parser(ctx context.Context) {
 	ENDCHECK:
 		// 如果操作已超过binlog范围,切换到下一日志
 		if currentPosition.Compare(stopPosition) > -1 {
-			record.StageStatus = StatusBackupOK
+			// sql被kill后,如果备份时可以检测到行,则认为执行成功
+			// 工单只有执行成功,才允许标记为备份成功
+			// if (record.StageStatus == StatusExecFail && record.AffectedRows > 0) ||
+			// 	record.StageStatus == StatusExecOK || record.StageStatus == StatusBackupFail {
+			if record.AffectedRows > 0 {
+				record.StageStatus = StatusBackupOK
+			}
+
 			record.BackupCostTime = fmt.Sprintf("%.3f", time.Since(startTime).Seconds())
 
 			next := s.GetNextBackupRecord()
@@ -307,10 +317,14 @@ func (s *session) Parser(ctx context.Context) {
 			}
 		}
 
-		// // 进程Killed
-		// if err := checkClose(ctx); err != nil {
-		// 	log.Warn("Killed: ", err)
-		// 	s.AppendErrorMessage("Operation has been killed!")
+		// 进程Killed
+		if err := checkClose(ctx); err != nil {
+			log.Warn("Killed: ", err)
+			s.AppendErrorMessage("Operation has been killed!")
+			break
+		}
+
+		// if s.hasErrorBefore() {
 		// 	break
 		// }
 	}
@@ -401,6 +415,12 @@ func (s *session) checkError(e error) {
 }
 
 func (s *session) write(b []byte, binEvent *replication.BinlogEvent) {
+	// 此处执行状态不确定的记录
+	if s.myRecord.StageStatus == StatusExecFail {
+		log.Info("auto fix record:", s.myRecord.OPID)
+		s.myRecord.AffectedRows += 1
+		s.TotalChangeRows += 1
+	}
 	s.ch <- &ChanData{sql: b, e: binEvent, opid: s.myRecord.OPID,
 		table: s.lastBackupTable, record: s.myRecord}
 }
