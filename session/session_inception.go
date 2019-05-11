@@ -784,8 +784,10 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
-			record.StageStatus = StatusBackupFail
+		} else {
+			s.AppendErrorMessage(err.Error())
 		}
+		record.StageStatus = StatusBackupFail
 	}
 	record.StageStatus = StatusBackupOK
 }
@@ -986,6 +988,9 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 					s.AppendErrorMessage(myErr.Message)
 					return 2
 				}
+			} else {
+				s.AppendErrorMessage(err.Error())
+				return 2
 			}
 		}
 		s.backupDBCacheList[backupDBName] = true
@@ -1002,6 +1007,9 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 					s.AppendErrorMessage(myErr.Message)
 					return 2
 				}
+			} else {
+				s.AppendErrorMessage(err.Error())
+				return 2
 			}
 		}
 		s.backupTableCacheList[key] = true
@@ -1017,6 +1025,9 @@ func (s *session) mysqlCreateBackupTable(record *Record) int {
 					s.AppendErrorMessage(myErr.Message)
 					return 2
 				}
+			} else {
+				s.AppendErrorMessage(err.Error())
+				return 2
 			}
 		}
 		s.backupTableCacheList[key] = true
@@ -1069,7 +1080,7 @@ func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) stri
 func (s *session) mysqlRealQueryBackup(sql string) (err error) {
 
 	// err := res.Error
-	if _, err = s.Exec(sql); err != nil {
+	if _, err = s.Exec(sql, true); err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1214,14 +1225,14 @@ func (s *session) executeRemoteStatement(record *Record) {
 			s.AppendErrorMessage("无法获取线程号")
 		}
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
+
+		return
 	} else {
-		res, err := s.Exec(sql)
+		res, err := s.Exec(sql, false)
 
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
-
 		record.ExecTimestamp = time.Now().Unix()
 
-		// err := res.Error
 		if err != nil {
 			log.Error(err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -1230,6 +1241,14 @@ func (s *session) executeRemoteStatement(record *Record) {
 				s.AppendErrorMessage(err.Error())
 			}
 			record.StageStatus = StatusExecFail
+
+			// 无法确认是否执行成功,需要通过备份来确认
+			if err == mysqlDriver.ErrInvalidConn {
+				record.ThreadId = s.fetchThreadID()
+				record.AffectedRows = 0
+				record.ExecComplete = true
+			}
+			return
 		} else {
 			affectedRows, err := res.RowsAffected()
 			if err != nil {
@@ -1272,9 +1291,15 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 		}
 	}
 
+	if s.hasError() {
+		record.StageStatus = StatusExecFail
+		record.AffectedRows = 0
+		return
+	}
+
 	s.executeRemoteStatement(record)
 
-	if !s.hasError() {
+	if !s.hasError() || record.ExecComplete {
 		if s.opt.backup {
 			masterStatus := s.mysqlFetchMasterBinlogPosition()
 			if masterStatus == nil {
@@ -1314,6 +1339,7 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	if rows != nil {
 		defer rows.Close()
 	}
+
 	if err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -1513,7 +1539,7 @@ func (s *session) modifyBinlogFormatRow() {
 
 	sql := "set session binlog_format=row;"
 
-	if _, err := s.Exec(sql); err != nil {
+	if _, err := s.Exec(sql, true); err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1535,7 +1561,7 @@ func (s *session) setSqlSafeUpdates() {
 		return
 	}
 
-	if _, err := s.Exec(sql); err != nil {
+	if _, err := s.Exec(sql, true); err != nil {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -4257,6 +4283,8 @@ func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
 		log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
 		}
 	} else if rows != nil {
 
@@ -4377,7 +4405,7 @@ func (s *session) checkChangeDB(node *ast.UseStmt) {
 
 	s.DBName = node.DBName
 	if s.checkDBExists(node.DBName, true) {
-		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName))
+		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
 		if err != nil {
 			log.Error(err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -4459,12 +4487,19 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 	// }
 
 	var rows []ExplainInfo
-	if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
-		log.Error(err)
+
+	// if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+	if err := s.RawScan(sql, &rows); err != nil {
+		// log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 			if newRecord != nil {
 				newRecord.AppendErrorMessage(myErr.Message)
+			}
+		} else {
+			s.AppendErrorMessage(err.Error())
+			if newRecord != nil {
+				newRecord.AppendErrorMessage(err.Error())
 			}
 		}
 	}
