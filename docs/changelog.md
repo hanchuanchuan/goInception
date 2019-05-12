@@ -1,6 +1,13 @@
 # goInception 更新日志
 
 
+## [v0.7.4-beta] - 2019-5-12
+
+### New Features
+* 添加alter table表选项语法支持 (#30)
+* 重新设计kill操作支持,支持远端数据库kill和goInception kill命令 (#10)
+
+
 ## [v0.7.3-beta] - 2019-5-10
 
 ### Fix
