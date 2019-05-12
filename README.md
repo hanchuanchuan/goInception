@@ -4,7 +4,7 @@
 [![CircleCI Status](https://circleci.com/gh/hanchuanchuan/goInception.svg?style=shield)](https://circleci.com/gh/hanchuanchuan/goInception)
 [![GitHub release](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)](https://github.com/hanchuanchuan/goInception/releases)
 [![codecov](https://codecov.io/gh/hanchuanchuan/goInception/branch/master/graph/badge.svg)](https://codecov.io/gh/hanchuanchuan/goInception)
-[![](https://img.shields.io/badge/go-1.11-brightgreen.svg)](https://golang.org/dl/)
+[![](https://img.shields.io/badge/go-1.12-brightgreen.svg)](https://golang.org/dl/)
 [![TiDB](https://img.shields.io/badge/TiDB-v2.1.1-brightgreen.svg)](https://github.com/pingcap/tidb)
 ![](https://img.shields.io/github/downloads/hanchuanchuan/goInception/total.svg)
 ![](https://img.shields.io/github/license/hanchuanchuan/goInception.svg)
@@ -43,22 +43,22 @@ go build -o goInception tidb-server/main.go
 [贡献者列表](CONTRIBUTORS.md)
 
 
-### Docker镜像
+#### Docker镜像
 ```
 docker pull hanchuanchuan/goinception
 ```
 
-### 关联SQL审核平台 `已集成goInception`
+#### 关联SQL审核平台 `已集成goInception`
 
 * [Archery](https://github.com/hhyo/Archery) `查询支持(MySQL/MsSQL/Redis/PostgreSQL)、MySQL优化(SQLAdvisor|SOAR|SQLTuning)、慢日志管理、表结构对比、会话管理、阿里云RDS管理等`
 
 
-### 致谢
+#### 致谢
     goInception基于TiDB的语法解析器，和业内有名的inpcetion审核工具重构。
 - [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)
 
-### 交流
+#### 交流
 
 QQ群 **499262190**
 
