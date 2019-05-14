@@ -317,11 +317,14 @@ func (s *session) Parser(ctx context.Context) {
 			}
 		}
 
-		// 进程Killed
-		if err := checkClose(ctx); err != nil {
-			log.Warn("Killed: ", err)
-			s.AppendErrorMessage("Operation has been killed!")
-			break
+		// 如果执行阶段已经kill,则不再检查
+		if !s.killExecute {
+			// 进程Killed
+			if err := checkClose(ctx); err != nil {
+				log.Warn("Killed: ", err)
+				s.AppendErrorMessage("Operation has been killed!")
+				break
+			}
 		}
 
 		// if s.hasErrorBefore() {

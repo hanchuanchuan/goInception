@@ -219,6 +219,9 @@ type session struct {
 
 	// 时间戳类型是否需要明确指定默认值
 	explicitDefaultsForTimestamp bool
+
+	// 判断kill操作在哪个阶段,如果是在执行阶段时,则不停止备份
+	killExecute bool
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
