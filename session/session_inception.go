@@ -1164,6 +1164,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 		// 进程Killed
 		if err := checkClose(ctx); err != nil {
+			s.killExecute = true
 			log.Warn("Killed: ", err)
 			s.AppendErrorMessage("Operation has been killed!")
 			break
