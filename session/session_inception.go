@@ -4893,12 +4893,19 @@ func (r *Record) AppendWarning(number int, values ...interface{}) {
 
 func (s *session) AppendErrorMessage(msg string) {
 	s.recordSets.MaxLevel = 2
+	if s.stage == StageBackup {
+		s.myRecord.Buf.WriteString("Backup: ")
+	} else if s.stage == StageExec {
+		s.myRecord.Buf.WriteString("Execute: ")
+	}
 	s.myRecord.AppendErrorMessage(msg)
 }
 
 func (s *session) AppendWarning(number int, values ...interface{}) {
 	if s.stage == StageBackup {
 		s.myRecord.Buf.WriteString("Backup: ")
+	} else if s.stage == StageExec {
+		s.myRecord.Buf.WriteString("Execute: ")
 	}
 	s.myRecord.AppendWarning(number, values...)
 	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
@@ -4908,6 +4915,8 @@ func (s *session) AppendErrorNo(number int, values ...interface{}) {
 	if s.checkInceptionVariables(number) {
 		if s.stage == StageBackup {
 			s.myRecord.Buf.WriteString("Backup: ")
+		} else if s.stage == StageExec {
+			s.myRecord.Buf.WriteString("Execute: ")
 		}
 		s.myRecord.AppendErrorNo(number, values...)
 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
