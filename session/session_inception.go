@@ -577,6 +577,12 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.UpdateStmt:
 		s.checkUpdate(node, currentSql)
 
+	case *ast.UnionStmt, *ast.SelectStmt:
+		s.checkSelectItem(node)
+		if s.opt.execute {
+			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+		}
+
 	case *ast.UseStmt:
 		s.checkChangeDB(node)
 
@@ -3816,7 +3822,6 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 		}
 
 		selectColumnCount := 0
-
 		for _, f := range sel.Fields.Fields {
 			if f.WildCard == nil {
 				selectColumnCount += 1
@@ -3869,6 +3874,109 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 		log.Error(sel)
 	}
 	return 0, errors.New("未处理的类型")
+}
+
+func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
+	columns := []string{}
+	switch sel := node.(type) {
+	case *ast.UnionStmt:
+		// 取第一个select的列数
+		return s.getSubSelectColumns(sel.SelectList.Selects[0])
+
+	case *ast.SelectStmt:
+		// from为空时,直接走explain,sql可能是错误的
+		if sel.From == nil {
+			// return nil, errors.New("no from clause")
+			for _, f := range sel.Fields.Fields {
+				switch e := f.Expr.(type) {
+				case *ast.ColumnNameExpr:
+					columns = append(columns, e.Name.Name.String())
+				default:
+					log.Infof("%T", e)
+				}
+			}
+		} else {
+
+			for _, f := range sel.Fields.Fields {
+				if f.WildCard == nil {
+					// log.Infof("%#v", f)
+					if f.AsName.L != "" {
+						columns = append(columns, f.AsName.String())
+					} else {
+						switch e := f.Expr.(type) {
+						case *ast.ColumnNameExpr:
+							columns = append(columns, e.Name.Name.String())
+						default:
+							log.Infof("%T", e)
+						}
+					}
+				} else {
+
+					var tableList []*ast.TableSource
+					tableList = extractTableList(sel.From.TableRefs, tableList)
+					db := f.WildCard.Schema.L
+					wildTable := f.WildCard.Table.L
+
+					if wildTable == "" {
+						for _, tblSource := range tableList {
+							tblName, ok := tblSource.Source.(*ast.TableName)
+							if ok {
+								if tblName.Schema.L == "" {
+									tblName.Schema = model.NewCIStr(s.DBName)
+								}
+								t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+								if t != nil {
+									for _, field := range t.Fields {
+										columns = append(columns, field.Field)
+									}
+								}
+							} else {
+								cols := s.getSubSelectColumns(tblSource.Source)
+								if cols != nil {
+									columns = append(columns, cols...)
+								}
+							}
+						}
+					} else {
+						for _, tblSource := range tableList {
+							var tName string
+							tblName, ok := tblSource.Source.(*ast.TableName)
+
+							if tblSource.AsName.L != "" {
+								tName = tblSource.AsName.L
+							} else if ok {
+								tName = tblName.Name.L
+							}
+
+							if (ok && (db == "" || db == tblName.Schema.L) &&
+								wildTable == tName) ||
+								(!ok && wildTable == tName) {
+								if ok {
+									t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, false)
+									if t != nil {
+										for _, field := range t.Fields {
+											columns = append(columns, field.Field)
+										}
+									}
+								} else {
+									cols := s.getSubSelectColumns(tblSource.Source)
+									if cols != nil {
+										columns = append(columns, cols...)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			return columns
+		}
+
+	default:
+		// log.Error("未处理的类型: %#v", sel)
+		log.Error(sel)
+	}
+	return columns
 }
 
 func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
@@ -4634,42 +4742,42 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		// }
 	}
 
-	if !catchError && s.myRecord.TableInfo == nil {
-		if originTable == "" {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, firstColumnName)
-		} else {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-				fmt.Sprintf("%s.%s", originTable, firstColumnName))
-		}
-	} else if !catchError && (s.myRecord.TableInfo.IsNew || s.myRecord.TableInfo.IsNewColumns || haveNewTable) {
-		for _, l := range node.List {
-			found := false
-			for _, field := range s.myRecord.TableInfo.Fields {
-				if strings.EqualFold(field.Field, l.Column.Name.L) && !field.IsDeleted {
-					found = true
-					break
-				}
-			}
-			if !found {
+	if !catchError {
+		if s.myRecord.TableInfo == nil {
+			if originTable == "" {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, firstColumnName)
+			} else {
 				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-					fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
+					fmt.Sprintf("%s.%s", originTable, firstColumnName))
+			}
+		} else if s.myRecord.TableInfo.IsNew || s.myRecord.TableInfo.IsNewColumns || haveNewTable {
+			// 新增表 or 新增列时,不能做explain
+			for _, l := range node.List {
+				found := false
+				for _, field := range s.myRecord.TableInfo.Fields {
+					if strings.EqualFold(field.Field, l.Column.Name.L) && !field.IsDeleted {
+						found = true
+						break
+					}
+				}
+				if !found {
+					s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+						fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
+				}
+
+				s.checkItem(l.Expr, tableInfoList)
 			}
 
-			s.checkItem(l.Expr, tableInfoList)
-		}
-	} else if !catchError {
-		// 如果没有表结构,或者新增表 or 新增列时,不做explain
-		if s.myRecord.TableInfo != nil && !s.myRecord.TableInfo.IsNew &&
-			!s.myRecord.TableInfo.IsNewColumns {
+			if node.TableRefs.TableRefs.On != nil {
+				s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
+			}
+
+			s.checkItem(node.Where, tableInfoList)
+		} else {
+			// 如果没有表结构,或者新增表 or 新增列时,不做explain
 			s.explainOrAnalyzeSql(sql)
 		}
 	}
-
-	if node.TableRefs.TableRefs.On != nil {
-		s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
-	}
-
-	s.checkItem(node.Where, tableInfoList)
 
 	if node.Where == nil {
 		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
@@ -5068,8 +5176,8 @@ func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.T
 		// }
 		input = append(input, x)
 	default:
-		log.Info(x)
-		log.Infof("%#v", x)
+		log.Infof("%T", x)
+		// log.Infof("%#v", x)
 	}
 	return input
 }
@@ -5291,9 +5399,14 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) bool {
 
 	case *ast.SelectStmt:
 		s.checkSubSelectItem(x)
+	// case *ast.SelectStmt:
+	// 	cols, err := s.getSubSelectColumns(x)
+	// 	log.Info(cols)
+	// 	log.Info(err)
+
 	default:
-		log.Info(x)
-		log.Infof("%#v", x)
+		log.Infof("%T", x)
+		// log.Infof("%#v", x)
 	}
 	return !s.hasError()
 }
@@ -5322,7 +5435,24 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 				tableInfoList = append(tableInfoList, t)
 			}
 		case *ast.SelectStmt:
-			s.checkSubSelectItem(x)
+			// s.checkSubSelectItem(x)
+			cols := s.getSubSelectColumns(x)
+			// log.Info(cols)
+			if cols != nil {
+				rows := make([]FieldInfo, len(cols))
+				for i, colName := range cols {
+					rows[i].Field = colName
+				}
+				t := &TableInfo{
+					Schema: "",
+					Name:   tblSource.AsName.String(),
+					Fields: rows,
+				}
+				tableInfoList = append(tableInfoList, t)
+			}
+		default:
+			log.Infof("%T", x)
+			// log.Infof("%#v", x)
 		}
 	}
 
