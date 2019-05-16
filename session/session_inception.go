@@ -3741,8 +3741,14 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 			if !s.hasError() {
 				// if from == nil || (fromTable != nil && !fromTable.IsNew) {
-				i := strings.Index(strings.ToLower(sql), "select")
-				selectSql := sql[i:]
+				// 如果不是新建表或者新增列时,则直接explain
+				var selectSql string
+				if table.IsNew || table.IsNewColumns || s.DBVersion < 50600 {
+					i := strings.Index(strings.ToLower(sql), "select")
+					selectSql = sql[i:]
+				} else {
+					selectSql = sql
+				}
 
 				s.explainOrAnalyzeSql(selectSql)
 
