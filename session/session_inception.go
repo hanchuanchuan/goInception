@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	// json "github.com/CorgiMan/json2"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
@@ -3878,24 +3879,41 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 
 func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 	columns := []string{}
+	// log.Infof("%T", node)
+	// log.Infof("%#v", node)
 	switch sel := node.(type) {
 	case *ast.UnionStmt:
 		// 取第一个select的列数
 		return s.getSubSelectColumns(sel.SelectList.Selects[0])
 
 	case *ast.SelectStmt:
+		// var tableList []*ast.TableSource
+		// var tableInfoList []*TableInfo
+
 		// from为空时,直接走explain,sql可能是错误的
 		if sel.From == nil {
 			// return nil, errors.New("no from clause")
 			for _, f := range sel.Fields.Fields {
-				switch e := f.Expr.(type) {
-				case *ast.ColumnNameExpr:
-					columns = append(columns, e.Name.Name.String())
-				default:
-					log.Infof("%T", e)
+				if f.AsName.L != "" {
+					columns = append(columns, f.AsName.String())
+				} else {
+					switch e := f.Expr.(type) {
+					case *ast.ColumnNameExpr:
+						columns = append(columns, e.Name.Name.String())
+					default:
+						log.Infof("%T", e)
+					}
 				}
 			}
 		} else {
+
+			var tableList []*ast.TableSource
+			tableList = extractTableList(sel.From.TableRefs, tableList)
+			// tableInfoList = s.getTableInfoByTableSource(tableList)
+
+			// if sel.From.TableRefs.On != nil {
+			// 	s.checkItem(sel.From.TableRefs.On.Expr, tableInfoList)
+			// }
 
 			for _, f := range sel.Fields.Fields {
 				if f.WildCard == nil {
@@ -3912,8 +3930,6 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 					}
 				} else {
 
-					var tableList []*ast.TableSource
-					tableList = extractTableList(sel.From.TableRefs, tableList)
 					db := f.WildCard.Schema.L
 					wildTable := f.WildCard.Table.L
 
@@ -3969,13 +3985,45 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 					}
 				}
 			}
-			return columns
 		}
+
+		// for _, t := range tableInfoList {
+		// 	log.Info(t.Name)
+		// }
+		// log.Infof("%#v", columns)
+
+		// if sel.Fields != nil {
+		// 	for _, field := range sel.Fields.Fields {
+		// 		if field.WildCard == nil {
+		// 			s.checkItem(field.Expr, tableInfoList)
+		// 		}
+		// 	}
+		// }
+
+		// if sel.GroupBy != nil {
+		// 	for _, item := range sel.GroupBy.Items {
+		// 		s.checkItem(item.Expr, tableInfoList)
+		// 	}
+		// }
+
+		// if sel.Having != nil {
+		// 	s.checkItem(sel.Having.Expr, tableInfoList)
+		// }
+
+		// if sel.OrderBy != nil {
+		// 	for _, item := range sel.OrderBy.Items {
+		// 		s.checkItem(item.Expr, tableInfoList)
+		// 	}
+		// }
+
+		return columns
 
 	default:
 		// log.Error("未处理的类型: %#v", sel)
 		log.Error(sel)
 	}
+
+	log.Infof("%#v", columns)
 	return columns
 }
 
@@ -4708,8 +4756,23 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	for _, tblSource := range tableList {
 		tblName, ok := tblSource.Source.(*ast.TableName)
 		if !ok {
+			cols := s.getSubSelectColumns(tblSource.Source)
+			// log.Info(cols)
+			if cols != nil {
+				rows := make([]FieldInfo, len(cols))
+				for i, colName := range cols {
+					rows[i].Field = colName
+				}
+				t := &TableInfo{
+					Schema: "",
+					Name:   tblSource.AsName.String(),
+					Fields: rows,
+				}
+				tableInfoList = append(tableInfoList, t)
+			}
 			continue
 		}
+
 		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 		if t == nil {
 			catchError = true
@@ -4768,11 +4831,11 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				s.checkItem(l.Expr, tableInfoList)
 			}
 
-			if node.TableRefs.TableRefs.On != nil {
-				s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
-			}
-
-			s.checkItem(node.Where, tableInfoList)
+			s.checkSelectItem(node.TableRefs.TableRefs)
+			// if node.TableRefs.TableRefs.On != nil {
+			// 	s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
+			// }
+			// s.checkItem(node.Where, tableInfoList)
 		} else {
 			// 如果没有表结构,或者新增表 or 新增列时,不做explain
 			s.explainOrAnalyzeSql(sql)
@@ -4833,6 +4896,17 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 				}
 			}
 		}
+
+		// log.Infof("%#v", e)
+		// log.Info(e.Name.Name, "--------", found)
+		// for _, t := range tables {
+		// 	log.Info(t.AsName, ",", t.Name)
+		// 	for _, f := range t.Fields {
+		// 		fmt.Print(f.Field, " ")
+		// 	}
+		// 	fmt.Println()
+		// }
+
 		if found {
 			return true
 		} else {
@@ -5380,7 +5454,11 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 	return p
 }
 
-func (s *session) checkSelectItem(node ast.ResultSetNode) bool {
+func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
+	if node == nil {
+		return nil
+	}
+
 	switch x := node.(type) {
 	case *ast.UnionStmt:
 		stmt := x.SelectList
@@ -5398,24 +5476,59 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) bool {
 		}
 
 	case *ast.SelectStmt:
-		s.checkSubSelectItem(x)
+		return s.checkSubSelectItem(x)
 	// case *ast.SelectStmt:
 	// 	cols, err := s.getSubSelectColumns(x)
 	// 	log.Info(cols)
 	// 	log.Info(err)
+	case *ast.Join:
+		tableInfoList := s.checkSelectItem(x.Left)
+		tableInfoList = append(tableInfoList, s.checkSelectItem(x.Right)...)
+		// log.Infof("%#v", x)
+		//
+		// b, _ := json.MarshalIndent(x, "", "  ")
+		// log.Info(string(b))
+		// log.Infof("%#v", x.Left)
+		// log.Infof("%#v", x.Right)
+		// log.Infof("%#v", x.On)
+		if x.On != nil {
+			s.checkItem(x.On.Expr, tableInfoList)
+		}
+	case *ast.TableSource:
+		switch tblSource := x.Source.(type) {
+		case *ast.TableName:
+			t := s.getTableFromCache(tblSource.Schema.O, tblSource.Name.O, true)
+			if t != nil {
+				t.AsName = x.AsName.O
+				return []*TableInfo{t}
+			} else {
+				return nil
+			}
+		// case *ast.SelectStmt:
+		// 	return s.checkSubSelectItem(tblSource)
+
+		default:
+			return s.checkSelectItem(tblSource)
+			// log.Infof("%T", x)
+			// log.Infof("%#v", x)
+		}
 
 	default:
 		log.Infof("%T", x)
 		// log.Infof("%#v", x)
 	}
-	return !s.hasError()
+	return nil
+	// return !s.hasError()
 }
 
-func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
+func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 	log.Debug("checkSubSelectItem")
 
 	var tableList []*ast.TableSource
 	if node.From != nil {
+		// 递归审核子查询
+		// s.checkSelectItem(node.From.TableRefs)
+
 		tableList = extractTableList(node.From.TableRefs, tableList)
 
 		s.checkTableAliasDuplicate(node.From.TableRefs, make(map[string]interface{}))
@@ -5435,7 +5548,9 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 				tableInfoList = append(tableInfoList, t)
 			}
 		case *ast.SelectStmt:
-			// s.checkSubSelectItem(x)
+			// 递归审核子查询
+			s.checkSubSelectItem(x)
+
 			cols := s.getSubSelectColumns(x)
 			// log.Info(cols)
 			if cols != nil {
@@ -5452,7 +5567,7 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 			}
 		default:
 			log.Infof("%T", x)
-			// log.Infof("%#v", x)
+			tableInfoList = append(tableInfoList, s.checkSelectItem(tblSource)...)
 		}
 	}
 
@@ -5463,6 +5578,12 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 			}
 		}
 	}
+
+	if node.From != nil && node.From.TableRefs.On != nil {
+		s.checkItem(node.From.TableRefs.On.Expr, tableInfoList)
+	}
+
+	s.checkItem(node.Where, tableInfoList)
 
 	if node.GroupBy != nil {
 		for _, item := range node.GroupBy.Items {
@@ -5480,9 +5601,55 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) bool {
 		}
 	}
 
-	return !s.hasError()
+	return tableInfoList
+	// return !s.hasError()
 }
 
+// getTableInfoList 获取语句涉及到的表信息,不包含where子查询中用到的
+func (s *session) getTableInfoList(node ast.ResultSetNode) []*TableInfo {
+	if node == nil {
+		return nil
+	}
+
+	var tableList []*ast.TableSource
+	tableList = extractTableList(node, tableList)
+	s.checkTableAliasDuplicate(node, make(map[string]interface{}))
+
+	return s.getTableInfoByTableSource(tableList)
+}
+
+// getTableInfoByTableSource 根据from的对象获取涉及表信息
+func (s *session) getTableInfoByTableSource(tableList []*ast.TableSource) (tableInfoList []*TableInfo) {
+
+	for _, tblSource := range tableList {
+		switch x := tblSource.Source.(type) {
+		case *ast.TableName:
+			tblName := x
+			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+			if t != nil {
+				t.AsName = tblSource.AsName.O
+				tableInfoList = append(tableInfoList, t)
+			}
+		case *ast.SelectStmt:
+			cols := s.getSubSelectColumns(x)
+			if cols != nil {
+				rows := make([]FieldInfo, len(cols))
+				for i, colName := range cols {
+					rows[i].Field = colName
+				}
+				t := &TableInfo{
+					Schema: "",
+					Name:   tblSource.AsName.String(),
+					Fields: rows,
+				}
+				tableInfoList = append(tableInfoList, t)
+			}
+		default:
+			log.Infof("%T", x)
+		}
+	}
+	return tableInfoList
+}
 func (s *session) isMiddleware() bool {
 	return s.opt.middlewareExtend != ""
 }

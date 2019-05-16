@@ -1476,6 +1476,7 @@ func (c *colResolverForOnlyFullGroupBy) Leave(node ast.Node) (ast.Node, bool) {
 }
 
 func (c *colResolverForOnlyFullGroupBy) Check() error {
+	// 非group语句时,如果有聚合函数,则第一个非聚合列报错
 	if c.hasAggFunc && c.firstNonAggCol != nil {
 		return ErrMixOfGroupFuncAndFields.GenWithStackByArgs(c.firstNonAggColIdx+1, c.firstNonAggCol.Name.O)
 	}
