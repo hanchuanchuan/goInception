@@ -968,6 +968,10 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
 	s.testErrorCode(c, sql)
+
+	// 指定特殊选项
+	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column c1 int,ALGORITHM=INPLACE, LOCK=NONE;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
