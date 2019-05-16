@@ -2486,6 +2486,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 		case ast.AlterTableAlterColumn:
 			s.checkAlterTableAlterColumn(table, alter)
+
+		case ast.AlterTableLock,
+			ast.AlterTableAlgorithm,
+			ast.AlterTableForce:
+			// 不做校验,允许这些参数
+
 		default:
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 			log.Info("未定义的解析: ", alter.Tp)
