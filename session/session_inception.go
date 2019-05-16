@@ -4835,7 +4835,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 			// if node.TableRefs.TableRefs.On != nil {
 			// 	s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
 			// }
-			// s.checkItem(node.Where, tableInfoList)
+			s.checkItem(node.Where, tableInfoList)
 		} else {
 			// 如果没有表结构,或者新增表 or 新增列时,不做explain
 			s.explainOrAnalyzeSql(sql)
