@@ -1,6 +1,19 @@
 # goInception 更新日志
 
 
+## [v0.7.5-beta] - 2019-5-17
+
+### Fix
+* 修复执行阶段kill逻辑,避免kill后备份也中止
+
+### New Features
+* 添加select语法支持
+* 添加alter table的ALGORITHM,LOCK,FORCE语法支持
+
+### Update
+* 优化update子查询审核
+
+
 ## [v0.7.4-beta] - 2019-5-12
 
 ### New Features
