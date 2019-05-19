@@ -1425,8 +1425,8 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	s.testAffectedRows(c, 1)
 
 	sql = `drop table if exists tt1,t1;
-create table tt1 like test.t;
-create table t1 like test.t;
+create table tt1(id int primary key,table_schema varchar(20),table_name varchar(64),version int);
+create table t1 like tt1;
 UPDATE tt1
 INNER JOIN
   (SELECT table_schema,
@@ -1440,8 +1440,8 @@ WHERE tt1.id=1;`
 		session.NewErr(session.ErrFieldNotInGroupBy, 3, "SELECT list", "table_name"))
 
 	sql = `drop table if exists tt1,t1;
-create table tt1 like test.t;
-create table t1 like test.t;
+create table tt1(id int primary key,table_schema varchar(20),table_name varchar(64),version int);
+create table t1 like tt1;
 UPDATE tt1
 INNER JOIN
   (SELECT table_schema,
@@ -1453,8 +1453,8 @@ WHERE tt1.id=1;`
 	s.testErrorCode(c, sql)
 
 	sql = `drop table if exists tt1,t1;
-create table tt1 like test.t;
-create table t1 like test.t;
+create table tt1(id int primary key,table_schema varchar(20),table_name varchar(64),version int);
+create table t1 like tt1;
 UPDATE tt1
 INNER JOIN
   (SELECT table_schema,
