@@ -1436,8 +1436,12 @@ INNER JOIN
    GROUP BY table_schema)t2 ON tt1.table_schema=t2.table_schema
 SET tt1.VERSION=t2.VERSION
 WHERE tt1.id=1;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrFieldNotInGroupBy, 3, "SELECT list", "table_name"))
+	if strings.Contains(s.getSQLMode(c), "ONLY_FULL_GROUP_BY") {
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrFieldNotInGroupBy, 3, "SELECT list", "table_name"))
+	} else {
+		s.testErrorCode(c, sql)
+	}
 
 	sql = `drop table if exists tt1,t1;
 create table tt1(id int primary key,table_schema varchar(20),table_name varchar(64),version int);
@@ -1462,8 +1466,12 @@ INNER JOIN
    FROM t1)t2 ON tt1.table_schema=t2.table_schema
 SET tt1.VERSION=t2.VERSION
 WHERE tt1.id=1;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrMixOfGroupFuncAndFields, 1, "table_schema"))
+	if strings.Contains(s.getSQLMode(c), "ONLY_FULL_GROUP_BY") {
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrMixOfGroupFuncAndFields, 1, "table_schema"))
+	} else {
+		s.testErrorCode(c, sql)
+	}
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
