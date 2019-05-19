@@ -1423,6 +1423,47 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	sql = `update t1 set c1=1 where id =1;`
 	s.testErrorCode(c, sql)
 	s.testAffectedRows(c, 1)
+
+	sql = `drop table if exists tt1,t1;
+create table tt1 like test.t;
+create table t1 like test.t;
+UPDATE tt1
+INNER JOIN
+  (SELECT table_schema,
+          max(VERSION) AS VERSION,
+          table_name
+   FROM t1
+   GROUP BY table_schema)t2 ON tt1.table_schema=t2.table_schema
+SET tt1.VERSION=t2.VERSION
+WHERE tt1.id=1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrFieldNotInGroupBy, 3, "SELECT list", "table_name"))
+
+	sql = `drop table if exists tt1,t1;
+create table tt1 like test.t;
+create table t1 like test.t;
+UPDATE tt1
+INNER JOIN
+  (SELECT table_schema,
+          max(VERSION) AS VERSION
+   FROM t1
+   GROUP BY table_schema)t2 ON tt1.table_schema=t2.table_schema
+SET tt1.VERSION=t2.VERSION
+WHERE tt1.id=1;`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists tt1,t1;
+create table tt1 like test.t;
+create table t1 like test.t;
+UPDATE tt1
+INNER JOIN
+  (SELECT table_schema,
+          max(VERSION) AS VERSION
+   FROM t1)t2 ON tt1.table_schema=t2.table_schema
+SET tt1.VERSION=t2.VERSION
+WHERE tt1.id=1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrMixOfGroupFuncAndFields, 1, "table_schema"))
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {

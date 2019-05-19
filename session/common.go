@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	// "github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/ast"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -433,3 +434,33 @@ func checkClose(ctx context.Context) error {
 // if err := checkGoContext(ctx); err != nil {
 // 	return nil, err
 // }
+
+func findColumn(c *ast.ColumnNameExpr, t *TableInfo) *FieldInfo {
+	var tName string
+	db := c.Name.Schema.L
+	if t.AsName != "" {
+		tName = t.AsName
+	} else {
+		tName = t.Name
+	}
+	if c.Name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+		(strings.EqualFold(tName, c.Name.Table.L)) ||
+		c.Name.Table.L == "" {
+		for i, field := range t.Fields {
+			if strings.EqualFold(field.Field, c.Name.Name.L) && !field.IsDeleted {
+				return &t.Fields[i]
+			}
+		}
+	}
+	return nil
+}
+
+func findColumnWithList(c *ast.ColumnNameExpr, tables []*TableInfo) *FieldInfo {
+	for _, t := range tables {
+		f := findColumn(c, t)
+		if f != nil {
+			return f
+		}
+	}
+	return nil
+}
