@@ -192,6 +192,8 @@ const (
 	ErrTableCollationNotSupport
 	ErrJsonTypeSupport
 	//ER_NULL_NAME_FOR_INDEX
+	ErrMixOfGroupFuncAndFields
+	ErrFieldNotInGroupBy
 	ER_ERROR_LAST
 )
 
@@ -350,6 +352,9 @@ var ErrorsDefault = map[int]string{
 	ErrCollationNotSupport:                 "Set collation to one of '%s'",
 	ErrJsonTypeSupport:                     "Json type not allowed in column '%s'.",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
+	ErrMixOfGroupFuncAndFields:             "In aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; this is incompatible with sql_mode=only_full_group_by.",
+	ErrFieldNotInGroupBy:                   "Expression #%d of %s is not in GROUP BY clause and contains nonaggregated column '%s' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by.",
+	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 }
 

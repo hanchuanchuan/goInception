@@ -4909,7 +4909,6 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 			}
 		}
 
-		// log.Infof("%#v", e)
 		// log.Info(e.Name.Name, "--------", found)
 		// for _, t := range tables {
 		// 	log.Info(t.AsName, ",", t.Name)
@@ -5471,6 +5470,8 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
 		return nil
 	}
 
+	// log.Infof("%T", node)
+
 	switch x := node.(type) {
 	case *ast.UnionStmt:
 		stmt := x.SelectList
@@ -5496,16 +5497,16 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
 	case *ast.Join:
 		tableInfoList := s.checkSelectItem(x.Left)
 		tableInfoList = append(tableInfoList, s.checkSelectItem(x.Right)...)
-		// log.Infof("%#v", x)
-		//
+
 		// b, _ := json.MarshalIndent(x, "", "  ")
 		// log.Info(string(b))
+
 		// log.Infof("%#v", x.Left)
 		// log.Infof("%#v", x.Right)
-		// log.Infof("%#v", x.On)
 		if x.On != nil {
 			s.checkItem(x.On.Expr, tableInfoList)
 		}
+		return tableInfoList
 	case *ast.TableSource:
 		switch tblSource := x.Source.(type) {
 		case *ast.TableName:
@@ -5516,8 +5517,23 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
 			} else {
 				return nil
 			}
-		// case *ast.SelectStmt:
-		// 	return s.checkSubSelectItem(tblSource)
+		case *ast.SelectStmt:
+			s.checkSubSelectItem(tblSource)
+
+			cols := s.getSubSelectColumns(tblSource)
+			// log.Info(cols)
+			if cols != nil {
+				rows := make([]FieldInfo, len(cols))
+				for i, colName := range cols {
+					rows[i].Field = colName
+				}
+				t := &TableInfo{
+					Schema: "",
+					Name:   x.AsName.String(),
+					Fields: rows,
+				}
+				return []*TableInfo{t}
+			}
 
 		default:
 			return s.checkSelectItem(tblSource)
@@ -5596,6 +5612,19 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 	}
 
 	s.checkItem(node.Where, tableInfoList)
+
+	// log.Info("group by : ", s.sessionVars.SQLMode.HasOnlyFullGroupBy())
+	if s.sessionVars.SQLMode.HasOnlyFullGroupBy() && node.From != nil {
+		var err error
+		if node.GroupBy != nil {
+			err = s.checkOnlyFullGroupByWithGroupClause(node, tableInfoList)
+		} else {
+			err = s.checkOnlyFullGroupByWithOutGroupClause(node.Fields.Fields)
+		}
+		if err != nil {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
 
 	if node.GroupBy != nil {
 		for _, item := range node.GroupBy.Items {
