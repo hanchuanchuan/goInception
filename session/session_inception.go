@@ -5730,6 +5730,8 @@ func (s *session) checkFingerprint(sql string) (string, bool) {
 			msg := record.Buf.String()
 			if msg != "" {
 				s.myRecord.AppendErrorMessage(strings.TrimSpace(msg))
+				// 可能是警告,也可能是错误
+				s.myRecord.ErrLevel = record.ErrLevel
 			}
 			return id, true
 		}
