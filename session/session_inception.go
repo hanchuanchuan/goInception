@@ -3720,7 +3720,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	// insert select 语句
 	if x.Select != nil {
-
 		sel, ok := x.Select.(*ast.SelectStmt)
 		if !ok {
 			if u, ok := x.Select.(*ast.UnionStmt); ok {
@@ -3752,25 +3751,62 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				s.AppendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, 1)
 			}
 
+			var tableList []*ast.TableSource
+			var tableInfoList []*TableInfo
+			tableList = extractTableList(x.Select, tableList)
+
+			// 判断select中是否有新表
+			haveNewTable := false
+			for _, tblSource := range tableList {
+				tblName, ok := tblSource.Source.(*ast.TableName)
+				if !ok {
+					cols := s.getSubSelectColumns(tblSource.Source)
+					if cols != nil {
+						rows := make([]FieldInfo, len(cols))
+						for i, colName := range cols {
+							rows[i].Field = colName
+						}
+						t := &TableInfo{
+							Schema: "",
+							Name:   tblSource.AsName.String(),
+							Fields: rows,
+						}
+						tableInfoList = append(tableInfoList, t)
+					}
+					continue
+				}
+
+				t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+				if t != nil {
+					if tblSource.AsName.L != "" {
+						t.AsName = tblSource.AsName.O
+					}
+					tableInfoList = append(tableInfoList, t)
+					if t.IsNew {
+						haveNewTable = true
+					}
+				}
+			}
+
 			if !s.hasError() {
-				// if from == nil || (fromTable != nil && !fromTable.IsNew) {
-				// 如果不是新建表或者新增列时,则直接explain
-				var selectSql string
-				if table.IsNew || table.IsNewColumns || s.DBVersion < 50600 {
-					i := strings.Index(strings.ToLower(sql), "select")
-					selectSql = sql[i:]
+				// 如果不是新建表时,则直接explain
+				if haveNewTable {
+					s.checkSelectItem(x.Select)
 				} else {
-					selectSql = sql
-				}
+					var selectSql string
+					if table.IsNew || table.IsNewColumns || s.DBVersion < 50600 {
+						i := strings.Index(strings.ToLower(sql), "select")
+						selectSql = sql[i:]
+					} else {
+						selectSql = sql
+					}
 
-				s.explainOrAnalyzeSql(selectSql)
+					s.explainOrAnalyzeSql(selectSql)
 
-				if sel.From == nil && s.myRecord.AffectedRows == 0 {
-					s.myRecord.AffectedRows = 1
+					if sel.From == nil && s.myRecord.AffectedRows == 0 {
+						s.myRecord.AffectedRows = 1
+					}
 				}
-				// } else {
-				// 	s.checkSelectItem(x.Select)
-				// }
 			}
 
 			if sel.Where == nil {
@@ -5246,6 +5282,7 @@ func (s *session) checkInceptionVariables(number int) bool {
 	return true
 }
 
+// extractTableList 抽取语句from涉及的表
 func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.TableSource {
 	if node == nil {
 		return input
@@ -5267,6 +5304,14 @@ func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.T
 		// 	}
 		// }
 		input = append(input, x)
+	case *ast.SelectStmt:
+		if x.From != nil {
+			input = extractTableList(x.From.TableRefs, input)
+		}
+	case *ast.UnionStmt:
+		for _, sel := range x.SelectList.Selects {
+			input = extractTableList(sel, input)
+		}
 	default:
 		log.Infof("%T", x)
 		// log.Infof("%#v", x)
