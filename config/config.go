@@ -313,6 +313,9 @@ type Inc struct {
 	EnableSetCharset   bool `toml:"enable_set_charset" json:"enable_set_charset"`
 	EnableSetCollation bool `toml:"enable_set_collation" json:"enable_set_collation"`
 
+	// 全量日志
+	GeneralLog bool `toml:"general_log" json:"general_log"`
+
 	Lang          string `toml:"lang" json:"lang"`
 	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
 
