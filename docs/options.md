@@ -60,6 +60,7 @@ enable_pk_columns_only_int  |  false    |   true,false     |     是否强制主
 enable_select_star   |  false    |   true,false     |     Select*时是不是要报错
 enable_set_charset   |  false    |   true,false     |     是否允许指定表和数据库的字符集
 enable_set_collation `v0.7` |  false    |   true,false     |     是否允许指定表和数据库的排序规则
+general_log `v0.8.1` |  false    |   true,false     |     是否记录全量日志
 lang `v0.5.1` | en-US             | en-US,zh-CN | 返回的信息使用语言,可选值`en-US`,`zh-CN`
 max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
 max_insert_rows   `v0.6.3`              | 0           | int  | 设置insert values允许的最大行数.0为不限制
