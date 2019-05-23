@@ -271,7 +271,8 @@ support_charset = "utf8,utf8mb4"
 
 lang = "en-US"
 
-
+# 全量日志
+general_log = false
 
 [osc]
 

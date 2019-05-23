@@ -259,7 +259,7 @@ release:
 		for GOARCH in amd64; do \
 			echo "Building $${GOOS}-$${GOARCH} ..."; \
 			CGO_ENABLED=0 GOOS=$${GOOS} GOARCH=amd64 go build -ldflags="-s -w" -o goInception tidb-server/main.go; \
-			tar -czf release/goInception-$${GOOS}-amd64-${VERSION}.tar.gz goInception; \
+			tar -czf release/goInception-$${GOOS}-amd64-${VERSION}.tar.gz goInception config/config.toml.suggest; \
 			rm -f goInception; \
 		done ;\
 	done

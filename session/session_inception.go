@@ -22,15 +22,15 @@ import (
 	// Sql "database/sql"
 	"database/sql/driver"
 	"fmt"
-	"unicode/utf8"
-	// "io"
 	"math"
 	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	// json "github.com/CorgiMan/json2"
 	mysqlDriver "github.com/go-sql-driver/mysql"
@@ -249,6 +249,13 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.Ghost = config.GetGlobalConfig().Ghost
 
 	s.sqlFingerprint = nil
+
+	// 全量日志
+	if s.Inc.GeneralLog {
+		atomic.StoreUint32(&variable.ProcessGeneralLog, 1)
+	} else {
+		atomic.StoreUint32(&variable.ProcessGeneralLog, 0)
+	}
 
 	s.recordSets = NewRecordSets()
 
