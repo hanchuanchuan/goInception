@@ -11,6 +11,10 @@ jobs:
 
     working_directory: /go/src/github.com/hanchuanchuan/goInception
 
+    filters:
+      branches:
+        ignore: gh-pages
+
     steps:
       - run:
           name: Install mysql-client

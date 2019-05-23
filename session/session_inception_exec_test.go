@@ -953,7 +953,7 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 	res = makeExecSQL(tk, "drop table if exists t1;drop table if exists t2;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t2;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Execute: Table 'test_inc.t2' doesn't exist.")
+	c.Assert(row[4], Equals, "Table 'test_inc.t2' doesn't exist.")
 
 	// select where
 	config.GetGlobalConfig().Inc.CheckDMLWhere = true
