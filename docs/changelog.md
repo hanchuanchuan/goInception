@@ -1,5 +1,18 @@
 # goInception 更新日志
 
+
+## [v0.8.1-beta] - 2019-5-24
+
+### Fix
+* 修复新建表后,使用大小写不一致的表名时返回表不存在bug
+
+### New Features
+* 添加general_log参数,用以记录全量日志
+
+### Update
+* 优化insert select新表的审核规则,现在select新表时也可以审核了
+
+
 ## [v0.8-beta] - 2019-5-22
 
 ### Fix
