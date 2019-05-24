@@ -510,6 +510,15 @@ crtTime datetime not null DEFAULT CURRENT_TIMESTAMP comment 'test',
 uptTime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment 'test',
 primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql)
+
+	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 int);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	// 测试表名大小写
+	sql = "insert into T1 values(1);"
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncExecSuite) TestDropTable(c *C) {

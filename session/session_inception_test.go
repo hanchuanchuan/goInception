@@ -794,6 +794,9 @@ primary key(id)) comment 'test';`
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)
 
+	// 测试表名大小写
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);insert into T1 values(1);`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
