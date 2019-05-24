@@ -389,6 +389,77 @@ func (s *testSessionIncBackupSuite) TestInsert(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1;", Commentf("%v", res.Rows()))
 
+	// 值溢出时的回滚解析
+	res = s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int primary key,
+			c1 tinyint unsigned,
+			c2 smallint unsigned,
+			c3 mediumint unsigned,
+			c4 int unsigned,
+			c5 bigint unsigned
+		);`)
+	res = s.makeSQL(c, tk, "insert into t1 values(1,128,32768,8388608,2147483648,9223372036854775808);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1;", Commentf("%v", res.Rows()))
+
+	res = s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int,
+			c1 tinyint unsigned,
+			c2 smallint unsigned,
+			c3 mediumint unsigned,
+			c4 int unsigned,
+			c5 bigint unsigned,
+			c6 decimal unsigned,
+			c7 decimal(4,2) unsigned,
+			c8 float unsigned,
+			c9 double unsigned
+		);`)
+	res = s.makeSQL(c, tk, `insert into t1 values(1,128,32768,8388608,2147483648,9223372036854775808,
+		9999999999,99.99,3.402823466e+38,1.7976931348623157e+308);`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1 AND `c1`=128 AND `c2`=32768 AND "+
+		"`c3`=8388608 AND `c4`=2147483648 AND `c5`=9223372036854775808 AND "+
+		"`c6`=9.999999999e+09 AND `c7`=99.99 AND `c8`=3.4028235e+38 AND `c9`=1.7976931348623157e+308;", Commentf("%v", res.Rows()))
+
+	res = s.makeSQL(c, tk, `update t1 set c1 = 129,
+		c2 = 32769,
+		c3 = 8388609,
+		c4 = 2147483649,
+		c5 = 9223372036854775809,
+		c6 = 9999999990,
+		c7 = 88.88,
+		c8 = 3e+38,
+		c9 = 1e+308
+		where id = 1;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `id`=1, `c1`=128, `c2`=32768, "+
+		"`c3`=8388608, `c4`=2147483648, `c5`=9223372036854775808, `c6`=9.999999999e+09, "+
+		"`c7`=99.99, `c8`=3.4028235e+38, `c9`=1.7976931348623157e+308 "+
+		"WHERE `id`=1 AND `c1`=129 AND `c2`=32769 AND `c3`=8388609 AND "+
+		"`c4`=2147483649 AND `c5`=9223372036854775809 AND `c6`=9.99999999e+09 "+
+		"AND `c7`=88.88 AND `c8`=3e+38 AND `c9`=1e+308;", Commentf("%v", res.Rows()))
+
+	res = s.makeSQL(c, tk, `delete from t1 where id = 1;`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`,`c2`,`c3`,`c4`,`c5`,`c6`,`c7`,`c8`,`c9`)"+
+		" VALUES(1,129,32769,8388609,2147483649,9223372036854775809,9.99999999e+09,88.88,3e+38,1e+308);", Commentf("%v", res.Rows()))
+
+	res = s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(c1 bigint unsigned);`)
+	res = s.makeSQL(c, tk, `insert into t1 values(9223372036854775808);`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `c1`=9223372036854775808;", Commentf("%v", res.Rows()))
+
+	res = s.makeSQL(c, tk, `insert into t1 values(18446744073709551615);`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `c1`=18446744073709551615;", Commentf("%v", res.Rows()))
+
 	// // 受影响行数
 	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]

@@ -455,7 +455,10 @@ func (s *session) generateInsertSql(t *TableInfo, e *replication.RowsEvent,
 	for _, rows := range e.Rows {
 
 		var vv []driver.Value
-		for _, d := range rows {
+		for i, d := range rows {
+			if t.Fields[i].IsUnsigned() {
+				d = processValue(d, GetDataTypeBase(t.Fields[i].Type))
+			}
 			vv = append(vv, d)
 			// if _, ok := d.([]byte); ok {
 			//  log.Info().Msgf("%s:%q\n", t.Fields[j].Field, d)
@@ -498,7 +501,7 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 				_, ok := t.primarys[i]
 				if ok {
 					if t.Fields[i].IsUnsigned() {
-						d = processValue(d)
+						d = processValue(d, GetDataTypeBase(t.Fields[i].Type))
 					}
 					vv = append(vv, d)
 					if d == nil {
@@ -511,7 +514,7 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 				}
 			} else {
 				if t.Fields[i].IsUnsigned() {
-					d = processValue(d)
+					d = processValue(d, GetDataTypeBase(t.Fields[i].Type))
 				}
 				vv = append(vv, d)
 
@@ -537,10 +540,13 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 	return string(buf), nil
 }
 
-func processValue(value driver.Value) driver.Value {
+func processValue(value driver.Value, dataType string) driver.Value {
 	if value == nil {
 		return value
 	}
+
+	// log.Info(value)
+	// log.Infof("%T", value)
 
 	switch v := value.(type) {
 	case int8:
@@ -557,19 +563,22 @@ func processValue(value driver.Value) driver.Value {
 		if v >= 0 {
 			return value
 		}
+		if dataType == "mediumint" {
+			return int64(1<<24 + int64(v))
+		}
 		return int64(1<<32 + int64(v))
 	case int64:
 		if v >= 0 {
 			return value
 		}
 		return math.MaxUint64 - uint64(abs(v)) + 1
-	case int:
-	case float32:
-	case float64:
+	// case int:
+	// case float32:
+	// case float64:
 
 	default:
-		log.Error("解析错误")
-		log.Errorf("%T", v)
+		// log.Error("解析错误")
+		// log.Errorf("%T", v)
 		return value
 	}
 
@@ -620,7 +629,10 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 
 		if i%2 == 0 {
 			// 旧值
-			for _, d := range rows {
+			for j, d := range rows {
+				if t.Fields[j].IsUnsigned() {
+					d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
+				}
 				newValues = append(newValues, d)
 			}
 		} else {
@@ -631,6 +643,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 				if t.hasPrimary {
 					_, ok := t.primarys[j]
 					if ok {
+						if t.Fields[j].IsUnsigned() {
+							d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
+						}
 						oldValues = append(oldValues, d)
 
 						if d == nil {
@@ -642,6 +657,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 						}
 					}
 				} else {
+					if t.Fields[j].IsUnsigned() {
+						d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
+					}
 					oldValues = append(oldValues, d)
 
 					if d == nil {
@@ -712,6 +730,8 @@ func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
 			buf = strconv.AppendInt(buf, int64(v), 10)
 		case int64:
 			buf = strconv.AppendInt(buf, v, 10)
+		case uint64:
+			buf = strconv.AppendUint(buf, uint64(v), 10)
 		case int:
 			buf = strconv.AppendInt(buf, int64(v), 10)
 		case float32:
