@@ -5330,6 +5330,7 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 	}
 
 	key := fmt.Sprintf("%s.%s", db, tableName)
+	key = strings.ToLower(key)
 
 	if t, ok := s.tableCacheList[key]; ok {
 		// 如果表已删除, 之后又使用到,则报错
@@ -5366,6 +5367,7 @@ func (s *session) cacheNewTable(t *TableInfo) {
 		t.Schema = s.DBName
 	}
 	key := fmt.Sprintf("%s.%s", t.Schema, t.Name)
+	key = strings.ToLower(key)
 
 	t.IsNew = true
 	// 如果表删除后新建,直接覆盖即可
