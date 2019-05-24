@@ -5801,3 +5801,12 @@ func (s *session) saveFingerprint(sqlId string) {
 		s.sqlFingerprint[sqlId] = s.myRecord
 	}
 }
+
+// IsUnsigned 是否无符号列
+func (f *FieldInfo) IsUnsigned() bool {
+	columnType := f.Type
+	if strings.Contains(columnType, "unsigned") || strings.Contains(columnType, "zerofill") {
+		return true
+	}
+	return false
+}

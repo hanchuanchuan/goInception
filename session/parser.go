@@ -9,6 +9,7 @@ import (
 	"github.com/hanchuanchuan/go-mysql/replication"
 	"github.com/juju/errors"
 	log "github.com/sirupsen/logrus"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -496,6 +497,9 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 			if t.hasPrimary {
 				_, ok := t.primarys[i]
 				if ok {
+					if t.Fields[i].IsUnsigned() {
+						d = processValue(d)
+					}
 					vv = append(vv, d)
 					if d == nil {
 						columnNames = append(columnNames,
@@ -506,6 +510,9 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 					}
 				}
 			} else {
+				if t.Fields[i].IsUnsigned() {
+					d = processValue(d)
+				}
 				vv = append(vv, d)
 
 				if d == nil {
@@ -528,6 +535,50 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 	}
 
 	return string(buf), nil
+}
+
+func processValue(value driver.Value) driver.Value {
+	if value == nil {
+		return value
+	}
+
+	switch v := value.(type) {
+	case int8:
+		if v >= 0 {
+			return value
+		}
+		return int64(1<<8 + int64(v))
+	case int16:
+		if v >= 0 {
+			return value
+		}
+		return int64(1<<16 + int64(v))
+	case int32:
+		if v >= 0 {
+			return value
+		}
+		return int64(1<<32 + int64(v))
+	case int64:
+		if v >= 0 {
+			return value
+		}
+		return math.MaxUint64 - uint64(abs(v)) + 1
+	case int:
+	case float32:
+	case float64:
+
+	default:
+		log.Error("解析错误")
+		log.Errorf("%T", v)
+		return value
+	}
+
+	return value
+}
+
+func abs(n int64) int64 {
+	y := n >> 63
+	return (n ^ y) - y
 }
 
 func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
