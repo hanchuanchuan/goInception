@@ -1259,9 +1259,18 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 			// 无法确认是否执行成功,需要通过备份来确认
 			if err == mysqlDriver.ErrInvalidConn {
-				record.ThreadId = s.fetchThreadID()
-				record.AffectedRows = 0
-				record.ExecComplete = true
+
+				// 如果是DML语句,则通过备份来验证是否执行成功
+				// 如果是DDL语句,则直接报错,由人工确认执行结果
+				switch record.Type.(type) {
+				case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+					record.ThreadId = s.fetchThreadID()
+					record.AffectedRows = 0
+					record.ExecComplete = true
+				default:
+					s.AppendErrorMessage("The execution result is unknown! Please confirm manually.")
+				}
+
 			}
 			return
 		} else {
@@ -5128,12 +5137,14 @@ func (r *Record) AppendWarning(number int, values ...interface{}) {
 }
 
 func (s *session) AppendErrorMessage(msg string) {
-	s.recordSets.MaxLevel = 2
-	if s.stage == StageBackup {
-		s.myRecord.Buf.WriteString("Backup: ")
-	} else if s.stage == StageExec {
-		s.myRecord.Buf.WriteString("Execute: ")
+	if s.stage != StageCheck && s.recordSets.MaxLevel != 2 {
+		if s.stage == StageBackup {
+			s.myRecord.Buf.WriteString("Backup: ")
+		} else if s.stage == StageExec {
+			s.myRecord.Buf.WriteString("Execute: ")
+		}
 	}
+	s.recordSets.MaxLevel = 2
 	s.myRecord.AppendErrorMessage(msg)
 }
 
