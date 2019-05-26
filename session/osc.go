@@ -99,7 +99,7 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf := bytes.NewBufferString("pt-online-schema-change")
 
 	buf.WriteString(" --alter \"")
-	buf.WriteString(s.getAlterTablePostPart(r.Sql))
+	buf.WriteString(s.getAlterTablePostPart(r.Sql, true))
 
 	if s.hasError() {
 		return
@@ -213,7 +213,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.DatabaseName, "database", "", "database name (mandatory)")
 	migrationContext.OriginalTableName = r.TableInfo.Name
 
-	migrationContext.AlterStatement = s.getAlterTablePostPart(r.Sql)
+	migrationContext.AlterStatement = s.getAlterTablePostPart(r.Sql, false)
 
 	// flag.StringVar(&migrationContext.OriginalTableName, "table", "", "table name (mandatory)")
 	// flag.StringVar(&migrationContext.AlterStatement, "alter", "", "alter statement (mandatory)")
@@ -687,7 +687,7 @@ func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
 
 }
 
-func (s *session) getAlterTablePostPart(sql string) string {
+func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 
 	var buf []string
 	for _, line := range strings.Split(sql, "\n") {
@@ -750,7 +750,11 @@ func (s *session) getAlterTablePostPart(sql string) string {
 	sql = strings.Join(parts[3:], " ")
 
 	sql = strings.Replace(sql, "\"", "\\\"", -1)
-	sql = strings.Replace(sql, "`", "\\`", -1)
+
+	// gh-ost不需要处理`,pt-osc需要处理
+	if isPtOSC {
+		sql = strings.Replace(sql, "`", "\\`", -1)
+	}
 
 	return sql
 }

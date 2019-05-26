@@ -31,6 +31,7 @@ check_autoincrement_init_value   |  false    |   true,false     |     当建表�
 check_autoincrement_name   |  false    |   true,false     |   建表时，如果指定的自增列的名字不为ID，则报错，说明是有意义的，给提示
 check_column_comment   |  false    |   true,false     |   建表时，列没有注释时报错
 check_column_default_value   |  false    |   true,false     |     检查在建表、修改列、新增列时，新的列属性是不是要有默认值
+check_column_type_change `v0.7.3` |  true    |   true,false     |  检查字段类型变更
 check_dml_limit   |  false    |   true,false     |    在DML语句中使用了LIMIT时，是不是要报错
 check_dml_orderby   |  false    |   true,false     |  在DML语句中使用了Order By时，是不是要报错
 check_dml_where   |  false    |   true,false     |    在DML语句中没有WHERE条件时，是不是要报错
