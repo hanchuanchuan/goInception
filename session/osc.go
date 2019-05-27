@@ -252,9 +252,9 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 	migrationContext.OkToDropTable = s.Ghost.GhostOkToDropTable
 	// flag.BoolVar(&migrationContext.OkToDropTable, "ok-to-drop-table", false, "Shall the tool drop the old table at end of operation. DROPping tables can be a long locking operation, which is why I'm not doing it by default. I'm an online tool, yes?")
-	migrationContext.InitiallyDropOldTable = false
+	migrationContext.InitiallyDropOldTable = s.Ghost.GhostInitiallyDropOldTable
 	// flag.BoolVar(&migrationContext.InitiallyDropOldTable, "initially-drop-old-table", false, "Drop a possibly existing OLD table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
-	migrationContext.InitiallyDropGhostTable = false
+	migrationContext.InitiallyDropGhostTable = s.Ghost.GhostInitiallyDropGhostTable
 	// flag.BoolVar(&migrationContext.InitiallyDropGhostTable, "initially-drop-ghost-table", false, "Drop a possibly existing Ghost table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
 	migrationContext.TimestampOldTable = false
 	// flag.BoolVar(&migrationContext.TimestampOldTable, "timestamp-old-table", false, "Use a timestamp in old table name. This makes old table names unique and non conflicting cross migrations")
