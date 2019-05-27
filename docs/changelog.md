@@ -1,6 +1,14 @@
 # goInception 更新日志
 
 
+## [v0.8.2-beta] - 2019-5-27
+
+### Fix
+* fix: 修复binlog解析时对unsigned列溢出值的处理
+* fix: 修复gh-ost执行语句有反引号时报语法错误的bug (#33)
+* fix: 修复kill DDL操作时,返回执行和备份成功的bug,现在会提示执行结果未知了 (#34)
+
+
 ## [v0.8.1-beta] - 2019-5-24
 
 ### Fix
