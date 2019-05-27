@@ -79,7 +79,9 @@ func (s *session) GetNextBackupRecord() *Record {
 				s.ch <- &ChanData{sqlStr: r.DDLRollback, opid: r.OPID,
 					table: s.lastBackupTable, record: r}
 
-				r.StageStatus = StatusBackupOK
+				if r.StageStatus != StatusExecFail {
+					r.StageStatus = StatusBackupOK
+				}
 
 				continue
 
