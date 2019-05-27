@@ -1259,18 +1259,22 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 			// 无法确认是否执行成功,需要通过备份来确认
 			if err == mysqlDriver.ErrInvalidConn {
+				// 如果没有开启备份,则直接返回
+				if s.opt.backup {
+					// 如果是DML语句,则通过备份来验证是否执行成功
+					// 如果是DDL语句,则直接报错,由人工确认执行结果,但仍会备份
+					switch record.Type.(type) {
+					case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+						record.AffectedRows = 0
+					default:
+						s.AppendErrorMessage("The execution result is unknown! Please confirm manually.")
+					}
 
-				// 如果是DML语句,则通过备份来验证是否执行成功
-				// 如果是DDL语句,则直接报错,由人工确认执行结果
-				switch record.Type.(type) {
-				case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
 					record.ThreadId = s.fetchThreadID()
-					record.AffectedRows = 0
 					record.ExecComplete = true
-				default:
+				} else {
 					s.AppendErrorMessage("The execution result is unknown! Please confirm manually.")
 				}
-
 			}
 			return
 		} else {
