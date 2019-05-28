@@ -183,7 +183,7 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	str := buf.String()
 
-	s.execCommand(r, "bash", []string{"-c", str})
+	s.execCommand(r, "sh", []string{"-c", str})
 
 }
 
