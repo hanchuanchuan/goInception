@@ -1230,8 +1230,10 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 	if record.useOsc {
 		if s.Ghost.GhostOn {
+			log.Infof("con:%d use gh-ost", s.sessionVars.ConnectionID)
 			s.mysqlExecuteAlterTableGhost(record)
 		} else {
+			log.Infof("con:%d use pt-osc", s.sessionVars.ConnectionID)
 			s.mysqlExecuteAlterTableOsc(record)
 		}
 		record.ExecTimestamp = time.Now().Unix()
@@ -1883,11 +1885,11 @@ func (s *session) mysqlGetTableSize(t *TableInfo) {
 		return
 	}
 
-	sql := fmt.Sprintf(`select (DATA_LENGTH + INDEX_LENGTH)/1024/1024
+	sql := fmt.Sprintf(`select (DATA_LENGTH + INDEX_LENGTH)/1024/1024 as v
 		from information_schema.tables
 		where table_schema='%s' and table_name='%s';`, t.Schema, t.Name)
 
-	var res uint
+	var res float64
 
 	rows, err := s.Raw(sql)
 	if rows != nil {
@@ -1904,7 +1906,7 @@ func (s *session) mysqlGetTableSize(t *TableInfo) {
 		for rows.Next() {
 			rows.Scan(&res)
 		}
-		t.TableSize = res
+		t.TableSize = uint(res)
 	}
 }
 
