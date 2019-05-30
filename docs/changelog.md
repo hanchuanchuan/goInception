@@ -1,6 +1,17 @@
 # goInception 更新日志
 
 
+## [v0.8.3-beta] - 2019-5-30
+
+### Fix
+* 修复gh-ost的initially-drop-old-table和initially-drop-ghost-table参数支持
+* 修复设置osc_min_table_size大于0后无法正常启用osc的bug
+
+### Update
+* 兼容语法inception get processlist
+* docker镜像内置pt-osc包(版本3.0.13)
+
+
 ## [v0.8.2-beta] - 2019-5-27
 
 ### Fix
