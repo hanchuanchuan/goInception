@@ -1539,6 +1539,14 @@ InceptionStmt:
  			IsInception: true,
  		}
  	}
+|	"INCEPTION" "GET" OptFull "PROCESSLIST"
+ 	{
+ 		$$ = &ast.ShowStmt{
+ 			Tp: ast.ShowProcessList,
+ 			Full:	$3.(bool),
+ 			IsInception: true,
+ 		}
+ 	}
 |	"INCEPTION" "SHOW" "STATS_META" ShowLikeOrWhereOpt
 	{
 		stmt := &ast.ShowStmt{

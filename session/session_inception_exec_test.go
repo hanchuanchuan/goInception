@@ -1323,6 +1323,27 @@ func (s *testSessionIncExecSuite) TestShowVariables(c *C) {
 	}
 }
 
+// 无法审核，原因是需要自己做SetSessionManager
+// func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
+// 	tk := testkit.NewTestKitWithInit(c, s.store)
+
+// 	sql := ""
+// 	sql = "inception show processlist;"
+// 	tk.MustQueryInc(sql)
+// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, 1)
+
+// 	sql = "inception get processlist;"
+// 	tk.MustQueryInc(sql)
+// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, 1)
+
+// 	sql = "inception show variables like 'backup_password';"
+// 	res := tk.MustQueryInc(sql)
+// 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+// 	if row[1].(string) != "" {
+// 		c.Assert(row[1].(string)[:1], Equals, "*")
+// 	}
+// }
+
 func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 
