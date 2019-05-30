@@ -268,6 +268,9 @@ docker:
 	@if [ ! -f bin/percona-toolkit.tar.gz ];then \
 		wget -O bin/percona-toolkit.tar.gz https://www.percona.com/downloads/percona-toolkit/3.0.4/source/tarball/percona-toolkit-3.0.4.tar.gz; \
 	fi
+	@if [ ! -f bin/pt-online-schema-change ];then \
+		wget -O bin/pt-online-schema-change percona.com/get/pt-online-schema-change; \
+	fi
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/goInception tidb-server/main.go
 	v1=$(shell git tag|tail -1) && docker build -t hanchuanchuan/goinception:$${v1} . \
 	&& docker tag hanchuanchuan/goinception:$${v1} hanchuanchuan/goinception:latest
