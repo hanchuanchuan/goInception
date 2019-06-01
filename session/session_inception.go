@@ -67,6 +67,30 @@ type MasterStatus struct {
 	ExecutedGtidSet string `gorm:"Column:Executed_Gtid_Set"`
 }
 
+// statisticsInfo 统计信息
+type statisticsInfo struct {
+	usedb        int
+	insert       int
+	update       int
+	deleting     int
+	selects      int
+	altertable   int
+	rename       int
+	createindex  int
+	dropindex    int
+	addcolumn    int
+	dropcolumn   int
+	changecolumn int
+	alteroption  int
+	alterconvert int
+	createtable  int
+	droptable    int
+	createdb     int
+	truncate     int
+	// changedefault int
+	// dropdb        int
+}
+
 // sourceOptions 线上数据库信息和审核或执行的参数
 type sourceOptions struct {
 	host           string
@@ -703,6 +727,11 @@ func (s *session) executeCommit(ctx context.Context) {
 
 	if s.opt.backup {
 
+		// 保存统计信息
+		if s.Inc.EnableSqlStatistic {
+			s.sqlStatisticsSave()
+		}
+
 		// 如果连接已断开
 		if err := s.backupdb.DB().Ping(); err != nil {
 			log.Error(err)
@@ -1076,6 +1105,7 @@ func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
 
 	return buf.String()
 }
+
 func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) string {
 
 	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
@@ -1160,6 +1190,10 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 	s.stage = StageExec
 
+	if s.opt.execute && s.Inc.EnableSqlStatistic {
+		s.statistics = &statisticsInfo{}
+	}
+
 	count := len(s.recordSets.All())
 	for i, record := range s.recordSets.All() {
 
@@ -1175,6 +1209,8 @@ func (s *session) executeAllStatement(ctx context.Context) {
 		if s.hasErrorBefore() {
 			break
 		}
+
+		s.sqlStatisticsIncrement(record)
 
 		// 进程Killed
 		if err := checkClose(ctx); err != nil {
@@ -1219,6 +1255,204 @@ func (s *session) executeRemoteCommand(record *Record) int {
 	}
 
 	return int(record.ErrLevel)
+}
+
+func (s *session) sqlStatisticsIncrement(record *Record) {
+
+	if !s.opt.execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
+		return
+	}
+
+	switch node := record.Type.(type) {
+	case *ast.InsertStmt:
+		s.statistics.insert += 1
+	case *ast.DeleteStmt:
+		s.statistics.deleting += 1
+	case *ast.UpdateStmt:
+		s.statistics.update += 1
+
+	case *ast.UseStmt:
+		s.statistics.usedb += 1
+
+	case *ast.CreateDatabaseStmt:
+		s.statistics.createdb += 1
+
+	// case *ast.DropDatabaseStmt:
+	// 	s.statistics.dropdb += 1
+
+	case *ast.CreateTableStmt:
+		s.statistics.createtable += 1
+	case *ast.AlterTableStmt:
+		s.statistics.altertable += 1
+
+		for _, alter := range node.Specs {
+			switch alter.Tp {
+			case ast.AlterTableOption:
+				s.statistics.alteroption += 1
+			case ast.AlterTableAddColumns:
+				s.statistics.addcolumn += 1
+			case ast.AlterTableDropColumn:
+				s.statistics.dropcolumn += 1
+
+			case ast.AlterTableAddConstraint:
+				s.statistics.createindex += 1
+			case ast.AlterTableDropPrimaryKey, ast.AlterTableDropIndex:
+				s.statistics.dropindex += 1
+
+			// case ast.AlterTableDropForeignKey:
+
+			case ast.AlterTableModifyColumn, ast.AlterTableChangeColumn:
+				s.statistics.changecolumn += 1
+
+			case ast.AlterTableRenameTable:
+				s.statistics.rename += 1
+
+			case ast.AlterTableAlterColumn:
+				for _, nc := range alter.NewColumns {
+					// if nc.Options != nil {
+					// 	s.statistics.changedefault += 1
+					// }
+					if nc.Tp != nil {
+						if nc.Tp.Charset != "" || nc.Tp.Collate != "" {
+							if nc.Tp.Charset != "binary" {
+								s.statistics.alterconvert += 1
+							}
+						}
+					}
+				}
+
+			case ast.AlterTableLock,
+				ast.AlterTableAlgorithm,
+				ast.AlterTableForce:
+				s.statistics.alteroption += 1
+			}
+
+		}
+
+	case *ast.DropTableStmt:
+		s.statistics.droptable += 1
+	case *ast.RenameTableStmt:
+		s.statistics.rename += 1
+	case *ast.TruncateTableStmt:
+		s.statistics.truncate += 1
+
+	case *ast.CreateIndexStmt:
+		s.statistics.createindex += 1
+	case *ast.DropIndexStmt:
+		s.statistics.dropindex += 1
+
+	case *ast.SelectStmt:
+		s.statistics.selects += 1
+
+	}
+}
+
+// sqlStatisticsSave 保存统计信息
+func (s *session) sqlStatisticsSave() {
+	if !s.opt.execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
+		return
+	}
+
+	s.createStatisticsTable()
+
+	sql := `
+	INSERT INTO inception.statistic ( usedb, deleting, inserting, updating,
+		selecting, altertable, renaming, createindex, dropindex, addcolumn,
+		dropcolumn, changecolumn, alteroption, alterconvert,
+		createtable, droptable, CREATEDB, truncating)
+	VALUES(?, ?, ?, ?, ?,
+	       ?, ?, ?, ?, ?,
+	       ?, ?, ?, ?, ?,
+	       ?, ?, ?);`
+
+	values := []interface{}{
+		s.statistics.usedb,
+		s.statistics.deleting,
+		s.statistics.insert,
+		s.statistics.update,
+		s.statistics.selects,
+		s.statistics.altertable,
+		s.statistics.rename,
+		s.statistics.createindex,
+		s.statistics.dropindex,
+		s.statistics.addcolumn,
+		s.statistics.dropcolumn,
+		s.statistics.changecolumn,
+		s.statistics.alteroption,
+		s.statistics.alterconvert,
+		s.statistics.createtable,
+		s.statistics.droptable,
+		s.statistics.createdb,
+		s.statistics.truncate,
+		// s.statistics.changedefault,
+		// s.statistics.dropdb,
+	}
+
+	if err := s.backupdb.Exec(sql, values...).Error; err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		}
+	}
+}
+
+func (s *session) createStatisticsTable() {
+	sql := "create database if not exists inception;"
+	if err := s.backupdb.Exec(sql).Error; err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
+				s.AppendErrorMessage(myErr.Message)
+			}
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+
+	sql = statisticsTableSQL()
+	if err := s.backupdb.Exec(sql).Error; err != nil {
+		log.Error(err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
+				s.AppendErrorMessage(myErr.Message)
+			}
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+}
+
+func statisticsTableSQL() string {
+
+	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
+
+	buf.WriteString("inception.statistic")
+	buf.WriteString("(")
+
+	buf.WriteString("id bigint auto_increment primary key, ")
+	buf.WriteString("optime timestamp not null default current_timestamp, ")
+	buf.WriteString("usedb int not null default 0, ")
+	buf.WriteString("deleting int not null default 0, ")
+	buf.WriteString("inserting int not null default 0, ")
+	buf.WriteString("updating int not null default 0, ")
+	buf.WriteString("selecting int not null default 0, ")
+	buf.WriteString("altertable int not null default 0, ")
+	buf.WriteString("renaming int not null default 0, ")
+	buf.WriteString("createindex int not null default 0, ")
+	buf.WriteString("dropindex int not null default 0, ")
+	buf.WriteString("addcolumn int not null default 0, ")
+	buf.WriteString("dropcolumn int not null default 0, ")
+	buf.WriteString("changecolumn int not null default 0, ")
+	buf.WriteString("alteroption int not null default 0, ")
+	buf.WriteString("alterconvert int not null default 0, ")
+	buf.WriteString("createtable int not null default 0, ")
+	buf.WriteString("droptable int not null default 0, ")
+	buf.WriteString("createdb int not null default 0, ")
+	buf.WriteString("truncating int not null default 0 ")
+
+	buf.WriteString(")ENGINE INNODB DEFAULT CHARSET UTF8;")
+
+	return buf.String()
 }
 
 func (s *session) executeRemoteStatement(record *Record) {
