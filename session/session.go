@@ -222,6 +222,9 @@ type session struct {
 
 	// 判断kill操作在哪个阶段,如果是在执行阶段时,则不停止备份
 	killExecute bool
+
+	// 统计信息
+	statistics *statisticsInfo
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
