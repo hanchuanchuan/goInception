@@ -3,7 +3,7 @@
 
 ## [v0.9-beta] - 2019-6-4
 
-### Fix
+### New Features
 * 添加统计功能,可通过参数 `enable_sql_statistic`启用 (#38)
 * 添加参数 `check_column_position_change`,可控制是否检查列位置/顺序变更 (#40, #41)
 
