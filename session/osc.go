@@ -34,6 +34,7 @@ import (
 
 	// "github.com/hanchuanchuan/goInception/ast"
 	// "github.com/hanchuanchuan/goInception/server"
+	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
 
@@ -192,7 +193,15 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.InspectorConnectionConfig.Key.Hostname, "host", "127.0.0.1", "MySQL hostname (preferably a replica, not the master)")
 	migrationContext.InspectorConnectionConfig.Key.Hostname = s.opt.host
 	// flag.StringVar(&migrationContext.AssumeMasterHostname, "assume-master-host", "", "(optional) explicitly tell gh-ost the identity of the master. Format: some.host.com[:port] This is useful in master-master setups where you wish to pick an explicit master, or in a tungsten-replicator where gh-ost is unable to determine the master")
-	migrationContext.AssumeMasterHostname = s.Ghost.GhostAssumeMasterHost
+
+	// RDS数据库需要做特殊处理
+	if s.Ghost.GhostAliyunRds && s.Ghost.GhostAssumeMasterHost == "" {
+		migrationContext.AssumeMasterHostname = fmt.Sprintf("%s:%d", s.opt.host, s.opt.port)
+	} else {
+		migrationContext.AssumeMasterHostname = s.Ghost.GhostAssumeMasterHost
+	}
+
+	log.Debug("assume_master_host: ", migrationContext.AssumeMasterHostname)
 	// flag.IntVar(&migrationContext.InspectorConnectionConfig.Key.Port, "port", 3306, "MySQL port (preferably a replica, not the master)")
 	migrationContext.InspectorConnectionConfig.Key.Port = s.opt.port
 	// flag.StringVar(&migrationContext.CliUser, "user", "", "MySQL user")
@@ -521,12 +530,17 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		}
 	}
 
+	// log.Debugf("%#v", migrationContext)
+
 	migrator.Log = bytes.NewBufferString("")
 
 	go f(bufio.NewReader(migrator.Log))
 
-	// ghostlog.SetLevel(ghostlog.INFO)
-	ghostlog.SetLevel(ghostlog.ERROR)
+	if config.GetGlobalConfig().Log.Level == "debug" {
+		ghostlog.SetLevel(ghostlog.INFO)
+	} else {
+		ghostlog.SetLevel(ghostlog.ERROR)
+	}
 
 	if err := migrator.Migrate(); err != nil {
 		log.Error(err)
