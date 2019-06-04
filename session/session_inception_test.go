@@ -1135,6 +1135,23 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	sql = "create table t1(id int primary key,c1 int);alter table t1 modify t.c1 int"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_TABLE_NAME, "t"))
+
+	config.GetGlobalConfig().Inc.CheckColumnPositionChange = true
+	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 add column c3 int first"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 add column c3 int after c1"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+
+	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 modify column c1 int after c2"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c1"))
+	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 change column c1 c3 int after id"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+
+	config.GetGlobalConfig().Inc.CheckColumnPositionChange = false
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {

@@ -277,7 +277,11 @@ type Inc struct {
 	CheckAutoIncrementName      bool `toml:"check_autoincrement_name" json:"check_autoincrement_name"`
 	CheckColumnComment          bool `toml:"check_column_comment" json:"check_column_comment"`
 	// 检查列类型变更(允许长度变更,类型变更时警告)
-	CheckColumnTypeChange   bool `toml:"check_column_type_change" json:"check_column_type_change"`
+	CheckColumnTypeChange bool `toml:"check_column_type_change" json:"check_column_type_change"`
+
+	// 检查列顺序变更 #40
+	CheckColumnPositionChange bool `toml:"check_column_position_change" json:"check_column_position_change"`
+
 	CheckColumnDefaultValue bool `toml:"check_column_default_value" json:"check_column_default_value"`
 	CheckDMLLimit           bool `toml:"check_dml_limit" json:"check_dml_limit"`
 	CheckDMLOrderBy         bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
