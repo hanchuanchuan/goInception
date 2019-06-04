@@ -110,6 +110,8 @@ type sourceOptions struct {
 	fingerprint bool
 
 	Print bool
+
+	split bool
 }
 
 // ExplainInfo 执行计划信息
@@ -308,6 +310,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
 			if s.opt != nil && s.opt.Print {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
+			} else if s.opt != nil && s.opt.split {
+				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
 			} else {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
 			}
@@ -364,6 +368,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				}
 				if s.opt != nil && s.opt.Print {
 					s.printSets.Append(2, strings.TrimSpace(s1), "", err.Error())
+				} else if s.opt != nil && s.opt.split {
+					s.splitSets.Append(0, strings.TrimSpace(s1), 0, err.Error())
 				} else {
 					s.recordSets.Append(&Record{
 						Sql:          strings.TrimSpace(s1),
@@ -396,6 +402,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.myRecord.Sql = ""
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, currentSql, "", GetErrorMessage(ER_HAVE_BEGIN))
+						} else if s.opt != nil && s.opt.split {
+							s.splitSets.Append(0, currentSql, 0, GetErrorMessage(ER_HAVE_BEGIN))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -423,6 +431,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.myRecord.Sql = ""
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.splitSets.Append(0, "", 0, strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -435,6 +445,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
+					} else if s.opt.split {
+						s.splitSets = NewSplitSets()
 					}
 
 					// sql指纹设置取并集
@@ -453,6 +465,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.splitSets.Append(0, "", 0, strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -470,6 +484,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.splitSets.Append(0, "", 0, strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -517,6 +533,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorMessage("Operation has been killed!")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.splitSets.Append(0, "", 0, strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -529,6 +547,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					s.AppendErrorMessage("Must start as begin statement.")
 					if s.opt != nil && s.opt.Print {
 						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+					} else if s.opt != nil && s.opt.split {
+						s.splitSets.Append(0, "", 0, strings.TrimSpace(s.myRecord.Buf.String()))
 					} else {
 						s.recordSets.Append(s.myRecord)
 					}
@@ -579,6 +599,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 func (s *session) makeResult() (recordSets []ast.RecordSet, err error) {
 	if s.opt != nil && s.opt.Print && s.printSets != nil {
 		return s.printSets.Rows(), nil
+	} else if s.opt != nil && s.opt.split && s.splitSets != nil {
+		return s.splitSets.Rows(), nil
 	} else {
 		return s.recordSets.Rows(), nil
 	}
@@ -1924,9 +1946,11 @@ func (s *session) parseOptions(sql string) {
 		fingerprint: viper.GetBool("fingerprint"),
 
 		Print: viper.GetBool("queryPrint"),
+
+		split: viper.GetBool("split"),
 	}
 
-	if s.opt.check || s.opt.Print {
+	if s.opt.split || s.opt.check || s.opt.Print {
 		s.opt.execute = false
 		s.opt.backup = false
 
@@ -1934,7 +1958,7 @@ func (s *session) parseOptions(sql string) {
 		s.opt.ignoreWarnings = true
 	}
 
-	if s.opt.Print {
+	if s.opt.split || s.opt.Print {
 		s.opt.check = false
 	}
 

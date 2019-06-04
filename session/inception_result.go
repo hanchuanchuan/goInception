@@ -532,3 +532,51 @@ func (s *PrintSets) Append(errLevel int64, sql, tree, errmsg string) {
 func (s *PrintSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }
+
+type SplitSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+}
+
+func NewSplitSets() *SplitSets {
+	t := &SplitSets{}
+
+	rc := &recordSet{
+		// data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 4)
+
+	rc.CreateFiled("id", mysql.TypeLong)
+	rc.CreateFiled("sql_statement", mysql.TypeString)
+	rc.CreateFiled("ddlflag", mysql.TypeLong)
+	rc.CreateFiled("error_message", mysql.TypeString)
+	t.rc = rc
+
+	return t
+}
+
+func (s *SplitSets) Append(id int64, sql string, ddlflag int64, errmsg string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetInt64(id)
+	row[1].SetString(sql)
+	row[2].SetInt64(ddlflag)
+	if errmsg == "" {
+		row[3].SetNull()
+	} else {
+		row[3].SetString(errmsg)
+	}
+
+	s.rc.data = append(s.rc.data, row)
+	s.rc.count++
+}
+
+func (s *SplitSets) Rows() []ast.RecordSet {
+	return []ast.RecordSet{s.rc}
+}
