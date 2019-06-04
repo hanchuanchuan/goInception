@@ -1,6 +1,16 @@
 # goInception 更新日志
 
 
+## [v0.9-beta] - 2019-6-4
+
+### Fix
+* 添加统计功能,可通过参数 `enable_sql_statistic`启用 (#38)
+* 添加参数 `check_column_position_change`,可控制是否检查列位置/顺序变更 (#40, #41)
+
+### Update
+* 优化使用阿里云RDS和gh-ost时的逻辑,自动设置`assume-master-host`参数
+
+
 ## [v0.8.3-beta] - 2019-5-30
 
 ### Fix
