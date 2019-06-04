@@ -2892,6 +2892,9 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 				if c.Position.Tp != ast.ColumnPositionNone {
 
+					s.AppendErrorNo(ErrCantChangeColumnPosition,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
+
 					// 在新的快照上变更表结构
 					t := s.cacheTableSnapshot(t)
 
@@ -3002,6 +3005,9 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				t.IsNewColumns = true
 
 				if c.Position.Tp != ast.ColumnPositionNone {
+
+					s.AppendErrorNo(ErrCantChangeColumnPosition,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 
 					if c.Position.Tp == ast.ColumnPositionFirst {
 						tmp := make([]FieldInfo, 0, len(t.Fields))
@@ -3519,6 +3525,11 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					tmp = append(tmp, t.Fields[foundIndex+1:]...)
 					t.Fields = tmp
 				}
+			}
+
+			if c.Position != nil && c.Position.Tp != ast.ColumnPositionNone {
+				s.AppendErrorNo(ErrCantChangeColumnPosition,
+					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 			}
 
 			if s.opt.execute {
@@ -5526,6 +5537,8 @@ func (s *session) checkInceptionVariables(number int) bool {
 	case ER_CHANGE_COLUMN_TYPE:
 		return s.Inc.CheckColumnTypeChange
 
+	case ErrCantChangeColumnPosition:
+		return s.Inc.CheckColumnPositionChange
 		/*case ER_NULL_NAME_FOR_INDEX:
 		  return s.Inc.EnableNullIndexName*/
 	}
