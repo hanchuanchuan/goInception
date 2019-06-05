@@ -538,6 +538,14 @@ type SplitSets struct {
 	samples []types.Datum
 	rc      *recordSet
 	pk      ast.RecordSet
+
+	// 分组id,每当变化一次分组时,自动加1.默认值为1
+	id int64
+
+	sqlBuf *bytes.Buffer
+
+	ddlflag   int64
+	tableList map[string]bool
 }
 
 func NewSplitSets() *SplitSets {
@@ -575,6 +583,16 @@ func (s *SplitSets) Append(id int64, sql string, ddlflag int64, errmsg string) {
 
 	s.rc.data = append(s.rc.data, row)
 	s.rc.count++
+}
+
+// id累加
+func (s *SplitSets) Increment() {
+	s.id += 1
+}
+
+// CurrentId 当前ID
+func (s *SplitSets) CurrentId() int64 {
+	return s.id
 }
 
 func (s *SplitSets) Rows() []ast.RecordSet {
