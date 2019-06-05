@@ -31,7 +31,7 @@ func (s *session) printCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 	switch node := stmtNode.(type) {
 	case *ast.UseStmt:
-		s.checkChangeDB(node)
+		s.checkChangeDB(node, currentSql)
 
 	case *ast.InsertStmt:
 		s.printInsert(node, currentSql)

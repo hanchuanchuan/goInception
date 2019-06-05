@@ -109,8 +109,10 @@ type sourceOptions struct {
 	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
 	fingerprint bool
 
+	// 打印语法树功能
 	Print bool
 
+	// DDL/DML分隔功能
 	split bool
 }
 
@@ -506,11 +508,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 							return nil, errors.Trace(err)
 						}
 
-						if s.opt != nil && s.opt.Print {
-							return s.printCommand(ctx, stmtNode, currentSql)
-						} else {
-							return s.processCommand(ctx, stmtNode, currentSql)
-						}
+						return s.processCommand(ctx, stmtNode, currentSql)
 					} else {
 						var result []ast.RecordSet
 						var err error
@@ -600,6 +598,8 @@ func (s *session) makeResult() (recordSets []ast.RecordSet, err error) {
 	if s.opt != nil && s.opt.Print && s.printSets != nil {
 		return s.printSets.Rows(), nil
 	} else if s.opt != nil && s.opt.split && s.splitSets != nil {
+		s.addNewSplitNode()
+		log.Infof("%#v", s.splitSets)
 		return s.splitSets.Rows(), nil
 	} else {
 		return s.recordSets.Rows(), nil
@@ -632,18 +632,22 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		s.checkUpdate(node, currentSql)
 
 	case *ast.UnionStmt, *ast.SelectStmt:
+		if s.opt.split {
+			return nil, nil
+		}
+
 		s.checkSelectItem(node)
 		if s.opt.execute {
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		}
 
 	case *ast.UseStmt:
-		s.checkChangeDB(node)
+		s.checkChangeDB(node, currentSql)
 
 	case *ast.CreateDatabaseStmt:
-		s.checkCreateDB(node)
+		s.checkCreateDB(node, currentSql)
 	case *ast.DropDatabaseStmt:
-		s.checkDropDB(node)
+		s.checkDropDB(node, currentSql)
 
 	case *ast.CreateTableStmt:
 		s.checkCreateTable(node, currentSql)
@@ -657,10 +661,22 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		s.checkTruncateTable(node, currentSql)
 
 	case *ast.CreateIndexStmt:
+
+		if s.opt.split {
+			s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, currentSql)
+			return nil, nil
+		}
+
 		s.checkCreateIndex(node.Table, node.IndexName,
 			node.IndexColNames, node.IndexOption, nil, node.Unique, ast.ConstraintIndex)
 
 	case *ast.DropIndexStmt:
+
+		if s.opt.split {
+			s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, currentSql)
+			return nil, nil
+		}
+
 		s.checkDropIndex(node, currentSql)
 
 	case *ast.CreateViewStmt:
@@ -678,6 +694,11 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 				return nil, errors.New("不支持的语法类型")
 			}
 		} else {
+
+			if s.opt.split {
+				return nil, nil
+			}
+
 			s.executeInceptionShow(currentSql)
 		}
 
@@ -685,6 +706,9 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		return s.executeInceptionSet(node, currentSql)
 
 	case *ast.ExplainStmt:
+		if s.opt.split {
+			return nil, nil
+		}
 		s.executeInceptionShow(currentSql)
 
 	case *ast.ShowOscStmt:
@@ -713,7 +737,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 func (s *session) executeCommit(ctx context.Context) {
 
-	if s.opt.check || s.opt.Print || !s.opt.execute {
+	if s.opt.check || s.opt.Print || !s.opt.execute || s.opt.split {
 		return
 	}
 
@@ -2044,6 +2068,11 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 
 	log.Debug("checkTruncateTable")
 
+	if s.opt.split {
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, true, node, sql)
+		return
+	}
+
 	t := node.Table
 
 	if !s.Inc.EnableDropTable {
@@ -2067,6 +2096,13 @@ func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
 func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 	log.Debug("checkDropTable")
+
+	if s.opt.split {
+		for _, t := range node.Tables {
+			s.addSplitNode(t.Schema.O, t.Name.O, false, node, sql)
+			return
+		}
+	}
 
 	for _, t := range node.Tables {
 
@@ -2233,6 +2269,11 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	log.Debug("checkRenameTable")
 
+	if s.opt.split {
+		s.addSplitNode(node.OldTable.Schema.O, node.OldTable.Name.O, false, node, sql)
+		return
+	}
+
 	originTable := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
 	if originTable == nil {
 		s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.OldTable.Name.O)
@@ -2282,6 +2323,11 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 	if node.Table.Schema.O == "" {
 		node.Table.Schema = model.NewCIStr(s.DBName)
+	}
+
+	if s.opt.split {
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
+		return
 	}
 
 	if !s.checkDBExists(node.Table.Schema.O, true) {
@@ -2665,6 +2711,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	if node.Table.Schema.O == "" {
 		node.Table.Schema = model.NewCIStr(s.DBName)
+	}
+
+	if s.opt.split {
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
+		return
 	}
 
 	if !s.checkDBExists(node.Table.Schema.O, true) {
@@ -3911,6 +3962,12 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// 	return
 	// }
 
+	if s.opt.split {
+		t := getSingleTableName(node.Table)
+		s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
+		return
+	}
+
 	x := node
 
 	fieldCount := len(x.Columns)
@@ -4366,8 +4423,13 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 	return columns
 }
 
-func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
+func (s *session) checkDropDB(node *ast.DropDatabaseStmt, sql string) {
 	log.Debug("checkDropDB")
+
+	if s.opt.split {
+		s.addSplitNode(node.Name, "", false, node, sql)
+		return
+	}
 
 	if !s.Inc.EnableDropDatabase {
 		s.AppendErrorNo(ER_CANT_DROP_DATABASE, node.Name)
@@ -4831,8 +4893,13 @@ func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
 	return nil, nil
 }
 
-func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
+func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt, sql string) {
 	log.Debug("checkCreateDB")
+
+	if s.opt.split {
+		s.addSplitNode(node.Name, "", false, node, sql)
+		return
+	}
 
 	if s.checkDBExists(node.Name, false) {
 		if !node.IfNotExists {
@@ -4896,10 +4963,16 @@ func (s *session) checkCollation(collation string) bool {
 	return true
 }
 
-func (s *session) checkChangeDB(node *ast.UseStmt) {
+func (s *session) checkChangeDB(node *ast.UseStmt, sql string) {
 	log.Debug("checkChangeDB")
 
 	s.DBName = node.DBName
+
+	if s.opt.split {
+		s.addSplitNode(s.DBName, "", true, node, sql)
+		return
+	}
+
 	if s.checkDBExists(node.DBName, true) {
 		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
 		if err != nil {
@@ -5069,11 +5142,6 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	log.Debug("checkUpdate")
 
-	// sqlId, ok := s.checkFingerprint(sql)
-	// if ok {
-	// 	return
-	// }
-
 	// 从set列表读取要更新的表
 	var originTable string
 	var firstColumnName string
@@ -5087,6 +5155,24 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 	var tableList []*ast.TableSource
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+	if s.opt.split {
+		for _, tblSource := range tableList {
+			tblName, ok := tblSource.Source.(*ast.TableName)
+			if ok {
+				if originTable == "" {
+					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
+					return
+				} else if originTable == tblName.Name.L || originTable == tblSource.AsName.L {
+					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
+					return
+				}
+			}
+		}
+
+		s.addSplitNode("", "", true, node, sql)
+		return
+	}
 
 	var tableInfoList []*TableInfo
 
@@ -5269,6 +5355,27 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	// if ok {
 	// 	return
 	// }
+
+	if s.opt.split {
+		if node.Tables != nil {
+			for _, t := range node.Tables.Tables {
+				s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
+				return
+			}
+		} else {
+			var tableList []*ast.TableSource
+			tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+			for _, tblSource := range tableList {
+				if t, ok := tblSource.Source.(*ast.TableName); ok {
+					s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
+					return
+				}
+			}
+		}
+		s.addSplitNode("", "", true, node, sql)
+		return
+	}
 
 	if node.Tables != nil {
 		for _, a := range node.Tables.Tables {
@@ -6097,4 +6204,53 @@ func (f *FieldInfo) IsUnsigned() bool {
 		return true
 	}
 	return false
+}
+
+// addNewSplitRow 添加新的split分隔节点
+func (s *session) addSplitNode(db, tableName string, isDML bool, stmtNode ast.StmtNode, currentSql string) {
+
+	if db == "" {
+		db = s.DBName
+	}
+	key := fmt.Sprintf("%s.%s", db, tableName)
+	key = strings.ToLower(key)
+
+	if s.splitSets.id == 0 {
+		s.addNewSplitNode()
+		if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
+			s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
+		}
+	} else {
+		if isDmlType, ok := s.splitSets.tableList[key]; ok {
+			if isDmlType != isDML {
+				s.addNewSplitNode()
+				if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
+					s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
+				}
+			}
+		}
+	}
+
+	s.splitSets.tableList[key] = isDML
+
+	switch stmtNode.(type) {
+	case *ast.AlterTableStmt, *ast.DropTableStmt:
+		s.splitSets.ddlflag = 1
+	}
+
+	s.splitSets.sqlBuf.WriteString(currentSql)
+	s.splitSets.sqlBuf.WriteString(";\n")
+}
+
+// addNewSplitRow 添加新的split分隔节点
+func (s *session) addNewSplitNode() {
+
+	if s.splitSets.id > 0 {
+		s.splitSets.Append(s.splitSets.id, s.splitSets.sqlBuf.String(), s.splitSets.ddlflag, "")
+	}
+
+	s.splitSets.id += 1
+	s.splitSets.tableList = make(map[string]bool)
+	s.splitSets.ddlflag = 0
+	s.splitSets.sqlBuf = new(bytes.Buffer)
 }
