@@ -569,12 +569,12 @@ func NewSplitSets() *SplitSets {
 	return t
 }
 
-func (s *SplitSets) Append(id int64, sql string, ddlflag int64, errmsg string) {
+func (s *SplitSets) Append(sql string, errmsg string) {
 	row := make([]types.Datum, s.rc.fieldCount)
 
-	row[0].SetInt64(id)
+	row[0].SetInt64(s.id)
 	row[1].SetString(sql)
-	row[2].SetInt64(ddlflag)
+	row[2].SetInt64(s.ddlflag)
 	if errmsg == "" {
 		row[3].SetNull()
 	} else {
