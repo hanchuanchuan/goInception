@@ -225,6 +225,9 @@ type session struct {
 
 	// 统计信息
 	statistics *statisticsInfo
+
+	// DDL和DML分隔结果
+	splitSets *SplitSets
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
