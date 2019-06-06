@@ -109,7 +109,11 @@ type sourceOptions struct {
 	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
 	fingerprint bool
 
+	// 打印语法树功能
 	Print bool
+
+	// DDL/DML分隔功能
+	split bool
 }
 
 // ExplainInfo 执行计划信息
@@ -308,6 +312,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
 			if s.opt != nil && s.opt.Print {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
+			} else if s.opt != nil && s.opt.split {
+				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
 			} else {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
 			}
@@ -364,6 +370,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 				}
 				if s.opt != nil && s.opt.Print {
 					s.printSets.Append(2, strings.TrimSpace(s1), "", err.Error())
+				} else if s.opt != nil && s.opt.split {
+					s.addNewSplitNode()
+					s.splitSets.Append(strings.TrimSpace(s1), err.Error())
 				} else {
 					s.recordSets.Append(&Record{
 						Sql:          strings.TrimSpace(s1),
@@ -396,6 +405,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.myRecord.Sql = ""
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, currentSql, "", GetErrorMessage(ER_HAVE_BEGIN))
+						} else if s.opt != nil && s.opt.split {
+							s.addNewSplitNode()
+							s.splitSets.Append(currentSql, GetErrorMessage(ER_HAVE_BEGIN))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -423,6 +435,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.myRecord.Sql = ""
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.addNewSplitNode()
+							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -435,6 +450,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
+					} else if s.opt.split {
+						s.splitSets = NewSplitSets()
 					}
 
 					// sql指纹设置取并集
@@ -453,6 +470,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.addNewSplitNode()
+							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -470,6 +490,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.addNewSplitNode()
+							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -490,16 +513,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 							return nil, errors.Trace(err)
 						}
 
-						if s.opt != nil && s.opt.Print {
-							return s.printCommand(ctx, stmtNode, currentSql)
-						} else {
-							return s.processCommand(ctx, stmtNode, currentSql)
-						}
+						return s.processCommand(ctx, stmtNode, currentSql)
 					} else {
 						var result []ast.RecordSet
 						var err error
 						if s.opt != nil && s.opt.Print {
 							result, err = s.printCommand(ctx, stmtNode, currentSql)
+						} else if s.opt != nil && s.opt.split {
+							result, err = s.splitCommand(ctx, stmtNode, currentSql)
 						} else {
 							result, err = s.processCommand(ctx, stmtNode, currentSql)
 						}
@@ -517,6 +538,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 						s.AppendErrorMessage("Operation has been killed!")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+						} else if s.opt != nil && s.opt.split {
+							s.addNewSplitNode()
+							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -529,6 +553,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 					s.AppendErrorMessage("Must start as begin statement.")
 					if s.opt != nil && s.opt.Print {
 						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
+					} else if s.opt != nil && s.opt.split {
+						s.addNewSplitNode()
+						s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 					} else {
 						s.recordSets.Append(s.myRecord)
 					}
@@ -557,11 +584,18 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	metrics.SessionExecuteParseDuration.WithLabelValues(label).Observe(time.Since(startTS).Seconds())
 
 	if !s.haveCommit {
-		s.recordSets.Append(&Record{
-			Sql:          "",
-			ErrLevel:     2,
-			ErrorMessage: "Must end with commit.",
-		})
+		if s.opt != nil && s.opt.Print {
+			s.printSets.Append(2, "", "", "Must end with commit.")
+		} else if s.opt != nil && s.opt.split {
+			s.addNewSplitNode()
+			s.splitSets.Append("", "Must end with commit.")
+		} else {
+			s.recordSets.Append(&Record{
+				Sql:          "",
+				ErrLevel:     2,
+				ErrorMessage: "Must end with commit.",
+			})
+		}
 	}
 
 	return s.makeResult()
@@ -579,6 +613,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 func (s *session) makeResult() (recordSets []ast.RecordSet, err error) {
 	if s.opt != nil && s.opt.Print && s.printSets != nil {
 		return s.printSets.Rows(), nil
+	} else if s.opt != nil && s.opt.split && s.splitSets != nil {
+		s.addNewSplitNode()
+		// log.Infof("%#v", s.splitSets)
+		return s.splitSets.Rows(), nil
 	} else {
 		return s.recordSets.Rows(), nil
 	}
@@ -616,12 +654,12 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		}
 
 	case *ast.UseStmt:
-		s.checkChangeDB(node)
+		s.checkChangeDB(node, currentSql)
 
 	case *ast.CreateDatabaseStmt:
-		s.checkCreateDB(node)
+		s.checkCreateDB(node, currentSql)
 	case *ast.DropDatabaseStmt:
-		s.checkDropDB(node)
+		s.checkDropDB(node, currentSql)
 
 	case *ast.CreateTableStmt:
 		s.checkCreateTable(node, currentSql)
@@ -689,9 +727,137 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	return nil, nil
 }
 
+// splitCommand 分隔功能实现
+func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
+	sql string) ([]ast.RecordSet, error) {
+	log.Debug("splitCommand")
+
+	if !s.opt.split {
+		return nil, nil
+	}
+
+	switch node := stmtNode.(type) {
+
+	case *ast.UseStmt:
+		s.DBName = node.DBName
+		s.addSplitNode(s.DBName, "", true, node, sql)
+
+	case *ast.InsertStmt:
+		t := getSingleTableName(node.Table)
+		s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
+
+	case *ast.DeleteStmt:
+		if node.Tables != nil {
+			for _, t := range node.Tables.Tables {
+				s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
+				return nil, nil
+			}
+		} else {
+			var tableList []*ast.TableSource
+			tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+			for _, tblSource := range tableList {
+				if t, ok := tblSource.Source.(*ast.TableName); ok {
+					s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
+					return nil, nil
+				}
+			}
+		}
+		s.addSplitNode("", "", true, node, sql)
+		return nil, nil
+	case *ast.UpdateStmt:
+		var originTable string
+		if node.List != nil {
+			for _, l := range node.List {
+				originTable = l.Column.Table.L
+				break
+			}
+		}
+
+		var tableList []*ast.TableSource
+		tableList = extractTableList(node.TableRefs.TableRefs, tableList)
+
+		for _, tblSource := range tableList {
+			tblName, ok := tblSource.Source.(*ast.TableName)
+			if ok {
+				if originTable == "" {
+					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
+					return nil, nil
+				} else if originTable == tblName.Name.L || originTable == tblSource.AsName.L {
+					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
+					return nil, nil
+				}
+			}
+		}
+
+		s.addSplitNode("", "", true, node, sql)
+		return nil, nil
+
+	case *ast.CreateDatabaseStmt:
+		s.addSplitNode(node.Name, "", false, node, sql)
+
+	case *ast.DropDatabaseStmt:
+		s.addSplitNode(node.Name, "", false, node, sql)
+
+	case *ast.CreateTableStmt:
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
+
+	case *ast.AlterTableStmt:
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
+
+	case *ast.DropTableStmt:
+		for _, t := range node.Tables {
+			s.addSplitNode(t.Schema.O, t.Name.O, false, node, sql)
+			return nil, nil
+		}
+	case *ast.RenameTableStmt:
+		s.addSplitNode(node.OldTable.Schema.O, node.OldTable.Name.O, false, node, sql)
+
+	case *ast.TruncateTableStmt:
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, true, node, sql)
+
+	case *ast.CreateIndexStmt:
+
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
+
+	case *ast.DropIndexStmt:
+		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
+
+	case *ast.UnionStmt, *ast.SelectStmt:
+		return nil, nil
+
+	case *ast.CreateViewStmt:
+		return nil, nil
+
+		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
+
+	case *ast.ShowStmt:
+		return nil, nil
+
+	case *ast.InceptionSetStmt:
+		return nil, nil
+
+	case *ast.ExplainStmt:
+		return nil, nil
+
+	case *ast.ShowOscStmt:
+		return nil, nil
+
+	case *ast.KillStmt:
+		return nil, nil
+
+	default:
+		log.Infof("无匹配类型:%T\n", stmtNode)
+		return nil, nil
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+	}
+
+	return nil, nil
+}
+
 func (s *session) executeCommit(ctx context.Context) {
 
-	if s.opt.check || s.opt.Print || !s.opt.execute {
+	if s.opt.check || s.opt.Print || !s.opt.execute || s.opt.split {
 		return
 	}
 
@@ -1924,9 +2090,11 @@ func (s *session) parseOptions(sql string) {
 		fingerprint: viper.GetBool("fingerprint"),
 
 		Print: viper.GetBool("queryPrint"),
+
+		split: viper.GetBool("split"),
 	}
 
-	if s.opt.check || s.opt.Print {
+	if s.opt.split || s.opt.check || s.opt.Print {
 		s.opt.execute = false
 		s.opt.backup = false
 
@@ -1934,7 +2102,7 @@ func (s *session) parseOptions(sql string) {
 		s.opt.ignoreWarnings = true
 	}
 
-	if s.opt.Print {
+	if s.opt.split || s.opt.Print {
 		s.opt.check = false
 	}
 
@@ -4342,7 +4510,7 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 	return columns
 }
 
-func (s *session) checkDropDB(node *ast.DropDatabaseStmt) {
+func (s *session) checkDropDB(node *ast.DropDatabaseStmt, sql string) {
 	log.Debug("checkDropDB")
 
 	if !s.Inc.EnableDropDatabase {
@@ -4807,7 +4975,7 @@ func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
 	return nil, nil
 }
 
-func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt) {
+func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt, sql string) {
 	log.Debug("checkCreateDB")
 
 	if s.checkDBExists(node.Name, false) {
@@ -4872,10 +5040,11 @@ func (s *session) checkCollation(collation string) bool {
 	return true
 }
 
-func (s *session) checkChangeDB(node *ast.UseStmt) {
+func (s *session) checkChangeDB(node *ast.UseStmt, sql string) {
 	log.Debug("checkChangeDB")
 
 	s.DBName = node.DBName
+
 	if s.checkDBExists(node.DBName, true) {
 		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
 		if err != nil {
@@ -5044,11 +5213,6 @@ func (s *session) AnlyzeExplain(rows []ExplainInfo) {
 
 func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	log.Debug("checkUpdate")
-
-	// sqlId, ok := s.checkFingerprint(sql)
-	// if ok {
-	// 	return
-	// }
 
 	// 从set列表读取要更新的表
 	var originTable string
@@ -6073,4 +6237,59 @@ func (f *FieldInfo) IsUnsigned() bool {
 		return true
 	}
 	return false
+}
+
+// addNewSplitRow 添加新的split分隔节点
+func (s *session) addSplitNode(db, tableName string, isDML bool, stmtNode ast.StmtNode, currentSql string) {
+
+	if db == "" {
+		db = s.DBName
+	}
+	key := fmt.Sprintf("%s.%s", db, tableName)
+	key = strings.ToLower(key)
+
+	if s.splitSets.id == 0 {
+		s.addNewSplitNode()
+		if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
+			s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
+		}
+	} else {
+		if isDmlType, ok := s.splitSets.tableList[key]; ok {
+			if isDmlType != isDML {
+				s.addNewSplitNode()
+				if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
+					s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
+				}
+			}
+		}
+	}
+
+	s.splitSets.tableList[key] = isDML
+
+	switch stmtNode.(type) {
+	case *ast.AlterTableStmt, *ast.DropTableStmt:
+		s.splitSets.ddlflag = 1
+	}
+
+	s.splitSets.sqlBuf.WriteString(currentSql)
+	s.splitSets.sqlBuf.WriteString(";\n")
+}
+
+// addNewSplitRow 添加新的split分隔节点
+func (s *session) addNewSplitNode() {
+
+	sql := s.splitSets.sqlBuf.String()
+
+	// if len(sql) == 0{
+	// 	return
+	// }
+
+	if s.splitSets.id > 0 && len(sql) > 0 {
+		s.splitSets.Append(sql, "")
+	}
+
+	s.splitSets.id += 1
+	s.splitSets.tableList = make(map[string]bool)
+	s.splitSets.ddlflag = 0
+	s.splitSets.sqlBuf = new(bytes.Buffer)
 }

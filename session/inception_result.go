@@ -532,3 +532,69 @@ func (s *PrintSets) Append(errLevel int64, sql, tree, errmsg string) {
 func (s *PrintSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }
+
+type SplitSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+
+	// 分组id,每当变化一次分组时,自动加1.默认值为1
+	id int64
+
+	sqlBuf *bytes.Buffer
+
+	ddlflag   int64
+	tableList map[string]bool
+}
+
+func NewSplitSets() *SplitSets {
+	t := &SplitSets{}
+
+	rc := &recordSet{
+		// data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 4)
+
+	rc.CreateFiled("id", mysql.TypeLong)
+	rc.CreateFiled("sql_statement", mysql.TypeString)
+	rc.CreateFiled("ddlflag", mysql.TypeLong)
+	rc.CreateFiled("error_message", mysql.TypeString)
+	t.rc = rc
+
+	return t
+}
+
+func (s *SplitSets) Append(sql string, errmsg string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetInt64(s.id)
+	row[1].SetString(sql)
+	row[2].SetInt64(s.ddlflag)
+	if errmsg == "" {
+		row[3].SetNull()
+	} else {
+		row[3].SetString(errmsg)
+	}
+
+	s.rc.data = append(s.rc.data, row)
+	s.rc.count++
+}
+
+// id累加
+func (s *SplitSets) Increment() {
+	s.id += 1
+}
+
+// CurrentId 当前ID
+func (s *SplitSets) CurrentId() int64 {
+	return s.id
+}
+
+func (s *SplitSets) Rows() []ast.RecordSet {
+	return []ast.RecordSet{s.rc}
+}
