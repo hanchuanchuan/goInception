@@ -464,7 +464,7 @@ var ErrorsChinese = map[int]string{
 	ER_SET_DATA_TYPE_INT_BIGINT:            "自增列需要设置为int或bigint类型.",
 	ER_TIMESTAMP_DEFAULT:                   "请设置timestamp列 '%s' 的默认值.",
 	ER_CHARSET_ON_COLUMN:                   "表 '%s' 列 '%s' 禁止设置字符集!",
-	ER_AUTO_INCR_ID_WARNING:                "自增列建议命名为'ID'.",
+	ER_AUTO_INCR_ID_WARNING:                "自增列('%s')建议命名为'ID'.",
 	ER_ALTER_TABLE_ONCE:                    "表 '%s' 的多个alter操作请合并成一个.",
 	ER_BLOB_CANT_HAVE_DEFAULT:              "BLOB,TEXT,GEOMETRY或JSON列 '%s' 禁止设置默认值.",
 	ER_END_WITH_SEMICOLON:                  "Add ';' after the last sql statement.",
