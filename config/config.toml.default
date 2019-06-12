@@ -1,54 +1,38 @@
 
-# TiDB server host.
+# IP地址
 host = "0.0.0.0"
 
-# TiDB server port.
+# 端口
 port = 4000
 
-# TiDB storage path.
+# TiDB数据库目录
 path = "/tmp/tidb"
 
-# Set system variable 'lower_case_table_names'
-lower-case-table-names = 2
-
-
 [log]
-# Log level: debug, info, warn, error, fatal.
+# 日志级别: debug, info, warn, error, fatal.
 level = "info"
 
-# Log format, one of json, text, console.
+# 日志格式, one of json, text, console.
 format = "text"
 
-# Disable automatic timestamp in output
+# 禁用时间戳输出
 disable-timestamp = false
 
-# Stores slow query log into separated files.
-slow-query-file = ""
-
-# Queries with execution time greater than this value will be logged. (Milliseconds)
-slow-threshold = 300
-
-# Queries with internal result greater than this value will be logged.
-expensive-threshold = 10000
-
-# Maximum query length recorded in log.
-query-log-max-len = 2048
-
-# File logging.
+# 日志文件
 [log.file]
-# Log file name.
+# 日志文件名
 filename = ""
 
-# Max log file size in MB (upper limit to 4096MB).
+# 日志文件的最大上限(MB)
 max-size = 300
 
-# Max log file keep days. No clean up by default.
+# Max日志文件的保存天数，默认值 `0`，即不清理
 max-days = 0
 
-# Maximum number of old log files to retain. No clean up by default.
+# 要保留的最大旧日志文件数，默认值 `0`，即不清理
 max-backups = 0
 
-# Rotate log by day
+# 日志轮询，默认值 `true`，即开启
 log-rotate = true
 
 [inc]
@@ -63,7 +47,7 @@ check_column_comment = false
 # 审核列类型变更
 check_column_type_change = true
 
-# 安全更新是否开启.
+# 安全更新是否开启(mysql自身的功能).
 # -1 表示不做操作,基于远端数据库 [默认值]
 # 0  表示关闭安全更新
 # 1  表示开启安全更新
@@ -147,6 +131,7 @@ osc_bin_dir = "/usr/local/bin"
 
 
 [ghost]
+
 ghost_allow_on_master = true
 ghost_assume_rbr = true
 ghost_chunk_size = 1000

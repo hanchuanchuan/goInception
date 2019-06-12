@@ -15,6 +15,7 @@ nav:
     - 安装: install.md
     - 调用选项: params.md
     - 使用示例: demo.md
+    - config.toml说明: config.md
     - 审核选项: options.md
     - 审核规则: rules.md
     - 备份功能: backup.md
