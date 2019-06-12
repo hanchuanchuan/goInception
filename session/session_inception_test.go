@@ -230,7 +230,7 @@ func (s *testSessionIncSuite) getExplicitDefaultsForTimestamp(c *C) bool {
 	sql := "show variables where Variable_name='explicit_defaults_for_timestamp';"
 
 	res := makeSQL(s.tk, sql)
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2, Commentf("%v", res.Rows()))
 
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	versionStr := row[5].(string)
@@ -794,9 +794,18 @@ primary key(id)) comment 'test';`
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)
 
+	config.GetGlobalConfig().Inc.MustHaveColumns = ""
+
 	// 测试表名大小写
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);insert into T1 values(1);`
 	s.testErrorCode(c, sql)
+
+	// 无效默认值
+	config.GetGlobalConfig().Inc.CheckAutoIncrementName = true
+	sql = `create table t1(c1 int auto_increment primary key,c2 int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_AUTO_INCR_ID_WARNING, "c1"))
+
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
