@@ -1,6 +1,12 @@
 # goInception 更新日志
 
 
+## [v1.0-rc1] - 2019-6-12
+
+### New Features
+* 添加split分隔功能 (#42)
+
+
 ## [v0.9-beta] - 2019-6-4
 
 ### New Features
