@@ -3342,6 +3342,14 @@ func (s *session) hasErrorBefore() bool {
 func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	log.Debug("mysqlCheckField")
 
+	PriCount := 0
+
+	for _,i := range t.Fields {
+		if i.Key == "PRI" {
+			PriCount ++
+		}
+	}
+
 	tableName := t.Name
 	if field.Tp.Tp == mysql.TypeEnum ||
 		field.Tp.Tp == mysql.TypeSet ||
@@ -3388,6 +3396,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
+				if PriCount > 0 {
+					s.AppendErrorNo(ER_MULTIPLE_PRI_KEY,tableName)
+				}
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
 			}
