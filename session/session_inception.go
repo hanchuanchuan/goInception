@@ -2633,7 +2633,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				onUpdateTimestampCount := 0
 
 				for _, field := range node.Cols {
-					s.mysqlCheckField(table, field)
+					s.mysqlCheckField(table, field, true)
 
 					if field.Tp.Tp == mysql.TypeTimestamp {
 						for _, op := range field.Options {
@@ -3262,7 +3262,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 	s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
 		// }
 
-		s.mysqlCheckField(t, nc)
+		s.mysqlCheckField(t, nc,false)
 
 		// 列(或旧列)未找到时结束
 		if s.hasError() {
@@ -3339,7 +3339,7 @@ func (s *session) hasErrorBefore() bool {
 	return false
 }
 
-func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
+func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, isCreate bool) {
 	log.Debug("mysqlCheckField")
 
 
@@ -3389,14 +3389,16 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 				hasDefaultValue = true
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
-				PriCount := 0
-				for _,i := range t.Fields {
-					if i.Key == "PRI" {
-						PriCount ++
+				if !isCreate {
+					PriCount := 0
+					for _,i := range t.Fields {
+						if i.Key == "PRI" {
+							PriCount ++
+						}
 					}
-				}
-				if PriCount > 0 {
-					s.AppendErrorNo(ER_MULTIPLE_PRI_KEY)
+					if PriCount > 0 {
+						s.AppendErrorNo(ER_MULTIPLE_PRI_KEY,tableName,2)
+					}
 				}
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
@@ -3667,7 +3669,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		if found {
 			s.AppendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 		} else {
-			s.mysqlCheckField(t, nc)
+			s.mysqlCheckField(t, nc,false)
 
 			newColumn := s.buildNewColumnToCache(t, nc)
 
