@@ -3397,7 +3397,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
 				if PriCount > 0 {
-					s.AppendErrorNo(ER_MULTIPLE_PRI_KEY,tableName)
+					s.AppendErrorNo(ER_MULTIPLE_PRI_KEY)
 				}
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
