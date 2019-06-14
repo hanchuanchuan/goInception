@@ -4128,6 +4128,9 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				s.AppendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, i+1)
 			} else if len(x.Columns) > 0 {
 				for colIndex, vv := range list {
+
+					s.checkItem(vv, []*TableInfo{table})
+
 					if v, ok := vv.(*ast.ValueExpr); ok {
 						name := x.Columns[colIndex].Name.L
 						if _, ok := columnsCannotNull[name]; ok && v.Type.Tp == mysql.TypeNull {
