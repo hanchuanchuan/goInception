@@ -1349,6 +1349,13 @@ insert into t2 select id from t1;`
 	sql = `insert into test_inc.tt1 select * from test_inc.tt1 ;`
 	s.testErrorCode(c, sql)
 
+	sql = `insert into test_inc.tt1(id)values(c1);`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into test_inc.tt1(id)values(now);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "now"))
+
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
