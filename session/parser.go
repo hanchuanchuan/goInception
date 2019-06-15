@@ -193,9 +193,14 @@ func (s *session) Parser(ctx context.Context) {
 	// 启用Logger，显示详细日志
 	// s.backupdb.LogMode(true)
 
+	flavor := "mysql"
+	if s.DBType == DBTypeMariaDB {
+		flavor = "mariadb"
+	}
+
 	cfg := replication.BinlogSyncerConfig{
 		ServerID: 2000111111,
-		// Flavor:   p.cfg.Flavor,
+		Flavor:   flavor,
 
 		Host:     s.opt.host,
 		Port:     uint16(s.opt.port),
