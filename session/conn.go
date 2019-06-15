@@ -44,7 +44,8 @@ func (s *session) createNewConnection(dbName string) {
 	db, err := gorm.Open("mysql", addr)
 
 	if err != nil {
-		log.Error(err)
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		s.AppendErrorMessage(err.Error())
 		return
 	}
@@ -70,7 +71,8 @@ func (s *session) Raw(sqlStr string) (rows *sql.Rows, err error) {
 		if err == nil {
 			return
 		} else {
-			log.Error(err)
+			// log.Error(err)
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if err == mysqlDriver.ErrInvalidConn {
 				err1 := s.initConnection()
 				if err1 != nil {
@@ -94,7 +96,8 @@ func (s *session) Exec(sqlStr string, retry bool) (res sql.Result, err error) {
 		if err == nil {
 			return
 		} else {
-			log.Error(err)
+			// log.Error(err)
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if err == mysqlDriver.ErrInvalidConn {
 				err1 := s.initConnection()
 				if err1 != nil {
@@ -122,7 +125,8 @@ func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
 			return
 		} else {
 			if err == mysqlDriver.ErrInvalidConn {
-				log.Error(err)
+				// log.Error(err)
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				err1 := s.initConnection()
 				if err1 != nil {
 					return err1
@@ -149,10 +153,11 @@ func (s *session) initConnection() (err error) {
 		if err = s.db.Exec(fmt.Sprintf("USE `%s`", name)).Error; err == nil {
 			// 连接重连时,清除线程ID缓存
 			// s.threadID = 0
-			log.Info("数据库断开重连")
+			log.Infof("con:%d 数据库断开重连", s.sessionVars.ConnectionID)
 			return
 		} else {
-			log.Error(err)
+			// log.Error(err)
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if err != mysqlDriver.ErrInvalidConn {
 				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 					s.AppendErrorMessage(myErr.Message)
@@ -165,7 +170,8 @@ func (s *session) initConnection() (err error) {
 	}
 
 	if err != nil {
-		log.Error(err)
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
