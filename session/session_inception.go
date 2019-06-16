@@ -5363,61 +5363,71 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 	switch e := expr.(type) {
 	case *ast.BinaryOperationExpr:
 		return s.checkItem(e.L, tables) && s.checkItem(e.R, tables)
+
+	case *ast.FuncCallExpr:
+		return s.checkFuncItem(e, tables)
+
 	case *ast.ColumnNameExpr:
-		found := false
-
-		db := e.Name.Schema.L
-		// if db == "" {
-		// 	db = s.DBName
-		// }
-
-		for _, t := range tables {
-			var tName string
-			if t.AsName != "" {
-				tName = t.AsName
-			} else {
-				tName = t.Name
-			}
-
-			if e.Name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
-				(strings.EqualFold(tName, e.Name.Table.L)) ||
-				e.Name.Table.L == "" {
-				for _, field := range t.Fields {
-					if strings.EqualFold(field.Field, e.Name.Name.L) && !field.IsDeleted {
-						found = true
-						break
-					}
-				}
-				if found {
-					break
-				}
-			}
-		}
-
-		// log.Info(e.Name.Name, "--------", found)
-		// for _, t := range tables {
-		// 	log.Info(t.AsName, ",", t.Name)
-		// 	for _, f := range t.Fields {
-		// 		fmt.Print(f.Field, " ")
-		// 	}
-		// 	fmt.Println()
-		// }
-
-		if found {
-			return true
-		} else {
-			if e.Name.Table.L == "" {
-				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.Name.O)
-			} else {
-				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-					fmt.Sprintf("%s.%s", e.Name.Table.O, e.Name.Name.O))
-			}
-			return false
-		}
+		return s.checkFieldItem(e, tables)
 	default:
 		// log.Infof("checkItem: %#v", e)
 		return true
 	}
+}
+
+// checkFieldItem 检查字段
+func (s *session) checkFieldItem(e *ast.ColumnNameExpr, tables []*TableInfo) bool {
+	found := false
+	db := e.Name.Schema.L
+
+	for _, t := range tables {
+		var tName string
+		if t.AsName != "" {
+			tName = t.AsName
+		} else {
+			tName = t.Name
+		}
+
+		if e.Name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+			(strings.EqualFold(tName, e.Name.Table.L)) ||
+			e.Name.Table.L == "" {
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, e.Name.Name.L) && !field.IsDeleted {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+	}
+
+	// log.Info(e.Name.Name, "--------", found)
+	// for _, t := range tables {
+	// 	log.Info(t.AsName, ",", t.Name)
+	// 	for _, f := range t.Fields {
+	// 		fmt.Print(f.Field, " ")
+	// 	}
+	// 	fmt.Println()
+	// }
+
+	if found {
+		return true
+	} else {
+		if e.Name.Table.L == "" {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.Name.O)
+		} else {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+				fmt.Sprintf("%s.%s", e.Name.Table.O, e.Name.Name.O))
+		}
+		return false
+	}
+}
+
+// checkFuncItem 检查函数的字段
+func (s *session) checkFuncItem(e *ast.FuncCallExpr, tables []*TableInfo) bool {
+	return false
 }
 
 func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
