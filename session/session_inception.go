@@ -5361,18 +5361,32 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 	}
 
 	switch e := expr.(type) {
+	case *ast.ColumnNameExpr:
+		return s.checkFieldItem(e, tables)
+
 	case *ast.BinaryOperationExpr:
 		return s.checkItem(e.L, tables) && s.checkItem(e.R, tables)
 
 	case *ast.FuncCallExpr:
 		return s.checkFuncItem(e, tables)
 
-	case *ast.ColumnNameExpr:
-		return s.checkFieldItem(e, tables)
+	case *ast.AggregateFuncExpr:
+		return s.checkAggregateFuncItem(e, tables)
+
+	case *ast.PatternInExpr:
+		s.checkItem(e.Expr, tables)
+		for _, expr := range e.List {
+			s.checkItem(expr, tables)
+		}
+
+	case *ast.ValueExpr:
+		// pass
+
 	default:
-		// log.Infof("checkItem: %#v", e)
-		return true
+		log.Infof("checkItem: %#v", e)
 	}
+
+	return true
 }
 
 // checkFieldItem 检查字段
@@ -5426,7 +5440,40 @@ func (s *session) checkFieldItem(e *ast.ColumnNameExpr, tables []*TableInfo) boo
 }
 
 // checkFuncItem 检查函数的字段
-func (s *session) checkFuncItem(e *ast.FuncCallExpr, tables []*TableInfo) bool {
+func (s *session) checkFuncItem(f *ast.FuncCallExpr, tables []*TableInfo) bool {
+
+	for _, arg := range f.Args {
+		s.checkItem(arg, tables)
+	}
+
+	// log.Info(f.FnName.L)
+	// switch f.FnName.L {
+	// case ast.Nullif:
+	// 	log.Infof("%#v", f)
+	// 	for _, arg := range f.Args {
+	// 		log.Infof("%#v", arg)
+	// 	}
+	// }
+
+	return false
+}
+
+// checkFuncItem 检查聚合函数的字段
+func (s *session) checkAggregateFuncItem(f *ast.AggregateFuncExpr, tables []*TableInfo) bool {
+
+	for _, arg := range f.Args {
+		s.checkItem(arg, tables)
+	}
+
+	// log.Info(f.F)
+	// switch f.FnName.L {
+	// case ast.Nullif:
+	// 	log.Infof("%#v", f)
+	// 	for _, arg := range f.Args {
+	// 		log.Infof("%#v", arg)
+	// 	}
+	// }
+
 	return false
 }
 
