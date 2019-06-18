@@ -447,7 +447,8 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		s.AppendErrorMessage(err.Error())
 	}
 	if migrationContext.ServeSocketFile == "" {
-		migrationContext.ServeSocketFile = fmt.Sprintf("/tmp/gh-ost.%s.%s.sock", migrationContext.DatabaseName, migrationContext.OriginalTableName)
+		migrationContext.ServeSocketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.host, s.opt.port,
+			migrationContext.DatabaseName, migrationContext.OriginalTableName)
 	}
 
 	migrationContext.SetHeartbeatIntervalMilliseconds(heartbeatIntervalMillis)
