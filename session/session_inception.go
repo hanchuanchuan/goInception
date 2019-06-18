@@ -5360,15 +5360,26 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		return true
 	}
 
+	// log.Infof("%#v", expr)
+
 	switch e := expr.(type) {
 	case *ast.ColumnNameExpr:
-		return s.checkFieldItem(e, tables)
+		s.checkFieldItem(e.Name, tables)
+		if e.Refer != nil {
+			s.checkItem(e.Refer.Expr, tables)
+		}
 
 	case *ast.BinaryOperationExpr:
 		return s.checkItem(e.L, tables) && s.checkItem(e.R, tables)
 
+	case *ast.UnaryOperationExpr:
+		return s.checkItem(e.V, tables)
+
 	case *ast.FuncCallExpr:
 		return s.checkFuncItem(e, tables)
+
+	case *ast.FuncCastExpr:
+		return s.checkItem(e.Expr, tables)
 
 	case *ast.AggregateFuncExpr:
 		return s.checkAggregateFuncItem(e, tables)
@@ -5378,8 +5389,60 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		for _, expr := range e.List {
 			s.checkItem(expr, tables)
 		}
+		if e.Sel != nil {
+			s.checkItem(e.Sel, tables)
+		}
+	case *ast.PatternLikeExpr:
+		s.checkItem(e.Expr, tables)
+	case *ast.PatternRegexpExpr:
+		s.checkItem(e.Expr, tables)
 
-	case *ast.ValueExpr:
+	case *ast.SubqueryExpr:
+		s.checkSelectItem(e.Query)
+
+	case *ast.CompareSubqueryExpr:
+		s.checkItem(e.L, tables)
+		s.checkItem(e.R, tables)
+
+	case *ast.ExistsSubqueryExpr:
+		s.checkSelectItem(e.Sel)
+
+	case *ast.IsNullExpr:
+		s.checkItem(e.Expr, tables)
+	case *ast.IsTruthExpr:
+		s.checkItem(e.Expr, tables)
+
+	case *ast.BetweenExpr:
+		s.checkItem(e.Expr, tables)
+		s.checkItem(e.Left, tables)
+		s.checkItem(e.Right, tables)
+
+	case *ast.CaseExpr:
+		s.checkItem(e.Value, tables)
+		for _, when := range e.WhenClauses {
+			s.checkItem(when.Expr, tables)
+			s.checkItem(when.Result, tables)
+		}
+		s.checkItem(e.ElseClause, tables)
+
+	case *ast.DefaultExpr:
+		s.checkFieldItem(e.Name, tables)
+
+	case *ast.ParenthesesExpr:
+		s.checkItem(e.Expr, tables)
+
+	case *ast.RowExpr:
+		for _, expr := range e.Values {
+			s.checkItem(expr, tables)
+		}
+
+	case *ast.ValuesExpr:
+		s.checkFieldItem(e.Column.Name, tables)
+
+	case *ast.VariableExpr:
+		s.checkItem(e.Value, tables)
+
+	case *ast.ValueExpr, *ast.ParamMarkerExpr, *ast.PositionExpr:
 		// pass
 
 	default:
@@ -5390,9 +5453,9 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 }
 
 // checkFieldItem 检查字段
-func (s *session) checkFieldItem(e *ast.ColumnNameExpr, tables []*TableInfo) bool {
+func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool {
 	found := false
-	db := e.Name.Schema.L
+	db := name.Schema.L
 
 	for _, t := range tables {
 		var tName string
@@ -5402,11 +5465,11 @@ func (s *session) checkFieldItem(e *ast.ColumnNameExpr, tables []*TableInfo) boo
 			tName = t.Name
 		}
 
-		if e.Name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
-			(strings.EqualFold(tName, e.Name.Table.L)) ||
-			e.Name.Table.L == "" {
+		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+			(strings.EqualFold(tName, name.Table.L)) ||
+			name.Table.L == "" {
 			for _, field := range t.Fields {
-				if strings.EqualFold(field.Field, e.Name.Name.L) && !field.IsDeleted {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
 					found = true
 					break
 				}
@@ -5417,7 +5480,7 @@ func (s *session) checkFieldItem(e *ast.ColumnNameExpr, tables []*TableInfo) boo
 		}
 	}
 
-	// log.Info(e.Name.Name, "--------", found)
+	// log.Info(name.Name, "--------", found)
 	// for _, t := range tables {
 	// 	log.Info(t.AsName, ",", t.Name)
 	// 	for _, f := range t.Fields {
@@ -5429,11 +5492,11 @@ func (s *session) checkFieldItem(e *ast.ColumnNameExpr, tables []*TableInfo) boo
 	if found {
 		return true
 	} else {
-		if e.Name.Table.L == "" {
-			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.Name.O)
+		if name.Table.L == "" {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, name.Name.O)
 		} else {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-				fmt.Sprintf("%s.%s", e.Name.Table.O, e.Name.Name.O))
+				fmt.Sprintf("%s.%s", name.Table.O, name.Name.O))
 		}
 		return false
 	}
