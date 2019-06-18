@@ -1361,6 +1361,35 @@ insert into t2 select id from t1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "now"))
 
+	sql = `insert into t1(id) values(nullif(a,'123'));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "a"))
+
+	sql = `insert into t1(id) values(now);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "now"))
+
+	sql = `insert into t1(id) values(now());`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into t1(id) values(max(1));`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into t1(id) values(max(a));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "a"))
+
+	sql = `insert into t1(id) values(abs(-1));`
+	s.testErrorCode(c, sql)
+
+	sql = `insert into t1(id) values(cast(a as signed));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "a"))
+
+	sql = `drop table if exists tt1;create table tt1(id int,c1 int);insert into tt1(id) select max(id) from tt1 where id in (select id1 from tt1);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "id1"))
+
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
