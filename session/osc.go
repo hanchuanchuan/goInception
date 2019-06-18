@@ -179,8 +179,9 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	buf.WriteString(" D=")
 	buf.WriteString(r.TableInfo.Schema)
-	buf.WriteString(",t=")
+	buf.WriteString(",t='")
 	buf.WriteString(r.TableInfo.Name)
+	buf.WriteString("'")
 
 	str := buf.String()
 
@@ -568,15 +569,19 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	//函数返回一个*Cmd，用于使用给出的参数执行name指定的程序
 	cmd := exec.Command(commandName, params...)
 
+	// log.Infof("%s %s", commandName, params)
+
 	//StdoutPipe方法返回一个在命令Start后与命令标准输出关联的管道。Wait方法获知命令结束后会关闭这个管道，一般不需要显式的关闭该管道。
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Error(err)
 		return false
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Error(err)
 		return false
 	}
 
@@ -587,6 +592,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	// 运行命令
 	if err := cmd.Start(); err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Error(err)
 		return false
 	}
 
@@ -637,6 +643,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	err = cmd.Wait()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Errorf("%s %s", commandName, params)
+		log.Error(err)
 	}
 	if p.Percent < 100 || s.hasError() {
 		r.StageStatus = StatusExecFail

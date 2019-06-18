@@ -701,6 +701,21 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	// 指定特殊选项
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column c1 int,ALGORITHM=INPLACE, LOCK=NONE;"
 	s.testErrorCode(c, sql)
+
+	// 特殊字符
+	config.GetGlobalConfig().Inc.CheckIdentifier = false
+	sql = "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';"
+	s.testErrorCode(c, sql)
+
+	// pt-osc
+	config.GetGlobalConfig().Osc.OscOn = true
+	s.testErrorCode(c, sql)
+
+	// gh-ost
+	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Ghost.GhostOn = true
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
