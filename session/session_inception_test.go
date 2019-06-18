@@ -128,7 +128,7 @@ inception_magic_commit;`
 			continue
 		}
 		n := strings.Replace(name, "'", "", -1)
-		res := s.tk.MustQueryInc(fmt.Sprintf(exec, "drop table "+n))
+		res := s.tk.MustQueryInc(fmt.Sprintf(exec, "drop table `"+n+"`"))
 		// fmt.Println(res.Rows())
 		c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
 		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -983,6 +983,11 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 
 	// 指定特殊选项
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column c1 int,ALGORITHM=INPLACE, LOCK=NONE;"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.CheckIdentifier = false
+	// 特殊字符
+	sql = "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';"
 	s.testErrorCode(c, sql)
 }
 

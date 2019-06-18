@@ -254,6 +254,28 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c3`,DROP COLUMN `c4`;")
 
+	// 特殊字符
+	config.GetGlobalConfig().Inc.CheckIdentifier = false
+	res = s.makeSQL(c, tk, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t3!@#$^&*()", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;", Commentf("%v", res.Rows()))
+
+	// pt-osc
+	config.GetGlobalConfig().Osc.OscOn = true
+	res = s.makeSQL(c, tk, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t3!@#$^&*()", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;", Commentf("%v", res.Rows()))
+
+	// gh-ost
+	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Ghost.GhostOn = true
+	res = s.makeSQL(c, tk, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t3!@#$^&*()", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;", Commentf("%v", res.Rows()))
+
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableAlterColumn(c *C) {
@@ -743,7 +765,7 @@ func (s *testSessionIncBackupSuite) query(table, opid string) string {
 	}
 
 	result := []string{}
-	sql := "select rollback_statement from 127_0_0_1_3306_test_inc.%s where opid_time = ?;"
+	sql := "select rollback_statement from 127_0_0_1_3306_test_inc.`%s` where opid_time = ?;"
 	sql = fmt.Sprintf(sql, table)
 
 	rows, err := s.db.Raw(sql, opid).Rows()
