@@ -211,7 +211,7 @@ var (
 	// 忽略的sql列表, 这些sql大都是不同的客户端自动发出的,跳过以免报错
 	ignoreSqlList = []string{"select @@version_comment limit 1",
 		"select @@max_allowed_packet", "set autocommit=0", "show warnings",
-		"set names utf8", "set names utf8mb4"}
+		"set names utf8", "set names utf8mb4", "set autocommit = 0"}
 )
 
 // var Keywords map[string]int = parser.GetKeywords()
