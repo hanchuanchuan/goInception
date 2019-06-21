@@ -482,6 +482,13 @@ func (s *testSessionIncBackupSuite) TestInsert(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `c1`=18446744073709551615;", Commentf("%v", res.Rows()))
 
+	res = s.makeSQL(c, tk, `drop table if exists t1;
+create table t1(id int primary key,c1 varchar(100))default character set utf8mb4;
+insert into t1(id,c1)values(1,'😁😄🙂👩');`)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1;", Commentf("%v", res.Rows()))
+
 	// // 受影响行数
 	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -637,6 +644,14 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2019);", Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, `drop table if exists t1;
+	create table t1(id int primary key,c1 varchar(100))default character set utf8mb4;
+	insert into t1(id,c1)values(1,'😁😄🙂👩');`)
+	res = s.makeSQL(c, tk, "delete from t1;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'😁😄🙂👩');", Commentf("%v", res.Rows()))
 
 }
 

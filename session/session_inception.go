@@ -1272,7 +1272,7 @@ func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
 	buf.WriteString("type VARCHAR(20),")
 	buf.WriteString("PRIMARY KEY(opid_time)")
 
-	buf.WriteString(")ENGINE INNODB DEFAULT CHARSET UTF8;")
+	buf.WriteString(")ENGINE INNODB DEFAULT CHARSET UTF8MB4;")
 
 	return buf.String()
 }
@@ -1287,7 +1287,7 @@ func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) stri
 	buf.WriteString("rollback_statement mediumtext, ")
 	buf.WriteString("opid_time varchar(50)")
 
-	buf.WriteString(") ENGINE INNODB DEFAULT CHARSET UTF8;")
+	buf.WriteString(") ENGINE INNODB DEFAULT CHARSET UTF8MB4;")
 
 	return buf.String()
 }
