@@ -207,6 +207,11 @@ var (
 	regParseOption *regexp.Regexp
 	regFieldLength *regexp.Regexp
 	regIdentified  *regexp.Regexp
+
+	// 忽略的sql列表, 这些sql大都是不同的客户端自动发出的,跳过以免报错
+	ignoreSqlList = []string{"select @@version_comment limit 1",
+		"select @@max_allowed_packet", "set autocommit=0", "show warnings",
+		"set names utf8", "set names utf8mb4"}
 )
 
 // var Keywords map[string]int = parser.GetKeywords()
@@ -239,18 +244,18 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 
 	// 跳过mysql客户端发送的sql
 	// 跳过tidb测试时发送的sql
-	if sql == "select @@version_comment limit 1" || sql == "SELECT @@max_allowed_packet" {
+
+	lowerSql := strings.ToLower(sql)
+	for _, ignore := range ignoreSqlList {
+		if ignore == lowerSql {
+			return s.execute(ctx, sql)
+		}
+	}
+
+	if strings.HasPrefix(lowerSql, "select high_priority") {
 		return s.execute(ctx, sql)
-	} else if sql == "SET AUTOCOMMIT = 0" {
-		return s.execute(ctx, sql)
-	} else if sql == "show warnings" {
-		return s.execute(ctx, sql)
-	} else if strings.HasPrefix(sql, "select HIGH_PRIORITY") {
-		return s.execute(ctx, sql)
-	} else if strings.HasPrefix(sql,
+	} else if strings.HasPrefix(lowerSql,
 		`select variable_value from mysql.tidb where variable_name = "system_tz"`) {
-		return s.execute(ctx, sql)
-	} else if strings.HasPrefix(sql, "SELECT HIGH_PRIORITY") {
 		return s.execute(ctx, sql)
 	}
 
