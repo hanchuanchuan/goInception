@@ -2210,7 +2210,7 @@ func (s *session) parseOptions(sql string) {
 
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
 			s.opt.user, s.opt.password, s.opt.host, s.opt.port,
-			s.Inc.MaxAllowedPacket, s.opt.middlewareDB)
+			s.opt.middlewareDB, s.Inc.MaxAllowedPacket)
 
 	}
 
