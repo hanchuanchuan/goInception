@@ -2147,14 +2147,15 @@ func (s *session) parseOptions(sql string) {
 
 	var addr string
 	if s.opt.middlewareExtend == "" {
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
-			s.opt.user, s.opt.password, s.opt.host, s.opt.port)
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=%d",
+			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.Inc.MaxAllowedPacket)
 	} else {
 		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
 			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
 
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304&maxOpen=100&maxLifetime=60",
-			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.opt.middlewareDB)
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
+			s.opt.user, s.opt.password, s.opt.host, s.opt.port,
+			s.Inc.MaxAllowedPacket, s.opt.middlewareDB)
 
 	}
 

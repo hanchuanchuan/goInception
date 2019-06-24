@@ -329,6 +329,9 @@ type Inc struct {
 	// 一次最多写入的行数, 仅判断insert values语法
 	MaxInsertRows uint `toml:"max_insert_rows" json:"max_insert_rows"`
 
+	// 连接服务器允许的最大包大小,以字节为单位 默认值为4194304(即4MB)
+	MaxAllowedPacket uint `toml:"max_allowed_packet" json:"max_allowed_packet"`
+
 	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
 	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
 	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
@@ -653,6 +656,8 @@ var defaultConf = Config{
 		SupportCharset:        "utf8,utf8mb4",
 		Lang:                  "en-US",
 		CheckColumnTypeChange: true,
+
+		MaxAllowedPacket: 4194304,
 		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{
