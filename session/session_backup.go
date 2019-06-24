@@ -57,7 +57,7 @@ func (s *session) runBackup(ctx context.Context) {
 		if s.checkSqlIsDML(record) || s.checkSqlIsDDL(record) {
 			s.myRecord = record
 
-			s.mysqlCreateBackupTable(record)
+			longDataType := s.mysqlCreateBackupTable(record)
 			// errno := s.mysqlCreateBackupTable(record)
 			// if errno == 2 {
 			// 	break
@@ -65,7 +65,7 @@ func (s *session) runBackup(ctx context.Context) {
 			if record.TableInfo == nil {
 				s.AppendErrorNo(ErrNotFoundTableInfo)
 			} else {
-				s.mysqlBackupSql(record)
+				s.mysqlBackupSql(record, longDataType)
 			}
 
 			if s.hasError() {
