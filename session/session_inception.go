@@ -209,7 +209,7 @@ var (
 	regIdentified  *regexp.Regexp
 
 	// 忽略的sql列表, 这些sql大都是不同的客户端自动发出的,跳过以免报错
-	ignoreSqlList = []string{"select @@version_comment limit 1",
+	skipSqlList = []string{"select @@version_comment limit 1",
 		"select @@max_allowed_packet", "set autocommit=0", "show warnings",
 		"set names utf8", "set names utf8mb4", "set autocommit = 0"}
 )
@@ -246,9 +246,20 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	// 跳过tidb测试时发送的sql
 
 	lowerSql := strings.ToLower(sql)
-	for _, ignore := range ignoreSqlList {
+	for _, ignore := range skipSqlList {
 		if ignore == lowerSql {
 			return s.execute(ctx, sql)
+		}
+	}
+
+	s.Inc = config.GetGlobalConfig().Inc
+
+	// 设置要跳过的sql
+	if s.Inc.SkipSqls != "" {
+		for _, ignore := range strings.Split(s.Inc.SkipSqls, ";") {
+			if strings.ToLower(ignore) == lowerSql {
+				return s.execute(ctx, sql)
+			}
 		}
 	}
 
@@ -277,7 +288,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.backupDBCacheList = make(map[string]bool)
 	s.backupTableCacheList = make(map[string]bool)
 
-	s.Inc = config.GetGlobalConfig().Inc
 	s.Osc = config.GetGlobalConfig().Osc
 	s.Ghost = config.GetGlobalConfig().Ghost
 

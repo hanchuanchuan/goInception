@@ -339,6 +339,9 @@ type Inc struct {
 	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
 	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
 
+	// 要跳过的sql语句, 多个时以分号分隔
+	SkipSqls string `toml:"skip_sqls" json:"skip_sqls"`
+
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
 	// 0  表示关闭安全更新
