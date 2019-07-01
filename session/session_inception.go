@@ -25,6 +25,7 @@ import (
 	"math"
 	"reflect"
 	"regexp"
+	// "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -101,6 +102,12 @@ type sourceOptions struct {
 	execute        bool
 	backup         bool
 	ignoreWarnings bool
+
+	// 每次执行后休眠多少毫秒. 用以降低对线上数据库的影响，特别是针对大量写入的操作.
+	// 单位为毫秒，最小值为0, 最大值为100秒，也就是100000毫秒
+	sleep int
+	// 执行多条后休眠, 最小值1,默认值1
+	sleepRows int
 
 	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
 	middlewareExtend string
@@ -1461,7 +1468,33 @@ func (s *session) executeAllStatement(ctx context.Context) {
 			s.AppendErrorMessage("Operation has been killed!")
 			break
 		}
+
+		if s.opt.sleep > 0 && s.opt.sleepRows > 0 {
+			if s.opt.sleepRows == 1 {
+				mysqlSleep(s.opt.sleep)
+			} else if i%s.opt.sleepRows == 0 {
+				mysqlSleep(s.opt.sleep)
+			}
+		}
 	}
+}
+
+// mysqlSleep Sleep for a while
+func mysqlSleep(ms int) {
+	if ms <= 0 {
+		return
+	}
+
+	if ms > 100000 {
+		ms = 100000
+	}
+
+	for end := time.Now().Add(time.Duration(ms) * time.Millisecond); time.Now().Before(end); {
+	}
+
+	return
+
+	// time.Sleep(time.Duration(ms) * time.Millisecond)
 }
 
 func (s *session) executeRemoteCommand(record *Record) int {
@@ -1499,6 +1532,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 	return int(record.ErrLevel)
 }
 
+// sqlStatisticsIncrement save statistics info
 func (s *session) sqlStatisticsIncrement(record *Record) {
 
 	if !s.opt.execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
@@ -2170,6 +2204,8 @@ func (s *session) parseOptions(sql string) {
 		execute:        viper.GetBool("execute"),
 		backup:         viper.GetBool("backup"),
 		ignoreWarnings: viper.GetBool("ignoreWarnings"),
+		sleep:          viper.GetInt("sleep"),
+		sleepRows:      viper.GetInt("sleepRows"),
 
 		middlewareExtend: viper.GetString("middlewareExtend"),
 		middlewareDB:     viper.GetString("middlewareDB"),
@@ -2187,6 +2223,12 @@ func (s *session) parseOptions(sql string) {
 
 		// 审核阶段自动忽略警告,以免审核过早中止
 		s.opt.ignoreWarnings = true
+	}
+
+	if s.opt.sleep <= 0 {
+		s.opt.sleepRows = 0
+	} else if s.opt.sleepRows < 1 {
+		s.opt.sleepRows = 1
 	}
 
 	if s.opt.split || s.opt.Print {
