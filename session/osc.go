@@ -760,7 +760,8 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 
 	support := false
 	for _, p := range supportOper {
-		if strings.ToLower(parts[3]) == p {
+		// if strings.ToLower(parts[3]) == p {
+		if strings.HasPrefix(strings.ToLower(parts[3]), p) {
 			support = true
 			break
 		}
