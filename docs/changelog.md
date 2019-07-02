@@ -1,6 +1,23 @@
 # goInception 更新日志
 
 
+## [v1.0-rc3] - 2019-7-2
+
+### Fix
+* 修复使用osc做DDL变更时可能不支持的问题(如`alter table t engine='innodb'`)
+
+### New Features
+* 添加sleep执行等待功能,降低对线上数据库的影响 (#46)
+    * 调用选项 `sleep` ,执行 `sleep_rows` 条SQL后休眠多少毫秒,以降低对线上数据库的影响
+    * 调用选项 `sleep_rows` ,执行多少条SQL后休眠一次
+* 添加参数 `max_allowed_packet` 以支持更长的SQL文本
+* 添加参数 `skip_sqls` 以兼容不同客户端的默认sql
+
+### Update
+* 调整备份记录表sql_statement字段类型为mediumtext,并自动兼容旧版本的text类型
+* 兼容mysqlclient客户端
+
+
 ## [v1.0-rc2] - 2019-6-21
 
 ### Fix
