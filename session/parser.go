@@ -198,12 +198,23 @@ func (s *session) Parser(ctx context.Context) {
 		flavor = "mariadb"
 	}
 
+	var (
+		host string
+		port uint16
+	)
+	if s.isMiddleware() {
+		host = s.opt.parseHost
+		port = uint16(s.opt.parsePort)
+	} else {
+		host = s.opt.host
+		port = uint16(s.opt.port)
+	}
 	cfg := replication.BinlogSyncerConfig{
 		ServerID: 2000111111,
 		Flavor:   flavor,
 
-		Host:     s.opt.host,
-		Port:     uint16(s.opt.port),
+		Host:     host,
+		Port:     port,
 		User:     s.opt.user,
 		Password: s.opt.password,
 		// RawModeEnabled:  p.cfg.RawMode,
