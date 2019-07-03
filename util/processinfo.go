@@ -54,6 +54,10 @@ type SessionManager interface {
 
 // OscProcessInfo is a struct used for show osc processlist statement.
 type OscProcessInfo struct {
+	ID uint64
+	// 连接ID
+	ConnID uint64
+
 	Schema     string
 	Table      string
 	Command    string

@@ -907,6 +907,11 @@ func (s *session) executeCommit(ctx context.Context) {
 		return
 	}
 
+	defer func() {
+		// 执行结束后清理osc进程信息
+		s.cleanup()
+	}()
+
 	s.executeAllStatement(ctx)
 
 	// 只要有执行成功的,就添加备份
@@ -6547,4 +6552,23 @@ func (s *session) addNewSplitNode() {
 	s.splitSets.tableList = make(map[string]bool)
 	s.splitSets.ddlflag = 0
 	s.splitSets.sqlBuf = new(bytes.Buffer)
+}
+
+// cleanup 清理变量,缓存,osc进程等
+func (s *session) cleanup() {
+	// 执行完成或中止后清理osc进程信息
+	pl := s.sessionManager.ShowOscProcessList()
+
+	oscList := []string{}
+	for _, pi := range pl {
+		if pi.ConnID == s.sessionVars.ConnectionID {
+			oscList = append(oscList, pi.Sqlsha1)
+		}
+	}
+
+	if len(oscList) > 0 {
+		for _, sha1 := range oscList {
+			delete(pl, sha1)
+		}
+	}
 }
