@@ -4929,30 +4929,30 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordS
 	res := NewProcessListSets(len(pl))
 
 	for _, k := range keys {
-		pi := pl[uint64(k)]
+		if pi, ok := pl[uint64(k)]; ok {
+			var info string
+			if node.Full {
+				info = pi.Info
+			} else {
+				info = fmt.Sprintf("%.100v", pi.Info)
+			}
 
-		var info string
-		if node.Full {
-			info = pi.Info
-		} else {
-			info = fmt.Sprintf("%.100v", pi.Info)
+			data := []interface{}{
+				pi.ID,
+				pi.DestUser,
+				pi.DestHost,
+				pi.DestPort,
+				pi.Host,
+				pi.Command,
+				pi.OperState,
+				int64(time.Since(pi.Time) / time.Second),
+				info,
+			}
+			if pi.Percent > 0 {
+				data = append(data, fmt.Sprintf("%.2f%%", pi.Percent*100))
+			}
+			res.appendRow(data)
 		}
-
-		data := []interface{}{
-			pi.ID,
-			pi.DestUser,
-			pi.DestHost,
-			pi.DestPort,
-			pi.Host,
-			pi.Command,
-			pi.OperState,
-			int64(time.Since(pi.Time) / time.Second),
-			info,
-		}
-		if pi.Percent > 0 {
-			data = append(data, fmt.Sprintf("%.2f%%", pi.Percent*100))
-		}
-		res.appendRow(data)
 	}
 
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
@@ -4966,17 +4966,28 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]ast.R
 	res := NewOscProcessListSets(len(pl), node.Sqlsha1 != "")
 
 	if node.Sqlsha1 == "" {
+
+		var keys []int
+		all := make(map[uint64]*util.OscProcessInfo, len(pl))
 		for _, pi := range pl {
-			data := []interface{}{
-				pi.Schema,
-				pi.Table,
-				pi.Command,
-				pi.Sqlsha1,
-				pi.Percent,
-				pi.RemainTime,
-				pi.Info,
+			keys = append(keys, int(pi.ID))
+			all[pi.ID] = pi
+		}
+		sort.Ints(keys)
+
+		for _, k := range keys {
+			if pi, ok := all[uint64(k)]; ok {
+				data := []interface{}{
+					pi.Schema,
+					pi.Table,
+					pi.Command,
+					pi.Sqlsha1,
+					pi.Percent,
+					pi.RemainTime,
+					pi.Info,
+				}
+				res.appendRow(data)
 			}
-			res.appendRow(data)
 		}
 	} else if pi, ok := pl[node.Sqlsha1]; ok {
 		data := []interface{}{
