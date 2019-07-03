@@ -46,6 +46,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	oscConnID uint32
+)
+
 type ChanOscData struct {
 	out string
 	p   *util.OscProcessInfo
@@ -479,6 +483,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 
 	p := &util.OscProcessInfo{
+		ID:         uint64(atomic.AddUint32(&oscConnID, 1)),
 		ConnID:     s.sessionVars.ConnectionID,
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
@@ -598,6 +603,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	}
 
 	p := &util.OscProcessInfo{
+		ID:         uint64(atomic.AddUint32(&oscConnID, 1)),
 		ConnID:     s.sessionVars.ConnectionID,
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
