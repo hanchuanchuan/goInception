@@ -112,6 +112,9 @@ type sourceOptions struct {
 	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
 	middlewareExtend string
 	middlewareDB     string
+	// 原始主机和端口,用以解析binlog
+	parseHost string
+	parsePort int
 
 	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
 	fingerprint bool
@@ -974,6 +977,8 @@ func (s *session) executeCommit(ctx context.Context) {
 
 		if !s.isMiddleware() {
 			// 解析binlog生成回滚语句
+			s.Parser(ctx)
+		} else if s.opt.parseHost != "" && s.opt.parsePort != 0 {
 			s.Parser(ctx)
 		}
 	}
@@ -2209,6 +2214,8 @@ func (s *session) parseOptions(sql string) {
 
 		middlewareExtend: viper.GetString("middlewareExtend"),
 		middlewareDB:     viper.GetString("middlewareDB"),
+		parseHost:        viper.GetString("parseHost"),
+		parsePort:        viper.GetInt("parsePort"),
 
 		fingerprint: viper.GetBool("fingerprint"),
 
@@ -2253,7 +2260,6 @@ func (s *session) parseOptions(sql string) {
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
 			s.opt.user, s.opt.password, s.opt.host, s.opt.port,
 			s.opt.middlewareDB, s.Inc.MaxAllowedPacket)
-
 	}
 
 	db, err := gorm.Open("mysql", addr)
