@@ -479,6 +479,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 
 	p := &util.OscProcessInfo{
+		ConnID:     s.sessionVars.ConnectionID,
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
 		Command:    r.Sql,
@@ -490,11 +491,11 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 	s.sessionManager.AddOscProcess(p)
 
-	defer func() {
-		// 执行完成或中止后清理osc进程信息
-		pl := s.sessionManager.ShowOscProcessList()
-		delete(pl, p.Sqlsha1)
-	}()
+	// defer func() {
+	// 	// 执行完成或中止后清理osc进程信息
+	// 	pl := s.sessionManager.ShowOscProcessList()
+	// 	delete(pl, p.Sqlsha1)
+	// }()
 
 	done := false
 	buf := bytes.NewBufferString("")
@@ -597,6 +598,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	}
 
 	p := &util.OscProcessInfo{
+		ConnID:     s.sessionVars.ConnectionID,
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
 		Command:    r.Sql,
@@ -659,8 +661,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	}
 
 	// 执行完成或中止后清理osc进程信息
-	pl := s.sessionManager.ShowOscProcessList()
-	delete(pl, p.Sqlsha1)
+	// pl := s.sessionManager.ShowOscProcessList()
+	// delete(pl, p.Sqlsha1)
 
 	return true
 }
