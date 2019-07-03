@@ -6569,7 +6569,9 @@ func (s *session) addNewSplitNode() {
 func (s *session) cleanup() {
 	// 执行完成或中止后清理osc进程信息
 	pl := s.sessionManager.ShowOscProcessList()
-
+	if len(pl) == 0 {
+		return
+	}
 	oscList := []string{}
 	for _, pi := range pl {
 		if pi.ConnID == s.sessionVars.ConnectionID {
