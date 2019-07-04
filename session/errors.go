@@ -91,7 +91,6 @@ const (
 	ER_TOO_LONG_INDEX_COMMENT
 	ER_DUP_INDEX
 	ER_TEMP_TABLE_TMP_PREFIX
-	ER_TABLE_MUST_INNODB
 	ER_TABLE_CHARSET_MUST_UTF8
 	ER_TABLE_CHARSET_MUST_NULL
 	ER_TABLE_MUST_HAVE_COMMENT
@@ -177,6 +176,7 @@ const (
 	ER_WRONG_TABLE_NAME
 	ER_CANT_SET_CHARSET
 	ER_CANT_SET_COLLATION
+	ER_CANT_SET_ENGINE
 	ER_MUST_AT_LEAST_ONE_COLUMN
 	ER_MUST_HAVE_COLUMNS
 	ER_PRIMARY_CANT_HAVE_NULL
@@ -191,6 +191,7 @@ const (
 	ErrCollationNotSupport
 	ErrTableCollationNotSupport
 	ErrJsonTypeSupport
+	ErrEngineNotSupport
 	//ER_NULL_NAME_FOR_INDEX
 	ErrMixOfGroupFuncAndFields
 	ErrFieldNotInGroupBy
@@ -252,7 +253,6 @@ var ErrorsDefault = map[int]string{
 	ER_TOO_LONG_INDEX_COMMENT:              "Comment for index '%s' is too long (max = %lu).",
 	ER_DUP_INDEX:                           "Duplicate index '%s' defined on the table '%s.%s'.",
 	ER_TEMP_TABLE_TMP_PREFIX:               "Set 'tmp' prefix for temporary table.",
-	ER_TABLE_MUST_INNODB:                   "Set engine to innodb for table '%s'.",
 	ER_TABLE_CHARSET_MUST_UTF8:             "Set charset to one of '%s' for table '%s'.",
 	ER_TABLE_CHARSET_MUST_NULL:             "Not allowed set charset for table '%s'.",
 	ErrTableCollationNotSupport:            "Not allowed set collation for table '%s'.",
@@ -339,6 +339,7 @@ var ErrorsDefault = map[int]string{
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "Cannot set charset '%s'",
 	ER_CANT_SET_COLLATION:                  "Cannot set collation '%s'",
+	ER_CANT_SET_ENGINE:                     "Cannot set engine '%s'",
 	ER_MUST_AT_LEAST_ONE_COLUMN:            "A table must have at least 1 column.",
 	ER_MUST_HAVE_COLUMNS:                   "Must have the specified column: '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
@@ -351,6 +352,7 @@ var ErrorsDefault = map[int]string{
 	ErrDataTooLong:                         "Data too long for column '%s' at row %d",
 	ErrCharsetNotSupport:                   "Set charset to one of '%s'.",
 	ErrCollationNotSupport:                 "Set collation to one of '%s'",
+	ErrEngineNotSupport:                    "Set engine to one of '%s'",
 	ErrJsonTypeSupport:                     "Json type not allowed in column '%s'.",
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 	ErrMixOfGroupFuncAndFields:             "In aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; this is incompatible with sql_mode=only_full_group_by.",
@@ -413,7 +415,6 @@ var ErrorsChinese = map[int]string{
 	ER_TOO_LONG_INDEX_COMMENT:              "索引 '%s' 注释过长(max = %lu).",
 	ER_DUP_INDEX:                           "索引 '%s' 定义重复(表'%s.%s').",
 	ER_TEMP_TABLE_TMP_PREFIX:               "临时表需要指定'tmp'前缀",
-	ER_TABLE_MUST_INNODB:                   "仅支持innodb存储引擎(表'%s').",
 	ER_TABLE_CHARSET_MUST_UTF8:             "允许的字符集为: '%s'(表'%s').",
 	ER_TABLE_CHARSET_MUST_NULL:             "表 '%s' 禁止设置字符集!",
 	ErrTableCollationNotSupport:            "表 '%s' 禁止设置排序规则!",
@@ -500,6 +501,7 @@ var ErrorsChinese = map[int]string{
 	ER_WRONG_TABLE_NAME:                    "不正确的表名: '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "禁止指定字符集: '%s'",
 	ER_CANT_SET_COLLATION:                  "禁止指定排序规则: '%s'",
+	ER_CANT_SET_ENGINE:                     "禁止指定存储引擎:'%s'",
 	ER_MUST_AT_LEAST_ONE_COLUMN:            "表至少需要有一个列.",
 	ER_MUST_HAVE_COLUMNS:                   "表必须包含以下列: '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "主键的所有列必须为NOT NULL,如需要NULL列,请改用唯一索引",
@@ -511,6 +513,7 @@ var ErrorsChinese = map[int]string{
 	ErrDataTooLong:                         "数据过长!(列 '%s',行 '%d')",
 	ErrCharsetNotSupport:                   "允许的字符集: '%s'.",
 	ErrCollationNotSupport:                 "允许的排序规则: '%s'.",
+	ErrEngineNotSupport:                    "允许的存储引擎: '%s'.",
 	ErrWrongUsage:                          "%s子句无法使用%s",
 	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
 	ErrCantChangeColumnPosition:            "不允许改变列顺序(列'%s').",
@@ -562,6 +565,7 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_INVALID_IDENT,
 		ER_CANT_SET_CHARSET,
 		ER_CANT_SET_COLLATION,
+		ER_CANT_SET_ENGINE,
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
 		ER_MUST_HAVE_COLUMNS,
@@ -619,9 +623,9 @@ func GetErrorLevel(errorNo int) uint8 {
 		ER_CANT_DROP_DATABASE,
 		ER_CANT_DROP_FIELD_OR_KEY,
 		ER_NOT_SUPPORTED_YET,
-		ER_TABLE_MUST_INNODB,
 		ErrCharsetNotSupport,
 		ErrCollationNotSupport,
+		ErrEngineNotSupport,
 		ER_FOREIGN_KEY,
 		ER_INCEPTION_EMPTY_QUERY:
 		//ER_NULL_NAME_FOR_INDEX:
