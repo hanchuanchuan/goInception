@@ -2629,8 +2629,10 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			for _, opt := range node.Options {
 				switch opt.Tp {
 				case ast.TableOptionEngine:
-					if !strings.EqualFold(opt.StrValue, "innodb") {
-						s.AppendErrorNo(ER_TABLE_MUST_INNODB, node.Table.Name.O)
+					if s.Inc.EnableSetEngine {
+						s.checkEngine(opt.StrValue)
+					} else {
+						s.AppendErrorNo(ER_CANT_SET_ENGINE, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
 					if s.Inc.EnableSetCharset {
@@ -2857,8 +2859,10 @@ func (s *session) checkTableOptions(options []*ast.TableOption, table string, is
 	for _, opt := range options {
 		switch opt.Tp {
 		case ast.TableOptionEngine:
-			if !strings.EqualFold(opt.StrValue, "innodb") {
-				s.AppendErrorNo(ER_TABLE_MUST_INNODB, table)
+			if s.Inc.EnableSetEngine {
+				s.checkEngine(opt.StrValue)
+			} else {
+				s.AppendErrorNo(ER_CANT_SET_ENGINE, table)
 			}
 		case ast.TableOptionCharset:
 			if s.Inc.EnableSetCharset {
@@ -5193,6 +5197,19 @@ func (s *session) checkCollation(collation string) bool {
 	return true
 }
 
+func (s *session) checkEngine(engine string) bool {
+	if s.Inc.SupportEngine != "" {
+		for _, item := range strings.Split(s.Inc.SupportEngine, ",") {
+			if strings.EqualFold(item, engine) {
+				return true
+			}
+		}
+		s.AppendErrorNo(ErrEngineNotSupport, s.Inc.SupportEngine)
+		return false
+	}
+	return true
+}
+
 func (s *session) checkChangeDB(node *ast.UseStmt, sql string) {
 	log.Debug("checkChangeDB")
 
@@ -5910,10 +5927,6 @@ func (s *session) checkInceptionVariables(number int) bool {
 		}
 	case ErrJsonTypeSupport:
 		if s.Inc.EnableJsonType {
-			return false
-		}
-	case ER_TABLE_MUST_INNODB:
-		if s.Inc.EnableNotInnodb {
 			return false
 		}
 	case ER_PK_COLS_NOT_INT:

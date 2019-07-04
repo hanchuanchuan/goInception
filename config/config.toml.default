@@ -39,6 +39,7 @@ log-rotate = true
 
 enable_nullable = true
 enable_drop_table = false
+enable_set_engine = true
 
 check_timestamp_count = true
 check_table_comment = false
@@ -54,6 +55,7 @@ check_column_type_change = true
 sql_safe_updates = -1
 
 support_charset = "utf8,utf8mb4"
+support_engine = "innodb"
 
 lang = "en-US"
 
