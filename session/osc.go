@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -615,9 +616,11 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	}
 	s.sessionManager.AddOscProcess(p)
 
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	// 消息
 	reader := bufio.NewReader(stdout)
-
 	// 进度
 	reader2 := bufio.NewReader(stderr)
 
@@ -628,6 +631,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		for {
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
+				wg.Done()
 				break
 			}
 			buf.WriteString(line)
@@ -647,6 +651,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	go f(reader)
 	go f(reader2)
 
+	wg.Wait()
+
 	//阻塞直到该命令执行完成，该命令必须是被Start方法开始执行的
 	err = cmd.Wait()
 	if err != nil {
@@ -655,6 +661,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		log.Error(err)
 	}
 	if p.Percent < 100 || s.hasError() {
+		s.recordSets.MaxLevel = 2
+		r.ErrLevel = 2
 		r.StageStatus = StatusExecFail
 	} else {
 		r.StageStatus = StatusExecOK
