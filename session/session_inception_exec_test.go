@@ -335,6 +335,8 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
 	// 支持innodb引擎
+	config.GetGlobalConfig().Inc.EnableSetEngine = true
+	config.GetGlobalConfig().Inc.SupportEngine = "innodb"
 	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
@@ -342,7 +344,21 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10))engine = myisam;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Set engine to innodb for table 't1'.")
+	c.Assert(row[4], Equals, "Set engine to one of 'innodb'")
+
+	// 禁止设置存储引擎
+	config.GetGlobalConfig().Inc.EnableSetEngine = false
+	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Cannot set engine 't1'")
+
+	// 允许设置存储引擎
+	config.GetGlobalConfig().Inc.EnableSetEngine = true
+	config.GetGlobalConfig().Inc.SupportEngine = "innodb"
+	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
 
 	// 时间戳 timestamp默认值
 	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP);"
