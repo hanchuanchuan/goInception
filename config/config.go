@@ -306,7 +306,8 @@ type Inc struct {
 	EnableForeignKey       bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
 	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
 	EnableJsonType         bool `toml:"enable_json_type" json:"enable_json_type"`
-	EnableNotInnodb        bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
+	// 是否允许指定存储引擎
+	EnableSetEngine        bool `toml:"enable_set_engine" json:"enable_set_engine"`
 	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
 	EnableOrderByRand      bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
 	EnablePartitionTable   bool `toml:"enable_partition_table" json:"enable_partition_table"`
@@ -357,6 +358,9 @@ type Inc struct {
 	// 支持的排序规则
 	SupportCollation string `toml:"support_collation" json:"support_collation"`
 	// Version *string
+
+	// 支持的存储引擎,多个时以分号分隔
+	SupportEngine string `toml:"support_engine" json:"support_engine"`
 
 	EnableNullIndexName bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
 }
@@ -649,11 +653,13 @@ var defaultConf = Config{
 	Inc: Inc{
 		EnableNullable:        true,
 		EnableDropTable:       false,
+		EnableSetEngine:       true,
 		CheckTableComment:     false,
 		CheckColumnComment:    false,
 		CheckTimestampCount:   true,
 		SqlSafeUpdates:        -1,
 		SupportCharset:        "utf8,utf8mb4",
+		SupportEngine:         "innodb",
 		Lang:                  "en-US",
 		CheckColumnTypeChange: true,
 
