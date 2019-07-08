@@ -1403,8 +1403,9 @@ func (s *session) getRemoteBackupDBName(record *Record) string {
 	v := fmt.Sprintf("%s_%d_%s", s.opt.host, s.opt.port, record.TableInfo.Schema)
 
 	if len(v) > mysql.MaxDatabaseNameLength {
-		s.AppendErrorNo(ER_TOO_LONG_BAKDB_NAME, s.opt.host, s.opt.port, record.TableInfo.Schema)
-		return ""
+		v = v[len(v)-mysql.MaxDatabaseNameLength:]
+		// s.AppendErrorNo(ER_TOO_LONG_BAKDB_NAME, s.opt.host, s.opt.port, record.TableInfo.Schema)
+		// return ""
 	}
 
 	v = strings.Replace(v, "-", "_", -1)
