@@ -39,6 +39,8 @@ jobs:
           name: "Build & Test"
           command: make dev
 
+      - setup_remote_docker:
+          docker_layer_caching: true
       - run:
           name: Publish Docker Image to Docker Hub
           command: |
