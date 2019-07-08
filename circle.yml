@@ -43,6 +43,7 @@ jobs:
           name: Publish Docker Image to Docker Hub
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "$DOCKERHUB_USERNAME"
               echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
               make docker
               make docker-push

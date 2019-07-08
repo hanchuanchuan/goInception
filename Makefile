@@ -258,7 +258,7 @@ release:
 	@for GOOS in darwin linux; do \
 		for GOARCH in amd64; do \
 			echo "Building $${GOOS}-$${GOARCH} ..."; \
-			CGO_ENABLED=0 GOOS=$${GOOS} GOARCH=amd64 go build -ldflags="-s -w" -o goInception tidb-server/main.go; \
+			GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags="-s -w" -o goInception tidb-server/main.go; \
 			tar -czf release/goInception-$${GOOS}-amd64-${VERSION}.tar.gz goInception config/config.toml.default; \
 			rm -f goInception; \
 		done ;\
@@ -271,7 +271,7 @@ docker:
 	@if [ ! -f bin/pt-online-schema-change ];then \
 		wget -O bin/pt-online-schema-change percona.com/get/pt-online-schema-change; \
 	fi
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/goInception tidb-server/main.go
+	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags="-s -w" -o bin/goInception tidb-server/main.go
 	v1=$(shell git tag|tail -1) && docker build -t hanchuanchuan/goinception:$${v1} . \
 	&& docker tag hanchuanchuan/goinception:$${v1} hanchuanchuan/goinception:latest
 
