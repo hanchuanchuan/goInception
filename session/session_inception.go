@@ -5436,7 +5436,8 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 						break
 					}
 				}
-			} else if originTable == tblName.Name.L || originTable == tblSource.AsName.L {
+			} else if originTable == tblSource.AsName.L ||
+				(tblSource.AsName.L == "" && originTable == tblName.Name.L) {
 				s.myRecord.TableInfo = t
 			}
 		}
@@ -5702,13 +5703,6 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	// 	return
 	// }
 
-	if node.Tables != nil {
-		for _, a := range node.Tables.Tables {
-			s.myRecord.TableInfo = s.getTableFromCache(a.Schema.O, a.Name.O, true)
-			break
-		}
-	}
-
 	var tableList []*ast.TableSource
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
@@ -5723,8 +5717,38 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 			}
 			tableInfoList = append(tableInfoList, t)
 
-			if s.myRecord.TableInfo == nil {
+			if node.Tables == nil && s.myRecord.TableInfo == nil {
 				s.myRecord.TableInfo = t
+			}
+		}
+	}
+
+	if node.Tables != nil {
+		for _, name := range node.Tables.Tables {
+			found := false
+			db := name.Schema.String()
+			for i, t := range tableInfoList {
+				var tName string
+				if t.AsName != "" {
+					tName = t.AsName
+				} else {
+					tName = t.Name
+				}
+				if name.Name.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+					(strings.EqualFold(tName, name.Name.L)) {
+					if s.myRecord.TableInfo == nil {
+						s.myRecord.TableInfo = tableInfoList[i]
+					}
+					found = true
+					break
+				}
+			}
+			if !found {
+				if db == "" {
+					db = s.DBName
+				}
+				s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
+					fmt.Sprintf("%s.%s", db, name.Name))
 			}
 		}
 	}
