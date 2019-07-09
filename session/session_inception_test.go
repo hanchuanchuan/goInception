@@ -1423,6 +1423,13 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
 
+	sql = "create table t1(id int);update t1 as tmp set tmp.id = 1;"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int);update t1 as tmp set t1.id = 1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.id"))
+
 	sql = "create table t1(id int);update t1 set c1 = 1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "c1"))
@@ -1559,6 +1566,7 @@ WHERE tt1.id=1;`
 	} else {
 		s.testErrorCode(c, sql)
 	}
+
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
@@ -1636,6 +1644,15 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	sql = `delete from t1 where id =1;`
 	s.testErrorCode(c, sql)
 	s.testAffectedRows(c, 1)
+
+	sql = `drop table if exists t1;create table t1(id int primary key,c1 int);
+		delete tmp from t1 as tmp where tmp.id=1;`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;create table t1(id int primary key,c1 int);
+		delete t1 from t1 as tmp where tmp.id=1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
