@@ -522,7 +522,7 @@ type Ghost struct {
 	// e.g:
 	// -max-load Threads_connected=20,Connections=1500
 	// 指的是当MySQL中的状态值Threads_connected>20,Connections>1500的时候，gh-ost将采取节流(throttle)措施。
-	GhostMaxLoad string `toml:"ghost_max_load"`
+	// GhostMaxLoad string `toml:"ghost_max_load"`
 
 	GhostNiceRatio float64 `toml:"ghost_nice_ratio"`
 	// gh-ost的数据迁移(migrate)运行在从库上，而不是主库上。
