@@ -2966,7 +2966,6 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		return
 	}
 
-	// table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	table := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 	if table == nil {
 		return
@@ -4354,10 +4353,17 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 				t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 				if t != nil {
+					// if tblSource.AsName.L != "" {
+					// 	t.AsName = tblSource.AsName.O
+					// }
+					// tableInfoList = append(tableInfoList, t)
+
 					if tblSource.AsName.L != "" {
 						t.AsName = tblSource.AsName.O
+						tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+					} else {
+						tableInfoList = append(tableInfoList, t)
 					}
-					tableInfoList = append(tableInfoList, t)
 					if t.IsNew {
 						haveNewTable = true
 					}
@@ -5445,8 +5451,10 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		if t != nil {
 			if tblSource.AsName.L != "" {
 				t.AsName = tblSource.AsName.O
+				tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+			} else {
+				tableInfoList = append(tableInfoList, t)
 			}
-			tableInfoList = append(tableInfoList, t)
 			if t.IsNew {
 				haveNewTable = true
 			}
@@ -5635,15 +5643,6 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 		}
 	}
 
-	// log.Info(name.Name, "--------", found)
-	// for _, t := range tables {
-	// 	log.Info(t.AsName, ",", t.Name)
-	// 	for _, f := range t.Fields {
-	// 		fmt.Print(f.Field, " ")
-	// 	}
-	// 	fmt.Println()
-	// }
-
 	if found {
 		return true
 	} else {
@@ -5714,8 +5713,10 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 		if t != nil {
 			if tblSource.AsName.L != "" {
 				t.AsName = tblSource.AsName.O
+				tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+			} else {
+				tableInfoList = append(tableInfoList, t)
 			}
-			tableInfoList = append(tableInfoList, t)
 
 			if node.Tables == nil && s.myRecord.TableInfo == nil {
 				s.myRecord.TableInfo = t
@@ -6215,6 +6216,7 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 
 	p.Schema = t.Schema
 	p.Name = t.Name
+	p.AsName = t.AsName
 
 	p.Fields = make([]FieldInfo, len(t.Fields))
 	copy(p.Fields, t.Fields)
@@ -6303,8 +6305,12 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
 		case *ast.TableName:
 			t := s.getTableFromCache(tblSource.Schema.O, tblSource.Name.O, true)
 			if t != nil {
-				t.AsName = x.AsName.O
-				return []*TableInfo{t}
+				if x.AsName.L != "" {
+					t.AsName = x.AsName.O
+					return []*TableInfo{s.copyTableInfo(t)}
+				} else {
+					return []*TableInfo{t}
+				}
 			} else {
 				return nil
 			}
@@ -6361,10 +6367,17 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 			tblName := x
 			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 			if t != nil {
+				// if tblSource.AsName.L != "" {
+				// 	t.AsName = tblSource.AsName.O
+				// }
+				// tableInfoList = append(tableInfoList, t)
+
 				if tblSource.AsName.L != "" {
 					t.AsName = tblSource.AsName.O
+					tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+				} else {
+					tableInfoList = append(tableInfoList, t)
 				}
-				tableInfoList = append(tableInfoList, t)
 			}
 		case *ast.SelectStmt:
 			// 递归审核子查询
@@ -6459,8 +6472,15 @@ func (s *session) getTableInfoByTableSource(tableList []*ast.TableSource) (table
 			tblName := x
 			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 			if t != nil {
-				t.AsName = tblSource.AsName.O
-				tableInfoList = append(tableInfoList, t)
+				// t.AsName = tblSource.AsName.O
+				// tableInfoList = append(tableInfoList, t)
+
+				if tblSource.AsName.L != "" {
+					t.AsName = tblSource.AsName.O
+					tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+				} else {
+					tableInfoList = append(tableInfoList, t)
+				}
 			}
 		case *ast.SelectStmt:
 			cols := s.getSubSelectColumns(x)
