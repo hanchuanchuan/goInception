@@ -1406,6 +1406,11 @@ insert into t2 select id from t1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "id1"))
 
+	sql = `drop table if exists tt1;create table tt1(id int,c1 int);
+	drop table if exists t1;create table t1(id int primary key,c1 int);
+	insert into tt1(id)
+		select s1.id from t1 as s1 inner join t1 as s2 on s1.c1 = s2.c1 where s1.id > s2.id;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
@@ -1437,6 +1442,10 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	sql = "create table t1(id int,c1 int);update t1 set c1 = 1,c2 = 1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c2"))
+
+	sql = `create table t1(id int primary key,c1 int);
+		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
+	s.testErrorCode(c, sql)
 
 	sql = `create table t1(id int primary key,c1 int);
 		create table t2(id int primary key,c1 int,c2 int);
@@ -1653,6 +1662,11 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 		delete t1 from t1 as tmp where tmp.id=1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
+
+	sql = `drop table if exists t1;create table t1(id int primary key,c1 int);
+		delete s1 from t1 as s1 inner join t1 as s2 on s1.c1 = s2.c1 where s1.id > s2.id;`
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
