@@ -210,7 +210,7 @@ func (s *session) Parser(ctx context.Context) {
 		port = uint16(s.opt.port)
 	}
 	cfg := replication.BinlogSyncerConfig{
-		ServerID: 2000111111,
+		ServerID: 2000111111 + uint32(s.sessionVars.ConnectionID%10000),
 		Flavor:   flavor,
 
 		Host:     host,
