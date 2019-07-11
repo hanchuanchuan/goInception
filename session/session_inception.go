@@ -330,7 +330,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 }
 
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
-
 	sqlList := strings.Split(sql, "\n")
 
 	defer func() {
@@ -379,7 +378,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 		// 如果以分号结尾,或者是最后一行,就做解析
 		// strings.HasSuffix(sql_line, ";")
 		// && batchSize >= 100)
-		if strings.HasSuffix(sql_line, ";") || i == lineCount {
+
+		if strings.HasSuffix(sql_line, ";") || i == lineCount || strings.HasSuffix(sql_line, ";\r") {
 			// batchSize = 1
 			buf = append(buf, sql_line)
 			s1 := strings.Join(buf, "\n")
