@@ -175,9 +175,9 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	buf.WriteString(" --user=\"")
 	buf.WriteString(s.opt.user)
-	buf.WriteString("\" --password=\"")
-	buf.WriteString(s.opt.password)
-	buf.WriteString("\" --host=")
+	buf.WriteString("\" --password='")
+	buf.WriteString(strings.Replace(s.opt.password, "'", "'\"'\"'", -1))
+	buf.WriteString("' --host=")
 	buf.WriteString(s.opt.host)
 	buf.WriteString(" --port=")
 	buf.WriteString(strconv.Itoa(s.opt.port))
