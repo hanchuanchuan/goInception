@@ -2250,7 +2250,7 @@ func (s *session) parseOptions(sql string) {
 
 	// 不再检查密码是否为空
 	if s.opt.host == "" || s.opt.port == 0 || s.opt.user == "" {
-		log.Warning(s.opt)
+		log.Warningf("%#v", s.opt)
 		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
 		return
 	}
