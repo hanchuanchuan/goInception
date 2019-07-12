@@ -75,6 +75,7 @@ type Config struct {
 	Inc                 Inc               `toml:"inc" json:"inc"`
 	Osc                 Osc               `toml:"osc" json:"osc"`
 	Ghost               Ghost             `toml:"ghost" json:"ghost"`
+	IncLevel            IncLevel          `toml:"inc_level" json:"inc_level"`
 	CompatibleKillQuery bool              `toml:"compatible-kill-query" json:"compatible-kill-query"`
 }
 
@@ -571,6 +572,10 @@ type Ghost struct {
 	GhostReplicationLagQuery string `toml:"ghost_replication_lag_query"`
 }
 
+type IncLevel struct {
+	ER_WITH_INSERT_FIELD uint8 `toml:"er_with_insert_field" json:"er_with_insert_field"`
+}
+
 var defaultConf = Config{
 	Host:             "0.0.0.0",
 	AdvertiseAddress: "",
@@ -704,6 +709,9 @@ var defaultConf = Config{
 		GhostDmlBatchSize:                  10,
 		GhostOkToDropTable:                 true,
 		GhostSkipForeignKeyChecks:          true,
+	},
+	IncLevel: IncLevel{
+		ER_WITH_INSERT_FIELD: 1,
 	},
 }
 

@@ -26,7 +26,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ErrorsMessage = map[int]string{}
+//go:generate stringer -type=ErrorCode
+type ErrorCode int
+
+var ErrorsMessage = map[ErrorCode]string{}
 
 var (
 	ErrWrongValueForVar = terror.ClassVariable.New(mysql.ErrWrongValueForVar,
@@ -38,7 +41,7 @@ var (
 )
 
 const (
-	ER_ERROR_FIRST = iota
+	ER_ERROR_FIRST ErrorCode = iota
 	ER_NOT_SUPPORTED_YET
 	ER_SQL_NO_SOURCE
 	ER_SQL_NO_OP_TYPE
@@ -199,7 +202,7 @@ const (
 	ER_ERROR_LAST
 )
 
-var ErrorsDefault = map[int]string{
+var ErrorsDefault = map[ErrorCode]string{
 	ER_ERROR_FIRST:                         "HelloWorld",
 	ER_NOT_SUPPORTED_YET:                   "Not supported statement type.",
 	ER_SQL_NO_SOURCE:                       "The sql have no source information.",
@@ -362,7 +365,7 @@ var ErrorsDefault = map[int]string{
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 }
 
-var ErrorsChinese = map[int]string{
+var ErrorsChinese = map[ErrorCode]string{
 	ER_NOT_SUPPORTED_YET:                "不支持的语法类型.",
 	ER_SQL_NO_SOURCE:                    "sql没有源信息.",
 	ER_SQL_NO_OP_TYPE:                   "sql没有操作类型设置.",
@@ -520,8 +523,8 @@ var ErrorsChinese = map[int]string{
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 }
 
-func GetErrorLevel(errorNo int) uint8 {
-	switch errorNo {
+func GetErrorLevel(ErrorCode ErrorCode) uint8 {
+	switch ErrorCode {
 	case ER_WITH_INSERT_FIELD,
 		ER_NO_WHERE_CONDITION,
 		ER_WITH_ORDERBY_CONDITION,
@@ -636,11 +639,11 @@ func GetErrorLevel(errorNo int) uint8 {
 	}
 }
 
-func GetErrorMessage(errorNo int) string {
-	if v, ok := ErrorsMessage[errorNo]; ok {
+func GetErrorMessage(ErrorCode ErrorCode) string {
+	if v, ok := ErrorsMessage[ErrorCode]; ok {
 		return v
 	}
-	if v, ok := ErrorsDefault[errorNo]; ok {
+	if v, ok := ErrorsDefault[ErrorCode]; ok {
 		return v
 	}
 	return "Invalid error code!"
@@ -648,7 +651,7 @@ func GetErrorMessage(errorNo int) string {
 
 // SQLError records an error information, from executing SQL.
 type SQLError struct {
-	Code    int
+	Code    ErrorCode
 	Message string
 }
 
@@ -658,7 +661,7 @@ func (e *SQLError) Error() string {
 }
 
 // NewErr generates a SQL error, with an error code and default format specifier defined in MySQLErrName.
-func NewErr(errCode int, args ...interface{}) *SQLError {
+func NewErr(errCode ErrorCode, args ...interface{}) *SQLError {
 	e := &SQLError{Code: errCode}
 	e.Message = fmt.Sprintf(GetErrorMessage(errCode), args...)
 	return e

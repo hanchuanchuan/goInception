@@ -301,6 +301,8 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.Osc = config.GetGlobalConfig().Osc
 	s.Ghost = config.GetGlobalConfig().Ghost
 
+	log.Infof("%#v", config.GetGlobalConfig().IncLevel)
+
 	s.sqlFingerprint = nil
 
 	// 全量日志
@@ -5847,7 +5849,7 @@ func (r *Record) AppendErrorMessage(msg string) {
 	r.Buf.WriteString("\n")
 }
 
-func (r *Record) AppendErrorNo(number int, values ...interface{}) {
+func (r *Record) AppendErrorNo(number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
 
 	if len(values) == 0 {
@@ -5859,7 +5861,7 @@ func (r *Record) AppendErrorNo(number int, values ...interface{}) {
 }
 
 // AppendWarning 添加警告. 错误级别指定为警告
-func (r *Record) AppendWarning(number int, values ...interface{}) {
+func (r *Record) AppendWarning(number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
 
 	if len(values) == 0 {
@@ -5882,7 +5884,7 @@ func (s *session) AppendErrorMessage(msg string) {
 	s.myRecord.AppendErrorMessage(msg)
 }
 
-func (s *session) AppendWarning(number int, values ...interface{}) {
+func (s *session) AppendWarning(number ErrorCode, values ...interface{}) {
 	if s.stage == StageBackup {
 		s.myRecord.Buf.WriteString("Backup: ")
 	} else if s.stage == StageExec {
@@ -5892,7 +5894,7 @@ func (s *session) AppendWarning(number int, values ...interface{}) {
 	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 }
 
-func (s *session) AppendErrorNo(number int, values ...interface{}) {
+func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 	if s.checkInceptionVariables(number) {
 		if s.stage == StageBackup {
 			s.myRecord.Buf.WriteString("Backup: ")
@@ -5916,7 +5918,7 @@ func (s *session) checkKeyWords(name string) {
 	}
 }
 
-func (s *session) checkInceptionVariables(number int) bool {
+func (s *session) checkInceptionVariables(number ErrorCode) bool {
 	switch number {
 	case ER_WITH_INSERT_FIELD:
 		return s.Inc.CheckInsertField
