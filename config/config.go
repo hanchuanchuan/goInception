@@ -295,11 +295,13 @@ type Inc struct {
 	CheckTimestampCount     bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
-	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
-	EnableColumnCharset         bool `toml:"enable_column_charset" json:"enable_column_charset"`
-	EnableDropDatabase          bool `toml:"enable_drop_database" json:"enable_drop_database"`
-	EnableDropTable             bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
-	EnableEnumSetBit            bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
+	// 允许blob,text,json列设置为NOT NULL
+	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`
+	EnableBlobType      bool `toml:"enable_blob_type" json:"enable_blob_type"`
+	EnableColumnCharset bool `toml:"enable_column_charset" json:"enable_column_charset"`
+	EnableDropDatabase  bool `toml:"enable_drop_database" json:"enable_drop_database"`
+	EnableDropTable     bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
+	EnableEnumSetBit    bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
 
 	// DML指纹功能,开启后,在审核时,类似DML将直接复用审核结果,可大幅优化审核效率
 	EnableFingerprint      bool `toml:"enable_fingerprint" json:"enable_fingerprint"`
@@ -308,7 +310,8 @@ type Inc struct {
 	EnableJsonType         bool `toml:"enable_json_type" json:"enable_json_type"`
 	// 是否允许指定存储引擎
 	EnableSetEngine        bool `toml:"enable_set_engine" json:"enable_set_engine"`
-	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
+	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"`               // 允许空列
+	EnableNullIndexName    bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
 	EnableOrderByRand      bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
 	EnablePartitionTable   bool `toml:"enable_partition_table" json:"enable_partition_table"`
 	EnablePKColumnsOnlyInt bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
@@ -317,7 +320,6 @@ type Inc struct {
 	// 是否允许设置字符集和排序规则
 	EnableSetCharset   bool `toml:"enable_set_charset" json:"enable_set_charset"`
 	EnableSetCollation bool `toml:"enable_set_collation" json:"enable_set_collation"`
-
 	// 开启sql统计
 	EnableSqlStatistic bool `toml:"enable_sql_statistic" json:"enable_sql_statistic"`
 
@@ -361,8 +363,6 @@ type Inc struct {
 
 	// 支持的存储引擎,多个时以分号分隔
 	SupportEngine string `toml:"support_engine" json:"support_engine"`
-
-	EnableNullIndexName bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
 }
 
 // Osc online schema change 工具参数配置
