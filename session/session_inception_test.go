@@ -822,6 +822,23 @@ primary key(id)) comment 'test';`
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
+	// 允许blob,text,json列设置为NOT NULL
+	config.GetGlobalConfig().Inc.EnableBlobNotNull = false
+	sql = `create table t1(id int auto_increment primary key,c1 blob not null);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"))
+
+	sql = `create table t1(id int auto_increment primary key,c1 text not null);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"))
+	sql = `create table t1(id int auto_increment primary key,c1 json not null);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"))
+
+	config.GetGlobalConfig().Inc.EnableBlobNotNull = true
+	sql = `create table t1(id int auto_increment primary key,c1 blob not null);`
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {

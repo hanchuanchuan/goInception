@@ -6018,6 +6018,9 @@ func (s *session) checkInceptionVariables(number int) bool {
 
 	case ErrCantChangeColumnPosition:
 		return s.Inc.CheckColumnPositionChange
+
+	case ER_TEXT_NOT_NULLABLE_ERROR:
+		return !s.Inc.EnableBlobNotNull
 		/*case ER_NULL_NAME_FOR_INDEX:
 		  return s.Inc.EnableNullIndexName*/
 	}
