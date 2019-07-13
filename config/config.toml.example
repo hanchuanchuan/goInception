@@ -278,10 +278,11 @@ general_log = false
 
 max_allowed_packet = 4194304
 
-enable_level = true
+# 是否启用自定义审核级别设置
+enable_level = false
 
 [inc_level]
-er_with_insert_field = 0
+er_with_insert_field = 1
 
 [osc]
 

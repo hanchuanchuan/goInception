@@ -2350,7 +2350,7 @@ func (s *session) parseIncLevel() {
 		}
 	}
 
-	log.Infof("%#v", s.incLevel)
+	// log.Infof("%#v", s.incLevel)
 }
 
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {

@@ -930,6 +930,7 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	sql := ""
 
@@ -968,11 +969,13 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 
 	// 字段警告
 	config.GetGlobalConfig().Inc.CheckInsertField = true
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
 	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_INSERT_FIELD))
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values();"
 	s.testErrorCode(c, sql,
@@ -1042,6 +1045,7 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 	sql := ""
 
 	// 表不存在
@@ -1124,9 +1128,11 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
+		config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 	sql := ""
 
 	sql = "drop table if exists t1"
