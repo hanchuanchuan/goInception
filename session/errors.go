@@ -19,6 +19,7 @@ package session
 
 import (
 	"fmt"
+	// "strconv"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -523,8 +524,9 @@ var ErrorsChinese = map[ErrorCode]string{
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 }
 
-func GetErrorLevel(ErrorCode ErrorCode) uint8 {
-	switch ErrorCode {
+func GetErrorLevel(code ErrorCode) uint8 {
+
+	switch code {
 	case ER_WITH_INSERT_FIELD,
 		ER_NO_WHERE_CONDITION,
 		ER_WITH_ORDERBY_CONDITION,

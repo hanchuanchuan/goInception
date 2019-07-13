@@ -301,7 +301,8 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	s.Osc = config.GetGlobalConfig().Osc
 	s.Ghost = config.GetGlobalConfig().Ghost
 
-	log.Infof("%#v", config.GetGlobalConfig().IncLevel)
+	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
+	s.parseIncLevel()
 
 	s.sqlFingerprint = nil
 
@@ -325,6 +326,8 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 		s.backupDBCacheList = nil
 		s.backupTableCacheList = nil
 		s.sqlFingerprint = nil
+
+		s.incLevel = nil
 	}()
 	// pprof.StopCPUProfile()
 
@@ -2327,6 +2330,27 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	s.setSqlSafeUpdates()
+}
+
+func (s *session) parseIncLevel() {
+	obj := config.GetGlobalConfig().IncLevel
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+	s.incLevel = make(map[string]uint8, v.NumField())
+
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).CanInterface() {
+			a := v.Field(i).Int()
+			if a < 0 {
+				a = 0
+			} else if a > 2 {
+				a = 2
+			}
+			s.incLevel[t.Field(i).Name] = uint8(a)
+		}
+	}
+
+	log.Infof("%#v", s.incLevel)
 }
 
 func (s *session) checkTruncateTable(node *ast.TruncateTableStmt, sql string) {
@@ -5895,14 +5919,41 @@ func (s *session) AppendWarning(number ErrorCode, values ...interface{}) {
 }
 
 func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
-	if s.checkInceptionVariables(number) {
-		if s.stage == StageBackup {
-			s.myRecord.Buf.WriteString("Backup: ")
-		} else if s.stage == StageExec {
-			s.myRecord.Buf.WriteString("Execute: ")
+	r := s.myRecord
+	if s.Inc.EnableLevel {
+		var level uint8 = 2
+		found := false
+		if v, ok := s.incLevel[number.String()]; ok {
+			level = v
+			found = true
+		} else {
+			level = GetErrorLevel(number)
 		}
-		s.myRecord.AppendErrorNo(number, values...)
-		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+		if (found && level > 0) || (!found && s.checkInceptionVariables(number)) {
+			r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
+			s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+			if s.stage == StageBackup {
+				r.Buf.WriteString("Backup: ")
+			} else if s.stage == StageExec {
+				r.Buf.WriteString("Execute: ")
+			}
+			if len(values) == 0 {
+				r.Buf.WriteString(GetErrorMessage(number))
+			} else {
+				r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+			}
+			r.Buf.WriteString("\n")
+		}
+	} else {
+		if s.checkInceptionVariables(number) {
+			if s.stage == StageBackup {
+				r.Buf.WriteString("Backup: ")
+			} else if s.stage == StageExec {
+				r.Buf.WriteString("Execute: ")
+			}
+			s.myRecord.AppendErrorNo(number, values...)
+			s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+		}
 	}
 }
 

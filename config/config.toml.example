@@ -278,6 +278,11 @@ general_log = false
 
 max_allowed_packet = 4194304
 
+enable_level = true
+
+[inc_level]
+er_with_insert_field = 0
+
 [osc]
 
 # 用来设置在arkit返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，
@@ -363,7 +368,3 @@ ghost_exponential_backoff_max_interval = 64
 ghost_dml_batch_size = 10
 ghost_ok_to_drop_table = true
 ghost_skip_foreign_key_checks = true
-
-
-[inc_level]
-er_with_insert_field = 1
