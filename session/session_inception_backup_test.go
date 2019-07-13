@@ -108,7 +108,6 @@ func (s *testSessionIncBackupSuite) TearDownSuite(c *C) {
 		testleak.AfterTest(c)()
 
 		if s.db != nil {
-			fmt.Println("关闭数据库连接~~~")
 			s.db.Close()
 		}
 	}

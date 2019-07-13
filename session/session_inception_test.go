@@ -78,11 +78,10 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	cfg := config.GetGlobalConfig()
 	_, localFile, _, _ := runtime.Caller(0)
 	localFile = path.Dir(localFile)
-	fmt.Println("当前目录: ", localFile)
+	// fmt.Println("当前目录: ", localFile)
 	configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
-	fmt.Println("配置文件目录: ", configFile)
-	c.Assert(cfg.Load(configFile), IsNil)
-	fmt.Printf("%#v \n", cfg.IncLevel)
+	c.Assert(cfg.Load(configFile), IsNil, configFile)
+	// fmt.Printf("%#v \n", cfg.IncLevel)
 
 	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
 	// session.SetLanguage("zh-CN")
@@ -810,6 +809,9 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql)
 
 	config.GetGlobalConfig().Inc.MustHaveColumns = ""
+
+	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	// 测试表名大小写
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);insert into T1 values(1);`
