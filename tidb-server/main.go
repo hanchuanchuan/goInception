@@ -50,6 +50,7 @@ import (
 	"github.com/pingcap/tipb/go-binlog"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
+	goMysqlLog "github.com/siddontang/go-log/log"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
@@ -419,6 +420,8 @@ func setGlobalVars() {
 func setupLog() {
 	err := logutil.InitLogger(cfg.Log.ToLogConfig())
 	terror.MustNil(err)
+
+	goMysqlLog.SetLevelByName(config.GetGlobalConfig().Log.Level)
 }
 
 func printInfo() {
