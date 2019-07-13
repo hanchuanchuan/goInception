@@ -217,6 +217,7 @@ func (s *session) Parser(ctx context.Context) {
 		Port:     port,
 		User:     s.opt.user,
 		Password: s.opt.password,
+		// UseDecimal: true,
 		// RawModeEnabled:  p.cfg.RawMode,
 		// SemiSyncEnabled: p.cfg.SemiSync,
 	}
