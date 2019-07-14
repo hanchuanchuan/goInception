@@ -598,3 +598,47 @@ func (s *SplitSets) CurrentId() int64 {
 func (s *SplitSets) Rows() []ast.RecordSet {
 	return []ast.RecordSet{s.rc}
 }
+
+type LevelSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      ast.RecordSet
+}
+
+func NewLevelSets(count int) *LevelSets {
+	t := &LevelSets{}
+
+	rc := &recordSet{
+		data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 3)
+
+	rc.CreateFiled("Name", mysql.TypeString)
+	rc.CreateFiled("Value", mysql.TypeLong)
+	rc.CreateFiled("Desc", mysql.TypeString)
+
+	t.rc = rc
+
+	return t
+}
+
+func (s *LevelSets) Append(name string, value int64, desc string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetString(name)
+	row[1].SetInt64(value)
+	row[2].SetString(desc)
+
+	s.rc.data = append(s.rc.data, row)
+	// s.rc.data[s.rc.count] = row
+	s.rc.count++
+}
+
+func (s *LevelSets) Rows() []ast.RecordSet {
+	return []ast.RecordSet{s.rc}
+}
