@@ -15,8 +15,8 @@ package session_test
 
 import (
 	"fmt"
-	"path"
-	"runtime"
+	// "path"
+	// "runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -75,16 +75,12 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
 
-	cfg := config.GetGlobalConfig()
-	_, localFile, _, _ := runtime.Caller(0)
-	localFile = path.Dir(localFile)
-	// fmt.Println("当前目录: ", localFile)
-	configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
-	c.Assert(cfg.Load(configFile), IsNil)
-	// fmt.Printf("%#v \n", cfg.IncLevel)
+	// cfg := config.GetGlobalConfig()
+	// _, localFile, _, _ := runtime.Caller(0)
+	// localFile = path.Dir(localFile)
+	// configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
+	// c.Assert(cfg.Load(configFile), IsNil)
 
-	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
-	// session.SetLanguage("zh-CN")
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
