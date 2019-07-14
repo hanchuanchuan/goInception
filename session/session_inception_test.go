@@ -80,7 +80,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	localFile = path.Dir(localFile)
 	// fmt.Println("当前目录: ", localFile)
 	configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
-	c.Assert(cfg.Load(configFile), IsNil, configFile)
+	c.Assert(cfg.Load(configFile), IsNil)
 	// fmt.Printf("%#v \n", cfg.IncLevel)
 
 	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
@@ -90,7 +90,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	// 启用自定义审核级别
-	config.GetGlobalConfig().Inc.EnableLevel = true
+	config.GetGlobalConfig().Inc.EnableLevel = false
 
 	session.SetLanguage("en-US")
 
@@ -1201,17 +1201,17 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnPositionChange = true
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 add column c3 int first"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 add column c3 int after c1"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 modify column c1 int after c2"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c1"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c1"))
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 change column c1 c3 int after id"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 
 	config.GetGlobalConfig().Inc.CheckColumnPositionChange = false
 }

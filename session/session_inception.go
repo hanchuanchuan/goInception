@@ -718,6 +718,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 				return s.executeLocalShowVariables(node)
 			case ast.ShowProcessList:
 				return s.executeLocalShowProcesslist(node)
+			case ast.ShowLevels:
+				return s.executeLocalShowLevels(node)
 			default:
 				log.Infof("%#v", node)
 				return nil, errors.New("不支持的语法类型")
@@ -3236,7 +3238,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 				if c.Position.Tp != ast.ColumnPositionNone {
 
-					s.AppendErrorNo(ErrCantChangeColumnPosition,
+					s.AppendErrorNo(ErCantChangeColumnPosition,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 
 					// 在新的快照上变更表结构
@@ -3350,7 +3352,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 				if c.Position.Tp != ast.ColumnPositionNone {
 
-					s.AppendErrorNo(ErrCantChangeColumnPosition,
+					s.AppendErrorNo(ErCantChangeColumnPosition,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 
 					if c.Position.Tp == ast.ColumnPositionFirst {
@@ -3869,7 +3871,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			}
 
 			if c.Position != nil && c.Position.Tp != ast.ColumnPositionNone {
-				s.AppendErrorNo(ErrCantChangeColumnPosition,
+				s.AppendErrorNo(ErCantChangeColumnPosition,
 					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 			}
 
@@ -4729,6 +4731,14 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 
 		cnf := config.GetGlobalConfig()
 
+		if v.IsLevel {
+			err := s.setLevelValue(reflect.TypeOf(cnf.IncLevel), reflect.ValueOf(&cnf.IncLevel).Elem(), v.Name, value)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+
 		// t := reflect.TypeOf(cnf.Inc)
 		// values := reflect.ValueOf(&cnf.Inc).Elem()
 		prefix := strings.ToLower(v.Name)
@@ -4770,6 +4780,29 @@ func (s *session) setVariableValue(t reflect.Type, values reflect.Value,
 	// t := reflect.TypeOf(*(obj))
 	// // values := reflect.ValueOf(obj).Elem()
 	// values := reflect.ValueOf(obj).Elem()
+
+	found := false
+	for i := 0; i < values.NumField(); i++ {
+		if values.Field(i).CanInterface() { //判断是否为可导出字段
+			if k := t.Field(i).Tag.Get("toml"); strings.EqualFold(k, name) ||
+				strings.EqualFold(t.Field(i).Name, name) {
+				err := s.setConfigValue(name, values.Field(i), &(value.Datum))
+				if err != nil {
+					return err
+				}
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return errors.New("无效参数")
+	}
+	return nil
+}
+
+func (s *session) setLevelValue(t reflect.Type, values reflect.Value,
+	name string, value *ast.ValueExpr) error {
 
 	found := false
 	for i := 0; i < values.NumField(); i++ {
@@ -4846,7 +4879,8 @@ func (s *session) setConfigValue(name string, field reflect.Value, value *types.
 	case reflect.String.String():
 		field.SetString(sVal)
 
-	case reflect.Uint.String():
+	case reflect.Uint.String(), reflect.Uint8.String(), reflect.Uint16.String(),
+		reflect.Uint32.String(), reflect.Uint64.String():
 		// field.SetUint(value.GetUint64())
 		v, err := s.checkUInt64SystemVar(name, sVal, 0, math.MaxUint64)
 		if err != nil {
@@ -4856,8 +4890,8 @@ func (s *session) setConfigValue(name string, field reflect.Value, value *types.
 		v1, _ := strconv.ParseUint(v, 10, 64)
 		field.SetUint(v1)
 
-	case reflect.Int.String(), reflect.Int64.String():
-		// field.SetInt(value.GetInt64())
+	case reflect.Int.String(), reflect.Int8.String(), reflect.Int16.String(),
+		reflect.Int32.String(), reflect.Int64.String():
 		v, err := s.checkInt64SystemVar(name, sVal, math.MinInt64, math.MaxInt64)
 		if err != nil {
 			return err
@@ -4951,7 +4985,6 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 
 	return res.Rows(), nil
-
 }
 
 func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordSet, error) {
@@ -4996,6 +5029,193 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordS
 	return res.Rows(), nil
 }
 
+// splitWhere: 拆分where表达式
+func splitWhere(where ast.ExprNode) []ast.ExprNode {
+	var conditions []ast.ExprNode
+	switch x := where.(type) {
+	case nil:
+	case *ast.BinaryOperationExpr:
+		if x.Op == opcode.LogicAnd {
+			conditions = append(conditions, splitWhere(x.L)...)
+			conditions = append(conditions, splitWhere(x.R)...)
+		} else {
+			conditions = append(conditions, x)
+		}
+	case *ast.ParenthesesExpr:
+		conditions = append(conditions, splitWhere(x.Expr)...)
+	default:
+		conditions = append(conditions, where)
+	}
+	return conditions
+}
+
+// checkColumnName: 检查列是否存在
+func checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err error) {
+	colIndex = -1
+	if e, ok := expr.(*ast.ColumnNameExpr); ok {
+		found := false
+		for i, c := range colNames {
+			if e.Name.Name.L == c {
+				found = true
+				colIndex = i
+			}
+		}
+		if !found {
+			return colIndex, errors.New(fmt.Sprintf(GetErrorMessage(ER_COLUMN_NOT_EXISTED), e.Name.Name.String()))
+		}
+	}
+	return colIndex, nil
+}
+
+// filterExprNode: 条件筛选
+func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool, error) {
+	switch x := expr.(type) {
+	case *ast.BinaryOperationExpr:
+		switch x.Op {
+		case opcode.EQ:
+			colIndex, err := checkColumnName(x.L, colNames)
+			if err != nil {
+				return false, err
+			}
+			if colIndex > -1 {
+				if v, ok := x.R.(*ast.ValueExpr); ok {
+					sVal, _ := v.ToString()
+					if sVal == values[colIndex] {
+						return true, nil
+					}
+				}
+			}
+		default:
+			log.Info(x)
+			return false, errors.New("不支持的操作")
+		}
+	case *ast.PatternLikeExpr:
+		colIndex, err := checkColumnName(x.Expr, colNames)
+		if err != nil {
+			return false, err
+		}
+		if colIndex > -1 {
+			if v, ok := x.Pattern.(*ast.ValueExpr); ok {
+				like := strings.ToLower(v.GetString())
+				patChars, patTypes := stringutil.CompilePattern(like, x.Escape)
+				match := stringutil.DoMatch(strings.ToLower(values[colIndex]), patChars, patTypes)
+				if match && !x.Not {
+					return true, nil
+				} else if !match && x.Not {
+					return true, nil
+				}
+			}
+		}
+
+	default:
+		log.Info(x)
+		return false, errors.New("不支持的操作")
+	}
+	return false, nil
+}
+
+// filter: 条件筛选
+func filter(expr []ast.ExprNode, colNames []string, value []string) (bool, error) {
+	for _, e := range expr {
+		ok, err := filterExprNode(e, colNames, value)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]ast.RecordSet, error) {
+	log.Debug("executeLocalShowLevels")
+
+	res := NewLevelSets(len(s.incLevel))
+
+	filters := make([]ast.ExprNode, 0)
+	if node.Where != nil {
+		filters = splitWhere(node.Where)
+	}
+
+	if node.Pattern != nil {
+		if node.Pattern.Expr == nil {
+			node.Pattern.Expr = &ast.ColumnNameExpr{
+				Name: &ast.ColumnName{Name: model.NewCIStr("name")},
+			}
+		}
+		filters = append(filters, node.Pattern)
+	}
+
+	names := []string{"name", "value", "desc"}
+
+	for i := 1; i < len(ErrorsDefault); i++ {
+		code := ErrorCode(i)
+		name := code.String()
+		if v, ok := s.incLevel[name]; ok {
+			if len(filters) > 0 {
+				ok, err := filter(filters, names, []string{
+					name, strconv.Itoa(int(v)), GetErrorMessage(code),
+				})
+				if err != nil {
+					return nil, err
+				}
+				if !ok {
+					continue
+				}
+			}
+			res.Append(name, int64(v), GetErrorMessage(code))
+
+			// if len(like) == 0 {
+			// 	if len(filters) > 0 {
+			// 		ok, err := filter(filters, names, []string{
+			// 			name, string(v), GetErrorMessage(code),
+			// 		})
+			// 		if err != nil {
+			// 			return nil, err
+			// 		}
+			// 		if !ok {
+			// 			continue
+			// 		}
+			// 	}
+
+			// 	res.Append(name, int64(v), GetErrorMessage(code))
+			// } else {
+			// 	match := stringutil.DoMatch(name, patChars, patTypes)
+			// 	if match && !node.Pattern.Not {
+			// 		if len(filters) > 0 {
+			// 			ok, err := filter(filters, names, []string{
+			// 				name, string(v), GetErrorMessage(code),
+			// 			})
+			// 			if err != nil {
+			// 				return nil, err
+			// 			}
+			// 			if !ok {
+			// 				continue
+			// 			}
+			// 		}
+			// 		res.Append(name, int64(v), GetErrorMessage(code))
+			// 	} else if !match && node.Pattern.Not {
+			// 		if len(filters) > 0 {
+			// 			ok, err := filter(filters, names, []string{
+			// 				name, string(v), GetErrorMessage(code),
+			// 			})
+			// 			if err != nil {
+			// 				return nil, err
+			// 			}
+			// 			if !ok {
+			// 				continue
+			// 			}
+			// 		}
+			// 		res.Append(name, int64(v), GetErrorMessage(code))
+			// 	}
+			// }
+		}
+	}
+
+	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
+	return res.Rows(), nil
+}
 func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
@@ -6069,7 +6289,7 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 	case ER_CHANGE_COLUMN_TYPE:
 		return s.Inc.CheckColumnTypeChange
 
-	case ErrCantChangeColumnPosition:
+	case ErCantChangeColumnPosition:
 		return s.Inc.CheckColumnPositionChange
 
 	case ER_TEXT_NOT_NULLABLE_ERROR:
