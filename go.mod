@@ -26,14 +26,14 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
-	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
+	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/github/gh-ost v1.0.48
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
-	github.com/golang/protobuf v1.2.0
+	github.com/golang/protobuf v1.3.1
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
 	github.com/google/go-cmp v0.2.0 // indirect
@@ -43,7 +43,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.5.1 // indirect
-	github.com/hanchuanchuan/go-mysql v0.0.0-20190404011851-0853abc18c35
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
@@ -66,12 +65,12 @@ require (
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/outbrain/golib v0.0.0-20180830062331-ab954725f502
 	github.com/percona/go-mysql v0.0.0-20190307200310-f5cfaf6a5e55
-	github.com/pingcap/check v0.0.0-20171206051426-1c287c953996
+	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/goleveldb v0.0.0-20171020122428-b9ff6c35079e
 	github.com/pingcap/kvproto v0.0.0-20181206061346-54cf0a0dfe55
 	github.com/pingcap/pd v2.1.0+incompatible
-	github.com/pingcap/tipb v0.0.0-20181126132056-a7fd2aaa9719
+	github.com/pingcap/tipb v0.0.0-20190428032612-535e1abaa330
 	github.com/pkg/errors v0.8.0 // indirect
 	github.com/prometheus/client_golang v0.9.0
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
@@ -79,8 +78,9 @@ require (
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446 // indirect
 	github.com/rs/zerolog v1.11.0
-	github.com/siddontang/go-mysql v0.0.0-20190228090055-3242b1d89f16 // indirect
-	github.com/sirupsen/logrus v1.2.0
+	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07
+	github.com/siddontang/go-mysql v0.0.0-20190711035447-8b9c05ee162e
+	github.com/sirupsen/logrus v1.4.1
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/spf13/viper v1.3.1
@@ -95,7 +95,7 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/net v0.0.0-20181029044818-c44066c5c816
-	golang.org/x/text v0.3.0
+	golang.org/x/text v0.3.2
 	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
 	google.golang.org/grpc v1.16.0
 	gopkg.in/gcfg.v1 v1.2.3 // indirect
