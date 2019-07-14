@@ -412,6 +412,7 @@ import (
 	undefined	"UNDEFINED"
 	value		"VALUE"
 	variables	"VARIABLES"
+	levels 		"LEVELS"
 	view		"VIEW"
 	warnings	"WARNINGS"
 	identSQLErrors	"ERRORS"
@@ -1624,6 +1625,14 @@ InceptionStmt:
 |	"INCEPTION" "SET" VariableAssignmentList
 	{
 		$$ = &ast.InceptionSetStmt{Variables: $3.([]*ast.VariableAssignment)}
+	}
+|	"INCEPTION" "SET" "LEVEL" VariableAssignmentList
+	{
+		vars := $4.([]*ast.VariableAssignment)
+		for _, v := range vars {
+			v.IsLevel = true
+		}
+		$$ = &ast.InceptionSetStmt{Variables: vars}
 	}
 
 InceptionStartStmt:
@@ -3108,7 +3117,7 @@ UnReservedKeyword:
 | "TIMESTAMP" %prec lowerThanStringLitToken | "TRACE" | "TRANSACTION" | "TRUNCATE" | "UNKNOWN" | "VALUE" | "WARNINGS" | "YEAR" | "MODE"  | "WEEK"  | "ANY" | "SOME" | "USER" | "IDENTIFIED"
 | "COLLATION" | "COMMENT" | "AVG_ROW_LENGTH" | "CONNECTION" | "CHECKSUM" | "COMPRESSION" | "KEY_BLOCK_SIZE" | "MASTER" | "MAX_ROWS"
 | "MIN_ROWS" | "NATIONAL" | "ROW" | "ROW_FORMAT" | "QUARTER" | "GRANTS" | "TRIGGERS" | "DELAY_KEY_WRITE" | "ISOLATION" | "JSON"
-| "REPEATABLE" | "COMMITTED" | "UNCOMMITTED" | "ONLY" | "SERIALIZABLE" | "LEVEL" | "VARIABLES" | "SQL_CACHE" | "INDEXES" | "PROCESSLIST"
+| "REPEATABLE" | "COMMITTED" | "UNCOMMITTED" | "ONLY" | "SERIALIZABLE" | "LEVEL" | "VARIABLES" | "LEVELS" | "SQL_CACHE" | "INDEXES" | "PROCESSLIST"
 | "SQL_NO_CACHE" | "DISABLE"  | "ENABLE" | "REVERSE" | "PRIVILEGES" | "NO" | "BINLOG" | "FUNCTION" | "VIEW" | "MODIFY" | "EVENTS" | "PARTITIONS"
 | "NONE" | "SUPER" | "EXCLUSIVE" | "STATS_PERSISTENT" | "ROW_COUNT" | "COALESCE" | "MONTH" | "PROCESS" | "PROFILES"
 | "MICROSECOND" | "MINUTE" | "PLUGINS" | "QUERY" | "QUERIES" | "SECOND" | "SEPARATOR" | "SHARE" | "SHARED" | "SLOW" | "MAX_CONNECTIONS_PER_HOUR" | "MAX_QUERIES_PER_HOUR" | "MAX_UPDATES_PER_HOUR"
@@ -5791,6 +5800,13 @@ ShowTargetFilterable:
 	{
 		$$ = &ast.ShowStmt{
 			Tp: ast.ShowVariables,
+			GlobalScope: $1.(bool),
+		}
+	}
+|	GlobalScope "LEVELS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowLevels,
 			GlobalScope: $1.(bool),
 		}
 	}
