@@ -228,6 +228,9 @@ type session struct {
 
 	// DDL和DML分隔结果
 	splitSets *SplitSets
+
+	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
+	incLevel map[string]uint8
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.

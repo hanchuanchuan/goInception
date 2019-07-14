@@ -15,6 +15,8 @@ package session_test
 
 import (
 	"fmt"
+	// "path"
+	// "runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -73,12 +75,18 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
 
-	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
-	// session.SetLanguage("zh-CN")
+	// cfg := config.GetGlobalConfig()
+	// _, localFile, _, _ := runtime.Caller(0)
+	// localFile = path.Dir(localFile)
+	// configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
+	// c.Assert(cfg.Load(configFile), IsNil)
+
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 	config.GetGlobalConfig().Inc.EnableDropTable = true
+	// 启用自定义审核级别
+	config.GetGlobalConfig().Inc.EnableLevel = false
 
 	session.SetLanguage("en-US")
 
@@ -798,6 +806,9 @@ primary key(id)) comment 'test';`
 
 	config.GetGlobalConfig().Inc.MustHaveColumns = ""
 
+	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+
 	// 测试表名大小写
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);insert into T1 values(1);`
 	s.testErrorCode(c, sql)
@@ -1186,17 +1197,17 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnPositionChange = true
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 add column c3 int first"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 add column c3 int after c1"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 modify column c1 int after c2"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c1"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c1"))
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 change column c1 c3 int after id"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCantChangeColumnPosition, "t1.c3"))
+		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 
 	config.GetGlobalConfig().Inc.CheckColumnPositionChange = false
 }
@@ -1232,6 +1243,7 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	// 表不存在
 	sql = "insert into t1 values(1,1);"
@@ -1262,10 +1274,12 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 
 	// 字段警告
 	config.GetGlobalConfig().Inc.CheckInsertField = true
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
 	sql = "create table t1(id int,c1 int);insert into t1 values(1,1);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_INSERT_FIELD))
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	sql = "create table t1(id int,c1 int);insert into t1(id) values();"
 	s.testErrorCode(c, sql,
@@ -1438,6 +1452,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 	config.GetGlobalConfig().Inc.EnableSetEngine = true
 
 	// 表不存在
@@ -1603,6 +1618,7 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	// 表不存在
 	sql = "delete from t1 where c1 = 1;"

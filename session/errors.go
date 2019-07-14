@@ -19,6 +19,7 @@ package session
 
 import (
 	"fmt"
+	// "strconv"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -26,7 +27,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ErrorsMessage = map[int]string{}
+//go:generate stringer -type=ErrorCode
+type ErrorCode int
+
+var ErrorsMessage = map[ErrorCode]string{}
 
 var (
 	ErrWrongValueForVar = terror.ClassVariable.New(mysql.ErrWrongValueForVar,
@@ -38,7 +42,7 @@ var (
 )
 
 const (
-	ER_ERROR_FIRST = iota
+	ER_ERROR_FIRST ErrorCode = iota
 	ER_NOT_SUPPORTED_YET
 	ER_SQL_NO_SOURCE
 	ER_SQL_NO_OP_TYPE
@@ -195,11 +199,11 @@ const (
 	//ER_NULL_NAME_FOR_INDEX
 	ErrMixOfGroupFuncAndFields
 	ErrFieldNotInGroupBy
-	ErrCantChangeColumnPosition
+	ErCantChangeColumnPosition
 	ER_ERROR_LAST
 )
 
-var ErrorsDefault = map[int]string{
+var ErrorsDefault = map[ErrorCode]string{
 	ER_ERROR_FIRST:                         "HelloWorld",
 	ER_NOT_SUPPORTED_YET:                   "Not supported statement type.",
 	ER_SQL_NO_SOURCE:                       "The sql have no source information.",
@@ -357,12 +361,12 @@ var ErrorsDefault = map[int]string{
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 	ErrMixOfGroupFuncAndFields:             "In aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; this is incompatible with sql_mode=only_full_group_by.",
 	ErrFieldNotInGroupBy:                   "Expression #%d of %s is not in GROUP BY clause and contains nonaggregated column '%s' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by.",
-	ErrCantChangeColumnPosition:            "Cannot change the position of the column '%s'",
+	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 }
 
-var ErrorsChinese = map[int]string{
+var ErrorsChinese = map[ErrorCode]string{
 	ER_NOT_SUPPORTED_YET:                "不支持的语法类型.",
 	ER_SQL_NO_SOURCE:                    "sql没有源信息.",
 	ER_SQL_NO_OP_TYPE:                   "sql没有操作类型设置.",
@@ -516,61 +520,61 @@ var ErrorsChinese = map[int]string{
 	ErrEngineNotSupport:                    "允许的存储引擎: '%s'.",
 	ErrWrongUsage:                          "%s子句无法使用%s",
 	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
-	ErrCantChangeColumnPosition:            "不允许改变列顺序(列'%s').",
+	ErCantChangeColumnPosition:             "不允许改变列顺序(列'%s').",
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 }
 
-func GetErrorLevel(errorNo int) uint8 {
-	switch errorNo {
-	case ER_WITH_INSERT_FIELD,
-		ER_NO_WHERE_CONDITION,
-		ER_WITH_ORDERBY_CONDITION,
-		ER_SELECT_ONLY_STAR,
-		ER_ORDERY_BY_RAND,
-		ER_UNKNOWN_COLLATION,
-		ER_INVALID_DATA_TYPE,
-		ER_NOT_ALLOWED_NULLABLE,
-		ER_TOO_MANY_KEY_PARTS,
-		ER_UDPATE_TOO_MUCH_ROWS,
-		ER_INSERT_TOO_MUCH_ROWS,
-		ER_TOO_MANY_KEYS,
-		ER_PK_TOO_MANY_PARTS,
-		ER_PK_COLS_NOT_INT,
-		ER_TIMESTAMP_DEFAULT,
-		ER_CHAR_TO_VARCHAR_LEN,
-		ER_USE_ENUM,
-		ER_OUTOFMEMORY,
-		ER_INC_INIT_ERR,
-		ER_CHARSET_ON_COLUMN,
-		ER_IDENT_USE_KEYWORD,
-		ER_TABLE_CHARSET_MUST_UTF8,
-		ER_TABLE_CHARSET_MUST_NULL,
-		ErrTableCollationNotSupport,
-		ER_AUTO_INCR_ID_WARNING,
-		ER_ALTER_TABLE_ONCE,
-		ER_BLOB_CANT_HAVE_DEFAULT,
-		ER_WITH_DEFAULT_ADD_COLUMN,
+func GetErrorLevel(code ErrorCode) uint8 {
 
-		ER_NOT_SUPPORTED_ALTER_OPTION,
-		ER_COLUMN_HAVE_NO_COMMENT,
-		ER_TABLE_MUST_HAVE_COMMENT,
-		ER_WITH_LIMIT_CONDITION,
-		ER_INDEX_NAME_IDX_PREFIX,
-		ER_INDEX_NAME_UNIQ_PREFIX,
+	switch code {
+	case ER_ALTER_TABLE_ONCE,
+		ER_AUTO_INCR_ID_WARNING,
 		ER_AUTOINC_UNSIGNED,
-		ER_PARTITION_NOT_ALLOWED,
-		ER_TABLE_MUST_HAVE_PK,
-		ER_TOO_LONG_INDEX_COMMENT,
-		ER_TEXT_NOT_NULLABLE_ERROR,
-		ER_INVALID_IDENT,
+		ER_BLOB_CANT_HAVE_DEFAULT,
 		ER_CANT_SET_CHARSET,
 		ER_CANT_SET_COLLATION,
 		ER_CANT_SET_ENGINE,
+		ER_CHANGE_COLUMN_TYPE,
+		ER_CHAR_TO_VARCHAR_LEN,
+		ER_CHARSET_ON_COLUMN,
+		ER_COLUMN_HAVE_NO_COMMENT,
+		ER_IDENT_USE_KEYWORD,
+		ER_INC_INIT_ERR,
+		ER_INDEX_NAME_IDX_PREFIX,
+		ER_INDEX_NAME_UNIQ_PREFIX,
+		ER_INSERT_TOO_MUCH_ROWS,
+		ER_INVALID_DATA_TYPE,
+		ER_INVALID_IDENT,
+		ER_MUST_HAVE_COLUMNS,
+		ER_NO_WHERE_CONDITION,
+		ER_NOT_ALLOWED_NULLABLE,
+		ER_NOT_SUPPORTED_ALTER_OPTION,
+		ER_ORDERY_BY_RAND,
+		ER_OUTOFMEMORY,
+		ER_PARTITION_NOT_ALLOWED,
+		ER_PK_COLS_NOT_INT,
+		ER_PK_TOO_MANY_PARTS,
+		ER_SELECT_ONLY_STAR,
+		ER_TABLE_CHARSET_MUST_NULL,
+		ER_TABLE_CHARSET_MUST_UTF8,
+		ER_TABLE_MUST_HAVE_COMMENT,
+		ER_TABLE_MUST_HAVE_PK,
+		ER_TEXT_NOT_NULLABLE_ERROR,
+		ER_TIMESTAMP_DEFAULT,
+		ER_TOO_LONG_INDEX_COMMENT,
+		ER_TOO_MANY_KEY_PARTS,
+		ER_TOO_MANY_KEYS,
+		ER_UDPATE_TOO_MUCH_ROWS,
+		ER_UNKNOWN_COLLATION,
+		ER_USE_ENUM,
+		ER_WITH_DEFAULT_ADD_COLUMN,
+		ER_WITH_LIMIT_CONDITION,
+		ER_WITH_ORDERBY_CONDITION,
+		ErCantChangeColumnPosition,
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
-		ER_MUST_HAVE_COLUMNS,
-		ErrCantChangeColumnPosition,
-		ER_CHANGE_COLUMN_TYPE:
+		ErrTableCollationNotSupport,
+		ER_WITH_INSERT_FIELD:
 		return 1
 
 	case ER_CONFLICTING_DECLARATIONS,
@@ -636,11 +640,11 @@ func GetErrorLevel(errorNo int) uint8 {
 	}
 }
 
-func GetErrorMessage(errorNo int) string {
-	if v, ok := ErrorsMessage[errorNo]; ok {
+func GetErrorMessage(ErrorCode ErrorCode) string {
+	if v, ok := ErrorsMessage[ErrorCode]; ok {
 		return v
 	}
-	if v, ok := ErrorsDefault[errorNo]; ok {
+	if v, ok := ErrorsDefault[ErrorCode]; ok {
 		return v
 	}
 	return "Invalid error code!"
@@ -648,7 +652,7 @@ func GetErrorMessage(errorNo int) string {
 
 // SQLError records an error information, from executing SQL.
 type SQLError struct {
-	Code    int
+	Code    ErrorCode
 	Message string
 }
 
@@ -658,7 +662,7 @@ func (e *SQLError) Error() string {
 }
 
 // NewErr generates a SQL error, with an error code and default format specifier defined in MySQLErrName.
-func NewErr(errCode int, args ...interface{}) *SQLError {
+func NewErr(errCode ErrorCode, args ...interface{}) *SQLError {
 	e := &SQLError{Code: errCode}
 	e.Message = fmt.Sprintf(GetErrorMessage(errCode), args...)
 	return e
@@ -681,4 +685,326 @@ func SetLanguage(langStr string) {
 			log.Warning("Lang set Error! use default en-US.")
 		}
 	}
+}
+
+func (e ErrorCode) String() string {
+	switch e {
+	case ER_ERROR_FIRST:
+		return "ER_ERROR_FIRST ErrorCode"
+	case ER_NOT_SUPPORTED_YET:
+		return "ER_NOT_SUPPORTED_YET"
+	case ER_SQL_NO_SOURCE:
+		return "ER_SQL_NO_SOURCE"
+	case ER_SQL_NO_OP_TYPE:
+		return "ER_SQL_NO_OP_TYPE"
+	case ER_SQL_INVALID_OP_TYPE:
+		return "ER_SQL_INVALID_OP_TYPE"
+	case ER_PARSE_ERROR:
+		return "ER_PARSE_ERROR"
+	case ER_SYNTAX_ERROR:
+		return "ER_SYNTAX_ERROR"
+	case ER_REMOTE_EXE_ERROR:
+		return "ER_REMOTE_EXE_ERROR"
+	case ER_SHUTDOWN_COMPLETE:
+		return "ER_SHUTDOWN_COMPLETE"
+	case ER_WITH_INSERT_FIELD:
+		return "ER_WITH_INSERT_FIELD"
+	case ER_WITH_INSERT_VALUES:
+		return "ER_WITH_INSERT_VALUES"
+	case ER_WRONG_VALUE_COUNT_ON_ROW:
+		return "ER_WRONG_VALUE_COUNT_ON_ROW"
+	case ER_BAD_FIELD_ERROR:
+		return "ER_BAD_FIELD_ERROR"
+	case ER_FIELD_SPECIFIED_TWICE:
+		return "ER_FIELD_SPECIFIED_TWICE"
+	case ER_BAD_NULL_ERROR:
+		return "ER_BAD_NULL_ERROR"
+	case ER_NO_WHERE_CONDITION:
+		return "ER_NO_WHERE_CONDITION"
+	case ER_NORMAL_SHUTDOWN:
+		return "ER_NORMAL_SHUTDOWN"
+	case ER_FORCING_CLOSE:
+		return "ER_FORCING_CLOSE"
+	case ER_CON_COUNT_ERROR:
+		return "ER_CON_COUNT_ERROR"
+	case ER_INVALID_COMMAND:
+		return "ER_INVALID_COMMAND"
+	case ER_SQL_INVALID_SOURCE:
+		return "ER_SQL_INVALID_SOURCE"
+	case ER_WRONG_DB_NAME:
+		return "ER_WRONG_DB_NAME"
+	case EXIT_UNKNOWN_VARIABLE:
+		return "EXIT_UNKNOWN_VARIABLE"
+	case EXIT_UNKNOWN_OPTION:
+		return "EXIT_UNKNOWN_OPTION"
+	case ER_NO_DB_ERROR:
+		return "ER_NO_DB_ERROR"
+	case ER_WITH_LIMIT_CONDITION:
+		return "ER_WITH_LIMIT_CONDITION"
+	case ER_WITH_ORDERBY_CONDITION:
+		return "ER_WITH_ORDERBY_CONDITION"
+	case ER_SELECT_ONLY_STAR:
+		return "ER_SELECT_ONLY_STAR"
+	case ER_ORDERY_BY_RAND:
+		return "ER_ORDERY_BY_RAND"
+	case ER_ID_IS_UPER:
+		return "ER_ID_IS_UPER"
+	case ER_UNKNOWN_COLLATION:
+		return "ER_UNKNOWN_COLLATION"
+	case ER_INVALID_DATA_TYPE:
+		return "ER_INVALID_DATA_TYPE"
+	case ER_NOT_ALLOWED_NULLABLE:
+		return "ER_NOT_ALLOWED_NULLABLE"
+	case ER_DUP_FIELDNAME:
+		return "ER_DUP_FIELDNAME"
+	case ER_WRONG_COLUMN_NAME:
+		return "ER_WRONG_COLUMN_NAME"
+	case ER_WRONG_AUTO_KEY:
+		return "ER_WRONG_AUTO_KEY"
+	case ER_TABLE_CANT_HANDLE_AUTO_INCREMENT:
+		return "ER_TABLE_CANT_HANDLE_AUTO_INCREMENT"
+	case ER_FOREIGN_KEY:
+		return "ER_FOREIGN_KEY"
+	case ER_TOO_MANY_KEY_PARTS:
+		return "ER_TOO_MANY_KEY_PARTS"
+	case ER_TOO_LONG_IDENT:
+		return "ER_TOO_LONG_IDENT"
+	case ER_UDPATE_TOO_MUCH_ROWS:
+		return "ER_UDPATE_TOO_MUCH_ROWS"
+	case ER_INSERT_TOO_MUCH_ROWS:
+		return "ER_INSERT_TOO_MUCH_ROWS"
+	case ER_WRONG_NAME_FOR_INDEX:
+		return "ER_WRONG_NAME_FOR_INDEX"
+	case ER_TOO_MANY_KEYS:
+		return "ER_TOO_MANY_KEYS"
+	case ER_NOT_SUPPORTED_KEY_TYPE:
+		return "ER_NOT_SUPPORTED_KEY_TYPE"
+	case ER_WRONG_SUB_KEY:
+		return "ER_WRONG_SUB_KEY"
+	case ER_WRONG_KEY_COLUMN:
+		return "ER_WRONG_KEY_COLUMN"
+	case ER_TOO_LONG_KEY:
+		return "ER_TOO_LONG_KEY"
+	case ER_MULTIPLE_PRI_KEY:
+		return "ER_MULTIPLE_PRI_KEY"
+	case ER_DUP_KEYNAME:
+		return "ER_DUP_KEYNAME"
+	case ER_TOO_LONG_INDEX_COMMENT:
+		return "ER_TOO_LONG_INDEX_COMMENT"
+	case ER_DUP_INDEX:
+		return "ER_DUP_INDEX"
+	case ER_TEMP_TABLE_TMP_PREFIX:
+		return "ER_TEMP_TABLE_TMP_PREFIX"
+	case ER_TABLE_CHARSET_MUST_UTF8:
+		return "ER_TABLE_CHARSET_MUST_UTF8"
+	case ER_TABLE_CHARSET_MUST_NULL:
+		return "ER_TABLE_CHARSET_MUST_NULL"
+	case ER_TABLE_MUST_HAVE_COMMENT:
+		return "ER_TABLE_MUST_HAVE_COMMENT"
+	case ER_COLUMN_HAVE_NO_COMMENT:
+		return "ER_COLUMN_HAVE_NO_COMMENT"
+	case ER_TABLE_MUST_HAVE_PK:
+		return "ER_TABLE_MUST_HAVE_PK"
+	case ER_PARTITION_NOT_ALLOWED:
+		return "ER_PARTITION_NOT_ALLOWED"
+	case ER_USE_ENUM:
+		return "ER_USE_ENUM"
+	case ER_USE_TEXT_OR_BLOB:
+		return "ER_USE_TEXT_OR_BLOB"
+	case ER_COLUMN_EXISTED:
+		return "ER_COLUMN_EXISTED"
+	case ER_COLUMN_NOT_EXISTED:
+		return "ER_COLUMN_NOT_EXISTED"
+	case ER_CANT_DROP_FIELD_OR_KEY:
+		return "ER_CANT_DROP_FIELD_OR_KEY"
+	case ER_INVALID_DEFAULT:
+		return "ER_INVALID_DEFAULT"
+	case ER_USERNAME:
+		return "ER_USERNAME"
+	case ER_HOSTNAME:
+		return "ER_HOSTNAME"
+	case ER_NOT_VALID_PASSWORD:
+		return "ER_NOT_VALID_PASSWORD"
+	case ER_WRONG_STRING_LENGTH:
+		return "ER_WRONG_STRING_LENGTH"
+	case ER_BLOB_USED_AS_KEY:
+		return "ER_BLOB_USED_AS_KEY"
+	case ER_TOO_LONG_BAKDB_NAME:
+		return "ER_TOO_LONG_BAKDB_NAME"
+	case ER_INVALID_BACKUP_HOST_INFO:
+		return "ER_INVALID_BACKUP_HOST_INFO"
+	case ER_BINLOG_CORRUPTED:
+		return "ER_BINLOG_CORRUPTED"
+	case ER_NET_READ_ERROR:
+		return "ER_NET_READ_ERROR"
+	case ER_NETWORK_READ_EVENT_CHECKSUM_FAILURE:
+		return "ER_NETWORK_READ_EVENT_CHECKSUM_FAILURE"
+	case ER_SLAVE_RELAY_LOG_WRITE_FAILURE:
+		return "ER_SLAVE_RELAY_LOG_WRITE_FAILURE"
+	case ER_INCORRECT_GLOBAL_LOCAL_VAR:
+		return "ER_INCORRECT_GLOBAL_LOCAL_VAR"
+	case ER_START_AS_BEGIN:
+		return "ER_START_AS_BEGIN"
+	case ER_OUTOFMEMORY:
+		return "ER_OUTOFMEMORY"
+	case ER_HAVE_BEGIN:
+		return "ER_HAVE_BEGIN"
+	case ER_NET_READ_INTERRUPTED:
+		return "ER_NET_READ_INTERRUPTED"
+	case ER_BINLOG_FORMAT_STATEMENT:
+		return "ER_BINLOG_FORMAT_STATEMENT"
+	case EXIT_NO_ARGUMENT_ALLOWED:
+		return "EXIT_NO_ARGUMENT_ALLOWED"
+	case EXIT_ARGUMENT_REQUIRED:
+		return "EXIT_ARGUMENT_REQUIRED"
+	case EXIT_AMBIGUOUS_OPTION:
+		return "EXIT_AMBIGUOUS_OPTION"
+	case ER_ERROR_EXIST_BEFORE:
+		return "ER_ERROR_EXIST_BEFORE"
+	case ER_UNKNOWN_SYSTEM_VARIABLE:
+		return "ER_UNKNOWN_SYSTEM_VARIABLE"
+	case ER_UNKNOWN_CHARACTER_SET:
+		return "ER_UNKNOWN_CHARACTER_SET"
+	case ER_END_WITH_COMMIT:
+		return "ER_END_WITH_COMMIT"
+	case ER_DB_NOT_EXISTED_ERROR:
+		return "ER_DB_NOT_EXISTED_ERROR"
+	case ER_TABLE_EXISTS_ERROR:
+		return "ER_TABLE_EXISTS_ERROR"
+	case ER_INDEX_NAME_IDX_PREFIX:
+		return "ER_INDEX_NAME_IDX_PREFIX"
+	case ER_INDEX_NAME_UNIQ_PREFIX:
+		return "ER_INDEX_NAME_UNIQ_PREFIX"
+	case ER_AUTOINC_UNSIGNED:
+		return "ER_AUTOINC_UNSIGNED"
+	case ER_VARCHAR_TO_TEXT_LEN:
+		return "ER_VARCHAR_TO_TEXT_LEN"
+	case ER_CHAR_TO_VARCHAR_LEN:
+		return "ER_CHAR_TO_VARCHAR_LEN"
+	case ER_KEY_COLUMN_DOES_NOT_EXITS:
+		return "ER_KEY_COLUMN_DOES_NOT_EXITS"
+	case ER_INC_INIT_ERR:
+		return "ER_INC_INIT_ERR"
+	case ER_WRONG_ARGUMENTS:
+		return "ER_WRONG_ARGUMENTS"
+	case ER_SET_DATA_TYPE_INT_BIGINT:
+		return "ER_SET_DATA_TYPE_INT_BIGINT"
+	case ER_TIMESTAMP_DEFAULT:
+		return "ER_TIMESTAMP_DEFAULT"
+	case ER_CHARSET_ON_COLUMN:
+		return "ER_CHARSET_ON_COLUMN"
+	case ER_AUTO_INCR_ID_WARNING:
+		return "ER_AUTO_INCR_ID_WARNING"
+	case ER_ALTER_TABLE_ONCE:
+		return "ER_ALTER_TABLE_ONCE"
+	case ER_BLOB_CANT_HAVE_DEFAULT:
+		return "ER_BLOB_CANT_HAVE_DEFAULT"
+	case ER_END_WITH_SEMICOLON:
+		return "ER_END_WITH_SEMICOLON"
+	case ER_NON_UNIQ_ERROR:
+		return "ER_NON_UNIQ_ERROR"
+	case ER_TABLE_NOT_EXISTED_ERROR:
+		return "ER_TABLE_NOT_EXISTED_ERROR"
+	case ER_UNKNOWN_TABLE:
+		return "ER_UNKNOWN_TABLE"
+	case ER_INVALID_GROUP_FUNC_USE:
+		return "ER_INVALID_GROUP_FUNC_USE"
+	case ER_INDEX_USE_ALTER_TABLE:
+		return "ER_INDEX_USE_ALTER_TABLE"
+	case ER_WITH_DEFAULT_ADD_COLUMN:
+		return "ER_WITH_DEFAULT_ADD_COLUMN"
+	case ER_TRUNCATED_WRONG_VALUE:
+		return "ER_TRUNCATED_WRONG_VALUE"
+	case ER_TEXT_NOT_NULLABLE_ERROR:
+		return "ER_TEXT_NOT_NULLABLE_ERROR"
+	case ER_WRONG_VALUE_FOR_VAR:
+		return "ER_WRONG_VALUE_FOR_VAR"
+	case ER_TOO_MUCH_AUTO_TIMESTAMP_COLS:
+		return "ER_TOO_MUCH_AUTO_TIMESTAMP_COLS"
+	case ER_INVALID_ON_UPDATE:
+		return "ER_INVALID_ON_UPDATE"
+	case ER_DDL_DML_COEXIST:
+		return "ER_DDL_DML_COEXIST"
+	case ER_SLAVE_CORRUPT_EVENT:
+		return "ER_SLAVE_CORRUPT_EVENT"
+	case ER_COLLATION_CHARSET_MISMATCH:
+		return "ER_COLLATION_CHARSET_MISMATCH"
+	case ER_NOT_SUPPORTED_ALTER_OPTION:
+		return "ER_NOT_SUPPORTED_ALTER_OPTION"
+	case ER_CONFLICTING_DECLARATIONS:
+		return "ER_CONFLICTING_DECLARATIONS"
+	case ER_IDENT_USE_KEYWORD:
+		return "ER_IDENT_USE_KEYWORD"
+	case ER_VIEW_SELECT_CLAUSE:
+		return "ER_VIEW_SELECT_CLAUSE"
+	case ER_OSC_KILL_FAILED:
+		return "ER_OSC_KILL_FAILED"
+	case ER_NET_PACKETS_OUT_OF_ORDER:
+		return "ER_NET_PACKETS_OUT_OF_ORDER"
+	case ER_NOT_SUPPORTED_ITEM_TYPE:
+		return "ER_NOT_SUPPORTED_ITEM_TYPE"
+	case ER_INVALID_IDENT:
+		return "ER_INVALID_IDENT"
+	case ER_INCEPTION_EMPTY_QUERY:
+		return "ER_INCEPTION_EMPTY_QUERY"
+	case ER_PK_COLS_NOT_INT:
+		return "ER_PK_COLS_NOT_INT"
+	case ER_PK_TOO_MANY_PARTS:
+		return "ER_PK_TOO_MANY_PARTS"
+	case ER_REMOVED_SPACES:
+		return "ER_REMOVED_SPACES"
+	case ER_CHANGE_COLUMN_TYPE:
+		return "ER_CHANGE_COLUMN_TYPE"
+	case ER_CANT_DROP_TABLE:
+		return "ER_CANT_DROP_TABLE"
+	case ER_CANT_DROP_DATABASE:
+		return "ER_CANT_DROP_DATABASE"
+	case ER_WRONG_TABLE_NAME:
+		return "ER_WRONG_TABLE_NAME"
+	case ER_CANT_SET_CHARSET:
+		return "ER_CANT_SET_CHARSET"
+	case ER_CANT_SET_COLLATION:
+		return "ER_CANT_SET_COLLATION"
+	case ER_CANT_SET_ENGINE:
+		return "ER_CANT_SET_ENGINE"
+	case ER_MUST_AT_LEAST_ONE_COLUMN:
+		return "ER_MUST_AT_LEAST_ONE_COLUMN"
+	case ER_MUST_HAVE_COLUMNS:
+		return "ER_MUST_HAVE_COLUMNS"
+	case ER_PRIMARY_CANT_HAVE_NULL:
+		return "ER_PRIMARY_CANT_HAVE_NULL"
+	case ErrCantRemoveAllFields:
+		return "ErrCantRemoveAllFields"
+	case ErrNotFoundTableInfo:
+		return "ErrNotFoundTableInfo"
+	case ErrNotFoundThreadId:
+		return "ErrNotFoundThreadId"
+	case ErrNotFoundMasterStatus:
+		return "ErrNotFoundMasterStatus"
+	case ErrNonUniqTable:
+		return "ErrNonUniqTable"
+	case ErrWrongUsage:
+		return "ErrWrongUsage"
+	case ErrDataTooLong:
+		return "ErrDataTooLong"
+	case ErrCharsetNotSupport:
+		return "ErrCharsetNotSupport"
+	case ErrCollationNotSupport:
+		return "ErrCollationNotSupport"
+	case ErrTableCollationNotSupport:
+		return "ErrTableCollationNotSupport"
+	case ErrJsonTypeSupport:
+		return "ErrJsonTypeSupport"
+	case ErrEngineNotSupport:
+		return "ErrEngineNotSupport"
+	case ErrMixOfGroupFuncAndFields:
+		return "ErrMixOfGroupFuncAndFields"
+	case ErrFieldNotInGroupBy:
+		return "ErrFieldNotInGroupBy"
+	case ErCantChangeColumnPosition:
+		return "ErCantChangeColumnPosition"
+	case ER_ERROR_LAST:
+		return "ER_ERROR_LAST"
+	}
+	return ""
 }
