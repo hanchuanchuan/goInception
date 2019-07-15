@@ -1,6 +1,19 @@
 # goInception 更新日志
 
 
+## [v1.0] - 2019-7-15
+
+### Fix
+* 修复密码中包含特殊字符时pt-osc执行出错的问题
+
+### New Features
+* 添加审核结果级别自定义功能 (#52)
+
+### Update
+* 添加delete/update自连接审核支持 (#51)
+* 优化binlog回滚时指定的server_id自动变化,避免同一实例重复
+
+
 ## [v1.0-rc4] - 2019-7-9
 
 ### Fix
