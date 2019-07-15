@@ -772,6 +772,7 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 		"force",
 		"import",
 		"modify",
+		"rename", // rename index
 	}
 
 	support := false
