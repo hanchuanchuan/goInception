@@ -690,169 +690,169 @@ func SetLanguage(langStr string) {
 func (e ErrorCode) String() string {
 	switch e {
 	case ER_ERROR_FIRST:
-		return "ER_ERROR_FIRST ErrorCode"
+		return "er_error_first"
 	case ER_NOT_SUPPORTED_YET:
-		return "ER_NOT_SUPPORTED_YET"
+		return "er_not_supported_yet"
 	case ER_SQL_NO_SOURCE:
-		return "ER_SQL_NO_SOURCE"
+		return "er_sql_no_source"
 	case ER_SQL_NO_OP_TYPE:
-		return "ER_SQL_NO_OP_TYPE"
+		return "er_sql_no_op_type"
 	case ER_SQL_INVALID_OP_TYPE:
-		return "ER_SQL_INVALID_OP_TYPE"
+		return "er_sql_invalid_op_type"
 	case ER_PARSE_ERROR:
-		return "ER_PARSE_ERROR"
+		return "er_parse_error"
 	case ER_SYNTAX_ERROR:
-		return "ER_SYNTAX_ERROR"
+		return "er_syntax_error"
 	case ER_REMOTE_EXE_ERROR:
-		return "ER_REMOTE_EXE_ERROR"
+		return "er_remote_exe_error"
 	case ER_SHUTDOWN_COMPLETE:
-		return "ER_SHUTDOWN_COMPLETE"
+		return "er_shutdown_complete"
 	case ER_WITH_INSERT_FIELD:
-		return "ER_WITH_INSERT_FIELD"
+		return "er_with_insert_field"
 	case ER_WITH_INSERT_VALUES:
-		return "ER_WITH_INSERT_VALUES"
+		return "er_with_insert_values"
 	case ER_WRONG_VALUE_COUNT_ON_ROW:
-		return "ER_WRONG_VALUE_COUNT_ON_ROW"
+		return "er_wrong_value_count_on_row"
 	case ER_BAD_FIELD_ERROR:
-		return "ER_BAD_FIELD_ERROR"
+		return "er_bad_field_error"
 	case ER_FIELD_SPECIFIED_TWICE:
-		return "ER_FIELD_SPECIFIED_TWICE"
+		return "er_field_specified_twice"
 	case ER_BAD_NULL_ERROR:
-		return "ER_BAD_NULL_ERROR"
+		return "er_bad_null_error"
 	case ER_NO_WHERE_CONDITION:
-		return "ER_NO_WHERE_CONDITION"
+		return "er_no_where_condition"
 	case ER_NORMAL_SHUTDOWN:
-		return "ER_NORMAL_SHUTDOWN"
+		return "er_normal_shutdown"
 	case ER_FORCING_CLOSE:
-		return "ER_FORCING_CLOSE"
+		return "er_forcing_close"
 	case ER_CON_COUNT_ERROR:
-		return "ER_CON_COUNT_ERROR"
+		return "er_con_count_error"
 	case ER_INVALID_COMMAND:
-		return "ER_INVALID_COMMAND"
+		return "er_invalid_command"
 	case ER_SQL_INVALID_SOURCE:
-		return "ER_SQL_INVALID_SOURCE"
+		return "er_sql_invalid_source"
 	case ER_WRONG_DB_NAME:
-		return "ER_WRONG_DB_NAME"
+		return "er_wrong_db_name"
 	case EXIT_UNKNOWN_VARIABLE:
 		return "EXIT_UNKNOWN_VARIABLE"
 	case EXIT_UNKNOWN_OPTION:
 		return "EXIT_UNKNOWN_OPTION"
 	case ER_NO_DB_ERROR:
-		return "ER_NO_DB_ERROR"
+		return "er_no_db_error"
 	case ER_WITH_LIMIT_CONDITION:
-		return "ER_WITH_LIMIT_CONDITION"
+		return "er_with_limit_condition"
 	case ER_WITH_ORDERBY_CONDITION:
-		return "ER_WITH_ORDERBY_CONDITION"
+		return "er_with_orderby_condition"
 	case ER_SELECT_ONLY_STAR:
-		return "ER_SELECT_ONLY_STAR"
+		return "er_select_only_star"
 	case ER_ORDERY_BY_RAND:
-		return "ER_ORDERY_BY_RAND"
+		return "er_ordery_by_rand"
 	case ER_ID_IS_UPER:
-		return "ER_ID_IS_UPER"
+		return "er_id_is_uper"
 	case ER_UNKNOWN_COLLATION:
-		return "ER_UNKNOWN_COLLATION"
+		return "er_unknown_collation"
 	case ER_INVALID_DATA_TYPE:
-		return "ER_INVALID_DATA_TYPE"
+		return "er_invalid_data_type"
 	case ER_NOT_ALLOWED_NULLABLE:
-		return "ER_NOT_ALLOWED_NULLABLE"
+		return "er_not_allowed_nullable"
 	case ER_DUP_FIELDNAME:
-		return "ER_DUP_FIELDNAME"
+		return "er_dup_fieldname"
 	case ER_WRONG_COLUMN_NAME:
-		return "ER_WRONG_COLUMN_NAME"
+		return "er_wrong_column_name"
 	case ER_WRONG_AUTO_KEY:
-		return "ER_WRONG_AUTO_KEY"
+		return "er_wrong_auto_key"
 	case ER_TABLE_CANT_HANDLE_AUTO_INCREMENT:
-		return "ER_TABLE_CANT_HANDLE_AUTO_INCREMENT"
+		return "er_table_cant_handle_auto_increment"
 	case ER_FOREIGN_KEY:
-		return "ER_FOREIGN_KEY"
+		return "er_foreign_key"
 	case ER_TOO_MANY_KEY_PARTS:
-		return "ER_TOO_MANY_KEY_PARTS"
+		return "er_too_many_key_parts"
 	case ER_TOO_LONG_IDENT:
-		return "ER_TOO_LONG_IDENT"
+		return "er_too_long_ident"
 	case ER_UDPATE_TOO_MUCH_ROWS:
-		return "ER_UDPATE_TOO_MUCH_ROWS"
+		return "er_udpate_too_much_rows"
 	case ER_INSERT_TOO_MUCH_ROWS:
-		return "ER_INSERT_TOO_MUCH_ROWS"
+		return "er_insert_too_much_rows"
 	case ER_WRONG_NAME_FOR_INDEX:
-		return "ER_WRONG_NAME_FOR_INDEX"
+		return "er_wrong_name_for_index"
 	case ER_TOO_MANY_KEYS:
-		return "ER_TOO_MANY_KEYS"
+		return "er_too_many_keys"
 	case ER_NOT_SUPPORTED_KEY_TYPE:
-		return "ER_NOT_SUPPORTED_KEY_TYPE"
+		return "er_not_supported_key_type"
 	case ER_WRONG_SUB_KEY:
-		return "ER_WRONG_SUB_KEY"
+		return "er_wrong_sub_key"
 	case ER_WRONG_KEY_COLUMN:
-		return "ER_WRONG_KEY_COLUMN"
+		return "er_wrong_key_column"
 	case ER_TOO_LONG_KEY:
-		return "ER_TOO_LONG_KEY"
+		return "er_too_long_key"
 	case ER_MULTIPLE_PRI_KEY:
-		return "ER_MULTIPLE_PRI_KEY"
+		return "er_multiple_pri_key"
 	case ER_DUP_KEYNAME:
-		return "ER_DUP_KEYNAME"
+		return "er_dup_keyname"
 	case ER_TOO_LONG_INDEX_COMMENT:
-		return "ER_TOO_LONG_INDEX_COMMENT"
+		return "er_too_long_index_comment"
 	case ER_DUP_INDEX:
-		return "ER_DUP_INDEX"
+		return "er_dup_index"
 	case ER_TEMP_TABLE_TMP_PREFIX:
-		return "ER_TEMP_TABLE_TMP_PREFIX"
+		return "er_temp_table_tmp_prefix"
 	case ER_TABLE_CHARSET_MUST_UTF8:
-		return "ER_TABLE_CHARSET_MUST_UTF8"
+		return "er_table_charset_must_utf8"
 	case ER_TABLE_CHARSET_MUST_NULL:
-		return "ER_TABLE_CHARSET_MUST_NULL"
+		return "er_table_charset_must_null"
 	case ER_TABLE_MUST_HAVE_COMMENT:
-		return "ER_TABLE_MUST_HAVE_COMMENT"
+		return "er_table_must_have_comment"
 	case ER_COLUMN_HAVE_NO_COMMENT:
-		return "ER_COLUMN_HAVE_NO_COMMENT"
+		return "er_column_have_no_comment"
 	case ER_TABLE_MUST_HAVE_PK:
-		return "ER_TABLE_MUST_HAVE_PK"
+		return "er_table_must_have_pk"
 	case ER_PARTITION_NOT_ALLOWED:
-		return "ER_PARTITION_NOT_ALLOWED"
+		return "er_partition_not_allowed"
 	case ER_USE_ENUM:
-		return "ER_USE_ENUM"
+		return "er_use_enum"
 	case ER_USE_TEXT_OR_BLOB:
-		return "ER_USE_TEXT_OR_BLOB"
+		return "er_use_text_or_blob"
 	case ER_COLUMN_EXISTED:
-		return "ER_COLUMN_EXISTED"
+		return "er_column_existed"
 	case ER_COLUMN_NOT_EXISTED:
-		return "ER_COLUMN_NOT_EXISTED"
+		return "er_column_not_existed"
 	case ER_CANT_DROP_FIELD_OR_KEY:
-		return "ER_CANT_DROP_FIELD_OR_KEY"
+		return "er_cant_drop_field_or_key"
 	case ER_INVALID_DEFAULT:
-		return "ER_INVALID_DEFAULT"
+		return "er_invalid_default"
 	case ER_USERNAME:
-		return "ER_USERNAME"
+		return "er_username"
 	case ER_HOSTNAME:
-		return "ER_HOSTNAME"
+		return "er_hostname"
 	case ER_NOT_VALID_PASSWORD:
-		return "ER_NOT_VALID_PASSWORD"
+		return "er_not_valid_password"
 	case ER_WRONG_STRING_LENGTH:
-		return "ER_WRONG_STRING_LENGTH"
+		return "er_wrong_string_length"
 	case ER_BLOB_USED_AS_KEY:
-		return "ER_BLOB_USED_AS_KEY"
+		return "er_blob_used_as_key"
 	case ER_TOO_LONG_BAKDB_NAME:
-		return "ER_TOO_LONG_BAKDB_NAME"
+		return "er_too_long_bakdb_name"
 	case ER_INVALID_BACKUP_HOST_INFO:
-		return "ER_INVALID_BACKUP_HOST_INFO"
+		return "er_invalid_backup_host_info"
 	case ER_BINLOG_CORRUPTED:
-		return "ER_BINLOG_CORRUPTED"
+		return "er_binlog_corrupted"
 	case ER_NET_READ_ERROR:
-		return "ER_NET_READ_ERROR"
+		return "er_net_read_error"
 	case ER_NETWORK_READ_EVENT_CHECKSUM_FAILURE:
-		return "ER_NETWORK_READ_EVENT_CHECKSUM_FAILURE"
+		return "er_network_read_event_checksum_failure"
 	case ER_SLAVE_RELAY_LOG_WRITE_FAILURE:
-		return "ER_SLAVE_RELAY_LOG_WRITE_FAILURE"
+		return "er_slave_relay_log_write_failure"
 	case ER_INCORRECT_GLOBAL_LOCAL_VAR:
-		return "ER_INCORRECT_GLOBAL_LOCAL_VAR"
+		return "er_incorrect_global_local_var"
 	case ER_START_AS_BEGIN:
-		return "ER_START_AS_BEGIN"
+		return "er_start_as_begin"
 	case ER_OUTOFMEMORY:
-		return "ER_OUTOFMEMORY"
+		return "er_outofmemory"
 	case ER_HAVE_BEGIN:
-		return "ER_HAVE_BEGIN"
+		return "er_have_begin"
 	case ER_NET_READ_INTERRUPTED:
-		return "ER_NET_READ_INTERRUPTED"
+		return "er_net_read_interrupted"
 	case ER_BINLOG_FORMAT_STATEMENT:
-		return "ER_BINLOG_FORMAT_STATEMENT"
+		return "er_binlog_format_statement"
 	case EXIT_NO_ARGUMENT_ALLOWED:
 		return "EXIT_NO_ARGUMENT_ALLOWED"
 	case EXIT_ARGUMENT_REQUIRED:
@@ -860,151 +860,151 @@ func (e ErrorCode) String() string {
 	case EXIT_AMBIGUOUS_OPTION:
 		return "EXIT_AMBIGUOUS_OPTION"
 	case ER_ERROR_EXIST_BEFORE:
-		return "ER_ERROR_EXIST_BEFORE"
+		return "er_error_exist_before"
 	case ER_UNKNOWN_SYSTEM_VARIABLE:
-		return "ER_UNKNOWN_SYSTEM_VARIABLE"
+		return "er_unknown_system_variable"
 	case ER_UNKNOWN_CHARACTER_SET:
-		return "ER_UNKNOWN_CHARACTER_SET"
+		return "er_unknown_character_set"
 	case ER_END_WITH_COMMIT:
-		return "ER_END_WITH_COMMIT"
+		return "er_end_with_commit"
 	case ER_DB_NOT_EXISTED_ERROR:
-		return "ER_DB_NOT_EXISTED_ERROR"
+		return "er_db_not_existed_error"
 	case ER_TABLE_EXISTS_ERROR:
-		return "ER_TABLE_EXISTS_ERROR"
+		return "er_table_exists_error"
 	case ER_INDEX_NAME_IDX_PREFIX:
-		return "ER_INDEX_NAME_IDX_PREFIX"
+		return "er_index_name_idx_prefix"
 	case ER_INDEX_NAME_UNIQ_PREFIX:
-		return "ER_INDEX_NAME_UNIQ_PREFIX"
+		return "er_index_name_uniq_prefix"
 	case ER_AUTOINC_UNSIGNED:
-		return "ER_AUTOINC_UNSIGNED"
+		return "er_autoinc_unsigned"
 	case ER_VARCHAR_TO_TEXT_LEN:
-		return "ER_VARCHAR_TO_TEXT_LEN"
+		return "er_varchar_to_text_len"
 	case ER_CHAR_TO_VARCHAR_LEN:
-		return "ER_CHAR_TO_VARCHAR_LEN"
+		return "er_char_to_varchar_len"
 	case ER_KEY_COLUMN_DOES_NOT_EXITS:
-		return "ER_KEY_COLUMN_DOES_NOT_EXITS"
+		return "er_key_column_does_not_exits"
 	case ER_INC_INIT_ERR:
-		return "ER_INC_INIT_ERR"
+		return "er_inc_init_err"
 	case ER_WRONG_ARGUMENTS:
-		return "ER_WRONG_ARGUMENTS"
+		return "er_wrong_arguments"
 	case ER_SET_DATA_TYPE_INT_BIGINT:
-		return "ER_SET_DATA_TYPE_INT_BIGINT"
+		return "er_set_data_type_int_bigint"
 	case ER_TIMESTAMP_DEFAULT:
-		return "ER_TIMESTAMP_DEFAULT"
+		return "er_timestamp_default"
 	case ER_CHARSET_ON_COLUMN:
-		return "ER_CHARSET_ON_COLUMN"
+		return "er_charset_on_column"
 	case ER_AUTO_INCR_ID_WARNING:
-		return "ER_AUTO_INCR_ID_WARNING"
+		return "er_auto_incr_id_warning"
 	case ER_ALTER_TABLE_ONCE:
-		return "ER_ALTER_TABLE_ONCE"
+		return "er_alter_table_once"
 	case ER_BLOB_CANT_HAVE_DEFAULT:
-		return "ER_BLOB_CANT_HAVE_DEFAULT"
+		return "er_blob_cant_have_default"
 	case ER_END_WITH_SEMICOLON:
-		return "ER_END_WITH_SEMICOLON"
+		return "er_end_with_semicolon"
 	case ER_NON_UNIQ_ERROR:
-		return "ER_NON_UNIQ_ERROR"
+		return "er_non_uniq_error"
 	case ER_TABLE_NOT_EXISTED_ERROR:
-		return "ER_TABLE_NOT_EXISTED_ERROR"
+		return "er_table_not_existed_error"
 	case ER_UNKNOWN_TABLE:
-		return "ER_UNKNOWN_TABLE"
+		return "er_unknown_table"
 	case ER_INVALID_GROUP_FUNC_USE:
-		return "ER_INVALID_GROUP_FUNC_USE"
+		return "er_invalid_group_func_use"
 	case ER_INDEX_USE_ALTER_TABLE:
-		return "ER_INDEX_USE_ALTER_TABLE"
+		return "er_index_use_alter_table"
 	case ER_WITH_DEFAULT_ADD_COLUMN:
-		return "ER_WITH_DEFAULT_ADD_COLUMN"
+		return "er_with_default_add_column"
 	case ER_TRUNCATED_WRONG_VALUE:
-		return "ER_TRUNCATED_WRONG_VALUE"
+		return "er_truncated_wrong_value"
 	case ER_TEXT_NOT_NULLABLE_ERROR:
-		return "ER_TEXT_NOT_NULLABLE_ERROR"
+		return "er_text_not_nullable_error"
 	case ER_WRONG_VALUE_FOR_VAR:
-		return "ER_WRONG_VALUE_FOR_VAR"
+		return "er_wrong_value_for_var"
 	case ER_TOO_MUCH_AUTO_TIMESTAMP_COLS:
-		return "ER_TOO_MUCH_AUTO_TIMESTAMP_COLS"
+		return "er_too_much_auto_timestamp_cols"
 	case ER_INVALID_ON_UPDATE:
-		return "ER_INVALID_ON_UPDATE"
+		return "er_invalid_on_update"
 	case ER_DDL_DML_COEXIST:
-		return "ER_DDL_DML_COEXIST"
+		return "er_ddl_dml_coexist"
 	case ER_SLAVE_CORRUPT_EVENT:
-		return "ER_SLAVE_CORRUPT_EVENT"
+		return "er_slave_corrupt_event"
 	case ER_COLLATION_CHARSET_MISMATCH:
-		return "ER_COLLATION_CHARSET_MISMATCH"
+		return "er_collation_charset_mismatch"
 	case ER_NOT_SUPPORTED_ALTER_OPTION:
-		return "ER_NOT_SUPPORTED_ALTER_OPTION"
+		return "er_not_supported_alter_option"
 	case ER_CONFLICTING_DECLARATIONS:
-		return "ER_CONFLICTING_DECLARATIONS"
+		return "er_conflicting_declarations"
 	case ER_IDENT_USE_KEYWORD:
-		return "ER_IDENT_USE_KEYWORD"
+		return "er_ident_use_keyword"
 	case ER_VIEW_SELECT_CLAUSE:
-		return "ER_VIEW_SELECT_CLAUSE"
+		return "er_view_select_clause"
 	case ER_OSC_KILL_FAILED:
-		return "ER_OSC_KILL_FAILED"
+		return "er_osc_kill_failed"
 	case ER_NET_PACKETS_OUT_OF_ORDER:
-		return "ER_NET_PACKETS_OUT_OF_ORDER"
+		return "er_net_packets_out_of_order"
 	case ER_NOT_SUPPORTED_ITEM_TYPE:
-		return "ER_NOT_SUPPORTED_ITEM_TYPE"
+		return "er_not_supported_item_type"
 	case ER_INVALID_IDENT:
-		return "ER_INVALID_IDENT"
+		return "er_invalid_ident"
 	case ER_INCEPTION_EMPTY_QUERY:
-		return "ER_INCEPTION_EMPTY_QUERY"
+		return "er_inception_empty_query"
 	case ER_PK_COLS_NOT_INT:
-		return "ER_PK_COLS_NOT_INT"
+		return "er_pk_cols_not_int"
 	case ER_PK_TOO_MANY_PARTS:
-		return "ER_PK_TOO_MANY_PARTS"
+		return "er_pk_too_many_parts"
 	case ER_REMOVED_SPACES:
-		return "ER_REMOVED_SPACES"
+		return "er_removed_spaces"
 	case ER_CHANGE_COLUMN_TYPE:
-		return "ER_CHANGE_COLUMN_TYPE"
+		return "er_change_column_type"
 	case ER_CANT_DROP_TABLE:
-		return "ER_CANT_DROP_TABLE"
+		return "er_cant_drop_table"
 	case ER_CANT_DROP_DATABASE:
-		return "ER_CANT_DROP_DATABASE"
+		return "er_cant_drop_database"
 	case ER_WRONG_TABLE_NAME:
-		return "ER_WRONG_TABLE_NAME"
+		return "er_wrong_table_name"
 	case ER_CANT_SET_CHARSET:
-		return "ER_CANT_SET_CHARSET"
+		return "er_cant_set_charset"
 	case ER_CANT_SET_COLLATION:
-		return "ER_CANT_SET_COLLATION"
+		return "er_cant_set_collation"
 	case ER_CANT_SET_ENGINE:
-		return "ER_CANT_SET_ENGINE"
+		return "er_cant_set_engine"
 	case ER_MUST_AT_LEAST_ONE_COLUMN:
-		return "ER_MUST_AT_LEAST_ONE_COLUMN"
+		return "er_must_at_least_one_column"
 	case ER_MUST_HAVE_COLUMNS:
-		return "ER_MUST_HAVE_COLUMNS"
+		return "er_must_have_columns"
 	case ER_PRIMARY_CANT_HAVE_NULL:
-		return "ER_PRIMARY_CANT_HAVE_NULL"
+		return "er_primary_cant_have_null"
 	case ErrCantRemoveAllFields:
-		return "ErrCantRemoveAllFields"
+		return "er_cant_remove_all_fields"
 	case ErrNotFoundTableInfo:
-		return "ErrNotFoundTableInfo"
+		return "er_not_found_table_info"
 	case ErrNotFoundThreadId:
-		return "ErrNotFoundThreadId"
+		return "er_not_found_thread_id"
 	case ErrNotFoundMasterStatus:
-		return "ErrNotFoundMasterStatus"
+		return "er_not_found_master_status"
 	case ErrNonUniqTable:
-		return "ErrNonUniqTable"
+		return "er_non_uniq_table"
 	case ErrWrongUsage:
-		return "ErrWrongUsage"
+		return "er_wrong_usage"
 	case ErrDataTooLong:
-		return "ErrDataTooLong"
+		return "er_data_too_long"
 	case ErrCharsetNotSupport:
-		return "ErrCharsetNotSupport"
+		return "er_charset_not_support"
 	case ErrCollationNotSupport:
-		return "ErrCollationNotSupport"
+		return "er_collation_not_support"
 	case ErrTableCollationNotSupport:
-		return "ErrTableCollationNotSupport"
+		return "er_table_collation_not_support"
 	case ErrJsonTypeSupport:
-		return "ErrJsonTypeSupport"
+		return "er_json_type_support"
 	case ErrEngineNotSupport:
-		return "ErrEngineNotSupport"
+		return "er_engine_not_support"
 	case ErrMixOfGroupFuncAndFields:
-		return "ErrMixOfGroupFuncAndFields"
+		return "er_mix_of_group_func_and_fields"
 	case ErrFieldNotInGroupBy:
-		return "ErrFieldNotInGroupBy"
+		return "er_field_not_in_group_by"
 	case ErCantChangeColumnPosition:
-		return "ErCantChangeColumnPosition"
+		return "er_cant_change_column_position"
 	case ER_ERROR_LAST:
-		return "ER_ERROR_LAST"
+		return "er_error_last"
 	}
 	return ""
 }

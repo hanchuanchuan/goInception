@@ -2348,7 +2348,11 @@ func (s *session) parseIncLevel() {
 			} else if a > 2 {
 				a = 2
 			}
-			s.incLevel[t.Field(i).Name] = uint8(a)
+			if k := t.Field(i).Tag.Get("toml"); k != "" {
+				s.incLevel[k] = uint8(a)
+			} else {
+				s.incLevel[t.Field(i).Name] = uint8(a)
+			}
 		}
 	}
 
