@@ -15,8 +15,8 @@ package session_test
 
 import (
 	"fmt"
-	// "path"
-	// "runtime"
+	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -75,18 +75,18 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
 
-	// cfg := config.GetGlobalConfig()
-	// _, localFile, _, _ := runtime.Caller(0)
-	// localFile = path.Dir(localFile)
-	// configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
-	// c.Assert(cfg.Load(configFile), IsNil)
+	cfg := config.GetGlobalConfig()
+	_, localFile, _, _ := runtime.Caller(0)
+	localFile = path.Dir(localFile)
+	configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
+	c.Assert(cfg.Load(configFile), IsNil)
 
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	// 启用自定义审核级别
-	config.GetGlobalConfig().Inc.EnableLevel = false
+	config.GetGlobalConfig().Inc.EnableLevel = true
 
 	session.SetLanguage("en-US")
 
@@ -119,6 +119,7 @@ func (s *testSessionIncSuite) TearDownTest(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
+	session.CheckAuditSetting(config.GetGlobalConfig())
 
 	res := makeSQL(s.tk, "show tables")
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
@@ -253,6 +254,9 @@ func (s *testSessionIncSuite) getExplicitDefaultsForTimestamp(c *C) bool {
 }
 
 func makeSQL(tk *testkit.TestKit, sql string) *testkit.Result {
+
+	session.CheckAuditSetting(config.GetGlobalConfig())
+
 	a := `/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test_inc;
@@ -263,6 +267,7 @@ inception_magic_commit;`
 
 func (s *testSessionIncSuite) execSQL(c *C, sql string) *testkit.Result {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
+	session.CheckAuditSetting(config.GetGlobalConfig())
 	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test_inc;
@@ -281,6 +286,8 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
+
+	session.CheckAuditSetting(config.GetGlobalConfig())
 
 	res := makeSQL(s.tk, sql)
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -438,7 +445,6 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 		session.NewErr(session.ER_COLUMN_HAVE_NO_COMMENT, "c1", "t1"))
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
-
 	// 表注释
 	config.GetGlobalConfig().Inc.CheckTableComment = true
 	res = makeSQL(tk, "create table t1(c1 varchar(20));")
@@ -656,6 +662,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	}
 
 	config.GetGlobalConfig().Inc.EnableBlobType = false
+	config.GetGlobalConfig().Inc.CheckIndexPrefix = false
 	sql = "create table test_error_code_3(pt text ,primary key (pt));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
@@ -849,6 +856,19 @@ primary key(id)) comment 'test';`
 	config.GetGlobalConfig().Inc.EnableBlobNotNull = true
 	sql = `create table t1(id int auto_increment primary key,c1 blob not null);`
 	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.CheckIndexPrefix = true
+	sql = "create table test_error_code_3(a text, unique (a(3073)));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
+		session.NewErr(session.ER_INDEX_NAME_UNIQ_PREFIX, "", "test_error_code_3"),
+		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+
+	sql = "create table test_error_code_3(a text, key (a(3073)));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
+		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "", "test_error_code_3"),
+		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
 
 }
 
