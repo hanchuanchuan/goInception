@@ -3093,6 +3093,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableAlterColumn:
 			s.checkAlterTableAlterColumn(table, alter)
 
+		case ast.AlterTableRenameIndex:
+			if s.DBVersion < 50701 {
+				s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+			} else {
+				s.checkAlterTableRenameIndex(table, alter)
+			}
+
 		case ast.AlterTableLock,
 			ast.AlterTableAlgorithm,
 			ast.AlterTableForce:
@@ -3167,7 +3174,62 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 
 		}
 	}
+}
 
+func (s *session) checkAlterTableRenameIndex(t *TableInfo, c *ast.AlterTableSpec) {
+
+	indexName := c.FromKey.String()
+	newIndexName := c.ToKey.String()
+
+	if len(t.Indexes) == 0 {
+		s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
+		return
+	}
+
+	var foundRows []*IndexInfo
+	for _, row := range t.Indexes {
+		if row.IndexName == indexName && !row.IsDeleted {
+			foundRows = append(foundRows, row)
+			row.IsDeleted = true
+		}
+	}
+
+	if len(foundRows) == 0 {
+		s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
+		return
+	}
+
+	found := false
+	for _, row := range t.Indexes {
+		if row.IndexName == newIndexName && !row.IsDeleted {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		s.AppendErrorNo(ER_DUP_KEYNAME, newIndexName)
+	}
+
+	if !s.hasError() {
+		// cache new index
+		for _, index := range foundRows {
+			index := &IndexInfo{
+				Table:      t.Name,
+				NonUnique:  index.NonUnique,
+				IndexName:  newIndexName,
+				Seq:        index.Seq,
+				ColumnName: index.ColumnName,
+				IndexType:  index.IndexType,
+			}
+			t.Indexes = append(t.Indexes, index)
+		}
+		if s.opt.execute {
+			rollback := fmt.Sprintf("RENAME INDEX `%s` TO `%s`,",
+				newIndexName, c.FromKey.String())
+			s.myRecord.DDLRollback += rollback
+		}
+	}
 }
 
 func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec) {
