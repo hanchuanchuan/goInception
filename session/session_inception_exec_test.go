@@ -15,6 +15,8 @@ package session_test
 
 import (
 	"fmt"
+	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -69,6 +71,15 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
 
+	cfg := config.GetGlobalConfig()
+	_, localFile, _, _ := runtime.Caller(0)
+	localFile = path.Dir(localFile)
+	configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
+	c.Assert(cfg.Load(configFile), IsNil)
+
+	// 启用自定义审核级别
+	config.GetGlobalConfig().Inc.EnableLevel = true
+
 	inc := &config.GetGlobalConfig().Inc
 
 	inc.BackupHost = "127.0.0.1"
@@ -106,6 +117,9 @@ func (s *testSessionIncExecSuite) TearDownTest(c *C) {
 }
 
 func makeExecSQL(tk *testkit.TestKit, sql string) *testkit.Result {
+
+	session.CheckAuditSetting(config.GetGlobalConfig())
+
 	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
 inception_magic_start;
 use test_inc;
@@ -118,6 +132,8 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
+
+	session.CheckAuditSetting(config.GetGlobalConfig())
 
 	res := makeExecSQL(s.tk, sql)
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]

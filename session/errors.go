@@ -22,6 +22,7 @@ import (
 	// "strconv"
 	"strings"
 
+	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/terror"
 	log "github.com/sirupsen/logrus"
@@ -1007,4 +1008,198 @@ func (e ErrorCode) String() string {
 		return "er_error_last"
 	}
 	return ""
+}
+
+// CheckAuditSetting 自动校准旧的审核规则和自定义规则
+func CheckAuditSetting(cnf *config.Config) {
+
+	if cnf.Inc.CheckInsertField {
+		cnf.IncLevel.ER_WITH_INSERT_FIELD = int8(GetErrorLevel(ER_WITH_INSERT_FIELD))
+	} else {
+		cnf.IncLevel.ER_WITH_INSERT_FIELD = 0
+	}
+
+	if cnf.Inc.CheckDMLWhere {
+		cnf.IncLevel.ER_NO_WHERE_CONDITION = int8(GetErrorLevel(ER_NO_WHERE_CONDITION))
+	} else {
+		cnf.IncLevel.ER_NO_WHERE_CONDITION = 0
+	}
+
+	if cnf.Inc.CheckDMLLimit {
+		cnf.IncLevel.ER_WITH_LIMIT_CONDITION = int8(GetErrorLevel(ER_WITH_LIMIT_CONDITION))
+	} else {
+		cnf.IncLevel.ER_WITH_LIMIT_CONDITION = 0
+	}
+
+	if cnf.Inc.CheckDMLOrderBy {
+		cnf.IncLevel.ER_WITH_ORDERBY_CONDITION = int8(GetErrorLevel(ER_WITH_ORDERBY_CONDITION))
+	} else {
+		cnf.IncLevel.ER_WITH_ORDERBY_CONDITION = 0
+	}
+
+	if !cnf.Inc.EnableSelectStar {
+		cnf.IncLevel.ER_SELECT_ONLY_STAR = int8(GetErrorLevel(ER_SELECT_ONLY_STAR))
+	} else {
+		cnf.IncLevel.ER_SELECT_ONLY_STAR = 0
+	}
+
+	if !cnf.Inc.EnableOrderByRand {
+		cnf.IncLevel.ER_ORDERY_BY_RAND = int8(GetErrorLevel(ER_ORDERY_BY_RAND))
+	} else {
+		cnf.IncLevel.ER_ORDERY_BY_RAND = 0
+	}
+
+	if !cnf.Inc.EnableNullable {
+		cnf.IncLevel.ER_NOT_ALLOWED_NULLABLE = int8(GetErrorLevel(ER_NOT_ALLOWED_NULLABLE))
+	} else {
+		cnf.IncLevel.ER_NOT_ALLOWED_NULLABLE = 0
+	}
+
+	if !cnf.Inc.EnableForeignKey {
+		cnf.IncLevel.ER_FOREIGN_KEY = int8(GetErrorLevel(ER_FOREIGN_KEY))
+	} else {
+		cnf.IncLevel.ER_FOREIGN_KEY = 0
+	}
+
+	if !cnf.Inc.EnableBlobType {
+		cnf.IncLevel.ER_USE_TEXT_OR_BLOB = int8(GetErrorLevel(ER_USE_TEXT_OR_BLOB))
+	} else {
+		cnf.IncLevel.ER_USE_TEXT_OR_BLOB = 0
+	}
+
+	if !cnf.Inc.EnableJsonType {
+		cnf.IncLevel.ErJsonTypeSupport = int8(GetErrorLevel(ErrJsonTypeSupport))
+	} else {
+		cnf.IncLevel.ErJsonTypeSupport = 0
+	}
+
+	if cnf.Inc.EnablePKColumnsOnlyInt {
+		cnf.IncLevel.ER_PK_COLS_NOT_INT = int8(GetErrorLevel(ER_PK_COLS_NOT_INT))
+	} else {
+		cnf.IncLevel.ER_PK_COLS_NOT_INT = 0
+	}
+
+	if cnf.Inc.CheckTableComment {
+		cnf.IncLevel.ER_TABLE_MUST_HAVE_COMMENT = int8(GetErrorLevel(ER_TABLE_MUST_HAVE_COMMENT))
+	} else {
+		cnf.IncLevel.ER_TABLE_MUST_HAVE_COMMENT = 0
+	}
+
+	if cnf.Inc.CheckColumnComment {
+		cnf.IncLevel.ER_COLUMN_HAVE_NO_COMMENT = int8(GetErrorLevel(ER_COLUMN_HAVE_NO_COMMENT))
+	} else {
+		cnf.IncLevel.ER_COLUMN_HAVE_NO_COMMENT = 0
+	}
+
+	if cnf.Inc.CheckPrimaryKey {
+		cnf.IncLevel.ER_TABLE_MUST_HAVE_PK = int8(GetErrorLevel(ER_TABLE_MUST_HAVE_PK))
+	} else {
+		cnf.IncLevel.ER_TABLE_MUST_HAVE_PK = 0
+	}
+
+	if !cnf.Inc.EnablePartitionTable {
+		cnf.IncLevel.ER_PARTITION_NOT_ALLOWED = int8(GetErrorLevel(ER_PARTITION_NOT_ALLOWED))
+	} else {
+		cnf.IncLevel.ER_PARTITION_NOT_ALLOWED = 0
+	}
+
+	if !cnf.Inc.EnableEnumSetBit {
+		cnf.IncLevel.ER_USE_ENUM = int8(GetErrorLevel(ER_USE_ENUM))
+		cnf.IncLevel.ER_INVALID_DATA_TYPE = int8(GetErrorLevel(ER_INVALID_DATA_TYPE))
+	} else {
+		cnf.IncLevel.ER_USE_ENUM = 0
+		cnf.IncLevel.ER_INVALID_DATA_TYPE = 0
+	}
+
+	if cnf.Inc.CheckIndexPrefix {
+		cnf.IncLevel.ER_INDEX_NAME_IDX_PREFIX = int8(GetErrorLevel(ER_INDEX_NAME_IDX_PREFIX))
+		cnf.IncLevel.ER_INDEX_NAME_UNIQ_PREFIX = int8(GetErrorLevel(ER_INDEX_NAME_UNIQ_PREFIX))
+	} else {
+		cnf.IncLevel.ER_INDEX_NAME_IDX_PREFIX = 0
+		cnf.IncLevel.ER_INDEX_NAME_UNIQ_PREFIX = 0
+	}
+
+	if cnf.Inc.EnableAutoIncrementUnsigned {
+		cnf.IncLevel.ER_AUTOINC_UNSIGNED = int8(GetErrorLevel(ER_AUTOINC_UNSIGNED))
+	} else {
+		cnf.IncLevel.ER_AUTOINC_UNSIGNED = 0
+	}
+
+	if cnf.Inc.CheckAutoIncrementInitValue {
+		cnf.IncLevel.ER_INC_INIT_ERR = int8(GetErrorLevel(ER_INC_INIT_ERR))
+	} else {
+		cnf.IncLevel.ER_INC_INIT_ERR = 0
+	}
+
+	if cnf.Inc.CheckIdentifier {
+		cnf.IncLevel.ER_INVALID_IDENT = int8(GetErrorLevel(ER_INVALID_IDENT))
+	} else {
+		cnf.IncLevel.ER_INVALID_IDENT = 0
+	}
+
+	if cnf.Inc.CheckAutoIncrementDataType {
+		cnf.IncLevel.ER_SET_DATA_TYPE_INT_BIGINT = int8(GetErrorLevel(ER_SET_DATA_TYPE_INT_BIGINT))
+	} else {
+		cnf.IncLevel.ER_SET_DATA_TYPE_INT_BIGINT = 0
+	}
+
+	if cnf.Inc.CheckTimestampDefault {
+		cnf.IncLevel.ER_TIMESTAMP_DEFAULT = int8(GetErrorLevel(ER_TIMESTAMP_DEFAULT))
+	} else {
+		cnf.IncLevel.ER_TIMESTAMP_DEFAULT = 0
+	}
+
+	if cnf.Inc.CheckTimestampCount {
+		cnf.IncLevel.ER_TOO_MUCH_AUTO_TIMESTAMP_COLS = int8(GetErrorLevel(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS))
+	} else {
+		cnf.IncLevel.ER_TOO_MUCH_AUTO_TIMESTAMP_COLS = 0
+	}
+
+	if !cnf.Inc.EnableColumnCharset {
+		cnf.IncLevel.ER_CHARSET_ON_COLUMN = int8(GetErrorLevel(ER_CHARSET_ON_COLUMN))
+	} else {
+		cnf.IncLevel.ER_CHARSET_ON_COLUMN = 0
+	}
+
+	if !cnf.Inc.EnableIdentiferKeyword {
+		cnf.IncLevel.ER_IDENT_USE_KEYWORD = int8(GetErrorLevel(ER_IDENT_USE_KEYWORD))
+	} else {
+		cnf.IncLevel.ER_IDENT_USE_KEYWORD = 0
+	}
+
+	if cnf.Inc.CheckAutoIncrementName {
+		cnf.IncLevel.ER_AUTO_INCR_ID_WARNING = int8(GetErrorLevel(ER_AUTO_INCR_ID_WARNING))
+	} else {
+		cnf.IncLevel.ER_AUTO_INCR_ID_WARNING = 0
+	}
+
+	if cnf.Inc.MergeAlterTable {
+		cnf.IncLevel.ER_ALTER_TABLE_ONCE = int8(GetErrorLevel(ER_ALTER_TABLE_ONCE))
+	} else {
+		cnf.IncLevel.ER_ALTER_TABLE_ONCE = 0
+	}
+
+	if cnf.Inc.CheckColumnDefaultValue {
+		cnf.IncLevel.ER_WITH_DEFAULT_ADD_COLUMN = int8(GetErrorLevel(ER_WITH_DEFAULT_ADD_COLUMN))
+	} else {
+		cnf.IncLevel.ER_WITH_DEFAULT_ADD_COLUMN = 0
+	}
+
+	if cnf.Inc.CheckColumnTypeChange {
+		cnf.IncLevel.ER_CHANGE_COLUMN_TYPE = int8(GetErrorLevel(ER_CHANGE_COLUMN_TYPE))
+	} else {
+		cnf.IncLevel.ER_CHANGE_COLUMN_TYPE = 0
+	}
+
+	if cnf.Inc.CheckColumnPositionChange {
+		cnf.IncLevel.ErCantChangeColumnPosition = int8(GetErrorLevel(ErCantChangeColumnPosition))
+	} else {
+		cnf.IncLevel.ErCantChangeColumnPosition = 0
+	}
+
+	if !cnf.Inc.EnableBlobNotNull {
+		cnf.IncLevel.ER_TEXT_NOT_NULLABLE_ERROR = int8(GetErrorLevel(ER_TEXT_NOT_NULLABLE_ERROR))
+	} else {
+		cnf.IncLevel.ER_TEXT_NOT_NULLABLE_ERROR = 0
+	}
 }
