@@ -272,7 +272,7 @@ docker:
 		wget -O bin/pt-online-schema-change percona.com/get/pt-online-schema-change; \
 	fi
 	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags="-s -w" -o bin/goInception tidb-server/main.go
-	v1=$(shell git tag|tail -1) && docker build -t hanchuanchuan/goinception:$${v1} . \
+	v1=$(shell git tag | xargs -I@ git log --format=format:"%ai @%n" -1 @ | sort | awk '{print $4}' |tail -1) && docker build -t hanchuanchuan/goinception:$${v1} . \
 	&& docker tag hanchuanchuan/goinception:$${v1} hanchuanchuan/goinception:latest
 
 docker-push:
