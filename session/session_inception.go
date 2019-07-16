@@ -3310,6 +3310,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					// 在新的快照上变更表结构
 					t := s.cacheTableSnapshot(t)
 
+					t.Fields[foundIndexOld] = *(s.buildNewColumnToCache(t, nc))
+
 					if c.Position.Tp == ast.ColumnPositionFirst {
 						tmp := make([]FieldInfo, 0, len(t.Fields))
 						tmp = append(tmp, foundField)
@@ -3353,6 +3355,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 							t.Fields = tmp
 						}
 					}
+				} else {
+					t.Fields[foundIndexOld] = *(s.buildNewColumnToCache(t, nc))
 				}
 
 				if s.opt.execute {
@@ -3412,7 +3416,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				// 在新的快照上变更表结构
 				t := s.cacheTableSnapshot(t)
 
-				t.Fields[foundIndexOld].Field = nc.Name.Name.O
+				// t.Fields[foundIndexOld].Field = nc.Name.Name.O
+				t.Fields[foundIndexOld] = *(s.buildNewColumnToCache(t, nc))
 				// 修改列名后标记有新列
 				t.IsNewColumns = true
 
