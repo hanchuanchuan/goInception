@@ -1958,10 +1958,10 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_DUP_INDEX, "idx", "test_inc", "t1"))
 
-	sql = "create table t1(id int,c1 int);alter table t1 add index idx (c1);alter table t1 rename index idx to idx2;"
-	s.testErrorCode(c, sql)
-
 	if s.getDBVersion(c) >= 50701 {
+		sql = "create table t1(id int,c1 int);alter table t1 add index idx (c1);alter table t1 rename index idx to idx2;"
+		s.testErrorCode(c, sql)
+
 		sql = `create table t1(id int,c1 int);
 		alter table t1 add index idx (c1),add index idx2 (c1);
 		alter table t1 rename index idx to idx2;`
