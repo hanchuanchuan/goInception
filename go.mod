@@ -4,6 +4,8 @@ replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-201903021119
 
 replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162
 
+replace github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
+
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/CorgiMan/json2 v0.0.0-20150213135156-e72957aba209

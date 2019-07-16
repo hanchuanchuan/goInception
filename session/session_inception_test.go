@@ -1230,6 +1230,15 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
 
 	config.GetGlobalConfig().Inc.CheckColumnPositionChange = false
+
+	// modify column后,列信息更新
+	s.execSQL(c, "drop table if exists t1;create table t1(id int not null,c1 int);")
+	sql = "alter table t1 add primary key(id,c1);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
+
+	sql = "alter table t1 modify c1 int not null;alter table t1 add primary key(id,c1);"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
