@@ -811,6 +811,9 @@ primary key(id)) comment 'test';`
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 datetime);`
 	s.testErrorCode(c, sql)
 
+	sql = `drop table if exists t1;CREATE TABLE t1(c1 int,c2 DATETIME);`
+	s.testErrorCode(c, sql)
+
 	config.GetGlobalConfig().Inc.MustHaveColumns = ""
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false

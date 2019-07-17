@@ -2948,7 +2948,7 @@ func (s *session) checkMustHaveColumns(table *TableInfo) {
 		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, col_name) {
 				found = true
-				if col_type != "" && col_type != GetDataTypeBase(field.Type) {
+				if col_type != "" && !strings.EqualFold(col_type, GetDataTypeBase(field.Type)) {
 					notFountColumns = append(notFountColumns, col)
 				}
 				break
