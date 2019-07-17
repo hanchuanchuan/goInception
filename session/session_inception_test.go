@@ -1977,6 +1977,13 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_CANT_DROP_FIELD_OR_KEY, "t1.idx3"))
 	}
+
+	sql = "create table t1(id int,c1 int,key idx (c1));alter table t1 add index idx (c1);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DUP_INDEX, "idx", "test_inc", "t1"))
+
+	sql = "create table t1(id int primary key);alter table t1 drop primary key;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
