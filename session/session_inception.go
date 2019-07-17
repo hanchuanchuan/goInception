@@ -2715,32 +2715,32 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 			if !hasPrimary {
 				for _, field := range node.Cols {
-					hasNullFlag := false
-					defaultNullValue := false
+					// hasNullFlag := false
+					// defaultNullValue := false
 					for _, op := range field.Options {
 						switch op.Tp {
-						case ast.ColumnOptionNull:
-							hasNullFlag = true
+						// case ast.ColumnOptionNull:
+						// 	hasNullFlag = true
 						case ast.ColumnOptionPrimaryKey:
 							hasPrimary = true
 
-							if field.Tp.Tp != mysql.TypeInt24 &&
-								field.Tp.Tp != mysql.TypeLong &&
-								field.Tp.Tp != mysql.TypeLonglong {
-								s.AppendErrorNo(ER_PK_COLS_NOT_INT,
-									field.Name.Name.O,
-									node.Table.Schema, node.Table.Name)
-							}
-						case ast.ColumnOptionDefaultValue:
-							if op.Expr.GetDatum().IsNull() {
-								defaultNullValue = true
-							}
+							// if field.Tp.Tp != mysql.TypeInt24 &&
+							// 	field.Tp.Tp != mysql.TypeLong &&
+							// 	field.Tp.Tp != mysql.TypeLonglong {
+							// 	s.AppendErrorNo(ER_PK_COLS_NOT_INT,
+							// 		field.Name.Name.O,
+							// 		node.Table.Schema, node.Table.Name)
+							// }
+							// case ast.ColumnOptionDefaultValue:
+							// 	if op.Expr.GetDatum().IsNull() {
+							// 		defaultNullValue = true
+							// 	}
 						}
 					}
 
-					if hasPrimary && (hasNullFlag || defaultNullValue) {
-						s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
-					}
+					// if hasPrimary && (hasNullFlag || defaultNullValue) {
+					// 	s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
+					// }
 					if hasPrimary {
 						break
 					}
@@ -2815,6 +2815,17 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
+
+					for _, op := range field.Options {
+						switch op.Tp {
+						case ast.ColumnOptionPrimaryKey:
+							s.checkCreateIndex(nil, "PRIMARY",
+								[]*ast.IndexColName{
+									{Column: field.Name,
+										Length: types.UnspecifiedLength},
+								}, nil, table, true, ast.ConstraintPrimaryKey)
+						}
+					}
 
 					if field.Tp.Tp == mysql.TypeTimestamp {
 						for _, op := range field.Options {
