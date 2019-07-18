@@ -2169,3 +2169,18 @@ func (s *testSessionIncSuite) TestZeroDate(c *C) {
 		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
 	config.GetGlobalConfig().Inc.EnableZeroDate = true
 }
+
+func (s *testSessionIncSuite) TestTimestampType(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	
+	sql := ""
+	
+	config.GetGlobalConfig().Inc.EnableTimeStampType = false
+	sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a timestamp not null default 0 comment 'a') comment 'test';`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
+	config.GetGlobalConfig().Inc.EnableTimeStampType = true
+}
