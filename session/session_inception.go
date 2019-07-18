@@ -3626,6 +3626,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
 
+	if field.Tp.Tp == mysql.TypeTimestamp && !s.Inc.EnableTimeStampType {
+		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
+	}
+
 	s.checkKeyWords(field.Name.Name.O)
 
 	// notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)

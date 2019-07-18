@@ -22,3 +22,5 @@ util/logutil/slow_query
 test/
 release/
 config/config.toml
+go.mod
+go.sum
