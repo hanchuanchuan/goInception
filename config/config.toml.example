@@ -250,7 +250,7 @@ write-timeout = "15s"
 ignore-error = false
 
 [inc]
-
+enable_zero_date = false
 enable_nullable = true
 enable_drop_table = false
 enable_set_engine = true
