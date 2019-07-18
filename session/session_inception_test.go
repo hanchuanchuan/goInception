@@ -2164,8 +2164,8 @@ func (s *testSessionIncSuite) TestZeroDate(c *C) {
 	sql := ""
 	
 	config.GetGlobalConfig().Inc.EnableZeroDate = false
-	sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a datetime not null default 0 comment 'a', b datetime not null default 0  comment 'b') comment 'test';`
+	sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a datetime not null default 0 comment 'a') comment 'test';`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DEFAULT, "a", "b"))
+		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
 	
 }
