@@ -244,12 +244,15 @@ func (s *testSessionIncSuite) getExplicitDefaultsForTimestamp(c *C) bool {
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	versionStr := row[5].(string)
 
-	versionStr = strings.SplitN(versionStr, "|", 2)[1]
-	value := strings.Replace(versionStr, "'", "", -1)
-	value = strings.TrimSpace(value)
-	if value == "ON" {
-		s.explicitDefaultsForTimestamp = true
+	if strings.Contains(versionStr, "|") {
+		versionStr = strings.SplitN(versionStr, "|", 2)[1]
+		value := strings.Replace(versionStr, "'", "", -1)
+		value = strings.TrimSpace(value)
+		if value == "ON" {
+			s.explicitDefaultsForTimestamp = true
+		}
 	}
+
 	return s.explicitDefaultsForTimestamp
 }
 
@@ -762,7 +765,7 @@ primary key(id)) comment 'test';`
 
 		config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
-	} else {
+	} else if s.getDBVersion(c) >= 50600 {
 		sql = `CREATE TABLE t1(c1 json DEFAULT '{}' COMMENT '日志记录') ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
@@ -852,9 +855,12 @@ primary key(id)) comment 'test';`
 	sql = `create table t1(id int auto_increment primary key,c1 text not null);`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"))
-	sql = `create table t1(id int auto_increment primary key,c1 json not null);`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"))
+
+	if s.getDBVersion(c) >= 50600 {
+		sql = `create table t1(id int auto_increment primary key,c1 json not null);`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"))
+	}
 
 	config.GetGlobalConfig().Inc.EnableBlobNotNull = true
 	sql = `create table t1(id int auto_increment primary key,c1 blob not null);`
@@ -1037,13 +1043,15 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
 
-	config.GetGlobalConfig().Inc.EnableJsonType = true
-	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
-	s.testErrorCode(c, sql)
-	config.GetGlobalConfig().Inc.EnableJsonType = false
-	sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrJsonTypeSupport, "c2"))
+	if s.getDBVersion(c) >= 50600 {
+		config.GetGlobalConfig().Inc.EnableJsonType = true
+		sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
+		s.testErrorCode(c, sql)
+		config.GetGlobalConfig().Inc.EnableJsonType = false
+		sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrJsonTypeSupport, "c2"))
+	}
 
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
 	s.testErrorCode(c, sql)

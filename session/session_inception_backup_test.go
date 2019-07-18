@@ -766,7 +766,7 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 func (s *testSessionIncBackupSuite) query(table, opid string) string {
 	inc := config.GetGlobalConfig().Inc
 	if s.db == nil || s.db.DB().Ping() != nil {
-		// dbName := "127_0_0_1_3306_test_inc"
+
 		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
 			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
 		db, err := gorm.Open("mysql", addr)
@@ -779,8 +779,8 @@ func (s *testSessionIncBackupSuite) query(table, opid string) string {
 	}
 
 	result := []string{}
-	sql := "select rollback_statement from 127_0_0_1_3306_test_inc.`%s` where opid_time = ?;"
-	sql = fmt.Sprintf(sql, table)
+	sql := "select rollback_statement from 127_0_0_1_%d_test_inc.`%s` where opid_time = ?;"
+	sql = fmt.Sprintf(sql, inc.BackupPort, table)
 
 	rows, err := s.db.Raw(sql, opid).Rows()
 	if err != nil {
@@ -800,7 +800,7 @@ func (s *testSessionIncBackupSuite) query(table, opid string) string {
 func (s *testSessionIncBackupSuite) queryStatistics() []int {
 	inc := config.GetGlobalConfig().Inc
 	if s.db == nil || s.db.DB().Ping() != nil {
-		// dbName := "127_0_0_1_3306_test_inc"
+
 		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
 			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
 		db, err := gorm.Open("mysql", addr)
@@ -905,11 +905,13 @@ func (s *testSessionIncBackupSuite) getExplicitDefaultsForTimestamp(c *C) bool {
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	versionStr := row[5].(string)
 
-	versionStr = strings.SplitN(versionStr, "|", 2)[1]
-	value := strings.Replace(versionStr, "'", "", -1)
-	value = strings.TrimSpace(value)
-	if value == "ON" {
-		s.explicitDefaultsForTimestamp = true
+	if strings.Contains(versionStr, "|") {
+		versionStr = strings.SplitN(versionStr, "|", 2)[1]
+		value := strings.Replace(versionStr, "'", "", -1)
+		value = strings.TrimSpace(value)
+		if value == "ON" {
+			s.explicitDefaultsForTimestamp = true
+		}
 	}
 	return s.explicitDefaultsForTimestamp
 }
