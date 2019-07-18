@@ -5688,6 +5688,25 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 		return
 	}
 
+	if s.DBVersion < 50600 {
+		rw, err := NewRewrite(sql)
+		if err != nil {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.AppendErrorMessage(err.Error())
+		} else {
+			rw, err = rw.Rewrite()
+			if err != nil {
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+				s.AppendErrorMessage(err.Error())
+			} else {
+				sql = rw.NewSQL
+				if sql == "" {
+					return
+				}
+			}
+		}
+	}
+
 	var explain []string
 
 	if s.isMiddleware() {
