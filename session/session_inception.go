@@ -2812,6 +2812,9 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				currentTimestampCount := 0
 				onUpdateTimestampCount := 0
+				
+				currentDatetimeCount := 0
+				onUpdateDatetimeCount := 0
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
@@ -2846,10 +2849,31 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 							}
 						}
 					}
+					
+					if field.Tp.Tp == mysql.TypeDatetime {
+						for _, op := range field.Options {
+							if op.Tp == ast.ColumnOptionDefaultValue {
+								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+									if f.FnName.L == ast.CurrentTimestamp {
+										currentDatetimeCount += 1
+									}
+								}
+							} else if op.Tp == ast.ColumnOptionOnUpdate {
+								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
+									if f.FnName.L == ast.CurrentTimestamp {
+										onUpdateDatetimeCount += 1
+									}
+								}
+							}
+						}
+					}
 				}
 
 				if currentTimestampCount > 1 || onUpdateTimestampCount > 1 {
 					s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
+				}
+				if currentDatetimeCount > 1 || onUpdateDatetimeCount > 1 {
+					s.AppendErrorNo(ER_TOO_MUCH_AUTO_DATATIME_COLS)
 				}
 
 				s.cacheNewTable(table)
@@ -6397,6 +6421,10 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return !s.Inc.EnableBlobNotNull
 		/*case ER_NULL_NAME_FOR_INDEX:
 		  return s.Inc.EnableNullIndexName*/
+	case ER_DATATIME_DEFAULT:
+			return s.Inc.CheckDatetimeDefault
+	case ER_TOO_MUCH_AUTO_DATATIME_COLS:
+		return s.Inc.CheckDatetimeCount
 	}
 
 	return true
