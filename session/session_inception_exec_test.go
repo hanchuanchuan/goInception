@@ -83,7 +83,7 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	inc := &config.GetGlobalConfig().Inc
 
 	inc.BackupHost = "127.0.0.1"
-	inc.BackupPort = 20001
+	inc.BackupPort = 3306
 	inc.BackupUser = "inception"
 	inc.BackupPassword = "inception"
 
@@ -381,12 +381,14 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErrf("Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause"))
 
-	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
-		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
-		s.testErrorCode(c, sql)
-	} else {
-		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
+	if s.getDBVersion(c) >= 50600 {
+		sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+		if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+			(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
+			s.testErrorCode(c, sql)
+		} else {
+			s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
+		}
 	}
 
 	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 date default CURRENT_TIMESTAMP);"
@@ -536,12 +538,14 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
 
-	sql = `drop table if exists t1;create table t1(
+	if s.getDBVersion(c) >= 50600 {
+		sql = `drop table if exists t1;create table t1(
 id int auto_increment comment 'test',
 crtTime datetime not null DEFAULT CURRENT_TIMESTAMP comment 'test',
 uptTime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment 'test',
 primary key(id)) comment 'test';`
-	s.testErrorCode(c, sql)
+		s.testErrorCode(c, sql)
+	}
 
 	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 int);")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
@@ -730,9 +734,11 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
 	s.testErrorCode(c, sql)
 
-	// 指定特殊选项
-	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column c1 int,ALGORITHM=INPLACE, LOCK=NONE;"
-	s.testErrorCode(c, sql)
+	if s.getDBVersion(c) >= 50600 {
+		// 指定特殊选项
+		sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column c1 int,ALGORITHM=INPLACE, LOCK=NONE;"
+		s.testErrorCode(c, sql)
+	}
 
 	// 特殊字符
 	config.GetGlobalConfig().Inc.CheckIdentifier = false
@@ -893,12 +899,14 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
-	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
-		(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
-		s.testErrorCode(c, sql)
-	} else {
-		s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
+	if s.getDBVersion(c) >= 50600 {
+		sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+		if s.getExplicitDefaultsForTimestamp(c) || !(strings.Contains(s.getSQLMode(c), "TRADITIONAL") ||
+			(strings.Contains(s.getSQLMode(c), "STRICT_") && strings.Contains(s.getSQLMode(c), "NO_ZERO_DATE"))) {
+			s.testErrorCode(c, sql)
+		} else {
+			s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
+		}
 	}
 
 	// modify column
@@ -1551,11 +1559,13 @@ func (s *testSessionIncExecSuite) getExplicitDefaultsForTimestamp(c *C) bool {
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	versionStr := row[5].(string)
 
-	versionStr = strings.SplitN(versionStr, "|", 2)[1]
-	value := strings.Replace(versionStr, "'", "", -1)
-	value = strings.TrimSpace(value)
-	if value == "ON" {
-		s.explicitDefaultsForTimestamp = true
+	if strings.Contains(versionStr, "|") {
+		versionStr = strings.SplitN(versionStr, "|", 2)[1]
+		value := strings.Replace(versionStr, "'", "", -1)
+		value = strings.TrimSpace(value)
+		if value == "ON" {
+			s.explicitDefaultsForTimestamp = true
+		}
 	}
 	return s.explicitDefaultsForTimestamp
 }
