@@ -2167,5 +2167,5 @@ func (s *testSessionIncSuite) TestZeroDate(c *C) {
 	sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a datetime not null default 0 comment 'a') comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
-	config.GetGlobalConfig().Inc.EnableZeroDate = true
+	
 }
