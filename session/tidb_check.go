@@ -216,10 +216,10 @@ func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroDateMode(), t.IsZero())
 				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroInDateMode(), t.InvalidZero())
 				if t.IsZero() {
-					if !s.Inc.HasZeroDate {
-						return true
-					} else {
+					if s.Inc.EnableZeroDate {
 						return vars.StrictSQLMode && vars.SQLMode.HasNoZeroDateMode()
+					} else {
+						return true
 					}
 				} else if t.InvalidZero() {
 					return vars.StrictSQLMode && vars.SQLMode.HasNoZeroInDateMode()
