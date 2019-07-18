@@ -295,6 +295,10 @@ type Inc struct {
 	CheckTimestampDefault   bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
 	CheckTimestampCount     bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
+	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
+	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
+	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
+
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
 	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`
@@ -600,6 +604,8 @@ type IncLevel struct {
 	ER_TEXT_NOT_NULLABLE_ERROR      int8 `toml:"er_text_not_nullable_error"`
 	ER_TIMESTAMP_DEFAULT            int8 `toml:"er_timestamp_default"`
 	ER_TOO_MUCH_AUTO_TIMESTAMP_COLS int8 `toml:"er_too_much_auto_timestamp_cols"`
+	ER_DATETIME_DEFAULT             int8 `toml:"er_datetime_default"`
+	ER_TOO_MUCH_AUTO_DATETIME_COLS  int8 `toml:"er_too_much_auto_datetime_cols"`
 	ER_USE_ENUM                     int8 `toml:"er_use_enum"`
 	ER_USE_TEXT_OR_BLOB             int8 `toml:"er_use_text_or_blob"`
 	ER_WITH_DEFAULT_ADD_COLUMN      int8 `toml:"er_with_default_add_column"`
@@ -690,6 +696,7 @@ var defaultConf = Config{
 		SkipGrantTable: true,
 	},
 	Inc: Inc{
+		EnableZeroDate:        true,
 		EnableNullable:        true,
 		EnableDropTable:       false,
 		EnableSetEngine:       true,

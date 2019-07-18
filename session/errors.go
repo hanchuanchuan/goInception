@@ -202,6 +202,8 @@ const (
 	ErrFieldNotInGroupBy
 	ErCantChangeColumnPosition
 	ER_ERROR_LAST
+	ER_DATATIME_DEFAULT
+	ER_TOO_MUCH_AUTO_DATATIME_COLS
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -365,6 +367,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
+	ER_DATATIME_DEFAULT:                    "Set default value for DATETIME column '%s'.",
+	ER_TOO_MUCH_AUTO_DATATIME_COLS:         "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -523,10 +527,12 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
 	ErCantChangeColumnPosition:             "不允许改变列顺序(列'%s').",
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
+	ER_DATATIME_DEFAULT:                    "请设置 datetime 列 '%s' 的默认值.",
+	ER_TOO_MUCH_AUTO_DATATIME_COLS:         "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
-
+	
 	switch code {
 	case ER_ALTER_TABLE_ONCE,
 		ER_AUTO_INCR_ID_WARNING,
@@ -575,9 +581,10 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
 		ErrTableCollationNotSupport,
+		ER_DATATIME_DEFAULT,
 		ER_WITH_INSERT_FIELD:
 		return 1
-
+	
 	case ER_CONFLICTING_DECLARATIONS,
 		ER_NO_DB_ERROR,
 		ER_KEY_COLUMN_DOES_NOT_EXITS,
@@ -632,10 +639,11 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrCollationNotSupport,
 		ErrEngineNotSupport,
 		ER_FOREIGN_KEY,
+		ER_TOO_MUCH_AUTO_DATATIME_COLS,
 		ER_INCEPTION_EMPTY_QUERY:
 		//ER_NULL_NAME_FOR_INDEX:
 		return 2
-
+	
 	default:
 		return 2
 	}
