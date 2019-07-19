@@ -53,7 +53,7 @@ enable_fingerprint `v0.6.2`   |  false    |   true,false     |    sql指纹功�
 enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
 enable_json_type  `v0.7.2` |  false    |   true,false     |   设置是否允许json类型字段，包括建表、修改列、新增列操作
-enable_not_innodb   |  false    |   true,false     |  建表指定的存储引擎不为Innodb，不报错
+enable_not_innodb  `v1.0-rc4 已删除`  |  false    |   true,false     |  `已删除` 请使用 `enable_set_engine`和 `support_engine`以便于更灵活的指定存储引擎。 *建表指定的存储引擎不为Innodb，不报错*
 enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
 enable_null_index_name `v0.7.1`|  false    |   true,false     |    创建索引时是否允许空索引名
 enable_orderby_rand   |  false    |   true,false     |    order by rand时是不是报错
@@ -62,9 +62,13 @@ enable_pk_columns_only_int  |  false    |   true,false     |     是否强制主
 enable_select_star   |  false    |   true,false     |     Select*时是不是要报错
 enable_set_charset   |  false    |   true,false     |     是否允许指定表和数据库的字符集
 enable_set_collation `v0.7` |  false    |   true,false     |     是否允许指定表和数据库的排序规则
+enable_set_engine  `v1.0-rc4`  |  true    |   true,false     |     是否允许指定存储引擎,默认为`true`
 enable_sql_statistic `v0.9` |  false    |   true,false     |     开启统计功能. 详见 **[统计功能](../statistics)**
+enable_timestamp_type `v1.0.1` |  true    |   true,false     |    设置是否允许 `timestamp` 类型字段，包括建表、修改列、新增列操作，默认为 `true`
+enable_zero_date `v1.0.1` |  true    |   true,false     |    设置是否支持时间为0值，关闭时强制报错。默认值为 `true`，即开启，此时会基于数据库sql_mode的NO_ZERO_DATE判断是否支持
 general_log `v0.8.1` |  false    |   true,false     |     是否记录全量日志
 lang `v0.5.1` | en-US             | en-US,zh-CN | 返回的信息使用语言,可选值`en-US`,`zh-CN`
+max_allowed_packet    `v1.0-rc3`            | 4194304              | int | 允许的最大数据包大小.默认为 `4194304`,单位字节,即4MB
 max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
 max_insert_rows   `v0.6.3`              | 0           | int  | 设置insert values允许的最大行数.0为不限制
 max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
@@ -73,10 +77,11 @@ max_primary_key_parts          | 3              | int | 主键最多可指定的
 max_update_rows                | 5000           | int  | 当update/delete预估受影响行数超出设置值时警告
 merge_alter_table   |  false    |   true,false     |  在多个改同一个表的语句出现是，报错，提示合成一个
 must_have_columns  `v0.6.3` | ''    |   string  | 用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
+skip_sqls `v1.0-rc3` | ''    |   string  | 指定不再审核的SQL.该参数指定要跳过的客户端/框架默认SQL,以实现客户端兼容
 sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表示不做操作,基于远端数据库,0表示关闭安全更新,1表示开启安全更新
 support_charset | utf8,utf8mb4              | string | 支持的字符集,多个时以逗号分隔
 support_collation `v0.7` | ''             | string | 支持的排序规则,多个时以逗号分隔
-
+support_engine `v1.0-rc4` | 'innodb'    |   string  | 支持的存储引擎类型.默认为`innodb`,此处可以设置多个,以逗号分隔,或者修改默认的存在引擎类型
 <!--
 auto_commit     这个参数的作用是为了匹配Python客户端每次自动设置auto_commit=0的，如果取消则会报错，针对Inception本身没有实际意义
 general_log     这个参数就是原生的MySQL的参数，用来记录在Inception服务上执行过哪些语句，用来定位一些问题等
