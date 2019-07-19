@@ -6,6 +6,8 @@ replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190
 
 replace github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
 
+replace vitess.io/vitess => github.com/vitessio/vitess v3.0.0-rc.3+incompatible
+
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/CorgiMan/json2 v0.0.0-20150213135156-e72957aba209
@@ -104,4 +106,5 @@ require (
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/stretchr/testify.v1 v1.2.2 // indirect
+	vitess.io/vitess v2.1.1+incompatible
 )
