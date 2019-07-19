@@ -2715,32 +2715,32 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 			if !hasPrimary {
 				for _, field := range node.Cols {
-					hasNullFlag := false
-					defaultNullValue := false
+					// hasNullFlag := false
+					// defaultNullValue := false
 					for _, op := range field.Options {
 						switch op.Tp {
-						case ast.ColumnOptionNull:
-							hasNullFlag = true
+						// case ast.ColumnOptionNull:
+						// 	hasNullFlag = true
 						case ast.ColumnOptionPrimaryKey:
 							hasPrimary = true
 
-							if field.Tp.Tp != mysql.TypeInt24 &&
-								field.Tp.Tp != mysql.TypeLong &&
-								field.Tp.Tp != mysql.TypeLonglong {
-								s.AppendErrorNo(ER_PK_COLS_NOT_INT,
-									field.Name.Name.O,
-									node.Table.Schema, node.Table.Name)
-							}
-						case ast.ColumnOptionDefaultValue:
-							if op.Expr.GetDatum().IsNull() {
-								defaultNullValue = true
-							}
+							// if field.Tp.Tp != mysql.TypeInt24 &&
+							// 	field.Tp.Tp != mysql.TypeLong &&
+							// 	field.Tp.Tp != mysql.TypeLonglong {
+							// 	s.AppendErrorNo(ER_PK_COLS_NOT_INT,
+							// 		field.Name.Name.O,
+							// 		node.Table.Schema, node.Table.Name)
+							// }
+							// case ast.ColumnOptionDefaultValue:
+							// 	if op.Expr.GetDatum().IsNull() {
+							// 		defaultNullValue = true
+							// 	}
 						}
 					}
 
-					if hasPrimary && (hasNullFlag || defaultNullValue) {
-						s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
-					}
+					// if hasPrimary && (hasNullFlag || defaultNullValue) {
+					// 	s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
+					// }
 					if hasPrimary {
 						break
 					}
@@ -2818,8 +2818,19 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
+					
+					for _, op := range field.Options {
+						switch op.Tp {
+						case ast.ColumnOptionPrimaryKey:
+							s.checkCreateIndex(nil, "PRIMARY",
+								[]*ast.IndexColName{
+									{Column: field.Name,
+										Length: types.UnspecifiedLength},
+								}, nil, table, true, ast.ConstraintPrimaryKey)
+						}
+					}
 
-					if field.Tp.Tp == mysql.TypeTimestamp && s.Inc.EnableTimeStampType {
+					if field.Tp.Tp == mysql.TypeTimestamp && s.Inc.EnableTimeStampType{
 						for _, op := range field.Options {
 							if op.Tp == ast.ColumnOptionDefaultValue {
 								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
@@ -2972,7 +2983,7 @@ func (s *session) checkMustHaveColumns(table *TableInfo) {
 		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, col_name) {
 				found = true
-				if col_type != "" && col_type != GetDataTypeBase(field.Type) {
+				if col_type != "" && !strings.EqualFold(col_type, GetDataTypeBase(field.Type)) {
 					notFountColumns = append(notFountColumns, col)
 				}
 				break
@@ -5703,6 +5714,25 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	sqlId, ok := s.checkFingerprint(sql)
 	if ok {
 		return
+	}
+
+	if s.DBVersion < 50600 {
+		rw, err := NewRewrite(sql)
+		if err != nil {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.AppendErrorMessage(err.Error())
+		} else {
+			rw, err = rw.Rewrite()
+			if err != nil {
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+				s.AppendErrorMessage(err.Error())
+			} else {
+				sql = rw.NewSQL
+				if sql == "" {
+					return
+				}
+			}
+		}
 	}
 
 	var explain []string
