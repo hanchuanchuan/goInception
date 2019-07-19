@@ -2819,7 +2819,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
 
-					if field.Tp.Tp == mysql.TypeTimestamp {
+					if field.Tp.Tp == mysql.TypeTimestamp && s.Inc.EnableTimeStampType {
 						for _, op := range field.Options {
 							if op.Tp == ast.ColumnOptionDefaultValue {
 								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
