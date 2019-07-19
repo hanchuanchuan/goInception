@@ -294,7 +294,8 @@ type Inc struct {
 	CheckTableComment       bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault   bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
 	CheckTimestampCount     bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
-
+	
+	EnableTimeStampType bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
 	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
 	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
@@ -703,6 +704,7 @@ var defaultConf = Config{
 		CheckTableComment:     false,
 		CheckColumnComment:    false,
 		CheckTimestampCount:   true,
+		EnableTimeStampType:   true,
 		SqlSafeUpdates:        -1,
 		SupportCharset:        "utf8,utf8mb4",
 		SupportEngine:         "innodb",

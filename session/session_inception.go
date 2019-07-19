@@ -2818,7 +2818,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
-
+					
 					for _, op := range field.Options {
 						switch op.Tp {
 						case ast.ColumnOptionPrimaryKey:
@@ -2830,7 +2830,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 						}
 					}
 
-					if field.Tp.Tp == mysql.TypeTimestamp {
+					if field.Tp.Tp == mysql.TypeTimestamp && s.Inc.EnableTimeStampType{
 						for _, op := range field.Options {
 							if op.Tp == ast.ColumnOptionDefaultValue {
 								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
@@ -3630,6 +3630,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if field.Tp.Tp == mysql.TypeEnum ||
 		field.Tp.Tp == mysql.TypeSet ||
 		field.Tp.Tp == mysql.TypeBit {
+		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
+	}
+	
+	if field.Tp.Tp == mysql.TypeTimestamp && !s.Inc.EnableTimeStampType {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
