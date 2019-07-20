@@ -1,6 +1,22 @@
 # goInception 更新日志
 
 
+## [v1.0.1] - 2019-7-20
+
+### Fix
+* 修复must_have_columns参数列类型的大小写兼容问题
+
+### New Features
+* 添加alter table rename index语法支持
+* 添加参数 `enable_zero_date` ,设置是否支持时间为0值，关闭时强制报错。默认值为 `true` (#55)
+* 添加参数 `enable_timestamp_type` ,设置是否允许 `timestamp` 类型字段
+* 添加 `mysql 5.5` 版本审核支持
+
+### Update
+* 优化modify column列信息逻辑保存
+* 优化列属性的键定义逻辑保存
+
+
 ## [v1.0] - 2019-7-15
 
 ### Fix
