@@ -2217,3 +2217,14 @@ func (s *testSessionIncSuite) TestTimestampType(c *C) {
 		session.NewErr(session.ER_INVALID_DATA_TYPE, "a"))
 	config.GetGlobalConfig().Inc.EnableTimeStampType = true
 }
+
+func (s *testSessionIncSuite) TestAlterNoOption(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	
+	sql := `alter table t1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NOT_SUPPORTED_YET))
+}
