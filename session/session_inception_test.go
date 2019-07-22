@@ -2211,5 +2211,5 @@ func (s *testSessionIncSuite) TestAlterNoOption(c *C) {
 	
 	sql := `alter table t1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NOT_SUPPORTED_ALTER_OPTION))
+		session.NewErr(session.ER_NOT_SUPPORTED_YET))
 }
