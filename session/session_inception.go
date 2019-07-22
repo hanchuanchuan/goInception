@@ -3099,7 +3099,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		switch alter.Tp {
 		case ast.AlterTableOption:
 			if len(alter.Options) == 0 {
-				s.AppendErrorNo(ER_NOT_SUPPORTED_ALTER_OPTION)
+				s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 			}
 			s.checkTableOptions(alter.Options, node.Table.Name.String(), false)
 		case ast.AlterTableAddColumns:
