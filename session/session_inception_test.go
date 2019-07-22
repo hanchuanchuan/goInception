@@ -2223,8 +2223,8 @@ func (s *testSessionIncSuite) TestAlterNoOption(c *C) {
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
-	
-	sql := `alter table t1;`
+
+	sql := `drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NOT_SUPPORTED_YET))
 }
