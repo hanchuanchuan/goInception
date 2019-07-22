@@ -294,8 +294,8 @@ type Inc struct {
 	CheckTableComment       bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault   bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
 	CheckTimestampCount     bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
-	
-	EnableTimeStampType bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
+
+	EnableTimeStampType  bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
 	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
 	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
@@ -334,14 +334,16 @@ type Inc struct {
 	// 全量日志
 	GeneralLog bool `toml:"general_log" json:"general_log"`
 
-	Lang          string `toml:"lang" json:"lang"`
-	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
+	Lang string `toml:"lang" json:"lang"`
+	// 连接服务器允许的最大包大小,以字节为单位 默认值为4194304(即4MB)
+	MaxAllowedPacket uint `toml:"max_allowed_packet" json:"max_allowed_packet"`
+	MaxCharLength    uint `toml:"max_char_length" json:"max_char_length"`
+
+	// DDL操作最大允许的受影响行数. 默认值0,即不限制
+	MaxDDLAffectRows uint `toml:"max_ddl_affect_rows" json:"max_ddl_affect_rows"`
 
 	// 一次最多写入的行数, 仅判断insert values语法
 	MaxInsertRows uint `toml:"max_insert_rows" json:"max_insert_rows"`
-
-	// 连接服务器允许的最大包大小,以字节为单位 默认值为4194304(即4MB)
-	MaxAllowedPacket uint `toml:"max_allowed_packet" json:"max_allowed_packet"`
 
 	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
 	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`

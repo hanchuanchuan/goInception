@@ -85,6 +85,7 @@ const (
 	ER_TOO_LONG_IDENT
 	ER_UDPATE_TOO_MUCH_ROWS
 	ER_INSERT_TOO_MUCH_ROWS
+	ER_CHANGE_TOO_MUCH_ROWS
 	ER_WRONG_NAME_FOR_INDEX
 	ER_TOO_MANY_KEYS
 	ER_NOT_SUPPORTED_KEY_TYPE
@@ -247,8 +248,9 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_FOREIGN_KEY:                         "Foreign key is not allowed in table '%s'.",
 	ER_TOO_MANY_KEY_PARTS:                  "Too many key parts in Key '%s' in table '%s' specified, max %d parts allowed.",
 	ER_TOO_LONG_IDENT:                      "Identifier name '%s' is too long.",
-	ER_UDPATE_TOO_MUCH_ROWS:                "Update(%d rows) more then %d rows.",
-	ER_INSERT_TOO_MUCH_ROWS:                "Insert(%d rows) more then %d rows.",
+	ER_UDPATE_TOO_MUCH_ROWS:                "Update(%d rows) more than %d rows.",
+	ER_INSERT_TOO_MUCH_ROWS:                "Insert(%d rows) more than %d rows.",
+	ER_CHANGE_TOO_MUCH_ROWS:                "%s(%d rows) more than %d rows.",
 	ER_WRONG_NAME_FOR_INDEX:                "Incorrect index name '%s' in table '%s'.",
 	ER_TOO_MANY_KEYS:                       "Too many keys specified in table '%s', max %d keys allowed.",
 	ER_NOT_SUPPORTED_KEY_TYPE:              "Not supported key type: '%s'.",
@@ -367,8 +369,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
-	ER_DATATIME_DEFAULT:                    "Set default value for DATETIME column '%s'.",
-	ER_TOO_MUCH_AUTO_DATATIME_COLS:         "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
+	ER_DATATIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
+	ER_TOO_MUCH_AUTO_DATATIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -413,6 +415,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_TOO_LONG_IDENT:                   "名称 '%s' 过长.",
 	ER_UDPATE_TOO_MUCH_ROWS:             "预计一次更新(%d行)超过 %d 行.",
 	ER_INSERT_TOO_MUCH_ROWS:             "一次新增(%d行)超过 %d 行.",
+	ER_CHANGE_TOO_MUCH_ROWS:             "预计影响行数(%d行)超过 %d 行.",
 	ER_WRONG_NAME_FOR_INDEX:             "索引 '%s' 名称不正确(表 '%s').",
 	ER_TOO_MANY_KEYS:                    "表 '%s' 指定了太多索引, 最多允许 %d 个.",
 	ER_NOT_SUPPORTED_KEY_TYPE:           "不允许的键类型: '%s'.",
@@ -527,12 +530,12 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
 	ErCantChangeColumnPosition:             "不允许改变列顺序(列'%s').",
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
-	ER_DATATIME_DEFAULT:                    "请设置 datetime 列 '%s' 的默认值.",
-	ER_TOO_MUCH_AUTO_DATATIME_COLS:         "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
+	ER_DATATIME_DEFAULT:            "请设置 datetime 列 '%s' 的默认值.",
+	ER_TOO_MUCH_AUTO_DATATIME_COLS: "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
-	
+
 	switch code {
 	case ER_ALTER_TABLE_ONCE,
 		ER_AUTO_INCR_ID_WARNING,
@@ -572,6 +575,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_TOO_MANY_KEY_PARTS,
 		ER_TOO_MANY_KEYS,
 		ER_UDPATE_TOO_MUCH_ROWS,
+		ER_CHANGE_TOO_MUCH_ROWS,
 		ER_UNKNOWN_COLLATION,
 		ER_USE_ENUM,
 		ER_WITH_DEFAULT_ADD_COLUMN,
@@ -584,7 +588,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_DATATIME_DEFAULT,
 		ER_WITH_INSERT_FIELD:
 		return 1
-	
+
 	case ER_CONFLICTING_DECLARATIONS,
 		ER_NO_DB_ERROR,
 		ER_KEY_COLUMN_DOES_NOT_EXITS,
@@ -643,7 +647,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_INCEPTION_EMPTY_QUERY:
 		//ER_NULL_NAME_FOR_INDEX:
 		return 2
-	
+
 	default:
 		return 2
 	}
@@ -780,6 +784,8 @@ func (e ErrorCode) String() string {
 		return "er_too_long_ident"
 	case ER_UDPATE_TOO_MUCH_ROWS:
 		return "er_udpate_too_much_rows"
+	case ER_CHANGE_TOO_MUCH_ROWS:
+		return "er_change_too_much_rows"
 	case ER_INSERT_TOO_MUCH_ROWS:
 		return "er_insert_too_much_rows"
 	case ER_WRONG_NAME_FOR_INDEX:

@@ -2418,6 +2418,11 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 				s.myRecord.TableInfo = table
 
 				s.myRecord.TableInfo.IsDeleted = true
+
+				if s.Inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.Inc.MaxDDLAffectRows) {
+					s.AppendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
+						"Drop", s.myRecord.AffectedRows, s.Inc.MaxDDLAffectRows)
+				}
 			}
 		}
 	}
@@ -2812,13 +2817,13 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				currentTimestampCount := 0
 				onUpdateTimestampCount := 0
-				
+
 				currentDatetimeCount := 0
 				onUpdateDatetimeCount := 0
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
-					
+
 					for _, op := range field.Options {
 						switch op.Tp {
 						case ast.ColumnOptionPrimaryKey:
@@ -2830,7 +2835,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 						}
 					}
 
-					if field.Tp.Tp == mysql.TypeTimestamp && s.Inc.EnableTimeStampType{
+					if field.Tp.Tp == mysql.TypeTimestamp && s.Inc.EnableTimeStampType {
 						for _, op := range field.Options {
 							if op.Tp == ast.ColumnOptionDefaultValue {
 								if f, ok := op.Expr.(*ast.FuncCallExpr); ok {
@@ -2849,7 +2854,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 							}
 						}
 					}
-					
+
 					if field.Tp.Tp == mysql.TypeDatetime {
 						for _, op := range field.Options {
 							if op.Tp == ast.ColumnOptionDefaultValue {
@@ -3093,6 +3098,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	if s.opt.execute {
 		s.myRecord.DDLRollback += fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
 			table.Schema, table.Name)
+	}
+
+	if s.Inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.Inc.MaxDDLAffectRows) {
+		s.AppendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
+			"Alter", s.myRecord.AffectedRows, s.Inc.MaxDDLAffectRows)
 	}
 
 	for i, alter := range node.Specs {
@@ -3632,7 +3642,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		field.Tp.Tp == mysql.TypeBit {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
-	
+
 	if field.Tp.Tp == mysql.TypeTimestamp && !s.Inc.EnableTimeStampType {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
@@ -6426,7 +6436,7 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		/*case ER_NULL_NAME_FOR_INDEX:
 		  return s.Inc.EnableNullIndexName*/
 	case ER_DATATIME_DEFAULT:
-			return s.Inc.CheckDatetimeDefault
+		return s.Inc.CheckDatetimeDefault
 	case ER_TOO_MUCH_AUTO_DATATIME_COLS:
 		return s.Inc.CheckDatetimeCount
 	}

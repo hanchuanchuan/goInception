@@ -82,12 +82,8 @@ sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表
 support_charset | utf8,utf8mb4              | string | 支持的字符集,多个时以逗号分隔
 support_collation `v0.7` | ''             | string | 支持的排序规则,多个时以逗号分隔
 support_engine `v1.0-rc4` | 'innodb'    |   string  | 支持的存储引擎类型.默认为`innodb`,此处可以设置多个,以逗号分隔,或者修改默认的存在引擎类型
+
+
 <!--
-auto_commit     这个参数的作用是为了匹配Python客户端每次自动设置auto_commit=0的，如果取消则会报错，针对Inception本身没有实际意义
-general_log     这个参数就是原生的MySQL的参数，用来记录在Inception服务上执行过哪些语句，用来定位一些问题等
-inception_enable_sql_statistic      设置是不是支持统计Inception执行过的语句中，各种语句分别占多大比例，如果打开这个参数，则每次执行的情况都会在备份数据库实例中的inception库的statistic表中以一条记录存储这次操作的统计情况，每次操作对应一条记录，这条记录中含有的信息是各种类型的语句执行次数情况，具体的信息需要参考后面一章<<Inception 的统计功能>>
 inception_read_only     设置当前Inception服务器是不是只读的，这是为了防止一些人具有修改权限的帐号时，通过Inception误修改一些数据，如果inception_read_only设置为ON，则即使开了enable-execute，同时又有执行权限，也不会去执行，审核完成即返回
-inception_check_identifier      打开与关闭Inception对SQL语句中各种名字的检查，如果设置为ON，则如果发现名字中存在除数字、字母、下划线之外的字符时，会报Identifier "invalidname" is invalid, valid options: [a-z,A-Z,0-9,_].
-inception_osc_on        一个全局的OSC开关，默认是打开的，如果想要关闭则设置为OFF，这样就会直接修改
-inception_osc_print_sql     对应参数--print
-inception_osc_print_none        用来设置在Inception返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，如果设置为1，就不打印，如果设置为0，就打印。而如果出现错误了，则都会打印 -->
+ -->
