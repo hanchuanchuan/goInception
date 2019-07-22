@@ -6282,41 +6282,78 @@ func (s *session) AppendWarning(number ErrorCode, values ...interface{}) {
 
 func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 	r := s.myRecord
-	if s.Inc.EnableLevel {
-		var level uint8 = 2
-		found := false
-		if v, ok := s.incLevel[number.String()]; ok {
-			level = v
-			found = true
-		} else {
-			level = GetErrorLevel(number)
-		}
-		if (found && level > 0) || (!found && s.checkInceptionVariables(number)) {
-			r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
-			s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
-			if s.stage == StageBackup {
-				r.Buf.WriteString("Backup: ")
-			} else if s.stage == StageExec {
-				r.Buf.WriteString("Execute: ")
-			}
-			if len(values) == 0 {
-				r.Buf.WriteString(GetErrorMessage(number))
-			} else {
-				r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
-			}
-			r.Buf.WriteString("\n")
-		}
-	} else {
-		if s.checkInceptionVariables(number) {
-			if s.stage == StageBackup {
-				r.Buf.WriteString("Backup: ")
-			} else if s.stage == StageExec {
-				r.Buf.WriteString("Execute: ")
-			}
-			s.myRecord.AppendErrorNo(number, values...)
-			s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
-		}
+
+	// 不检查时退出
+	if !s.checkInceptionVariables(number) {
+		return
 	}
+
+	var level uint8 = 2
+	if v, ok := s.incLevel[number.String()]; ok {
+		level = v
+	} else {
+		level = GetErrorLevel(number)
+	}
+
+	if number == ER_CHARSET_ON_COLUMN {
+		fmt.Println("-----------")
+		fmt.Println(level)
+		fmt.Println(s.incLevel)
+		fmt.Println("-----------")
+
+	}
+
+	if level > 0 {
+		r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
+		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+		if s.stage == StageBackup {
+			r.Buf.WriteString("Backup: ")
+		} else if s.stage == StageExec {
+			r.Buf.WriteString("Execute: ")
+		}
+		if len(values) == 0 {
+			r.Buf.WriteString(GetErrorMessage(number))
+		} else {
+			r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+		}
+		r.Buf.WriteString("\n")
+	}
+
+	// if s.Inc.EnableLevel {
+	// 	var level uint8 = 2
+	// 	found := false
+	// 	if v, ok := s.incLevel[number.String()]; ok {
+	// 		level = v
+	// 		found = true
+	// 	} else {
+	// 		level = GetErrorLevel(number)
+	// 	}
+	// 	if (found && level > 0) || (!found && s.checkInceptionVariables(number)) {
+	// 		r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
+	// 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+	// 		if s.stage == StageBackup {
+	// 			r.Buf.WriteString("Backup: ")
+	// 		} else if s.stage == StageExec {
+	// 			r.Buf.WriteString("Execute: ")
+	// 		}
+	// 		if len(values) == 0 {
+	// 			r.Buf.WriteString(GetErrorMessage(number))
+	// 		} else {
+	// 			r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+	// 		}
+	// 		r.Buf.WriteString("\n")
+	// 	}
+	// } else {
+	// 	if s.checkInceptionVariables(number) {
+	// 		if s.stage == StageBackup {
+	// 			r.Buf.WriteString("Backup: ")
+	// 		} else if s.stage == StageExec {
+	// 			r.Buf.WriteString("Execute: ")
+	// 		}
+	// 		s.myRecord.AppendErrorNo(number, values...)
+	// 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+	// 	}
+	// }
 }
 
 func (s *session) checkKeyWords(name string) {
