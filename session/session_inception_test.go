@@ -2229,10 +2229,12 @@ func (s *testSessionIncSuite) TestFloatDouble(c *C) {
 	}()
 	
 	config.GetGlobalConfig().Inc.CheckFloatDouble = true
-	sql := `drop table if exists t1;create table t1(id int,c1 float, c2 double,key ix(c1));`
+	sql := `drop table if exists t1;create table t1(id int,c1 float,key ix(c1));`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrFloatDoubleToDecimal, "c1"),
-		session.NewErr(session.ErrFloatDoubleToDecimal, "c2"),
-		)
+		session.NewErr(session.ErrFloatDoubleToDecimal, "c1"))
+	
+	sql = `drop table if exists t1;create table t1(id int, c2 double,key ix(c2));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrFloatDoubleToDecimal, "c2"))
 	config.GetGlobalConfig().Inc.CheckFloatDouble = false
 }
