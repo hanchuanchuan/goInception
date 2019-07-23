@@ -585,30 +585,44 @@ type IncLevel struct {
 	ER_ALTER_TABLE_ONCE             int8 `toml:"er_alter_table_once"`
 	ER_AUTO_INCR_ID_WARNING         int8 `toml:"er_auto_incr_id_warning"`
 	ER_AUTOINC_UNSIGNED             int8 `toml:"er_autoinc_unsigned"`
+	ER_BLOB_CANT_HAVE_DEFAULT       int8 `toml:"er_blob_cant_have_default"`
+	ER_CANT_SET_CHARSET             int8 `toml:"er_cant_set_charset"`
+	ER_CANT_SET_COLLATION           int8 `toml:"er_cant_set_collation"`
+	ER_CANT_SET_ENGINE              int8 `toml:"er_cant_set_engine"`
 	ER_CHANGE_COLUMN_TYPE           int8 `toml:"er_change_column_type"`
+	ER_CHANGE_TOO_MUCH_ROWS         int8 `toml:"er_change_too_much_rows"`
+	ER_CHAR_TO_VARCHAR_LEN          int8 `toml:"er_char_to_varchar_len"`
 	ER_CHARSET_ON_COLUMN            int8 `toml:"er_charset_on_column"`
 	ER_COLUMN_HAVE_NO_COMMENT       int8 `toml:"er_column_have_no_comment"`
+	ER_DATETIME_DEFAULT             int8 `toml:"er_datetime_default"`
 	ER_FOREIGN_KEY                  int8 `toml:"er_foreign_key"`
 	ER_IDENT_USE_KEYWORD            int8 `toml:"er_ident_use_keyword"`
 	ER_INC_INIT_ERR                 int8 `toml:"er_inc_init_err"`
 	ER_INDEX_NAME_IDX_PREFIX        int8 `toml:"er_index_name_idx_prefix"`
 	ER_INDEX_NAME_UNIQ_PREFIX       int8 `toml:"er_index_name_uniq_prefix"`
+	ER_INSERT_TOO_MUCH_ROWS         int8 `toml:"er_insert_too_much_rows"`
 	ER_INVALID_DATA_TYPE            int8 `toml:"er_invalid_data_type"`
 	ER_INVALID_IDENT                int8 `toml:"er_invalid_ident"`
+	ER_MUST_HAVE_COLUMNS            int8 `toml:"er_must_have_columns"`
 	ER_NO_WHERE_CONDITION           int8 `toml:"er_no_where_condition"`
 	ER_NOT_ALLOWED_NULLABLE         int8 `toml:"er_not_allowed_nullable"`
 	ER_ORDERY_BY_RAND               int8 `toml:"er_ordery_by_rand"`
 	ER_PARTITION_NOT_ALLOWED        int8 `toml:"er_partition_not_allowed"`
 	ER_PK_COLS_NOT_INT              int8 `toml:"er_pk_cols_not_int"`
+	ER_PK_TOO_MANY_PARTS            int8 `toml:"er_pk_too_many_parts"`
 	ER_SELECT_ONLY_STAR             int8 `toml:"er_select_only_star"`
 	ER_SET_DATA_TYPE_INT_BIGINT     int8 `toml:"er_set_data_type_int_bigint"`
+	ER_TABLE_CHARSET_MUST_NULL      int8 `toml:"er_table_charset_must_null"`
+	ER_TABLE_CHARSET_MUST_UTF8      int8 `toml:"er_table_charset_must_utf8"`
 	ER_TABLE_MUST_HAVE_COMMENT      int8 `toml:"er_table_must_have_comment"`
 	ER_TABLE_MUST_HAVE_PK           int8 `toml:"er_table_must_have_pk"`
 	ER_TEXT_NOT_NULLABLE_ERROR      int8 `toml:"er_text_not_nullable_error"`
 	ER_TIMESTAMP_DEFAULT            int8 `toml:"er_timestamp_default"`
-	ER_TOO_MUCH_AUTO_TIMESTAMP_COLS int8 `toml:"er_too_much_auto_timestamp_cols"`
-	ER_DATETIME_DEFAULT             int8 `toml:"er_datetime_default"`
+	ER_TOO_MANY_KEY_PARTS           int8 `toml:"er_too_many_key_parts"`
+	ER_TOO_MANY_KEYS                int8 `toml:"er_too_many_keys"`
 	ER_TOO_MUCH_AUTO_DATETIME_COLS  int8 `toml:"er_too_much_auto_datetime_cols"`
+	ER_TOO_MUCH_AUTO_TIMESTAMP_COLS int8 `toml:"er_too_much_auto_timestamp_cols"`
+	ER_UDPATE_TOO_MUCH_ROWS         int8 `toml:"er_udpate_too_much_rows"`
 	ER_USE_ENUM                     int8 `toml:"er_use_enum"`
 	ER_USE_TEXT_OR_BLOB             int8 `toml:"er_use_text_or_blob"`
 	ER_WITH_DEFAULT_ADD_COLUMN      int8 `toml:"er_with_default_add_column"`
@@ -759,28 +773,44 @@ var defaultConf = Config{
 		ER_ALTER_TABLE_ONCE:             1,
 		ER_AUTO_INCR_ID_WARNING:         1,
 		ER_AUTOINC_UNSIGNED:             1,
+		ER_BLOB_CANT_HAVE_DEFAULT:       1,
+		ER_CANT_SET_CHARSET:             1,
+		ER_CANT_SET_COLLATION:           1,
+		ER_CANT_SET_ENGINE:              1,
 		ER_CHANGE_COLUMN_TYPE:           1,
+		ER_CHANGE_TOO_MUCH_ROWS:         1,
+		ER_CHAR_TO_VARCHAR_LEN:          1,
 		ER_CHARSET_ON_COLUMN:            1,
 		ER_COLUMN_HAVE_NO_COMMENT:       1,
+		ER_DATETIME_DEFAULT:             1,
 		ER_FOREIGN_KEY:                  2,
 		ER_IDENT_USE_KEYWORD:            1,
 		ER_INC_INIT_ERR:                 1,
 		ER_INDEX_NAME_IDX_PREFIX:        1,
 		ER_INDEX_NAME_UNIQ_PREFIX:       1,
+		ER_INSERT_TOO_MUCH_ROWS:         1,
 		ER_INVALID_DATA_TYPE:            1,
 		ER_INVALID_IDENT:                1,
+		ER_MUST_HAVE_COLUMNS:            1,
 		ER_NO_WHERE_CONDITION:           1,
 		ER_NOT_ALLOWED_NULLABLE:         1,
 		ER_ORDERY_BY_RAND:               1,
 		ER_PARTITION_NOT_ALLOWED:        1,
 		ER_PK_COLS_NOT_INT:              1,
+		ER_PK_TOO_MANY_PARTS:            1,
 		ER_SELECT_ONLY_STAR:             1,
 		ER_SET_DATA_TYPE_INT_BIGINT:     2,
+		ER_TABLE_CHARSET_MUST_NULL:      1,
+		ER_TABLE_CHARSET_MUST_UTF8:      1,
 		ER_TABLE_MUST_HAVE_COMMENT:      1,
 		ER_TABLE_MUST_HAVE_PK:           1,
 		ER_TEXT_NOT_NULLABLE_ERROR:      1,
 		ER_TIMESTAMP_DEFAULT:            1,
+		ER_TOO_MANY_KEY_PARTS:           1,
+		ER_TOO_MANY_KEYS:                1,
+		ER_TOO_MUCH_AUTO_DATETIME_COLS:  2,
 		ER_TOO_MUCH_AUTO_TIMESTAMP_COLS: 2,
+		ER_UDPATE_TOO_MUCH_ROWS:         1,
 		ER_USE_ENUM:                     1,
 		ER_USE_TEXT_OR_BLOB:             2,
 		ER_WITH_DEFAULT_ADD_COLUMN:      1,
