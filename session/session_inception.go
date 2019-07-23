@@ -2878,7 +2878,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 					s.AppendErrorNo(ER_TOO_MUCH_AUTO_TIMESTAMP_COLS)
 				}
 				if currentDatetimeCount > 1 || onUpdateDatetimeCount > 1 {
-					s.AppendErrorNo(ER_TOO_MUCH_AUTO_DATATIME_COLS)
+					s.AppendErrorNo(ER_TOO_MUCH_AUTO_DATETIME_COLS)
 				}
 
 				s.cacheNewTable(table)
@@ -6469,7 +6469,7 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		  return s.Inc.EnableNullIndexName*/
 	case ER_DATATIME_DEFAULT:
 		return s.Inc.CheckDatetimeDefault
-	case ER_TOO_MUCH_AUTO_DATATIME_COLS:
+	case ER_TOO_MUCH_AUTO_DATETIME_COLS:
 		return s.Inc.CheckDatetimeCount
 	}
 

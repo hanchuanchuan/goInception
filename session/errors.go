@@ -204,7 +204,7 @@ const (
 	ErCantChangeColumnPosition
 	ER_ERROR_LAST
 	ER_DATATIME_DEFAULT
-	ER_TOO_MUCH_AUTO_DATATIME_COLS
+	ER_TOO_MUCH_AUTO_DATETIME_COLS
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -370,7 +370,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 	ER_DATATIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
-	ER_TOO_MUCH_AUTO_DATATIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
+	ER_TOO_MUCH_AUTO_DATETIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -531,7 +531,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErCantChangeColumnPosition:             "不允许改变列顺序(列'%s').",
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 	ER_DATATIME_DEFAULT:            "请设置 datetime 列 '%s' 的默认值.",
-	ER_TOO_MUCH_AUTO_DATATIME_COLS: "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
+	ER_TOO_MUCH_AUTO_DATETIME_COLS: "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -643,7 +643,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrCollationNotSupport,
 		ErrEngineNotSupport,
 		ER_FOREIGN_KEY,
-		ER_TOO_MUCH_AUTO_DATATIME_COLS,
+		ER_TOO_MUCH_AUTO_DATETIME_COLS,
 		ER_INCEPTION_EMPTY_QUERY:
 		//ER_NULL_NAME_FOR_INDEX:
 		return 2
@@ -1026,6 +1026,7 @@ func (e ErrorCode) String() string {
 
 // CheckAuditSetting 自动校准旧的审核规则和自定义规则
 func CheckAuditSetting(cnf *config.Config) {
+	return
 
 	if cnf.Inc.CheckInsertField {
 		cnf.IncLevel.ER_WITH_INSERT_FIELD = int8(GetErrorLevel(ER_WITH_INSERT_FIELD))
