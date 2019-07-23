@@ -246,28 +246,6 @@ type Binlog struct {
 
 // Inc is the inception section of the config.
 type Inc struct {
-
-	// character-set-server = utf8
-	// inception_check_autoincrement_datatype = 1
-	// inception_check_autoincrement_init_value = 1
-	// inception_check_autoincrement_name = 1
-	// inception_check_column_comment = 'OFF'
-	// inception_check_column_default_value = 0
-	// inception_check_dml_limit = 1
-	// inception_check_dml_orderby = 1
-	// inception_check_dml_where = 'OFF'
-	// inception_check_identifier = 1
-	// inception_check_index_prefix = 0
-	// inception_check_insert_field = 'OFF'
-	// inception_check_primary_key = 'OFF'
-	// inception_check_table_comment = 'OFF'
-	// inception_check_timestamp_default = 0
-	// inception_enable_autoincrement_unsigned = 1
-	// inception_enable_blob_type = 0
-	// inception_enable_nullable = 'ON'
-	// inception_enable_column_charset = 0
-	// inception_support_charset = utf8mb4
-
 	BackupHost     string `toml:"backup_host" json:"backup_host"` // 远程备份库信息
 	BackupPassword string `toml:"backup_password" json:"backup_password"`
 	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
