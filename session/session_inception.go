@@ -6295,14 +6295,6 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 		level = GetErrorLevel(number)
 	}
 
-	if number == ER_CHARSET_ON_COLUMN {
-		fmt.Println("-----------")
-		fmt.Println(level)
-		fmt.Println(s.incLevel)
-		fmt.Println("-----------")
-
-	}
-
 	if level > 0 {
 		r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
