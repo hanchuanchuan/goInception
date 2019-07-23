@@ -6353,6 +6353,9 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 }
 
 func (s *session) checkKeyWords(name string) {
+	if name == strings.ToUpper(name) && s.Inc.CheckIdentifierUpper {
+	
+	}
 	if !regIdentified.MatchString(name) {
 		s.AppendErrorNo(ER_INVALID_IDENT, name)
 	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
