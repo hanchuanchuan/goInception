@@ -302,6 +302,8 @@ type Inc struct {
 	
 	// 将 float/double 转成 decimal, 默认为 false
 	CheckFloatDouble bool `toml:"check_float_double" json:"check_float_double"`
+	
+	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
@@ -725,6 +727,7 @@ var defaultConf = Config{
 		CheckTimestampCount:   true,
 		EnableTimeStampType:   true,
 		CheckFloatDouble:      false,
+		CheckIdentifierUpper:  false,
 		SqlSafeUpdates:        -1,
 		SupportCharset:        "utf8,utf8mb4",
 		SupportEngine:         "innodb",
