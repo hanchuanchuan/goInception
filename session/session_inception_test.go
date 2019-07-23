@@ -2238,3 +2238,19 @@ func (s *testSessionIncSuite) TestFloatDouble(c *C) {
 		session.NewErr(session.ErrFloatDoubleToDecimal, "c2"))
 	config.GetGlobalConfig().Inc.CheckFloatDouble = false
 }
+
+func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	
+	config.GetGlobalConfig().Inc.CheckIdentifierUpper = true
+	sql := `drop table if exists hello;create table HELLO(ID int,C1 float, C2 double,key IDX_C1(C1),UNIQUE INDEX uniq_A(C2));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrIdentifierUpper, "uniq_A"),
+		)
+	
+	config.GetGlobalConfig().Inc.CheckIdentifierUpper = false
+}
+
