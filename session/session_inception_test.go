@@ -2221,3 +2221,20 @@ func (s *testSessionIncSuite) TestAlterNoOption(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NOT_SUPPORTED_YET))
 }
+
+func (s *testSessionIncSuite) TestFloatDouble(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	
+	config.GetGlobalConfig().Inc.CheckFloatDouble = true
+	sql := `drop table if exists t1;create table t1(id int,c1 float,key ix(c1));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrFloatDoubleToDecimal, "c1"))
+	
+	sql = `drop table if exists t1;create table t1(id int, c2 double,key ix(c2));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrFloatDoubleToDecimal, "c2"))
+	config.GetGlobalConfig().Inc.CheckFloatDouble = false
+}
