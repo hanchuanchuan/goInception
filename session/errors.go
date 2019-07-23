@@ -65,8 +65,6 @@ const (
 	ER_INVALID_COMMAND
 	ER_SQL_INVALID_SOURCE
 	ER_WRONG_DB_NAME
-	EXIT_UNKNOWN_VARIABLE
-	EXIT_UNKNOWN_OPTION
 	ER_NO_DB_ERROR
 	ER_WITH_LIMIT_CONDITION
 	ER_WITH_ORDERBY_CONDITION
@@ -126,9 +124,6 @@ const (
 	ER_HAVE_BEGIN
 	ER_NET_READ_INTERRUPTED
 	ER_BINLOG_FORMAT_STATEMENT
-	EXIT_NO_ARGUMENT_ALLOWED
-	EXIT_ARGUMENT_REQUIRED
-	EXIT_AMBIGUOUS_OPTION
 	ER_ERROR_EXIST_BEFORE
 	ER_UNKNOWN_SYSTEM_VARIABLE
 	ER_UNKNOWN_CHARACTER_SET
@@ -198,13 +193,12 @@ const (
 	ErrTableCollationNotSupport
 	ErrJsonTypeSupport
 	ErrEngineNotSupport
-	//ER_NULL_NAME_FOR_INDEX
 	ErrMixOfGroupFuncAndFields
 	ErrFieldNotInGroupBy
 	ErCantChangeColumnPosition
-	ER_ERROR_LAST
-	ER_DATATIME_DEFAULT
+	ER_DATETIME_DEFAULT
 	ER_TOO_MUCH_AUTO_DATETIME_COLS
+	ER_ERROR_LAST
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -230,8 +224,6 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_INVALID_COMMAND:                     "Invalid command.",
 	ER_SQL_INVALID_SOURCE:                  "Invalid source infomation.",
 	ER_WRONG_DB_NAME:                       "Incorrect database name '%s'.",
-	EXIT_UNKNOWN_VARIABLE:                  "Exist incorrect variable.",
-	EXIT_UNKNOWN_OPTION:                    "Exist incorrect option.",
 	ER_NO_DB_ERROR:                         "No database selected.",
 	ER_WITH_LIMIT_CONDITION:                "Limit is not allowed in update/delete statement.",
 	ER_WITH_ORDERBY_CONDITION:              "Order by is not allowed in update/delete statement.",
@@ -292,9 +284,6 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_HAVE_BEGIN:                          "Have you begin twice? Or you didn't commit last time, if so, you can execute commit explicitly.",
 	ER_NET_READ_INTERRUPTED:                "Got timeout reading communication packets.",
 	ER_BINLOG_FORMAT_STATEMENT:             "The binlog_format is statement, backup is disabled.",
-	EXIT_NO_ARGUMENT_ALLOWED:               "Not allow set argument.",
-	EXIT_ARGUMENT_REQUIRED:                 "Require argument.",
-	EXIT_AMBIGUOUS_OPTION:                  "Ambiguous argument.",
 	ER_ERROR_EXIST_BEFORE:                  "Exist error at before statement.",
 	ER_UNKNOWN_SYSTEM_VARIABLE:             "Unknown system variable '%s'.",
 	ER_UNKNOWN_CHARACTER_SET:               "Unknown character set: '%s'.",
@@ -369,7 +358,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
-	ER_DATATIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
+	ER_DATETIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
 	ER_TOO_MUCH_AUTO_DATETIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
 }
 
@@ -395,8 +384,6 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_INVALID_COMMAND:                  "Invalid command.",
 	ER_SQL_INVALID_SOURCE:               "不正确的数据源信息.",
 	ER_WRONG_DB_NAME:                    "不正确的的数据库名 '%s'.",
-	EXIT_UNKNOWN_VARIABLE:               "Exist incorrect variable.",
-	EXIT_UNKNOWN_OPTION:                 "Exist incorrect option.",
 	ER_NO_DB_ERROR:                      "没有选择数据库.",
 	ER_WITH_LIMIT_CONDITION:             "update/delete语句不允许Limit.",
 	ER_WITH_ORDERBY_CONDITION:           "update/delete语句不允许Order by.",
@@ -457,9 +444,6 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_HAVE_BEGIN:                          "指定了多次begin.",
 	ER_NET_READ_INTERRUPTED:                "Got timeout reading communication packets.",
 	ER_BINLOG_FORMAT_STATEMENT:             "The binlog_format is statement, backup is disabled.",
-	EXIT_NO_ARGUMENT_ALLOWED:               "Not allow set argument.",
-	EXIT_ARGUMENT_REQUIRED:                 "Require argument.",
-	EXIT_AMBIGUOUS_OPTION:                  "Ambiguous argument.",
 	ER_ERROR_EXIST_BEFORE:                  "Exist error at before statement.",
 	ER_UNKNOWN_SYSTEM_VARIABLE:             "Unknown system variable '%s'.",
 	ER_UNKNOWN_CHARACTER_SET:               "Unknown character set: '%s'.",
@@ -529,9 +513,8 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrWrongUsage:                          "%s子句无法使用%s",
 	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
 	ErCantChangeColumnPosition:             "不允许改变列顺序(列'%s').",
-	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
-	ER_DATATIME_DEFAULT:            "请设置 datetime 列 '%s' 的默认值.",
-	ER_TOO_MUCH_AUTO_DATETIME_COLS: "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
+	ER_DATETIME_DEFAULT:                    "请设置 datetime 列 '%s' 的默认值.",
+	ER_TOO_MUCH_AUTO_DATETIME_COLS:         "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -585,7 +568,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
 		ErrTableCollationNotSupport,
-		ER_DATATIME_DEFAULT,
+		ER_DATETIME_DEFAULT,
 		ER_WITH_INSERT_FIELD:
 		return 1
 
@@ -645,7 +628,6 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_FOREIGN_KEY,
 		ER_TOO_MUCH_AUTO_DATETIME_COLS,
 		ER_INCEPTION_EMPTY_QUERY:
-		//ER_NULL_NAME_FOR_INDEX:
 		return 2
 
 	default:
@@ -746,10 +728,6 @@ func (e ErrorCode) String() string {
 		return "er_sql_invalid_source"
 	case ER_WRONG_DB_NAME:
 		return "er_wrong_db_name"
-	case EXIT_UNKNOWN_VARIABLE:
-		return "EXIT_UNKNOWN_VARIABLE"
-	case EXIT_UNKNOWN_OPTION:
-		return "EXIT_UNKNOWN_OPTION"
 	case ER_NO_DB_ERROR:
 		return "er_no_db_error"
 	case ER_WITH_LIMIT_CONDITION:
@@ -868,12 +846,6 @@ func (e ErrorCode) String() string {
 		return "er_net_read_interrupted"
 	case ER_BINLOG_FORMAT_STATEMENT:
 		return "er_binlog_format_statement"
-	case EXIT_NO_ARGUMENT_ALLOWED:
-		return "EXIT_NO_ARGUMENT_ALLOWED"
-	case EXIT_ARGUMENT_REQUIRED:
-		return "EXIT_ARGUMENT_REQUIRED"
-	case EXIT_AMBIGUOUS_OPTION:
-		return "EXIT_AMBIGUOUS_OPTION"
 	case ER_ERROR_EXIST_BEFORE:
 		return "er_error_exist_before"
 	case ER_UNKNOWN_SYSTEM_VARIABLE:

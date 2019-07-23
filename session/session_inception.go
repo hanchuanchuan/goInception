@@ -6467,7 +6467,7 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return !s.Inc.EnableBlobNotNull
 		/*case ER_NULL_NAME_FOR_INDEX:
 		  return s.Inc.EnableNullIndexName*/
-	case ER_DATATIME_DEFAULT:
+	case ER_DATETIME_DEFAULT:
 		return s.Inc.CheckDatetimeDefault
 	case ER_TOO_MUCH_AUTO_DATETIME_COLS:
 		return s.Inc.CheckDatetimeCount
