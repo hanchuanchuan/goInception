@@ -22,6 +22,7 @@ nav:
     - DDL变更:pt-osc: osc.md
     - DDL变更:gh-ost: ghost.md
     - KILL操作: kill_stmt.md
+    - 自定义审核级别: levels.md
     - 统计功能: statistics.md
     - 语法树打印: tree.md
     - 更新日志: changelog.md
