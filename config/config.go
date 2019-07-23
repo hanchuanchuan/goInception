@@ -299,6 +299,9 @@ type Inc struct {
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
 	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
 	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
+	
+	// 将 float/double 转成 decimal, 默认为 false
+	CheckFloatDouble bool `toml:"check_float_double" json:"check_float_double"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
@@ -721,6 +724,7 @@ var defaultConf = Config{
 		CheckColumnComment:    false,
 		CheckTimestampCount:   true,
 		EnableTimeStampType:   true,
+		CheckFloatDouble:      false,
 		SqlSafeUpdates:        -1,
 		SupportCharset:        "utf8,utf8mb4",
 		SupportEngine:         "innodb",
