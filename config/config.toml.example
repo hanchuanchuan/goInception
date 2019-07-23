@@ -260,6 +260,8 @@ check_timestamp_count = true
 check_table_comment = false
 check_column_comment = false
 
+check_float_double = false
+
 # 审核列类型变更
 check_column_type_change = true
 
