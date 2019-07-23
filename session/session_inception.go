@@ -6358,7 +6358,7 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 }
 
 func (s *session) checkKeyWords(name string) {
-	if s.Inc.CheckIdentifierUpper && name != strings.ToUpper(name){
+	if name != strings.ToUpper(name){
 		s.AppendErrorNo(ErrIdentifierUpper, name)
 	}
 	
@@ -6484,6 +6484,8 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return s.Inc.CheckDatetimeDefault
 	case ER_TOO_MUCH_AUTO_DATETIME_COLS:
 		return s.Inc.CheckDatetimeCount
+	case ErrIdentifierUpper:
+		return s.Inc.CheckIdentifierUpper
 	}
 
 	return true
