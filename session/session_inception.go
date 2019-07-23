@@ -3653,6 +3653,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > int(s.Inc.MaxCharLength) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
+	
+	if (field.Tp.Tp == mysql.TypeFloat || field.Tp.Tp == mysql.TypeDouble) && s.Inc.CheckFloatDouble {
+		s.AppendErrorNo(ErrFloatDoubleToDecimal, field.Name.Name)
+	}
 
 	s.checkKeyWords(field.Name.Name.O)
 
