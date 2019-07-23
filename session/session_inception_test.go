@@ -2213,3 +2213,16 @@ func (s *testSessionIncSuite) TestAlterNoOption(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NOT_SUPPORTED_YET))
 }
+
+func (s *testSessionIncSuite) TestDecimalType(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	
+	config.GetGlobalConfig().Inc.EnableDecimalType = true
+	sql := `create table t1(id int not null primary key comment 'key', d1 double not null comment 'as' ,f1 float not null comment 'af', INDEX idx_actor_last_name(name)) comment 'a';`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_FLOAT_DOUBLE_TO_DECIMAL, "d1", "f1"))
+	config.GetGlobalConfig().Inc.EnableDecimalType = false
+}

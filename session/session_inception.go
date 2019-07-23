@@ -3643,6 +3643,11 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > int(s.Inc.MaxCharLength) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
+	
+	if (field.Tp.Tp == mysql.TypeFloat || field.Tp.Tp == mysql.TypeDouble) && s.Inc.EnableDecimalType {
+		s.AppendErrorNo(ER_FLOAT_DOUBLE_TO_DECIMAL, field.Name.Name)
+		// fmt.Printf( "%d, %s, %s\n", field.Tp.Tp , field.Name.Name, field.Tp.String())
+	}
 
 	s.checkKeyWords(field.Name.Name.O)
 

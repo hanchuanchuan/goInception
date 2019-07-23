@@ -204,6 +204,7 @@ const (
 	ER_ERROR_LAST
 	ER_DATATIME_DEFAULT
 	ER_TOO_MUCH_AUTO_DATATIME_COLS
+	ER_FLOAT_DOUBLE_TO_DECIMAL
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -369,6 +370,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 	ER_DATATIME_DEFAULT:                    "Set default value for DATETIME column '%s'.",
 	ER_TOO_MUCH_AUTO_DATATIME_COLS:         "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
+	ER_FLOAT_DOUBLE_TO_DECIMAL:             "Set column '%s' to DECIMAL type.",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -529,6 +531,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	//ER_NULL_NAME_FOR_INDEX:                 "在表 '%s' 中, 索引名称不能为空.",
 	ER_DATATIME_DEFAULT:                    "请设置 datetime 列 '%s' 的默认值.",
 	ER_TOO_MUCH_AUTO_DATATIME_COLS:         "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
+	ER_FLOAT_DOUBLE_TO_DECIMAL:             "列 '%s' 建议设置为 decimal 类型",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -1014,6 +1017,12 @@ func (e ErrorCode) String() string {
 		return "er_cant_change_column_position"
 	case ER_ERROR_LAST:
 		return "er_error_last"
+	case ER_DATATIME_DEFAULT:
+		return "er_datatime_defalt"
+	case ER_TOO_MUCH_AUTO_DATATIME_COLS:
+		return "er_too_much_auto_datatime_cols"
+	case ER_FLOAT_DOUBLE_TO_DECIMAL:
+		return "er_float_double_to_decimal"
 	}
 	return ""
 }

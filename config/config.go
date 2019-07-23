@@ -299,6 +299,7 @@ type Inc struct {
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
 	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
 	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
+	EnableDecimalType bool `toml:"enable_decimal_type" json:"enable_decimal_type"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
@@ -705,6 +706,7 @@ var defaultConf = Config{
 		CheckColumnComment:    false,
 		CheckTimestampCount:   true,
 		EnableTimeStampType:   true,
+		EnableDecimalType:     false,
 		SqlSafeUpdates:        -1,
 		SupportCharset:        "utf8,utf8mb4",
 		SupportEngine:         "innodb",
