@@ -1121,7 +1121,7 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record, longDataType b
 	// 库名改变时强制flush
 	if s.lastBackupTable != dbName {
 		s.chBackupRecord <- &chanBackup{
-			dbname: dbName,
+			dbname: s.lastBackupTable,
 			record: record,
 			values: nil,
 		}
@@ -3653,7 +3653,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > int(s.Inc.MaxCharLength) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
-	
+
 	if (field.Tp.Tp == mysql.TypeFloat || field.Tp.Tp == mysql.TypeDouble) && s.Inc.CheckFloatDouble {
 		s.AppendErrorNo(ErrFloatDoubleToDecimal, field.Name.Name)
 	}
@@ -3836,11 +3836,11 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		// 		break
 		// 	}
 		// }
-		
-		if name != strings.ToUpper(name){
+
+		if name != strings.ToUpper(name) {
 			s.AppendErrorNo(ErrIdentifierUpper, name)
 		}
-		
+
 		if isIncorrectName(name) {
 			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 		} else {
@@ -3866,7 +3866,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		}
 
 	default:
-		if  !strings.HasPrefix(strings.ToLower(name), "idx_"){
+		if !strings.HasPrefix(strings.ToLower(name), "idx_") {
 			s.AppendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name)
 		}
 	}
@@ -6358,10 +6358,10 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 }
 
 func (s *session) checkKeyWords(name string) {
-	if name != strings.ToUpper(name){
+	if name != strings.ToUpper(name) {
 		s.AppendErrorNo(ErrIdentifierUpper, name)
 	}
-	
+
 	if !regIdentified.MatchString(name) {
 		s.AppendErrorNo(ER_INVALID_IDENT, name)
 	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
