@@ -3837,7 +3837,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		// 	}
 		// }
 		
-		if s.Inc.CheckIdentifierUpper && name != strings.ToUpper(name){
+		if name != strings.ToUpper(name){
 			s.AppendErrorNo(ErrIdentifierUpper, name)
 		}
 		
