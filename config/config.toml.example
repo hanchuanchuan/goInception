@@ -261,6 +261,7 @@ check_table_comment = false
 check_column_comment = false
 
 check_float_double = false
+check_identifier_upper = false
 
 # 审核列类型变更
 check_column_type_change = true

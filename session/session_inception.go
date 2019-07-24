@@ -3836,6 +3836,11 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		// 		break
 		// 	}
 		// }
+		
+		if name != strings.ToUpper(name){
+			s.AppendErrorNo(ErrIdentifierUpper, name)
+		}
+		
 		if isIncorrectName(name) {
 			s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 		} else {
@@ -3856,12 +3861,12 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		s.AppendErrorNo(ER_FOREIGN_KEY, table.Name)
 
 	case ast.ConstraintUniq:
-		if !strings.HasPrefix(name, "uniq_") {
+		if !strings.HasPrefix(strings.ToLower(name), "uniq_") {
 			s.AppendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, table.Name)
 		}
 
 	default:
-		if !strings.HasPrefix(name, "idx_") {
+		if  !strings.HasPrefix(strings.ToLower(name), "idx_"){
 			s.AppendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name)
 		}
 	}
@@ -6353,6 +6358,10 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 }
 
 func (s *session) checkKeyWords(name string) {
+	if name != strings.ToUpper(name){
+		s.AppendErrorNo(ErrIdentifierUpper, name)
+	}
+	
 	if !regIdentified.MatchString(name) {
 		s.AppendErrorNo(ER_INVALID_IDENT, name)
 	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
@@ -6475,6 +6484,8 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return s.Inc.CheckDatetimeDefault
 	case ER_TOO_MUCH_AUTO_DATETIME_COLS:
 		return s.Inc.CheckDatetimeCount
+	case ErrIdentifierUpper:
+		return s.Inc.CheckIdentifierUpper
 	}
 
 	return true
