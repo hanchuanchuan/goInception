@@ -47,7 +47,9 @@ import (
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/stringutil"
+	// "github.com/hanchuanchuan/parser/ast"
 	"github.com/jinzhu/gorm"
 	"github.com/percona/go-mysql/query"
 	"github.com/pingcap/errors"
@@ -250,7 +252,7 @@ func init() {
 
 }
 
-func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
+func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 
 	// 跳过mysql客户端发送的sql
 	// 跳过tidb测试时发送的sql
@@ -334,7 +336,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []ast.
 	return
 }
 
-func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
+func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 	sqlList := strings.Split(sql, "\n")
 
 	defer func() {
@@ -544,7 +546,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 
 						return s.processCommand(ctx, stmtNode, currentSql)
 					} else {
-						var result []ast.RecordSet
+						var result []sqlexec.RecordSet
 						var err error
 						if s.opt != nil && s.opt.Print {
 							result, err = s.printCommand(ctx, stmtNode, currentSql)
@@ -639,7 +641,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []ast.
 	return recordSets, nil
 }
 
-func (s *session) makeResult() (recordSets []ast.RecordSet, err error) {
+func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
 	if s.opt != nil && s.opt.Print && s.printSets != nil {
 		return s.printSets.Rows(), nil
 	} else if s.opt != nil && s.opt.split && s.splitSets != nil {
@@ -665,7 +667,7 @@ func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
 }
 
 func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
-	currentSql string) ([]ast.RecordSet, error) {
+	currentSql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("processCommand")
 
 	switch node := stmtNode.(type) {
@@ -760,7 +762,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 // splitCommand 分隔功能实现
 func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
-	sql string) ([]ast.RecordSet, error) {
+	sql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("splitCommand")
 
 	if !s.opt.split {
@@ -3653,7 +3655,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > int(s.Inc.MaxCharLength) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
-	
+
 	if (field.Tp.Tp == mysql.TypeFloat || field.Tp.Tp == mysql.TypeDouble) && s.Inc.CheckFloatDouble {
 		s.AppendErrorNo(ErrFloatDoubleToDecimal, field.Name.Name)
 	}
@@ -4834,7 +4836,7 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt, sql string) {
 	}
 }
 
-func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([]ast.RecordSet, error) {
+func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("executeInceptionSet")
 
 	for _, v := range node.Variables {
@@ -5102,7 +5104,7 @@ func (s *session) showVariables(node *ast.ShowStmt, obj interface{}, res *Variab
 	}
 }
 
-func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]sqlexec.RecordSet, error) {
 
 	res := NewVariableSets(120)
 	s.showVariables(node, s.Inc, res)
@@ -5114,7 +5116,7 @@ func (s *session) executeLocalShowVariables(node *ast.ShowStmt) ([]ast.RecordSet
 	return res.Rows(), nil
 }
 
-func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowProcessList()
 
 	var keys []int
@@ -5255,7 +5257,7 @@ func filter(expr []ast.ExprNode, colNames []string, value []string) (bool, error
 	return true, nil
 }
 
-func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSet, error) {
 	log.Debug("executeLocalShowLevels")
 
 	res := NewLevelSets(len(s.incLevel))
@@ -5343,7 +5345,7 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]ast.RecordSet, e
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 	return res.Rows(), nil
 }
-func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
 	// 根据是否指定sqlsha1控制显示command列
@@ -5392,7 +5394,7 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]ast.R
 	return res.Rows(), nil
 }
 
-func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
@@ -5408,7 +5410,7 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]ast.RecordSet, e
 	return nil, nil
 }
 
-func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
@@ -5428,7 +5430,7 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]ast.RecordSet, 
 	return nil, nil
 }
 
-func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]ast.RecordSet, error) {
+func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
@@ -5448,7 +5450,7 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]ast.RecordSet,
 	return nil, nil
 }
 
-func (s *session) executeInceptionShow(sql string) ([]ast.RecordSet, error) {
+func (s *session) executeInceptionShow(sql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("executeInceptionShow")
 
 	rows, err := s.Raw(sql)
@@ -6961,7 +6963,7 @@ func (s *session) isMiddleware() bool {
 	return s.opt.middlewareExtend != ""
 }
 
-func (s *session) executeKillStmt(node *ast.KillStmt) ([]ast.RecordSet, error) {
+func (s *session) executeKillStmt(node *ast.KillStmt) ([]sqlexec.RecordSet, error) {
 	sm := s.GetSessionManager()
 	if sm == nil {
 		return nil, nil

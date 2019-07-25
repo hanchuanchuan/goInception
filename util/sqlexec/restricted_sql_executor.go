@@ -14,10 +14,12 @@
 package sqlexec
 
 import (
+	"context"
+
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/sessionctx"
+	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/util/chunk"
-	"golang.org/x/net/context"
 )
 
 // RestrictedSQLExecutor is an interface provides executing restricted sql statement.
@@ -35,6 +37,10 @@ import (
 type RestrictedSQLExecutor interface {
 	// ExecRestrictedSQL run sql statement in ctx with some restriction.
 	ExecRestrictedSQL(ctx sessionctx.Context, sql string) ([]chunk.Row, []*ast.ResultField, error)
+	// ExecRestrictedSQLWithSnapshot run sql statement in ctx with some restriction and with snapshot.
+	// If current session sets the snapshot timestamp, then execute with this snapshot timestamp.
+	// Otherwise, execute with the current transaction start timestamp if the transaction is valid.
+	ExecRestrictedSQLWithSnapshot(ctx sessionctx.Context, sql string) ([]chunk.Row, []*ast.ResultField, error)
 }
 
 // SQLExecutor is an interface provides executing normal sql statement.
@@ -42,7 +48,7 @@ type RestrictedSQLExecutor interface {
 // For example, privilege/privileges package need execute SQL, if it use
 // session.Session.Execute, then privilege/privileges and tidb would become a circle.
 type SQLExecutor interface {
-	Execute(ctx context.Context, sql string) ([]ast.RecordSet, error)
+	Execute(ctx context.Context, sql string) ([]RecordSet, error)
 }
 
 // SQLParser is an interface provides parsing sql statement.
@@ -51,4 +57,56 @@ type SQLExecutor interface {
 // thus avoid allocating new parser. See session.SQLParser for more information.
 type SQLParser interface {
 	ParseSQL(sql, charset, collation string) ([]ast.StmtNode, error)
+}
+
+// Statement is an interface for SQL execution.
+// NOTE: all Statement implementations must be safe for
+// concurrent using by multiple goroutines.
+// If the Exec method requires any Execution domain local data,
+// they must be held out of the implementing instance.
+type Statement interface {
+	// OriginText gets the origin SQL text.
+	OriginText() string
+
+	// Exec executes SQL and gets a Recordset.
+	Exec(ctx context.Context) (RecordSet, error)
+
+	// IsPrepared returns whether this statement is prepared statement.
+	IsPrepared() bool
+
+	// IsReadOnly returns if the statement is read only. For example: SelectStmt without lock.
+	IsReadOnly(vars *variable.SessionVars) bool
+
+	// RebuildPlan rebuilds the plan of the statement.
+	RebuildPlan() (schemaVersion int64, err error)
+}
+
+// RecordSet is an abstract result set interface to help get data from Plan.
+type RecordSet interface {
+	// Fields gets result fields.
+	Fields() []*ast.ResultField
+
+	// Next reads records into chunk.
+	Next(ctx context.Context, req *chunk.Chunk) error
+
+	//NewChunk create a chunk.
+	NewChunk() *chunk.Chunk
+
+	// Close closes the underlying iterator, call Next after Close will
+	// restart the iteration.
+	Close() error
+}
+
+// MultiQueryNoDelayResult is an interface for one no-delay result for one statement in multi-queries.
+type MultiQueryNoDelayResult interface {
+	// AffectedRows return affected row for one statement in multi-queries.
+	AffectedRows() uint64
+	// LastMessage return last message for one statement in multi-queries.
+	LastMessage() string
+	// WarnCount return warn count for one statement in multi-queries.
+	WarnCount() uint16
+	// Status return status when executing one statement in multi-queries.
+	Status() uint16
+	// LastInsertID return last insert id for one statement in multi-queries.
+	LastInsertID() uint64
 }

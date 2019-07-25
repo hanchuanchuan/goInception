@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanchuanchuan/goInception/ast"
+	// "github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/owner"
 	"github.com/hanchuanchuan/goInception/sessionctx"
@@ -50,7 +50,7 @@ type Context struct {
 }
 
 // Execute implements sqlexec.SQLExecutor Execute interface.
-func (c *Context) Execute(ctx context.Context, sql string) ([]ast.RecordSet, error) {
+func (c *Context) Execute(ctx context.Context, sql string) ([]sqlexec.RecordSet, error) {
 	return nil, errors.Errorf("Not Support.")
 }
 
