@@ -846,7 +846,8 @@ func (s *session) SetGlobalSysVar(name, value string) error {
 
 func (s *session) ParseSQL(ctx context.Context, sql, charset, collation string) ([]ast.StmtNode, error) {
 	s.parser.SetSQLMode(s.sessionVars.SQLMode)
-	return s.parser.Parse(sql, charset, collation)
+	stmts, _, err := s.parser.Parse(sql, charset, collation)
+	return stmts, err
 }
 
 func (s *session) SetProcessInfo(sql string, t time.Time, command byte) {

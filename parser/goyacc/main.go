@@ -79,7 +79,7 @@
 //	type yyLexer interface {
 //		Lex(lval *yySymType) int
 //		Errorf(format string,  a ...interface{})
-//		Errors() []error
+//		Errors() (warns []error, errs []error)
 //	}
 //
 // Optionally the argument to yyParse may implement the following interface:
@@ -142,7 +142,7 @@ import (
 	"strings"
 
 	"github.com/cznic/mathutil"
-	"github.com/cznic/parser/yacc"
+	parser "github.com/cznic/parser/yacc"
 	"github.com/cznic/sortutil"
 	"github.com/cznic/strutil"
 	"github.com/cznic/y"
@@ -222,7 +222,15 @@ func (s symsUsed) Less(i, j int) bool {
 		return false
 	}
 
-	return strings.ToLower(s[i].sym.Name) < strings.ToLower(s[j].sym.Name)
+	caseFoldedCompare := strings.Compare(strings.ToLower(s[i].sym.Name), strings.ToLower(s[j].sym.Name))
+	if caseFoldedCompare < 0 {
+		return true
+	}
+	if caseFoldedCompare > 0 {
+		return false
+	}
+
+	return s[i].sym.Name < s[j].sym.Name
 }
 
 func main1(in string) (err error) {
@@ -508,8 +516,9 @@ var %[1]sDebug = 0
 
 type %[1]sLexer interface {
 	Lex(lval *%[1]sSymType) int
-	Errorf(format string, a ...interface{})
-	Errors() []error
+	Errorf(format string, a ...interface{}) error
+	AppendError(err error)
+	Errors() (warns []error, errs []error)
 }
 
 type %[1]sLexerEx interface {
@@ -644,7 +653,7 @@ yynewstate:
 				msg = "syntax error"
 			}
 			// ignore goyacc error message
-			yylex.Errorf("")
+			yylex.AppendError(yylex.Errorf(""))
 			Nerrs++
 			fallthrough
 

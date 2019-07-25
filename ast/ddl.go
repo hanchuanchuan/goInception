@@ -242,6 +242,8 @@ const (
 	ColumnOptionComment
 	ColumnOptionGenerated
 	ColumnOptionReference
+	ColumnOptionCollate
+	ColumnOptionCheck
 )
 
 // ColumnOption is used for parsing column constraint info from SQL.
@@ -256,7 +258,10 @@ type ColumnOption struct {
 	// Stored is only for ColumnOptionGenerated, default is false.
 	Stored bool
 	// Refer is used for foreign key.
-	Refer *ReferenceDef
+	Refer    *ReferenceDef
+	StrValue string
+	// Enforced is only for Check, default is true.
+	Enforced bool
 }
 
 // Accept implements Node Accept interface.
