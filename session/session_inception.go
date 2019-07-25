@@ -3697,6 +3697,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 				isPrimary = true
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
+			case ast.ColumnOptionCollate:
+				s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
 			}
 		}
 	}

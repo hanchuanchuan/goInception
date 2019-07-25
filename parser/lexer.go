@@ -38,12 +38,18 @@ type Scanner struct {
 	buf bytes.Buffer
 
 	errs         []error
+	warns        []error
 	stmtStartPos int
 
 	// For scanning such kind of comment: /*! MySQL-specific code */ or /*+ optimizer hint */
 	specialComment specialCommentScanner
 
 	sqlMode mysql.SQLMode
+
+	// If the lexer should recognize keywords for window function.
+	// It may break the compatibility when support those keywords,
+	// because some application may already use them as identifiers.
+	supportWindowFunc bool
 }
 
 type specialCommentScanner interface {
@@ -83,9 +89,9 @@ func (s *optimizerHintScanner) scan() (tok int, pos Pos, lit string) {
 	return
 }
 
-// Errors returns the errors during a scan.
-func (s *Scanner) Errors() []error {
-	return s.errs
+// Errors returns the errors and warns during a scan.
+func (s *Scanner) Errors() (warns []error, errs []error) {
+	return s.warns, s.errs
 }
 
 // reset resets the sql string to be scanned.
@@ -93,6 +99,7 @@ func (s *Scanner) reset(sql string) {
 	s.r = reader{s: sql, p: Pos{Line: 1}}
 	s.buf.Reset()
 	s.errs = s.errs[:0]
+	s.warns = s.warns[:0]
 	s.stmtStartPos = 0
 	s.specialComment = nil
 }
@@ -114,13 +121,22 @@ func (s *Scanner) stmtText() string {
 
 // Errorf tells scanner something is wrong.
 // Scanner satisfies yyLexer interface which need this function.
-func (s *Scanner) Errorf(format string, a ...interface{}) {
+func (s *Scanner) Errorf(format string, a ...interface{}) (err error) {
 	str := fmt.Sprintf(format, a...)
 	val := s.r.s[s.r.pos().Offset:]
 	if len(val) > 2048 {
 		val = val[:2048]
 	}
-	err := fmt.Errorf("line %d column %d near \"%s\"%s (total length %d)", s.r.p.Line, s.r.p.Col, val, str, len(s.r.s))
+	err = fmt.Errorf("line %d column %d near \"%s\"%s (total length %d)", s.r.p.Line, s.r.p.Col, val, str, len(s.r.s))
+	return
+}
+
+// AppendError sets error into scanner.
+// Scanner satisfies yyLexer interface which need this function.
+func (s *Scanner) AppendError(err error) {
+	if err == nil {
+		return
+	}
 	s.errs = append(s.errs, err)
 }
 
@@ -188,6 +204,11 @@ func (s *Scanner) SetSQLMode(mode mysql.SQLMode) {
 // GetSQLMode return the SQL mode of scanner.
 func (s *Scanner) GetSQLMode() mysql.SQLMode {
 	return s.sqlMode
+}
+
+// EnableWindowFunc enables the scanner to recognize the keywords of window function.
+func (s *Scanner) EnableWindowFunc() {
+	s.supportWindowFunc = true
 }
 
 // NewScanner returns a new scanner object.
@@ -327,6 +348,7 @@ func startWithDash(s *Scanner) (tok int, pos Pos, lit string) {
 		return
 	}
 	tok = int('-')
+	lit = "-"
 	s.r.inc()
 	return
 }
