@@ -23,6 +23,7 @@ import (
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/types/json"
 	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -165,7 +166,7 @@ type MyRecordSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 
 	records  []*Record
 	MaxLevel uint8
@@ -289,7 +290,7 @@ func (s *MyRecordSets) setFields(r *Record) {
 	s.rc.count++
 }
 
-func (s *MyRecordSets) Rows() []ast.RecordSet {
+func (s *MyRecordSets) Rows() []sqlexec.RecordSet {
 
 	s.rc.count = 0
 	s.rc.data = make([][]types.Datum, len(s.records))
@@ -300,7 +301,7 @@ func (s *MyRecordSets) Rows() []ast.RecordSet {
 
 	s.records = nil
 
-	return []ast.RecordSet{s.rc}
+	return []sqlexec.RecordSet{s.rc}
 }
 
 func (s *MyRecordSets) All() []*Record {
@@ -320,7 +321,7 @@ type VariableSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 }
 
 func NewVariableSets(count int) *VariableSets {
@@ -353,15 +354,15 @@ func (s *VariableSets) Append(name string, value string) {
 	s.rc.count++
 }
 
-func (s *VariableSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *VariableSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }
 
 type ProcessListSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 }
 
 func NewProcessListSets(count int) *ProcessListSets {
@@ -447,8 +448,8 @@ func (s *ProcessListSets) appendRow(fields []interface{}) {
 	s.rc.count++
 }
 
-func (s *ProcessListSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *ProcessListSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }
 
 func NewOscProcessListSets(count int, hideCommand bool) *ProcessListSets {
@@ -487,7 +488,7 @@ type PrintSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 }
 
 func NewPrintSets() *PrintSets {
@@ -529,15 +530,15 @@ func (s *PrintSets) Append(errLevel int64, sql, tree, errmsg string) {
 	s.rc.count++
 }
 
-func (s *PrintSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *PrintSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }
 
 type SplitSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 
 	// 分组id,每当变化一次分组时,自动加1.默认值为1
 	id int64
@@ -595,15 +596,15 @@ func (s *SplitSets) CurrentId() int64 {
 	return s.id
 }
 
-func (s *SplitSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *SplitSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }
 
 type LevelSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 }
 
 func NewLevelSets(count int) *LevelSets {
@@ -639,6 +640,6 @@ func (s *LevelSets) Append(name string, value int64, desc string) {
 	s.rc.count++
 }
 
-func (s *LevelSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *LevelSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }

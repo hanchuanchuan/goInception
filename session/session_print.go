@@ -11,11 +11,12 @@ import (
 	json "github.com/CorgiMan/json2"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	log "github.com/sirupsen/logrus"
 )
 
 func (s *session) printCommand(ctx context.Context, stmtNode ast.StmtNode,
-	currentSql string) ([]ast.RecordSet, error) {
+	currentSql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("printCommand")
 
 	// b, err := json.MarshalIndent(stmtNode, "", "  ")
