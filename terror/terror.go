@@ -342,3 +342,8 @@ func Log(err error) {
 		log.Error(errors.ErrorStack(err))
 	}
 }
+
+// NewStd calls New using the standard message for the error code
+func (ec ErrClass) NewStd(code ErrCode) *Error {
+	return ec.New(code, mysql.MySQLErrName[uint16(code)])
+}

@@ -435,6 +435,23 @@ func (d *ddl) genGlobalID() (int64, error) {
 	return globalID, errors.Trace(err)
 }
 
+func (d *ddl) genGlobalIDs(count int) ([]int64, error) {
+	ret := make([]int64, count)
+	err := kv.RunInNewTxn(d.store, true, func(txn kv.Transaction) error {
+		var err error
+		m := meta.NewMeta(txn)
+		for i := 0; i < count; i++ {
+			ret[i], err = m.GenGlobalID()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return ret, err
+}
+
 // SchemaSyncer implements DDL.SchemaSyncer interface.
 func (d *ddl) SchemaSyncer() SchemaSyncer {
 	return d.schemaSyncer

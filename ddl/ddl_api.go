@@ -2127,31 +2127,41 @@ func buildPartitionInfo(meta *model.TableInfo, d *ddl, spec *ast.AlterTableSpec)
 		Columns: meta.Partition.Columns,
 		Enable:  meta.Partition.Enable,
 	}
+	genIDs, err := d.genGlobalIDs(len(spec.PartDefinitions))
+	if err != nil {
+		return nil, err
+	}
 	buf := new(bytes.Buffer)
-	for _, def := range spec.PartDefinitions {
-		for _, expr := range def.LessThan {
+	for ith, def := range spec.PartDefinitions {
+		if err := def.Clause.Validate(part.Type, len(part.Columns)); err != nil {
+			return nil, errors.Trace(err)
+		}
+		// For RANGE partition only VALUES LESS THAN should be possible.
+		clause := def.Clause.(*ast.PartitionDefinitionClauseLessThan)
+		for _, expr := range clause.Exprs {
 			tp := expr.GetType().Tp
-			if !(tp == mysql.TypeLong || tp == mysql.TypeLonglong) {
-				expr.Format(buf)
-				if strings.EqualFold(buf.String(), "MAXVALUE") {
-					continue
+			if len(part.Columns) == 0 {
+				// Partition by range.
+				if !(tp == mysql.TypeLong || tp == mysql.TypeLonglong) {
+					expr.Format(buf)
+					if strings.EqualFold(buf.String(), "MAXVALUE") {
+						continue
+					}
+					buf.Reset()
+					return nil, infoschema.ErrColumnNotExists.GenWithStackByArgs(buf.String(), "partition function")
 				}
-				buf.Reset()
-				return nil, infoschema.ErrColumnNotExists.GenWithStackByArgs(buf.String(), "partition function")
 			}
+			// Partition by range columns if len(part.Columns) != 0.
 		}
-		pid, err1 := d.genGlobalID()
-		if err1 != nil {
-			return nil, errors.Trace(err1)
-		}
+		comment, _ := def.Comment()
 		piDef := model.PartitionDefinition{
 			Name:    def.Name,
-			ID:      pid,
-			Comment: def.Comment,
+			ID:      genIDs[ith],
+			Comment: comment,
 		}
 
 		buf := new(bytes.Buffer)
-		for _, expr := range def.LessThan {
+		for _, expr := range clause.Exprs {
 			expr.Format(buf)
 			piDef.LessThan = append(piDef.LessThan, buf.String())
 			buf.Reset()

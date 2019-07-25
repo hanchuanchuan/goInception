@@ -890,10 +890,26 @@ var MySQLErrName = map[uint16]string{
 	ErrInvalidJSONContainsPathType:                           "The second argument can only be either 'one' or 'all'.",
 	ErrJSONUsedAsKey:                                         "JSON column '%-.192s' cannot be used in key specification.",
 
+	// MariaDB errors.
+	ErrOnlyOneDefaultPartionAllowed:         "Only one DEFAULT partition allowed",
+	ErrWrongPartitionTypeExpectedSystemTime: "Wrong partitioning type, expected type: `SYSTEM_TIME`",
+	ErrSystemVersioningWrongPartitions:      "Wrong Partitions: must have at least one HISTORY and exactly one last CURRENT",
 	// TiDB errors.
-	ErrMemExceedThreshold: "%s holds %dB memory, exceeds threshold %dB.%s",
-	ErrForUpdateCantRetry: "[%d] can not retry select for update statement",
-	ErrAdminCheckTable:    "TiDB admin check table failed.",
+	ErrMemExceedThreshold:         "%s holds %dB memory, exceeds threshold %dB.%s",
+	ErrForUpdateCantRetry:         "[%d] can not retry select for update statement",
+	ErrAdminCheckTable:            "TiDB admin check table failed.",
+	ErrTxnTooLarge:                "Transaction is too large",
+	ErrWriteConflictInTiDB:        "Write conflict, txnStartTS %d is stale",
+	ErrInvalidPluginID:            "Wrong plugin id: %s, valid plugin id is [name]-[version], both name and version should not contain '-'",
+	ErrInvalidPluginManifest:      "Cannot read plugin %s's manifest",
+	ErrInvalidPluginName:          "Plugin load with %s but got wrong name %s",
+	ErrInvalidPluginVersion:       "Plugin load with %s but got %s",
+	ErrDuplicatePlugin:            "Plugin [%s] is redeclared",
+	ErrInvalidPluginSysVarName:    "Plugin %s's sysVar %s must start with its plugin name %s",
+	ErrRequireVersionCheckFail:    "Plugin %s require %s be %v but got %v",
+	ErrUnsupportedReloadPlugin:    "Plugin %s isn't loaded so cannot be reloaded",
+	ErrUnsupportedReloadPluginVar: "Reload plugin with different sysVar is unsupported %v",
+	ErrTableLocked:                "Table '%s' was locked in %s by %v",
 
 	// TiKV/PD errors.
 	ErrPDServerTimeout:    "PD server timeout",
@@ -902,6 +918,5 @@ var MySQLErrName = map[uint16]string{
 	ErrResolveLockTimeout: "Resolve lock timeout",
 	ErrRegionUnavailable:  "Region is unavailable",
 	ErrGCTooEarly:         "GC life time is shorter than transaction duration, transaction starts at %v, GC safe point is %v",
-
-	ErrTxnTooLarge: "Transaction is too large",
+	ErrWriteConflict:      "Write conflict, txnStartTS=%d, conflictStartTS=%d, conflictCommitTS=%d, key=%s",
 }
