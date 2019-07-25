@@ -893,10 +893,27 @@ const (
 	ErrInvalidJSONContainsPathType                                  = 3150
 	ErrJSONUsedAsKey                                                = 3152
 
+	// MariaDB errors.
+	ErrOnlyOneDefaultPartionAllowed         = 4030
+	ErrWrongPartitionTypeExpectedSystemTime = 4113
+	ErrSystemVersioningWrongPartitions      = 4128
+
 	// TiDB self-defined errors.
-	ErrMemExceedThreshold = 8001
-	ErrForUpdateCantRetry = 8002
-	ErrAdminCheckTable    = 8003
+	ErrMemExceedThreshold         = 8001
+	ErrForUpdateCantRetry         = 8002
+	ErrAdminCheckTable            = 8003
+	ErrTxnTooLarge                = 8004
+	ErrWriteConflictInTiDB        = 8005
+	ErrInvalidPluginID            = 8101
+	ErrInvalidPluginManifest      = 8102
+	ErrInvalidPluginName          = 8103
+	ErrInvalidPluginVersion       = 8104
+	ErrDuplicatePlugin            = 8105
+	ErrInvalidPluginSysVarName    = 8106
+	ErrRequireVersionCheckFail    = 8107
+	ErrUnsupportedReloadPlugin    = 8018
+	ErrUnsupportedReloadPluginVar = 8019
+	ErrTableLocked                = 8020
 
 	// TiKV/PD errors.
 	ErrPDServerTimeout    = 9001
@@ -905,6 +922,5 @@ const (
 	ErrResolveLockTimeout = 9004
 	ErrRegionUnavailable  = 9005
 	ErrGCTooEarly         = 9006
-
-	ErrTxnTooLarge = 9500
+	ErrWriteConflict      = 9007
 )
