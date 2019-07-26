@@ -92,8 +92,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.5.1 h1:3scN4iuXkNOyP98jF55Lv8a9j1o/Iwv
 github.com/grpc-ecosystem/grpc-gateway v1.5.1/go.mod h1:RSKVYQBd5MCa4OVpNdGskqpgL2+G+NZTnrVHpWWfpdw=
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3 h1:PerDKRFKMglE4GRVZ34aS7pua67+Ht7hIPVVoSSUk2w=
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3/go.mod h1:yesOnuUOFQAhST5vPY4nbZsb/huCgGGXlipJsBn0b3o=
-github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162 h1:GQzeUPDj/QvpOht1xMeCBG9IoGDvfcm6cX7THlpDjtY=
-github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162/go.mod h1:LjQSgtiA0sJLr4Z4CS/nctK+Ry2ca1O+Mug6zRP1iKQ=
+github.com/hanchuanchuan/gh-ost v0.0.0-20190726094430-ed0b1b1b8aa6 h1:CgVJ3u216Mw8kGuh7bVx3NWc/18TGLTRVqlHKHY1Zig=
+github.com/hanchuanchuan/gh-ost v0.0.0-20190726094430-ed0b1b1b8aa6/go.mod h1:LjQSgtiA0sJLr4Z4CS/nctK+Ry2ca1O+Mug6zRP1iKQ=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=

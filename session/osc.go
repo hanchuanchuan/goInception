@@ -552,11 +552,12 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		ghostlog.SetLevel(ghostlog.ERROR)
 	}
 
+	// ghostlog.SetLevel(ghostlog.DEBUG)
+
 	if err := migrator.Migrate(); err != nil {
 		log.Error(err)
 		done = true
 		s.AppendErrorMessage(err.Error())
-		// migrator.Teardown()
 	}
 
 	done = true
