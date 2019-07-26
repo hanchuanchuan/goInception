@@ -2071,7 +2071,6 @@ func (s *session) mysqlExplicitDefaultsForTimestamp() {
 }
 
 func (s *session) fetchThreadID() uint32 {
-	log.Debug("fetchThreadID")
 
 	if s.threadID > 0 {
 		return s.threadID
