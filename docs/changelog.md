@@ -1,6 +1,23 @@
 # goInception 更新日志
 
 
+## [v1.0.2] - 2019-7-26
+
+### Fix
+* 修复 `alter table` 命令没有其他选项时能正常通过的bug (#59)
+* 修复跨库操作时可能出现备份记录写错备份库的问题
+
+### New Features
+* 添加参数 `max_ddl_affect_rows`，设置DDL允许的最大受影响行数，默认为`0`，即不限制
+* 添加参数 `check_float_double` ，为 true 时，警告将 float/double 转成 decimal 数据类型。 默认为 false (#62)
+* 添加参数 `check_identifier_upper` ，限制表名、列名、索引名等必须为大写，默认为`false` (#63)
+
+### Update
+* 优化自定义审核级别实现，移除参数 `enable_level`，现在自定义审核级别和审核开关设置合并 (#52)
+* 升级parser语法解析包，优化列排序规则和分区表语法支持 (#50)
+* 优化gh-ost的server_id设置自动变化，避免同一实例重复
+
+
 ## [v1.0.1] - 2019-7-20
 
 ### Fix
