@@ -2,7 +2,7 @@ module github.com/hanchuanchuan/goInception
 
 replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3
 
-replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162
+replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190726094430-ed0b1b1b8aa6
 
 replace github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
 
