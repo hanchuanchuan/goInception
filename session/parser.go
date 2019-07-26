@@ -263,8 +263,6 @@ func (s *session) Parser(ctx context.Context) {
 			continue
 		}
 
-		log.Debug(e.Header.EventType)
-
 		switch e.Header.EventType {
 		case replication.TABLE_MAP_EVENT:
 			if event, ok := e.Event.(*replication.TableMapEvent); ok {
@@ -377,7 +375,6 @@ func (s *session) checkFilter(event *replication.RowsEvent,
 // 解析的sql写入缓存,并定期入库
 func (s *session) myWrite(b []byte, binEvent *replication.BinlogEvent,
 	opid string, table string, record *Record) {
-	log.Debug("myWrite")
 
 	b = append(b, ";"...)
 
@@ -390,7 +387,6 @@ func (s *session) myWrite(b []byte, binEvent *replication.BinlogEvent,
 
 // 解析的sql写入缓存,并定期入库
 func (s *session) myWriteDDL(sql string, opid string, table string, record *Record) {
-	log.Debug("myWriteDDL")
 
 	s.insertBuffer = append(s.insertBuffer, sql, opid)
 

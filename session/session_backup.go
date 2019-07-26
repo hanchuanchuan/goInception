@@ -84,7 +84,6 @@ func (s *session) runBackup(ctx context.Context) {
 
 // 解析的sql写入缓存,并定期入库
 func (s *session) writeBackupRecord(dbname string, record *Record, values []interface{}) {
-	log.Debug("writeBackupRecord")
 
 	s.insertBuffer = append(s.insertBuffer, values...)
 
@@ -96,7 +95,6 @@ func (s *session) writeBackupRecord(dbname string, record *Record, values []inte
 
 // flush用以写入当前insert缓存,并清空缓存.
 func (s *session) flushBackupRecord(dbname string, record *Record) {
-	log.Debug("flushBackupRecord")
 	// log.Info("flush ", len(s.insertBuffer))
 
 	if len(s.insertBuffer) > 0 {

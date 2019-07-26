@@ -14,10 +14,10 @@
 package ast_test
 
 import (
-	. "github.com/pingcap/check"
 	. "github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/parser"
 	"github.com/hanchuanchuan/goInception/util/auth"
+	. "github.com/pingcap/check"
 )
 
 var _ = Suite(&testMiscSuite{})
@@ -99,7 +99,7 @@ constraint foreign key (jobabbr) references ffxi_jobtype (jobabbr) on delete cas
 );
 `
 	parse := parser.New()
-	stmts, err := parse.Parse(sql, "", "")
+	stmts, _, err := parse.Parse(sql, "", "")
 	c.Assert(err, IsNil)
 	for _, stmt := range stmts {
 		stmt.Accept(visitor{})
@@ -118,7 +118,7 @@ show create table t;
 load data infile '/tmp/t.csv' into table t fields terminated by 'ab' enclosed by 'b';`
 
 	p := parser.New()
-	stmts, err := p.Parse(sql, "", "")
+	stmts, _, err := p.Parse(sql, "", "")
 	c.Assert(err, IsNil)
 	for _, stmt := range stmts {
 		stmt.Accept(visitor{})

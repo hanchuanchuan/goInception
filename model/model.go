@@ -284,9 +284,11 @@ type PartitionType int
 
 // Partition types.
 const (
-	PartitionTypeRange PartitionType = 1
-	PartitionTypeHash  PartitionType = 2
-	PartitionTypeList  PartitionType = 3
+	PartitionTypeRange      PartitionType = 1
+	PartitionTypeHash                     = 2
+	PartitionTypeList                     = 3
+	PartitionTypeKey                      = 4
+	PartitionTypeSystemTime               = 5
 )
 
 func (p PartitionType) String() string {
@@ -297,6 +299,10 @@ func (p PartitionType) String() string {
 		return "HASH"
 	case PartitionTypeList:
 		return "LIST"
+	case PartitionTypeKey:
+		return "KEY"
+	case PartitionTypeSystemTime:
+		return "SYSTEM_TIME"
 	default:
 		return ""
 	}
@@ -315,6 +321,17 @@ type PartitionInfo struct {
 	Enable bool `json:"enable"`
 
 	Definitions []PartitionDefinition `json:"definitions"`
+	Num         uint64                `json:"num"`
+}
+
+// GetNameByID gets the partition name by ID.
+func (pi *PartitionInfo) GetNameByID(id int64) string {
+	for _, def := range pi.Definitions {
+		if id == def.ID {
+			return def.Name.L
+		}
+	}
+	return ""
 }
 
 // PartitionDefinition defines a single partition.

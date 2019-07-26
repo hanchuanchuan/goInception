@@ -16,7 +16,7 @@ package statistics
 import (
 	"fmt"
 
-	"github.com/hanchuanchuan/goInception/ast"
+	// "github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/ddl/util"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -119,7 +119,7 @@ func (h *Handle) insertColStats2KV(physicalID int64, colInfo *model.ColumnInfo) 
 	// If we didn't update anything by last SQL, it means the stats of this table does not exist.
 	if h.mu.ctx.GetSessionVars().StmtCtx.AffectedRows() > 0 {
 		// By this step we can get the count of this table, then we can sure the count and repeats of bucket.
-		var rs []ast.RecordSet
+		var rs []sqlexec.RecordSet
 		rs, err = exec.Execute(ctx, fmt.Sprintf("select count from mysql.stats_meta where table_id = %d", physicalID))
 		if len(rs) > 0 {
 			defer terror.Call(rs[0].Close)

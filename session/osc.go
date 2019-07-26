@@ -545,7 +545,8 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 	go f(bufio.NewReader(migrator.Log))
 
-	if config.GetGlobalConfig().Log.Level == "debug" {
+	if config.GetGlobalConfig().Log.Level == "debug" ||
+		config.GetGlobalConfig().Log.Level == "info" {
 		ghostlog.SetLevel(ghostlog.INFO)
 	} else {
 		ghostlog.SetLevel(ghostlog.ERROR)
