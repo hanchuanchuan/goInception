@@ -328,7 +328,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.HooksHintOwner, "hooks-hint-owner", "", "arbitrary name of owner to be injected to hooks via GH_OST_HOOKS_HINT_OWNER, for your convenience")
 	// flag.StringVar(&migrationContext.HooksHintToken, "hooks-hint-token", "", "arbitrary token to be injected to hooks via GH_OST_HOOKS_HINT_TOKEN, for your convenience")
 
-	migrationContext.ReplicaServerId = 99999
+	migrationContext.ReplicaServerId = 2000100000 + uint(s.sessionVars.ConnectionID%10000)
 	// flag.UintVar(&migrationContext.ReplicaServerId, "replica-server-id", 99999, "server id used by gh-ost process. Default: 99999")
 	// maxLoad := s.Ghost.GhostMaxLoad
 	// maxLoad := flag.String("max-load", "", "Comma delimited status-name=threshold. e.g: 'Threads_running=100,Threads_connected=500'. When status exceeds threshold, app throttles writes")
@@ -556,6 +556,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		log.Error(err)
 		done = true
 		s.AppendErrorMessage(err.Error())
+		// migrator.Teardown()
 	}
 
 	done = true
