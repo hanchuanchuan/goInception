@@ -19,9 +19,10 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/hanchuanchuan/goInception/ast"
+	// "github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/testutil"
 	"github.com/pingcap/check"
 	"github.com/pingcap/errors"
@@ -131,7 +132,7 @@ func NewTestKitWithInitINC(c *check.C, store kv.Storage) *TestKit {
 var connectionID uint64
 
 // Exec executes a sql statement.
-func (tk *TestKit) Exec(sql string, args ...interface{}) (ast.RecordSet, error) {
+func (tk *TestKit) Exec(sql string, args ...interface{}) (sqlexec.RecordSet, error) {
 	var err error
 	if tk.Se == nil {
 		tk.Se, err = session.CreateSession4Test(tk.store)
@@ -141,7 +142,7 @@ func (tk *TestKit) Exec(sql string, args ...interface{}) (ast.RecordSet, error) 
 	}
 	ctx := context.Background()
 	if len(args) == 0 {
-		var rss []ast.RecordSet
+		var rss []sqlexec.RecordSet
 		rss, err = tk.Se.Execute(ctx, sql)
 		if err == nil && len(rss) > 0 {
 			return rss[0], nil
@@ -164,7 +165,7 @@ func (tk *TestKit) Exec(sql string, args ...interface{}) (ast.RecordSet, error) 
 }
 
 // Exec executes a sql statement.
-func (tk *TestKit) ExecInc(sql string, args ...interface{}) (ast.RecordSet, error) {
+func (tk *TestKit) ExecInc(sql string, args ...interface{}) (sqlexec.RecordSet, error) {
 	var err error
 	if tk.Se == nil {
 		tk.Se, err = session.CreateSession4Test(tk.store)
@@ -174,7 +175,7 @@ func (tk *TestKit) ExecInc(sql string, args ...interface{}) (ast.RecordSet, erro
 	}
 	ctx := context.Background()
 	if len(args) == 0 {
-		var rss []ast.RecordSet
+		var rss []sqlexec.RecordSet
 		rss, err = tk.Se.ExecuteInc(ctx, sql)
 		if err == nil && len(rss) > 0 {
 			return rss[0], nil
@@ -240,9 +241,9 @@ func (tk *TestKit) MustQueryInc(sql string, args ...interface{}) *Result {
 	return tk.ResultSetToResult(rs, comment)
 }
 
-// ResultSetToResult converts ast.RecordSet to testkit.Result.
+// ResultSetToResult converts sqlexec.RecordSet to testkit.Result.
 // It is used to check results of execute statement in binary mode.
-func (tk *TestKit) ResultSetToResult(rs ast.RecordSet, comment check.CommentInterface) *Result {
+func (tk *TestKit) ResultSetToResult(rs sqlexec.RecordSet, comment check.CommentInterface) *Result {
 	rows, err := session.GetRows4Test(context.Background(), tk.Se, rs)
 	tk.c.Assert(errors.ErrorStack(err), check.Equals, "", comment)
 	err = rs.Close()

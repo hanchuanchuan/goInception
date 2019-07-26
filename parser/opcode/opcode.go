@@ -107,7 +107,7 @@ var opsLiteral = map[Op]string{
 	RightShift: ">>",
 	GE:         ">=",
 	LE:         "<=",
-	EQ:         "==",
+	EQ:         "=",
 	NE:         "!=",
 	LT:         "<",
 	GT:         ">",

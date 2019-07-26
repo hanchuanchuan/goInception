@@ -158,6 +158,7 @@ import (
 	like			"LIKE"
 	limit			"LIMIT"
 	lines 			"LINES"
+	linear			"LINEAR"
 	load			"LOAD"
 	localTime		"LOCALTIME"
 	localTs			"LOCALTIMESTAMP"
@@ -290,6 +291,7 @@ import (
 	compression	"COMPRESSION"
 	connection 	"CONNECTION"
 	consistent	"CONSISTENT"
+	current		"CURRENT"
 	day		"DAY"
 	data 		"DATA"
 	dateType	"DATE"
@@ -297,6 +299,7 @@ import (
 	deallocate	"DEALLOCATE"
 	definer		"DEFINER"
 	delayKeyWrite	"DELAY_KEY_WRITE"
+	directory	"DIRECTORY"
 	disable		"DISABLE"
 	do		"DO"
 	duplicate	"DUPLICATE"
@@ -320,6 +323,7 @@ import (
 	function	"FUNCTION"
 	grants		"GRANTS"
 	hash		"HASH"
+	history		"HISTORY"
 	hour		"HOUR"
 	identified	"IDENTIFIED"
 	isolation	"ISOLATION"
@@ -330,6 +334,7 @@ import (
 	local		"LOCAL"
 	less		"LESS"
 	level		"LEVEL"
+	list		"LIST"
 	master		"MASTER"
 	microsecond	"MICROSECOND"
 	minute		"MINUTE"
@@ -346,6 +351,7 @@ import (
 	names		"NAMES"
 	national	"NATIONAL"
 	no		"NO"
+	nodegroup	"NODEGROUP"
 	none		"NONE"
 	offset		"OFFSET"
 	only		"ONLY"
@@ -389,6 +395,7 @@ import (
 	start		"START"
 	statsPersistent	"STATS_PERSISTENT"
 	status		"STATUS"
+	systemTime	"SYSTEM_TIME"
 	subpartition	"SUBPARTITION"
 	subpartitions	"SUBPARTITIONS"
 	super		"SUPER"
@@ -612,6 +619,7 @@ import (
 	OptionalBraces			"optional braces"
 	CastType			"Cast function target type"
 	CharsetName			"Character set name"
+	CollationName			"Collation name"
 	ColumnDef			"table column definition"
 	ColumnDefList			"table column definition list"
 	ColumnName			"column name"
@@ -709,11 +717,13 @@ import (
 	PartitionDefinition		"Partition definition"
 	PartitionDefinitionList 	"Partition definition list"
 	PartitionDefinitionListOpt	"Partition definition list option"
+	PartitionKeyAlgorithmOpt	"ALGORITHM = n option for KEY partition"
+	PartitionMethod			"Partition method"
 	PartitionOpt			"Partition option"
 	PartitionNameList		"Partition name list"
+	PartitionNameListOpt    "table partition names list optional"
 	PartitionNumOpt			"PARTITION NUM option"
 	PartDefValuesOpt		"VALUES {LESS THAN {(expr | value_list) | MAXVALUE} | IN {value_list}"
-	PartDefOptionsOpt		"PartDefOptionList option"
 	PartDefOptionList		"PartDefOption list"
 	PartDefOption			"COMMENT [=] xxx | TABLESPACE [=] tablespace_name | ENGINE [=] xxx"
 	PasswordOpt			"Password option"
@@ -751,6 +761,10 @@ import (
 	StatsPersistentVal		"stats_persistent value"
 	StringName			"string literal or identifier"
 	StringList 			"string list"
+	SubPartDefinition		"SubPartition definition"
+	SubPartDefinitionList		"SubPartition definition list"
+	SubPartDefinitionListOpt	"SubPartition definition list optional"
+	SubPartitionMethod		"SubPartition method"
 	SubPartitionOpt			"SubPartition option"
 	SubPartitionNumOpt		"SubPartition NUM option"
 	Symbol				"Constraint Symbol"
@@ -871,6 +885,7 @@ import (
 	LockType		"Table locks type"
 	logAnd			"logical and operator"
 	logOr			"logical or operator"
+	LinearOpt		"linear or empty"
 	FieldsOrColumns 	"Fields or columns"
 	GetFormatSelector	"{DATE|DATETIME|TIME|TIMESTAMP}"
 
@@ -1718,6 +1733,10 @@ ColumnOption:
 			Refer: $1.(*ast.ReferenceDef),
 		}
 	}
+|	"COLLATE" CollationName
+	{
+		$$ = &ast.ColumnOption{Tp: ast.ColumnOptionCollate, StrValue: $2.(string)}
+	}
 
 GeneratedAlways: | "GENERATED" "ALWAYS"
 
@@ -2027,7 +2046,7 @@ DatabaseOption:
 	{
 		$$ = &ast.DatabaseOption{Tp: ast.DatabaseOptionCharset, Value: $4.(string)}
 	}
-|	DefaultKwdOpt "COLLATE" EqOpt StringName
+|	DefaultKwdOpt "COLLATE" EqOpt CollationName
 	{
 		$$ = &ast.DatabaseOption{Tp: ast.DatabaseOptionCollate, Value: $4.(string)}
 	}
@@ -2095,55 +2114,150 @@ PartitionOpt:
 	{
 		$$ = nil
 	}
-|	"PARTITION" "BY" "KEY" '(' ColumnNameList ')' PartitionNumOpt PartitionDefinitionListOpt
+|	"PARTITION" "BY" PartitionMethod PartitionNumOpt SubPartitionOpt PartitionDefinitionListOpt
 	{
-		$$ = nil
+		method := $3.(*ast.PartitionMethod)
+		method.Num = $4.(uint64)
+		sub, _ := $5.(*ast.PartitionMethod)
+		defs, _ := $6.([]*ast.PartitionDefinition)
+		opt := &ast.PartitionOptions{
+			PartitionMethod: *method,
+			Sub:             sub,
+			Definitions:     defs,
+		}
+		if err := opt.Validate(); err != nil {
+			yylex.AppendError(err)
+			return 1
+		}
+		$$ = opt
 	}
-|	"PARTITION" "BY" "HASH" '(' Expression ')' PartitionNumOpt PartitionDefinitionListOpt
+
+SubPartitionMethod:
+	LinearOpt "KEY" PartitionKeyAlgorithmOpt '(' ColumnNameListOpt ')'
 	{
-		$$ = nil
-	}
-|	"PARTITION" "BY" "RANGE" '(' Expression ')' PartitionNumOpt SubPartitionOpt PartitionDefinitionListOpt
-	{
-		var defs []*ast.PartitionDefinition
-		if $9 != nil {
-			defs = $9.([]*ast.PartitionDefinition)
-		}
-		$$ = &ast.PartitionOptions{
-			Tp:		model.PartitionTypeRange,
-			Expr:		$5.(ast.ExprNode),
-			Definitions:	defs,
+		$$ = &ast.PartitionMethod{
+			Tp:          model.PartitionTypeKey,
+			Linear:      len($1) != 0,
+			ColumnNames: $5.([]*ast.ColumnName),
 		}
 	}
-|	"PARTITION" "BY" "RANGE" "COLUMNS" '(' ColumnNameList ')' PartitionNumOpt PartitionDefinitionListOpt
+|	LinearOpt "HASH" '(' Expression ')'
 	{
-		var defs []*ast.PartitionDefinition
-		if $9 != nil {
-			defs = $9.([]*ast.PartitionDefinition)
+		$$ = &ast.PartitionMethod{
+			Tp:     model.PartitionTypeHash,
+			Linear: len($1) != 0,
+			Expr:   $4.(ast.ExprNode),
 		}
-		$$ = &ast.PartitionOptions{
-			Tp:		model.PartitionTypeRange,
-			ColumnNames:	$6.([]*ast.ColumnName),
-			Definitions:	defs,
+	}
+
+PartitionKeyAlgorithmOpt:
+	/* empty */
+	{}
+|	"ALGORITHM" '=' NUM
+	{}
+
+PartitionMethod:
+	SubPartitionMethod
+	{
+		$$ = $1
+	}
+|	"RANGE" '(' Expression ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:   model.PartitionTypeRange,
+			Expr: $3.(ast.ExprNode),
 		}
+	}
+|	"RANGE" "COLUMNS" '(' ColumnNameList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:          model.PartitionTypeRange,
+			ColumnNames: $4.([]*ast.ColumnName),
+		}
+	}
+|	"LIST" '(' Expression ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:   model.PartitionTypeList,
+			Expr: $3.(ast.ExprNode),
+		}
+	}
+|	"LIST" "COLUMNS" '(' ColumnNameList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:          model.PartitionTypeList,
+			ColumnNames: $4.([]*ast.ColumnName),
+		}
+	}
+|	"SYSTEM_TIME" "INTERVAL" Expression TimeUnit
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:    model.PartitionTypeSystemTime,
+			Expr:  $3.(ast.ExprNode),
+			Unit:  ast.NewValueExpr($4),
+		}
+	}
+|	"SYSTEM_TIME" "LIMIT" LengthNum
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:    model.PartitionTypeSystemTime,
+			Limit: $3.(uint64),
+		}
+	}
+|	"SYSTEM_TIME"
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:    model.PartitionTypeSystemTime,
+		}
+	}
+
+LinearOpt:
+	{
+		$$ = ""
+	}
+| "LINEAR"
+	{
+		$$ = $1
 	}
 
 SubPartitionOpt:
-	{}
-|	"SUBPARTITION" "BY" "HASH" '(' Expression ')' SubPartitionNumOpt
-	{}
-|	"SUBPARTITION" "BY" "KEY" '(' ColumnNameList ')' SubPartitionNumOpt
-	{}
+	{
+		$$ = nil
+	}
+|	"SUBPARTITION" "BY" SubPartitionMethod SubPartitionNumOpt
+	{
+		method := $3.(*ast.PartitionMethod)
+		method.Num = $4.(uint64)
+		$$ = method
+	}
 
 SubPartitionNumOpt:
-	{}
-|	"SUBPARTITIONS" NUM
-	{}
+	{
+		$$ = uint64(0)
+	}
+|	"SUBPARTITIONS" LengthNum
+	{
+		res := $2.(uint64)
+		if res == 0 {
+			yylex.AppendError(ast.ErrNoParts.GenWithStackByArgs("subpartitions"))
+			return 1
+		}
+		$$ = res
+	}
 
 PartitionNumOpt:
-	{}
-|	"PARTITIONS" NUM
-	{}
+	{
+		$$ = uint64(0)
+	}
+|	"PARTITIONS" LengthNum
+	{
+		res := $2.(uint64)
+		if res == 0 {
+			yylex.AppendError(ast.ErrNoParts.GenWithStackByArgs("partitions"))
+			return 1
+		}
+		$$ = res
+	}
 
 PartitionDefinitionListOpt:
 	/* empty */ %prec lowerThanCreateTableSelect
@@ -2166,74 +2280,131 @@ PartitionDefinitionList:
 	}
 
 PartitionDefinition:
-	"PARTITION" Identifier PartDefValuesOpt PartDefOptionsOpt
+	"PARTITION" Identifier PartDefValuesOpt PartDefOptionList SubPartDefinitionListOpt
 	{
-		partDef := &ast.PartitionDefinition{
-			Name: model.NewCIStr($2),
+		$$ = &ast.PartitionDefinition{
+			Name:    model.NewCIStr($2),
+			Clause:  $3.(ast.PartitionDefinitionClause),
+			Options: $4.([]*ast.TableOption),
+			Sub:     $5.([]*ast.SubPartitionDefinition),
 		}
-		switch $3.(type) {
-		case []ast.ExprNode:
-			partDef.LessThan = $3.([]ast.ExprNode)
-		case ast.ExprNode:
-			partDef.LessThan = make([]ast.ExprNode, 1)
-			partDef.LessThan[0] = $3.(ast.ExprNode)
-		}
-
-		if comment, ok := $4.(string); ok {
-			partDef.Comment = comment
-		}
-		$$ = partDef
 	}
 
-PartDefOptionsOpt:
+SubPartDefinitionListOpt:
+	/*empty*/
 	{
-		$$ = nil
+		$$ = make([]*ast.SubPartitionDefinition, 0)
 	}
-|	PartDefOptionList
+|	'(' SubPartDefinitionList ')'
 	{
-		$$ = $1
+		$$ = $2
+	}
+
+SubPartDefinitionList:
+	SubPartDefinition
+	{
+		$$ = []*ast.SubPartitionDefinition{$1.(*ast.SubPartitionDefinition)}
+	}
+|	SubPartDefinitionList ',' SubPartDefinition
+	{
+		list := $1.([]*ast.SubPartitionDefinition)
+		$$ = append(list, $3.(*ast.SubPartitionDefinition))
+	}
+
+SubPartDefinition:
+	"SUBPARTITION" Identifier PartDefOptionList
+	{
+		$$ = &ast.SubPartitionDefinition{
+			Name:    model.NewCIStr($2),
+			Options: $3.([]*ast.TableOption),
+		}
 	}
 
 PartDefOptionList:
-	PartDefOption
+	/*empty*/
 	{
-		$$ = $1
+		$$ = make([]*ast.TableOption, 0)
 	}
 |	PartDefOptionList PartDefOption
 	{
-		if $1 != nil {
-			$$ = $1
-		} else {
-			$$ = $2
-		}
+		list := $1.([]*ast.TableOption)
+		$$ = append(list, $2.(*ast.TableOption))
 	}
 
 PartDefOption:
 	"COMMENT" EqOpt stringLit
 	{
-		$$ = $3
+		$$ = &ast.TableOption{Tp: ast.TableOptionComment, StrValue: $3}
 	}
-|	"ENGINE" EqOpt Identifier
+|	"ENGINE" EqOpt StringName
 	{
-		$$ = nil
+		$$ = &ast.TableOption{Tp: ast.TableOptionEngine, StrValue: $3.(string)}
+	}
+|	"DATA" "DIRECTORY" EqOpt stringLit
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionDataDirectory, StrValue: $4}
+	}
+|	"INDEX" "DIRECTORY" EqOpt stringLit
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionIndexDirectory, StrValue: $4}
+	}
+|	"MAX_ROWS" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionMaxRows, UintValue: $3.(uint64)}
+	}
+|	"MIN_ROWS" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionMinRows, UintValue: $3.(uint64)}
 	}
 |	"TABLESPACE" EqOpt Identifier
 	{
-		$$ =  nil
+		$$ = &ast.TableOption{Tp: ast.TableOptionTablespace, StrValue: $3}
 	}
-
+|	"NODEGROUP" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionNodegroup, UintValue: $3.(uint64)}
+	}
 
 PartDefValuesOpt:
 	{
-		$$ = nil
+		$$ = &ast.PartitionDefinitionClauseNone{}
 	}
 |	"VALUES" "LESS" "THAN" "MAXVALUE"
 	{
-		$$ = &ast.MaxValueExpr{}
+		$$ = &ast.PartitionDefinitionClauseLessThan{
+			Exprs: []ast.ExprNode{&ast.MaxValueExpr{}},
+		}
 	}
 |	"VALUES" "LESS" "THAN" '(' MaxValueOrExpressionList ')'
 	{
-		$$ = $5
+		$$ = &ast.PartitionDefinitionClauseLessThan{
+			Exprs: $5.([]ast.ExprNode),
+		}
+	}
+|	"DEFAULT"
+	{
+		$$ = &ast.PartitionDefinitionClauseIn{}
+	}
+|	"VALUES" "IN" '(' ExpressionList ')'
+	{
+		exprs := $4.([]ast.ExprNode)
+		values := make([][]ast.ExprNode, 0, len(exprs))
+		for _, expr := range exprs {
+			if row, ok := expr.(*ast.RowExpr); ok {
+				values = append(values, row.Values)
+			} else {
+				values = append(values, []ast.ExprNode{expr})
+			}
+		}
+		$$ = &ast.PartitionDefinitionClauseIn{Values: values}
+	}
+|	"HISTORY"
+	{
+		$$ = &ast.PartitionDefinitionClauseHistory{Current: false}
+	}
+|	"CURRENT"
+	{
+		$$ = &ast.PartitionDefinitionClauseHistory{Current: true}
 	}
 
 DuplicateOpt:
@@ -3110,10 +3281,10 @@ identifier | UnReservedKeyword | NotKeywordToken | TiDBKeyword
 
 UnReservedKeyword:
  "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CLEANUP" | "CHARSET"
-| "COLUMNS" | "COMMIT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "STOP" | "PAUSE" | "RESUME" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
+| "COLUMNS" | "COMMIT" | "CURRENT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "STOP" | "PAUSE" | "RESUME" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
 | "DYNAMIC"| "END" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FORMAT" | "FULL" |"GLOBAL"
-| "HASH" | "HOUR" | "LESS" | "LOCAL" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REDUNDANT"
-| "ROLLBACK" | "SESSION" | "SIGNED" | "SNAPSHOT" | "START" | "STATUS" | "SUBPARTITIONS" | "SUBPARTITION" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken
+| "HASH" | "HOUR" | "LESS" | "LIST" | "LOCAL" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REDUNDANT"
+| "ROLLBACK" | "SESSION" | "SIGNED" | "SNAPSHOT" | "START" | "STATUS" | "SUBPARTITIONS" | "SUBPARTITION" | "SYSTEM_TIME" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken
 | "TIMESTAMP" %prec lowerThanStringLitToken | "TRACE" | "TRANSACTION" | "TRUNCATE" | "UNKNOWN" | "VALUE" | "WARNINGS" | "YEAR" | "MODE"  | "WEEK"  | "ANY" | "SOME" | "USER" | "IDENTIFIED"
 | "COLLATION" | "COMMENT" | "AVG_ROW_LENGTH" | "CONNECTION" | "CHECKSUM" | "COMPRESSION" | "KEY_BLOCK_SIZE" | "MASTER" | "MAX_ROWS"
 | "MIN_ROWS" | "NATIONAL" | "ROW" | "ROW_FORMAT" | "QUARTER" | "GRANTS" | "TRIGGERS" | "DELAY_KEY_WRITE" | "ISOLATION" | "JSON"
@@ -3121,7 +3292,7 @@ UnReservedKeyword:
 | "SQL_NO_CACHE" | "DISABLE"  | "ENABLE" | "REVERSE" | "PRIVILEGES" | "NO" | "BINLOG" | "FUNCTION" | "VIEW" | "MODIFY" | "EVENTS" | "PARTITIONS"
 | "NONE" | "SUPER" | "EXCLUSIVE" | "STATS_PERSISTENT" | "ROW_COUNT" | "COALESCE" | "MONTH" | "PROCESS" | "PROFILES"
 | "MICROSECOND" | "MINUTE" | "PLUGINS" | "QUERY" | "QUERIES" | "SECOND" | "SEPARATOR" | "SHARE" | "SHARED" | "SLOW" | "MAX_CONNECTIONS_PER_HOUR" | "MAX_QUERIES_PER_HOUR" | "MAX_UPDATES_PER_HOUR"
-| "MAX_USER_CONNECTIONS" | "REPLICATION" | "CLIENT" | "SLAVE" | "RELOAD" | "TEMPORARY" | "ROUTINE" | "EVENT" | "ALGORITHM" | "DEFINER" | "INVOKER" | "MERGE" | "TEMPTABLE" | "UNDEFINED" | "SECURITY" | "CASCADED" | "RECOVER"
+| "MAX_USER_CONNECTIONS" | "REPLICATION" | "CLIENT" | "SLAVE" | "RELOAD" | "TEMPORARY" | "ROUTINE" | "EVENT" | "ALGORITHM" | "DEFINER" | "INVOKER" | "MERGE" | "TEMPTABLE" | "UNDEFINED" | "SECURITY" | "CASCADED" | "RECOVER" | "HISTORY" | "DIRECTORY" | "NODEGROUP"
 
 
 
@@ -4307,8 +4478,8 @@ CastType:
 			x.Flag |= mysql.BinaryFlag
 		}
 		if x.Charset == "" {
-			x.Charset = charset.CharsetUTF8
-			x.Collate = charset.CollationUTF8
+			x.Charset = mysql.DefaultCharset
+			x.Collate = mysql.DefaultCollationName
 		}
 		$$ = x
 	}
@@ -4377,8 +4548,8 @@ CastType:
 	{
 		x := types.NewFieldType(mysql.TypeJSON)
 		x.Flag |= mysql.BinaryFlag | (mysql.ParseToJSONFlag)
-		x.Charset = charset.CharsetUTF8
-		x.Collate = charset.CollationUTF8
+		x.Charset = mysql.DefaultCharset
+		x.Collate = mysql.DefaultCollationName
 		$$ = x
 	}
 
@@ -4701,6 +4872,16 @@ TableFactor:
 	{
 		$$ = $2
 	}
+
+PartitionNameListOpt:
+    /* empty */
+    {
+        $$ = []model.CIStr{}
+    }
+|    "PARTITION" '(' PartitionNameList ')'
+    {
+        $$ = $3
+    }
 
 TableAsNameOpt:
 	{
@@ -5359,6 +5540,17 @@ CharsetName:
 |	binaryType
 	{
 		$$ = charset.CharsetBin
+	}
+
+CollationName:
+	StringName
+	{
+		info, err := charset.GetCollationByName($1.(string))
+		if err != nil {
+			yylex.AppendError(err)
+			return 1
+		}
+		$$ = info.Name
 	}
 
 VariableAssignmentList:
@@ -6155,7 +6347,7 @@ TableOption:
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionCharset, StrValue: $4.(string)}
 	}
-|	DefaultKwdOpt "COLLATE" EqOpt StringName
+|	DefaultKwdOpt "COLLATE" EqOpt CollationName
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionCollate, StrValue: $4.(string)}
 	}
@@ -6486,44 +6678,40 @@ BitValueType:
 	}
 
 StringType:
-	NationalOpt "CHAR" FieldLen OptBinary OptCollate
+	NationalOpt "CHAR" FieldLen OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeString)
 		x.Flen = $3.(int)
 		x.Charset = $4.(*ast.OptBinary).Charset
-		x.Collate = $5.(string)
 		if $4.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	NationalOpt "CHAR" OptBinary OptCollate
+|	NationalOpt "CHAR" OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeString)
 		x.Charset = $3.(*ast.OptBinary).Charset
-		x.Collate = $4.(string)
 		if $3.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	"NATIONAL" "CHARACTER" FieldLen OptBinary OptCollate
+|	"NATIONAL" "CHARACTER" FieldLen OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeString)
 		x.Flen = $3.(int)
 		x.Charset = $4.(*ast.OptBinary).Charset
-		x.Collate = $5.(string)
 		if $4.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	Varchar FieldLen OptBinary OptCollate
+|	Varchar FieldLen OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeVarchar)
 		x.Flen = $2.(int)
 		x.Charset = $3.(*ast.OptBinary).Charset
-		x.Collate = $4.(string)
 		if $3.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
@@ -6555,30 +6743,27 @@ StringType:
 		x.Flag |= mysql.BinaryFlag
 		$$ = $1.(*types.FieldType)
 	}
-|	TextType OptBinary OptCollate
+|	TextType OptBinary
 	{
 		x := $1.(*types.FieldType)
 		x.Charset = $2.(*ast.OptBinary).Charset
-		x.Collate = $3.(string)
 		if $2.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	"ENUM" '(' StringList ')' OptCharset OptCollate
+|	"ENUM" '(' StringList ')' OptCharset
 	{
 		x := types.NewFieldType(mysql.TypeEnum)
 		x.Elems = $3.([]string)
 		x.Charset = $5.(string)
-		x.Collate = $6.(string)
 		$$ = x
 	}
-|	"SET" '(' StringList ')' OptCharset OptCollate
+|	"SET" '(' StringList ')' OptCharset
 	{
 		x := types.NewFieldType(mysql.TypeSet)
 		x.Elems = $3.([]string)
 		x.Charset = $5.(string)
-		x.Collate = $6.(string)
 		$$ = x
 	}
 |	"JSON"
@@ -6800,12 +6985,13 @@ OptCharset:
 CharsetKw:
 	"CHARACTER" "SET"
 |	"CHARSET"
+| 	"CHAR" "SET"
 
 OptCollate:
 	{
 		$$ = ""
 	}
-|	"COLLATE" StringName
+|	"COLLATE" CollationName
 	{
 		$$ = $2.(string)
 	}

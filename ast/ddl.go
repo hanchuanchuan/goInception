@@ -15,6 +15,8 @@ package ast
 
 import (
 	"github.com/hanchuanchuan/goInception/model"
+	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/types"
 )
 
@@ -176,6 +178,7 @@ const (
 	ReferOptionCascade
 	ReferOptionSetNull
 	ReferOptionNoAction
+	ReferOptionSetDefault
 )
 
 // String implements fmt.Stringer interface.
@@ -189,6 +192,8 @@ func (r ReferOptionType) String() string {
 		return "SET NULL"
 	case ReferOptionNoAction:
 		return "NO ACTION"
+	case ReferOptionSetDefault:
+		return "SET DEFAULT"
 	}
 	return ""
 }
@@ -242,6 +247,16 @@ const (
 	ColumnOptionComment
 	ColumnOptionGenerated
 	ColumnOptionReference
+	ColumnOptionCollate
+	ColumnOptionCheck
+)
+
+var (
+	invalidOptionForGeneratedColumn = map[ColumnOptionType]struct{}{
+		ColumnOptionAutoIncrement: {},
+		ColumnOptionOnUpdate:      {},
+		ColumnOptionDefaultValue:  {},
+	}
 )
 
 // ColumnOption is used for parsing column constraint info from SQL.
@@ -256,7 +271,10 @@ type ColumnOption struct {
 	// Stored is only for ColumnOptionGenerated, default is false.
 	Stored bool
 	// Refer is used for foreign key.
-	Refer *ReferenceDef
+	Refer    *ReferenceDef
+	StrValue string
+	// Enforced is only for Check, default is true.
+	Enforced bool
 }
 
 // Accept implements Node Accept interface.
@@ -314,11 +332,16 @@ const (
 	ConstraintUniqIndex
 	ConstraintForeignKey
 	ConstraintFulltext
+	ConstraintCheck
 )
 
 // Constraint is constraint for table definition.
 type Constraint struct {
 	node
+
+	// only supported by MariaDB 10.0.2+ (ADD {INDEX|KEY}, ADD FOREIGN KEY),
+	// see https://mariadb.com/kb/en/library/alter-table/
+	IfNotExists bool
 
 	Tp   ConstraintType
 	Name string
@@ -328,6 +351,9 @@ type Constraint struct {
 	Refer *ReferenceDef // Used for foreign key.
 
 	Option *IndexOption // Index Options
+	Expr   ExprNode     // Used for Check
+
+	Enforced bool // Used for Check
 }
 
 // Accept implements Node Accept interface.
@@ -392,6 +418,23 @@ func (n *ColumnDef) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// Validate checks if a column definition is legal.
+// For example, generated column definitions that contain such
+// column options as `ON UPDATE`, `AUTO_INCREMENT`, `DEFAULT`
+// are illegal.
+func (n *ColumnDef) Validate() bool {
+	generatedCol := false
+	illegalOpt4gc := false
+	for _, opt := range n.Options {
+		if opt.Tp == ColumnOptionGenerated {
+			generatedCol = true
+		}
+		_, found := invalidOptionForGeneratedColumn[opt.Tp]
+		illegalOpt4gc = illegalOpt4gc || found
+	}
+	return !(generatedCol && illegalOpt4gc)
+}
+
 // CreateTableStmt is a statement to create a table.
 // See https://dev.mysql.com/doc/refman/5.7/en/create-table.html
 type CreateTableStmt struct {
@@ -448,6 +491,13 @@ func (n *CreateTableStmt) Accept(v Visitor) (Node, bool) {
 		}
 		n.Select = node.(ResultSetNode)
 	}
+	if n.Partition != nil {
+		node, ok := n.Partition.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Partition = node.(*PartitionOptions)
+	}
 
 	return v.Leave(n)
 }
@@ -457,8 +507,10 @@ func (n *CreateTableStmt) Accept(v Visitor) (Node, bool) {
 type DropTableStmt struct {
 	ddlNode
 
-	IfExists bool
-	Tables   []*TableName
+	IfExists    bool
+	Tables      []*TableName
+	IsView      bool
+	IsTemporary bool // make sense ONLY if/when IsView == false
 }
 
 // Accept implements Node Accept interface.
@@ -556,18 +608,41 @@ type CreateViewStmt struct {
 	ViewName  *TableName
 	Cols      []model.CIStr
 	Select    StmtNode
+	// SchemaCols  []model.CIStr
+	// Algorithm   model.ViewAlgorithm
+	// Definer     *auth.UserIdentity
+	// Security    model.ViewSecurity
+	// CheckOption model.ViewCheckOption
 }
 
 // Accept implements Node Accept interface.
 func (n *CreateViewStmt) Accept(v Visitor) (Node, bool) {
-	// TODO: implement the details.
-	return n, true
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*CreateViewStmt)
+	node, ok := n.ViewName.Accept(v)
+	if !ok {
+		return n, false
+	}
+	n.ViewName = node.(*TableName)
+	selnode, ok := n.Select.Accept(v)
+	if !ok {
+		return n, false
+	}
+	n.Select = selnode.(*SelectStmt)
+	return v.Leave(n)
 }
 
 // CreateIndexStmt is a statement to create an index.
 // See https://dev.mysql.com/doc/refman/5.7/en/create-index.html
 type CreateIndexStmt struct {
 	ddlNode
+
+	// only supported by MariaDB 10.0.2+,
+	// see https://mariadb.com/kb/en/library/create-index/
+	IfNotExists bool
 
 	IndexName     string
 	Table         *TableName
@@ -630,6 +705,30 @@ func (n *DropIndexStmt) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// CleanupTableLockStmt is a statement to cleanup table lock.
+type CleanupTableLockStmt struct {
+	ddlNode
+
+	Tables []*TableName
+}
+
+// Accept implements Node Accept interface.
+func (n *CleanupTableLockStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*CleanupTableLockStmt)
+	for i := range n.Tables {
+		node, ok := n.Tables[i].Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Tables[i] = node.(*TableName)
+	}
+	return v.Leave(n)
+}
+
 // TableOptionType is the type for TableOption
 type TableOptionType int
 
@@ -653,7 +752,12 @@ const (
 	TableOptionRowFormat
 	TableOptionStatsPersistent
 	TableOptionShardRowID
+	TableOptionPreSplitRegion
 	TableOptionPackKeys
+	TableOptionTablespace
+	TableOptionNodegroup
+	TableOptionDataDirectory
+	TableOptionIndexDirectory
 )
 
 // RowFormat types
@@ -741,7 +845,12 @@ const (
 	AlterTableRenameIndex
 	AlterTableForce
 	AlterTableAddPartitions
+	AlterTableCoalescePartitions
 	AlterTableDropPartition
+	AlterTableTruncatePartition
+	AlterTablePartition
+	AlterTableEnableKeys
+	AlterTableDisableKeys
 
 // TODO: Add more actions
 )
@@ -749,6 +858,20 @@ const (
 // LockType is the type for AlterTableSpec.
 // See https://dev.mysql.com/doc/refman/5.7/en/alter-table.html#alter-table-concurrency
 type LockType byte
+
+func (n LockType) String() string {
+	switch n {
+	case LockTypeNone:
+		return "NONE"
+	case LockTypeDefault:
+		return "DEFAULT"
+	case LockTypeShared:
+		return "SHARED"
+	case LockTypeExclusive:
+		return "EXCLUSIVE"
+	}
+	return ""
+}
 
 // Lock Types.
 const (
@@ -758,9 +881,46 @@ const (
 	LockTypeExclusive
 )
 
+// AlterAlgorithm is the algorithm of the DDL operations.
+// See https://dev.mysql.com/doc/refman/8.0/en/alter-table.html#alter-table-performance.
+type AlterAlgorithm byte
+
+// DDL alter algorithms.
+// For now, TiDB only supported inplace and instance algorithms. If the user specify `copy`,
+// will get an error.
+const (
+	AlterAlgorithmDefault AlterAlgorithm = iota
+	AlterAlgorithmCopy
+	AlterAlgorithmInplace
+	AlterAlgorithmInstant
+)
+
+func (a AlterAlgorithm) String() string {
+	switch a {
+	case AlterAlgorithmDefault:
+		return "DEFAULT"
+	case AlterAlgorithmCopy:
+		return "COPY"
+	case AlterAlgorithmInplace:
+		return "INPLACE"
+	case AlterAlgorithmInstant:
+		return "INSTANT"
+	default:
+		return "DEFAULT"
+	}
+}
+
 // AlterTableSpec represents alter table specification.
 type AlterTableSpec struct {
 	node
+
+	// only supported by MariaDB 10.0.2+ (DROP COLUMN, CHANGE COLUMN, MODIFY COLUMN, DROP INDEX, DROP FOREIGN KEY, DROP PARTITION)
+	// see https://mariadb.com/kb/en/library/alter-table/
+	IfExists bool
+
+	// only supported by MariaDB 10.0.2+ (ADD COLUMN, ADD PARTITION)
+	// see https://mariadb.com/kb/en/library/alter-table/
+	IfNotExists bool
 
 	Tp              AlterTableType
 	Name            string
@@ -771,10 +931,14 @@ type AlterTableSpec struct {
 	OldColumnName   *ColumnName
 	Position        *ColumnPosition
 	LockType        LockType
+	Algorithm       AlterAlgorithm
 	Comment         string
 	FromKey         model.CIStr
 	ToKey           model.CIStr
+	Partition       *PartitionOptions
+	PartitionNames  []model.CIStr
 	PartDefinitions []*PartitionDefinition
+	Num             uint64
 }
 
 // Accept implements Node Accept interface.
@@ -876,18 +1040,325 @@ func (n *TruncateTableStmt) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+var (
+	ErrNoParts                              = terror.ClassDDL.NewStd(mysql.ErrNoParts)
+	ErrPartitionColumnList                  = terror.ClassDDL.NewStd(mysql.ErrPartitionColumnList)
+	ErrPartitionRequiresValues              = terror.ClassDDL.NewStd(mysql.ErrPartitionRequiresValues)
+	ErrPartitionsMustBeDefined              = terror.ClassDDL.NewStd(mysql.ErrPartitionsMustBeDefined)
+	ErrPartitionWrongNoPart                 = terror.ClassDDL.NewStd(mysql.ErrPartitionWrongNoPart)
+	ErrPartitionWrongNoSubpart              = terror.ClassDDL.NewStd(mysql.ErrPartitionWrongNoSubpart)
+	ErrPartitionWrongValues                 = terror.ClassDDL.NewStd(mysql.ErrPartitionWrongValues)
+	ErrRowSinglePartitionField              = terror.ClassDDL.NewStd(mysql.ErrRowSinglePartitionField)
+	ErrSubpartition                         = terror.ClassDDL.NewStd(mysql.ErrSubpartition)
+	ErrSystemVersioningWrongPartitions      = terror.ClassDDL.NewStd(mysql.ErrSystemVersioningWrongPartitions)
+	ErrTooManyValues                        = terror.ClassDDL.NewStd(mysql.ErrTooManyValues)
+	ErrWrongPartitionTypeExpectedSystemTime = terror.ClassDDL.NewStd(mysql.ErrWrongPartitionTypeExpectedSystemTime)
+)
+
+type SubPartitionDefinition struct {
+	Name    model.CIStr
+	Options []*TableOption
+}
+
+type PartitionDefinitionClause interface {
+	acceptInPlace(v Visitor) bool
+	// Validate checks if the clause is consistent with the given options.
+	// `pt` can be 0 and `columns` can be -1 to skip checking the clause against
+	// the partition type or number of columns in the expression list.
+	Validate(pt model.PartitionType, columns int) error
+}
+
+type PartitionDefinitionClauseNone struct{}
+
+func (n *PartitionDefinitionClauseNone) acceptInPlace(v Visitor) bool {
+	return true
+}
+
+func (n *PartitionDefinitionClauseNone) Validate(pt model.PartitionType, columns int) error {
+	switch pt {
+	case 0:
+	case model.PartitionTypeRange:
+		return ErrPartitionRequiresValues.GenWithStackByArgs("RANGE", "LESS THAN")
+	case model.PartitionTypeList:
+		return ErrPartitionRequiresValues.GenWithStackByArgs("LIST", "IN")
+	case model.PartitionTypeSystemTime:
+		return ErrSystemVersioningWrongPartitions
+	}
+	return nil
+}
+
+type PartitionDefinitionClauseLessThan struct {
+	Exprs []ExprNode
+}
+
+func (n *PartitionDefinitionClauseLessThan) acceptInPlace(v Visitor) bool {
+	for i, expr := range n.Exprs {
+		newExpr, ok := expr.Accept(v)
+		if !ok {
+			return false
+		}
+		n.Exprs[i] = newExpr.(ExprNode)
+	}
+	return true
+}
+
+func (n *PartitionDefinitionClauseLessThan) Validate(pt model.PartitionType, columns int) error {
+	switch pt {
+	case model.PartitionTypeRange, 0:
+	default:
+		return ErrPartitionWrongValues.GenWithStackByArgs("RANGE", "LESS THAN")
+	}
+
+	switch {
+	case columns == 0 && len(n.Exprs) != 1:
+		return ErrTooManyValues.GenWithStackByArgs("RANGE")
+	case columns > 0 && len(n.Exprs) != columns:
+		return ErrPartitionColumnList
+	}
+	return nil
+}
+
+type PartitionDefinitionClauseIn struct {
+	Values [][]ExprNode
+}
+
+func (n *PartitionDefinitionClauseIn) acceptInPlace(v Visitor) bool {
+	for _, valList := range n.Values {
+		for j, val := range valList {
+			newVal, ok := val.Accept(v)
+			if !ok {
+				return false
+			}
+			valList[j] = newVal.(ExprNode)
+		}
+	}
+	return true
+}
+
+func (n *PartitionDefinitionClauseIn) Validate(pt model.PartitionType, columns int) error {
+	switch pt {
+	case model.PartitionTypeList, 0:
+	default:
+		return ErrPartitionWrongValues.GenWithStackByArgs("LIST", "IN")
+	}
+
+	if len(n.Values) == 0 {
+		return nil
+	}
+
+	expectedColCount := len(n.Values[0])
+	for _, val := range n.Values[1:] {
+		if len(val) != expectedColCount {
+			return ErrPartitionColumnList
+		}
+	}
+
+	switch {
+	case columns == 0 && expectedColCount != 1:
+		return ErrRowSinglePartitionField
+	case columns > 0 && expectedColCount != columns:
+		return ErrPartitionColumnList
+	}
+	return nil
+}
+
+type PartitionDefinitionClauseHistory struct {
+	Current bool
+}
+
+func (n *PartitionDefinitionClauseHistory) acceptInPlace(v Visitor) bool {
+	return true
+}
+
+func (n *PartitionDefinitionClauseHistory) Validate(pt model.PartitionType, columns int) error {
+	switch pt {
+	case 0, model.PartitionTypeSystemTime:
+	default:
+		return ErrWrongPartitionTypeExpectedSystemTime
+	}
+
+	return nil
+}
+
 // PartitionDefinition defines a single partition.
 type PartitionDefinition struct {
-	Name     model.CIStr
-	LessThan []ExprNode
-	MaxValue bool
-	Comment  string
+	Name    model.CIStr
+	Clause  PartitionDefinitionClause
+	Options []*TableOption
+	Sub     []*SubPartitionDefinition
+}
+
+// Comment returns the comment option given to this definition.
+// The second return value indicates if the comment option exists.
+func (n *PartitionDefinition) Comment() (string, bool) {
+	for _, opt := range n.Options {
+		if opt.Tp == TableOptionComment {
+			return opt.StrValue, true
+		}
+	}
+	return "", false
+}
+
+func (n *PartitionDefinition) acceptInPlace(v Visitor) bool {
+	return n.Clause.acceptInPlace(v)
+}
+
+// PartitionMethod describes how partitions or subpartitions are constructed.
+type PartitionMethod struct {
+	// Tp is the type of the partition function
+	Tp model.PartitionType
+	// Linear is a modifier to the HASH and KEY type for choosing a different
+	// algorithm
+	Linear bool
+	// Expr is an expression used as argument of HASH, RANGE, LIST and
+	// SYSTEM_TIME types
+	Expr ExprNode
+	// ColumnNames is a list of column names used as argument of KEY,
+	// RANGE COLUMNS and LIST COLUMNS types
+	ColumnNames []*ColumnName
+	// Unit is a time unit used as argument of SYSTEM_TIME type
+	Unit *ValueExpr
+	// Limit is a row count used as argument of the SYSTEM_TIME type
+	Limit uint64
+
+	// Num is the number of (sub)partitions required by the method.
+	Num uint64
+}
+
+// acceptInPlace is like Node.Accept but does not allow replacing the node itself.
+func (n *PartitionMethod) acceptInPlace(v Visitor) bool {
+	if n.Expr != nil {
+		expr, ok := n.Expr.Accept(v)
+		if !ok {
+			return false
+		}
+		n.Expr = expr.(ExprNode)
+	}
+	for i, colName := range n.ColumnNames {
+		newColName, ok := colName.Accept(v)
+		if !ok {
+			return false
+		}
+		n.ColumnNames[i] = newColName.(*ColumnName)
+	}
+	if n.Unit != nil {
+		unit, ok := n.Unit.Accept(v)
+		if !ok {
+			return false
+		}
+		n.Unit = unit.(*ValueExpr)
+	}
+	return true
 }
 
 // PartitionOptions specifies the partition options.
 type PartitionOptions struct {
-	Tp          model.PartitionType
-	Expr        ExprNode
-	ColumnNames []*ColumnName
+	node
+	PartitionMethod
+	Sub         *PartitionMethod
 	Definitions []*PartitionDefinition
+}
+
+// Validate checks if the partition is well-formed.
+func (n *PartitionOptions) Validate() error {
+	// if both a partition list and the partition numbers are specified, their values must match
+	if n.Num != 0 && len(n.Definitions) != 0 && n.Num != uint64(len(n.Definitions)) {
+		return ErrPartitionWrongNoPart
+	}
+	// now check the subpartition count
+	if len(n.Definitions) > 0 {
+		// ensure the subpartition count for every partitions are the same
+		// then normalize n.Num and n.Sub.Num so equality comparison works.
+		n.Num = uint64(len(n.Definitions))
+
+		subDefCount := len(n.Definitions[0].Sub)
+		for _, pd := range n.Definitions[1:] {
+			if len(pd.Sub) != subDefCount {
+				return ErrPartitionWrongNoSubpart
+			}
+		}
+		if n.Sub != nil {
+			if n.Sub.Num != 0 && subDefCount != 0 && n.Sub.Num != uint64(subDefCount) {
+				return ErrPartitionWrongNoSubpart
+			}
+			if subDefCount != 0 {
+				n.Sub.Num = uint64(subDefCount)
+			}
+		} else if subDefCount != 0 {
+			return ErrSubpartition
+		}
+	}
+
+	switch n.Tp {
+	case model.PartitionTypeHash, model.PartitionTypeKey:
+		if n.Num == 0 {
+			n.Num = 1
+		}
+	case model.PartitionTypeRange, model.PartitionTypeList:
+		if len(n.Definitions) == 0 {
+			return ErrPartitionsMustBeDefined.GenWithStackByArgs(n.Tp)
+		}
+	case model.PartitionTypeSystemTime:
+		if len(n.Definitions) < 2 {
+			return ErrSystemVersioningWrongPartitions
+		}
+	}
+
+	for _, pd := range n.Definitions {
+		// ensure the partition definition types match the methods,
+		// e.g. RANGE partitions only allows VALUES LESS THAN
+		if err := pd.Clause.Validate(n.Tp, len(n.ColumnNames)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (n *PartitionOptions) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	n = newNode.(*PartitionOptions)
+	if !n.PartitionMethod.acceptInPlace(v) {
+		return n, false
+	}
+	if n.Sub != nil && !n.Sub.acceptInPlace(v) {
+		return n, false
+	}
+	for _, def := range n.Definitions {
+		if !def.acceptInPlace(v) {
+			return n, false
+		}
+	}
+	return v.Leave(n)
+}
+
+// RecoverTableStmt is a statement to recover dropped table.
+type RecoverTableStmt struct {
+	ddlNode
+
+	JobID  int64
+	Table  *TableName
+	JobNum int64
+}
+
+// Accept implements Node Accept interface.
+func (n *RecoverTableStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+
+	n = newNode.(*RecoverTableStmt)
+	if n.Table != nil {
+		node, ok := n.Table.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.Table = node.(*TableName)
+	}
+	return v.Leave(n)
 }

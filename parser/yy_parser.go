@@ -14,6 +14,7 @@
 package parser
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -85,7 +86,7 @@ func New() *Parser {
 
 // Parse parses a query string to raw ast.StmtNode.
 // If charset or collation is "", default charset and collation will be used.
-func (parser *Parser) Parse(sql, charset, collation string) ([]ast.StmtNode, error) {
+func (parser *Parser) Parse(sql, charset, collation string) (stmt []ast.StmtNode, warns []error, err error) {
 	if charset == "" {
 		charset = mysql.DefaultCharset
 	}
@@ -102,19 +103,25 @@ func (parser *Parser) Parse(sql, charset, collation string) ([]ast.StmtNode, err
 	l = &parser.lexer
 	yyParse(l, parser)
 
-	if len(l.Errors()) != 0 {
-		return nil, errors.Trace(l.Errors()[0])
+	warns, errs := l.Errors()
+	if len(warns) > 0 {
+		warns = append([]error(nil), warns...)
+	} else {
+		warns = nil
+	}
+	if len(errs) != 0 {
+		return nil, warns, errors.Trace(errs[0])
 	}
 	for _, stmt := range parser.result {
 		ast.SetFlag(stmt)
 	}
-	return parser.result, nil
+	return parser.result, warns, nil
 }
 
 // ParseOneStmt parses a query and returns an ast.StmtNode.
 // The query must have one statement, otherwise ErrSyntax is returned.
 func (parser *Parser) ParseOneStmt(sql, charset, collation string) (ast.StmtNode, error) {
-	stmts, err := parser.Parse(sql, charset, collation)
+	stmts, _, err := parser.Parse(sql, charset, collation)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -135,7 +142,7 @@ func ParseErrorWith(errstr string, lineno int) error {
 	if len(errstr) > mysql.ErrTextLength {
 		errstr = errstr[:mysql.ErrTextLength]
 	}
-	return ErrParse.GenWithStackByArgs(mysql.MySQLErrName[mysql.ErrSyntax], errstr, lineno)
+	return fmt.Errorf("near '%-.80s' at line %d", errstr, lineno)
 }
 
 // The select statement is not at the end of the whole statement, if the last

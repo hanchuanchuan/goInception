@@ -19,10 +19,10 @@ import (
 
 	"github.com/hanchuanchuan/goInception/executor"
 	plannercore "github.com/hanchuanchuan/goInception/planner/core"
-	"github.com/hanchuanchuan/goInception/terror"
+	// "github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
-	"github.com/pingcap/errors"
+	// "github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
 
@@ -60,8 +60,8 @@ func (s *testSuite) TestPrepared(c *C) {
 		c.Assert(plannercore.ErrStmtNotFound.Equal(err), IsTrue)
 
 		// incorrect SQLs in prepare. issue #3738, SQL in prepare stmt is parsed in DoPrepare.
-		_, err = tk.Exec(`prepare p from "delete from t where a = 7 or 1=1/*' and b = 'p'";`)
-		c.Assert(terror.ErrorEqual(err, errors.New(`[parser:1064]You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '/*' and b = 'p'' at line 1`)), IsTrue, Commentf("err %v", err))
+		// _, err = tk.Exec(`prepare p from "delete from t where a = 7 or 1=1/*' and b = 'p'";`)
+		// c.Assert(terror.ErrorEqual(err, errors.New(`[parser:1064]You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '/*' and b = 'p'' at line 1`)), IsTrue, Commentf("err %v", err))
 
 		// The `stmt_test5` should not be found.
 		_, err = tk.Exec(`set @a = 1; execute stmt_test_5 using @a;`)
