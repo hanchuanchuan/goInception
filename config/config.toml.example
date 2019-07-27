@@ -291,6 +291,7 @@ er_alter_table_once = 1
 er_auto_incr_id_warning = 1
 er_autoinc_unsigned = 1
 er_blob_cant_have_default = 1
+er_cant_change_column = 1
 er_cant_change_column_position = 1
 er_cant_set_charset = 1
 er_cant_set_collation = 1
