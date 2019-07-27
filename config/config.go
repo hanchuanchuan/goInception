@@ -255,38 +255,37 @@ type Inc struct {
 	CheckAutoIncrementInitValue bool `toml:"check_autoincrement_init_value" json:"check_autoincrement_init_value"`
 	CheckAutoIncrementName      bool `toml:"check_autoincrement_name" json:"check_autoincrement_name"`
 	CheckColumnComment          bool `toml:"check_column_comment" json:"check_column_comment"`
-	// 检查列类型变更(允许长度变更,类型变更时警告)
-	CheckColumnTypeChange bool `toml:"check_column_type_change" json:"check_column_type_change"`
-
+	CheckColumnDefaultValue     bool `toml:"check_column_default_value" json:"check_column_default_value"`
 	// 检查列顺序变更 #40
 	CheckColumnPositionChange bool `toml:"check_column_position_change" json:"check_column_position_change"`
-
-	CheckColumnDefaultValue bool `toml:"check_column_default_value" json:"check_column_default_value"`
-	CheckDMLLimit           bool `toml:"check_dml_limit" json:"check_dml_limit"`
-	CheckDMLOrderBy         bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
-	CheckDMLWhere           bool `toml:"check_dml_where" json:"check_dml_where"`
-	CheckIdentifier         bool `toml:"check_identifier" json:"check_identifier"`
-	CheckIndexPrefix        bool `toml:"check_index_prefix" json:"check_index_prefix"`
-	CheckInsertField        bool `toml:"check_insert_field" json:"check_insert_field"`
-	CheckPrimaryKey         bool `toml:"check_primary_key" json:"check_primary_key"`
-	CheckTableComment       bool `toml:"check_table_comment" json:"check_table_comment"`
-	CheckTimestampDefault   bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
-	CheckTimestampCount     bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
+	// 检查列类型变更(允许长度变更,类型变更时警告)
+	CheckColumnTypeChange bool `toml:"check_column_type_change" json:"check_column_type_change"`
+	CheckDMLLimit         bool `toml:"check_dml_limit" json:"check_dml_limit"`
+	CheckDMLOrderBy       bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
+	CheckDMLWhere         bool `toml:"check_dml_where" json:"check_dml_where"`
+	CheckIdentifier       bool `toml:"check_identifier" json:"check_identifier"`
+	CheckIndexPrefix      bool `toml:"check_index_prefix" json:"check_index_prefix"`
+	CheckInsertField      bool `toml:"check_insert_field" json:"check_insert_field"`
+	CheckPrimaryKey       bool `toml:"check_primary_key" json:"check_primary_key"`
+	CheckTableComment     bool `toml:"check_table_comment" json:"check_table_comment"`
+	CheckTimestampDefault bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
+	CheckTimestampCount   bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
 	EnableTimeStampType  bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
 	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
 	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
-	
+
 	// 将 float/double 转成 decimal, 默认为 false
 	CheckFloatDouble bool `toml:"check_float_double" json:"check_float_double"`
-	
+
 	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
 
 	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
 	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`
 	EnableBlobType      bool `toml:"enable_blob_type" json:"enable_blob_type"`
+	EnableChangeColumn  bool `toml:"enable_change_column" json:"enable_change_column"` // 允许change column操作
 	EnableColumnCharset bool `toml:"enable_column_charset" json:"enable_column_charset"`
 	EnableDropDatabase  bool `toml:"enable_drop_database" json:"enable_drop_database"`
 	EnableDropTable     bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
@@ -569,6 +568,7 @@ type IncLevel struct {
 	ER_AUTO_INCR_ID_WARNING         int8 `toml:"er_auto_incr_id_warning"`
 	ER_AUTOINC_UNSIGNED             int8 `toml:"er_autoinc_unsigned"`
 	ER_BLOB_CANT_HAVE_DEFAULT       int8 `toml:"er_blob_cant_have_default"`
+	ErCantChangeColumn              int8 `toml:"er_cant_change_column"`
 	ER_CANT_SET_CHARSET             int8 `toml:"er_cant_set_charset"`
 	ER_CANT_SET_COLLATION           int8 `toml:"er_cant_set_collation"`
 	ER_CANT_SET_ENGINE              int8 `toml:"er_cant_set_engine"`
@@ -702,6 +702,7 @@ var defaultConf = Config{
 		EnableSetEngine:       true,
 		CheckTableComment:     false,
 		CheckColumnComment:    false,
+		EnableChangeColumn:    true,
 		CheckTimestampCount:   true,
 		EnableTimeStampType:   true,
 		CheckFloatDouble:      false,
@@ -759,6 +760,7 @@ var defaultConf = Config{
 		ER_AUTO_INCR_ID_WARNING:         1,
 		ER_AUTOINC_UNSIGNED:             1,
 		ER_BLOB_CANT_HAVE_DEFAULT:       1,
+		ErCantChangeColumn:              1,
 		ER_CANT_SET_CHARSET:             1,
 		ER_CANT_SET_COLLATION:           1,
 		ER_CANT_SET_ENGINE:              1,

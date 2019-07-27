@@ -255,6 +255,7 @@ enable_nullable = true
 enable_drop_table = false
 enable_set_engine = true
 enable_timestamp_type=true
+enable_change_column = true
 
 check_timestamp_count = true
 check_table_comment = false
