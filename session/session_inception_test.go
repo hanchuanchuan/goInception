@@ -1241,6 +1241,7 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 modify column c1 int after c2"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErCantChangeColumnPosition, "t1.c1"))
+
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 change column c1 c3 int after id"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErCantChangeColumnPosition, "t1.c3"))
@@ -1255,6 +1256,12 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 
 	sql = "alter table t1 modify c1 int not null;alter table t1 add primary key(id,c1);"
 	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.EnableChangeColumn = false
+
+	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 change column c1 c3 int after id"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErCantChangeColumn, "c1"))
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
@@ -2227,12 +2234,12 @@ func (s *testSessionIncSuite) TestFloatDouble(c *C) {
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
-	
+
 	config.GetGlobalConfig().Inc.CheckFloatDouble = true
 	sql := `drop table if exists t1;create table t1(id int,c1 float,key ix(c1));`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrFloatDoubleToDecimal, "c1"))
-	
+
 	sql = `drop table if exists t1;create table t1(id int, c2 double,key ix(c2));`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrFloatDoubleToDecimal, "c2"))
@@ -2244,13 +2251,12 @@ func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
-	
+
 	config.GetGlobalConfig().Inc.CheckIdentifierUpper = true
 	sql := `drop table if exists hello;create table HELLO(ID int,C1 float, C2 double,key IDX_C1(C1),UNIQUE INDEX uniq_A(C2));`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrIdentifierUpper, "uniq_A"),
-		)
-	
+	)
+
 	config.GetGlobalConfig().Inc.CheckIdentifierUpper = false
 }
-

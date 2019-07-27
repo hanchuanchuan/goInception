@@ -3135,6 +3135,9 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableModifyColumn:
 			s.checkModifyColumn(table, alter)
 		case ast.AlterTableChangeColumn:
+
+			s.AppendErrorNo(ErCantChangeColumn, alter.OldColumnName.String())
+
 			// 如果使用pt-osc,且非第一条语句使用了change命令,则禁止
 			if i > 0 && s.myRecord.useOsc && s.Osc.OscOn && !s.Ghost.GhostOn {
 				s.AppendErrorMessage("Can't execute this sql,the renamed columns' data maybe lost(pt-osc have a bug)!")
@@ -6494,6 +6497,8 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return s.Inc.CheckDatetimeCount
 	case ErrIdentifierUpper:
 		return s.Inc.CheckIdentifierUpper
+	case ErCantChangeColumn:
+		return !s.Inc.EnableChangeColumn
 	}
 
 	return true

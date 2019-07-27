@@ -196,6 +196,7 @@ const (
 	ErrMixOfGroupFuncAndFields
 	ErrFieldNotInGroupBy
 	ErCantChangeColumnPosition
+	ErCantChangeColumn
 	ER_DATETIME_DEFAULT
 	ER_TOO_MUCH_AUTO_DATETIME_COLS
 	ErrFloatDoubleToDecimal
@@ -357,7 +358,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 	ErrMixOfGroupFuncAndFields:             "In aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; this is incompatible with sql_mode=only_full_group_by.",
 	ErrFieldNotInGroupBy:                   "Expression #%d of %s is not in GROUP BY clause and contains nonaggregated column '%s' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by.",
-	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'",
+	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'.",
+	ErCantChangeColumn:                     "Not supported statement of change column('%s').",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
 	ER_DATETIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
@@ -517,6 +519,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrWrongUsage:                          "%s子句无法使用%s",
 	ErrJsonTypeSupport:                     "不允许使用json类型(列'%s').",
 	ErCantChangeColumnPosition:             "不允许改变列顺序(列'%s').",
+	ErCantChangeColumn:                     "不允许change column语法(列'%s').",
 	ER_DATETIME_DEFAULT:                    "请设置 datetime 列 '%s' 的默认值.",
 	ER_TOO_MUCH_AUTO_DATETIME_COLS:         "表定义不正确,只能有一个 datetime 字段,在 DEFAULT 或 ON UPDATE指定CURRENT_TIMESTAMP.",
 	ErrFloatDoubleToDecimal:                "列 '%s' 建议设置为 decimal 类型.",
@@ -571,6 +574,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_WITH_LIMIT_CONDITION,
 		ER_WITH_ORDERBY_CONDITION,
 		ErCantChangeColumnPosition,
+		ErCantChangeColumn,
 		ErrNotFoundTableInfo,
 		ErrNotFoundThreadId,
 		ErrTableCollationNotSupport,
@@ -996,6 +1000,8 @@ func (e ErrorCode) String() string {
 		return "er_field_not_in_group_by"
 	case ErCantChangeColumnPosition:
 		return "er_cant_change_column_position"
+	case ErCantChangeColumn:
+		return "er_cant_change_column"
 	case ErrFloatDoubleToDecimal:
 		return "er_float_double_to_decimal"
 	case ErrIdentifierUpper:
@@ -1192,6 +1198,12 @@ func CheckAuditSetting(cnf *config.Config) {
 		cnf.IncLevel.ErCantChangeColumnPosition = int8(GetErrorLevel(ErCantChangeColumnPosition))
 	} else {
 		cnf.IncLevel.ErCantChangeColumnPosition = 0
+	}
+
+	if cnf.Inc.EnableChangeColumn {
+		cnf.IncLevel.ErCantChangeColumn = int8(GetErrorLevel(ErCantChangeColumn))
+	} else {
+		cnf.IncLevel.ErCantChangeColumn = 0
 	}
 
 	if !cnf.Inc.EnableBlobNotNull {
