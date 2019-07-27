@@ -3091,6 +3091,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			s.checkAlterUseOsc(table)
 		} else {
 			s.myRecord.useOsc = false
+			break
 		}
 	}
 
@@ -3134,6 +3135,10 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableModifyColumn:
 			s.checkModifyColumn(table, alter)
 		case ast.AlterTableChangeColumn:
+			// 如果使用pt-osc,且非第一条语句使用了change命令,则禁止
+			if i > 0 && s.myRecord.useOsc && s.Osc.OscOn && !s.Ghost.GhostOn {
+				s.AppendErrorMessage("Can't execute this sql,the renamed columns' data maybe lost(pt-osc have a bug)!")
+			}
 			s.checkChangeColumn(table, alter)
 
 		case ast.AlterTableRenameTable:
