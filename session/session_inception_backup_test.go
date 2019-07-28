@@ -50,6 +50,8 @@ type testSessionIncBackupSuite struct {
 	sqlMode string
 	// 时间戳类型是否需要明确指定默认值
 	explicitDefaultsForTimestamp bool
+
+	realRowCount bool
 }
 
 func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
@@ -57,6 +59,8 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
+
+	s.realRowCount = true
 
 	testleak.BeforeTest()
 	s.cluster = mocktikv.NewCluster()
@@ -120,12 +124,12 @@ func (s *testSessionIncBackupSuite) TearDownTest(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) makeSQL(c *C, tk *testkit.TestKit, sql string) *testkit.Result {
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=1;--port=3306;--enable-ignore-warnings;*/
+	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=1;--port=3306;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	res := tk.MustQueryInc(fmt.Sprintf(a, sql))
+	res := tk.MustQueryInc(fmt.Sprintf(a, s.realRowCount, sql))
 
 	// 需要成功执行
 	for _, row := range res.Rows() {
