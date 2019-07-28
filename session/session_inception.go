@@ -49,6 +49,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/auth"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/stringutil"
+	// "vitess.io/vitess/go/vt/sqlparser"
 	// "github.com/hanchuanchuan/parser/ast"
 	"github.com/jinzhu/gorm"
 	"github.com/percona/go-mysql/query"
@@ -126,6 +127,9 @@ type sourceOptions struct {
 
 	// DDL/DML分隔功能
 	split bool
+
+	// 使用count(*)计算受影响行数
+	realRowCount bool
 }
 
 // ExplainInfo 执行计划信息
@@ -2235,7 +2239,8 @@ func (s *session) parseOptions(sql string) {
 
 		Print: viper.GetBool("queryPrint"),
 
-		split: viper.GetBool("split"),
+		split:        viper.GetBool("split"),
+		realRowCount: viper.GetBool("realRowCount"),
 	}
 
 	if s.opt.split || s.opt.check || s.opt.Print {
@@ -5736,6 +5741,73 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 	}
 }
 
+// getRealRowCount: 获取真正的受影响行数
+func (s *session) getRealRowCount(sql string, sqlId string) {
+
+	if s.hasError() {
+		return
+	}
+
+	var newRecord *Record
+	if s.Inc.EnableFingerprint && sqlId != "" {
+		newRecord = &Record{
+			Buf: new(bytes.Buffer),
+		}
+	}
+	r := s.myRecord
+
+	var value int
+	rows, err := s.Raw(sql)
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	if err != nil {
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+			if newRecord != nil {
+				newRecord.AppendErrorMessage(myErr.Message)
+			}
+		} else {
+			s.AppendErrorMessage(err.Error())
+			if newRecord != nil {
+				newRecord.AppendErrorMessage(myErr.Message)
+			}
+		}
+		return
+	} else {
+		for rows.Next() {
+			rows.Scan(&value)
+		}
+	}
+
+	// log.Info(sql)
+	// log.Info(value)
+
+	r.AffectedRows = value
+	if newRecord != nil {
+		newRecord.AffectedRows = r.AffectedRows
+	}
+
+	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.Inc.MaxUpdateRows) {
+		switch r.Type.(type) {
+		case *ast.DeleteStmt, *ast.UpdateStmt:
+			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+				r.AffectedRows, s.Inc.MaxUpdateRows)
+			if newRecord != nil {
+				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+					r.AffectedRows, s.Inc.MaxUpdateRows)
+			}
+		}
+	}
+
+	if newRecord != nil {
+		s.sqlFingerprint[sqlId] = newRecord
+	}
+}
+
 func (s *session) explainOrAnalyzeSql(sql string) {
 
 	// // 如果没有表结构,或者新增表 or 新增列时,不做explain
@@ -5749,38 +5821,62 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 		return
 	}
 
-	if s.DBVersion < 50600 {
+	if s.opt.realRowCount {
+		// dml转换成select
 		rw, err := NewRewrite(sql)
 		if err != nil {
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			s.AppendErrorMessage(err.Error())
 		} else {
-			rw, err = rw.Rewrite()
+			rw, err = rw.RewriteDML2Select()
 			if err != nil {
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(err.Error())
 			} else {
-				sql = rw.NewSQL
-				if sql == "" {
-					return
+				stmt, err := NewRewrite(rw.NewSQL)
+				if err != nil {
+					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+					s.AppendErrorMessage(err.Error())
+				} else {
+					sql = stmt.select2Count()
+					// log.Info(sql)
+					s.getRealRowCount(sql, sqlId)
 				}
 			}
 		}
+		return
+	} else {
+		if s.DBVersion < 50600 {
+			rw, err := NewRewrite(sql)
+			if err != nil {
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+				s.AppendErrorMessage(err.Error())
+			} else {
+				rw, err = rw.RewriteDML2Select()
+				if err != nil {
+					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+					s.AppendErrorMessage(err.Error())
+				} else {
+					sql = rw.NewSQL
+					if sql == "" {
+						return
+					}
+				}
+			}
+		}
+
+		var explain []string
+
+		if s.isMiddleware() {
+			explain = append(explain, s.opt.middlewareExtend)
+		}
+
+		explain = append(explain, "EXPLAIN ")
+		explain = append(explain, sql)
+
+		// rows := s.getExplainInfo(strings.Join(explain, ""))
+		s.getExplainInfo(strings.Join(explain, ""), sqlId)
 	}
-
-	var explain []string
-
-	if s.isMiddleware() {
-		explain = append(explain, s.opt.middlewareExtend)
-	}
-
-	explain = append(explain, "EXPLAIN ")
-	explain = append(explain, sql)
-
-	// rows := s.getExplainInfo(strings.Join(explain, ""))
-	s.getExplainInfo(strings.Join(explain, ""), sqlId)
-
-	// s.AnlyzeExplain(rows)
 }
 
 func (s *session) AnlyzeExplain(rows []ExplainInfo) {

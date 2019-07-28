@@ -17,6 +17,7 @@
 package session
 
 import (
+	"fmt"
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -103,4 +104,43 @@ func insert2Select(stmt *sqlparser.Insert) string {
 	}
 
 	return "select 1 from DUAL"
+}
+
+// select2Count : SELECT 转成 COUNT语句
+func (rw *Rewrite) select2Count() string {
+	if rw.Stmt == nil {
+		return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", rw.SQL)
+	}
+	// log.Infof("%#v", rw.Stmt)
+
+	switch stmt := rw.Stmt.(type) {
+	case *sqlparser.Select:
+		if stmt.Distinct != "" || stmt.GroupBy != nil || stmt.Having != nil {
+			return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", rw.SQL)
+		}
+
+		newSQL := &sqlparser.Select{
+			SelectExprs: []sqlparser.SelectExpr{
+				&sqlparser.AliasedExpr{
+					Expr: &sqlparser.FuncExpr{
+						Name: sqlparser.NewColIdent("count"),
+						Exprs: []sqlparser.SelectExpr{
+							new(sqlparser.StarExpr),
+						},
+					},
+				},
+			},
+			Distinct: stmt.Distinct,
+			From:     stmt.From,
+			Where:    stmt.Where,
+			GroupBy:  stmt.GroupBy,
+			Having:   stmt.Having,
+			Limit:    stmt.Limit,
+		}
+		return sqlparser.String(newSQL)
+	// case *sqlparser.Union, *sqlparser.ParenSelect:
+	// 	return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", rw.SQL)
+	default:
+		return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", rw.SQL)
+	}
 }

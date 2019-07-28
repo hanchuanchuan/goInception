@@ -52,6 +52,8 @@ type testSessionIncSuite struct {
 	explicitDefaultsForTimestamp bool
 
 	rows [][]interface{}
+
+	realRowCount bool
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
@@ -59,6 +61,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
+	s.realRowCount = true
 
 	testleak.BeforeTest()
 	s.cluster = mocktikv.NewCluster()
@@ -265,23 +268,23 @@ func (s *testSessionIncSuite) makeSQL(sql string) *testkit.Result {
 	tk := s.tk
 	session.CheckAuditSetting(config.GetGlobalConfig())
 
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
+	a := `/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	return tk.MustQueryInc(fmt.Sprintf(a, sql))
+	return tk.MustQueryInc(fmt.Sprintf(a, s.realRowCount, sql))
 }
 
 func (s *testSessionIncSuite) execSQL(c *C, sql string) *testkit.Result {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	session.CheckAuditSetting(config.GetGlobalConfig())
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
+	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.realRowCount, sql))
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
@@ -1427,7 +1430,11 @@ insert into t1 values(1),(2),(3);`
 	sql = `drop table if exists t2;create table t2 like t1;
 insert into t2 select id from t1;`
 	s.testErrorCode(c, sql)
-	s.testAffectedRows(c, 1)
+	if s.realRowCount {
+		s.testAffectedRows(c, 0)
+	} else {
+		s.testAffectedRows(c, 1)
+	}
 
 	config.GetGlobalConfig().Inc.EnableSelectStar = true
 	s.execSQL(c, "drop table if exists tt1;create table tt1(id int,c1 int);insert into tt1 values(1,1);")
