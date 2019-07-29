@@ -1,6 +1,20 @@
 # goInception 更新日志
 
 
+## [v1.0.3] - 2019-7-29
+
+### Fix
+* `[gh-ost]` 修复gh-ost在异常时没有断开binlog dump连接的问题
+* `[gh-ost]` 修复gh-ost当添加datetime列且默认值current_timestamp时,增量数据因时区导致数据错误的问题(timestamp列是正常的)
+
+### New Features
+* 添加参数 `enable_change_column` ,设置是否支持change column语法
+* 添加调用选项 `real_row_count`,设置是否通过`count(*)`获取真正受影响行数.默认值`false`
+
+### Update
+* 添加pt-osc执行change column的审核,禁止多条change column操作,以免数据丢失 (pt-osc bug)
+
+
 ## [v1.0.2] - 2019-7-26
 
 ### Fix
