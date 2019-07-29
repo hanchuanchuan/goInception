@@ -29,3 +29,4 @@ query-print `v0.7.1` | false | bool | 打印SQL语法树，返回JSON格式结�
 split `v0.9.1` | false | bool | 将一段SQL语句按互不影响原则分组DDL和DML语句，即相同表的DDL及DML语句分开两个语句块执行。指定后，其他选项(审核、执行、备份、打印语法树等)均不再生效。兼容老版inception，实际情况下 **可以不分组**，goInception记录有表结构快照，用以实现binlog解析。[更多信息](https://github.com/hanchuanchuan/goInception/pull/42)
 sleep `v1.0-rc3` | 0 | int | 执行 `sleep_rows` 条SQL后休眠多少毫秒，用以降低对线上数据库的影响。单位为毫秒，最小值为 `0` ，即不设置，最大值为 `100000`，即100秒。默认值 `0`
 sleep_rows `v1.0-rc3` | 1 | int | 执行多少条SQL后休眠一次。最小值为 `1`，默认值 `1`
+real_row_count `v1.0.3` | false | bool | 设置是否通过count(*)获取真正受影响行数(DML操作).默认值 `false`

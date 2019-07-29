@@ -36,7 +36,9 @@ check_column_type_change `v0.7.3` |  true    |   true,false     |  检查字段�
 check_dml_limit   |  false    |   true,false     |    在DML语句中使用了LIMIT时，是不是要报错
 check_dml_orderby   |  false    |   true,false     |  在DML语句中使用了Order By时，是不是要报错
 check_dml_where   |  false    |   true,false     |    在DML语句中没有WHERE条件时，是不是要报错
+check_float_double `v1.0.2` |  false    |   true,false     |    开启时,当使用 `float/double` 类型时提示转成 `decimal` 类型
 check_identifier  |  false    |   true,false     |    检查标识符是否正确,规则是[a-z,A-Z,0-9,_]
+check_identifier_upper  `v1.0.2` |  false    |   true,false     |    要求标识符即表名、列名、索引名等必须为大写,默认为`false`
 check_index_prefix   |  false    |   true,false     |     是不是要检查索引名字前缀为"idx_"，检查唯一索引前缀是不是"uniq_"
 check_insert_field   |  false    |   true,false     |     是不是要检查插入语句中的列链表的存在性
 check_primary_key   |  false    |   true,false     |  建表时，如果没有主键，则报错
@@ -45,6 +47,7 @@ check_timestamp_count `v0.6.0`   |  false    |   true,false     |    配置是�
 check_timestamp_default   |  false    |   true,false     |    建表时，如果没有为timestamp类型指定默认值，则报错
 enable_autoincrement_unsigned   |  false    |   true,false     |  自增列是不是要为无符号型
 enable_blob_type   |  false    |   true,false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
+enable_change_column `v1.0.3` |  true    |   true,false     |   设置是否支持change column语法,默认值`true`
 enable_column_charset   |  false    |   true,false     |  允许列自己设置字符集
 enable_drop_database |  false    |   true,false     |  是否允许删除数据库
 enable_drop_table   |  false    |   true,false     |  是否允许删除表
@@ -53,7 +56,7 @@ enable_fingerprint `v0.6.2`   |  false    |   true,false     |    sql指纹功�
 enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
 enable_json_type  `v0.7.2` |  false    |   true,false     |   设置是否允许json类型字段，包括建表、修改列、新增列操作
-enable_not_innodb  `v1.0-rc4 已删除`  |  false    |   true,false     |  `已删除` 请使用 `enable_set_engine`和 `support_engine`以便于更灵活的指定存储引擎。 *建表指定的存储引擎不为Innodb，不报错*
+enable_not_innodb  `v1.0-rc4 已删除`  |  false    |   true,false     |  `已删除!` 请使用 `enable_set_engine`和 `support_engine`以便于更灵活的指定存储引擎。 *建表指定的存储引擎不为Innodb，不报错*
 enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
 enable_null_index_name `v0.7.1`|  false    |   true,false     |    创建索引时是否允许空索引名
 enable_orderby_rand   |  false    |   true,false     |    order by rand时是不是报错
@@ -70,6 +73,7 @@ general_log `v0.8.1` |  false    |   true,false     |     是否记录全量日�
 lang `v0.5.1` | en-US             | en-US,zh-CN | 返回的信息使用语言,可选值`en-US`,`zh-CN`
 max_allowed_packet    `v1.0-rc3`            | 4194304              | int | 允许的最大数据包大小.默认为 `4194304`,单位字节,即4MB
 max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
+max_ddl_affect_rows `v1.0.2`   | 0              | int | 当DDL预估受影响行数超出设置值时警告,为0时不限制
 max_insert_rows   `v0.6.3`              | 0           | int  | 设置insert values允许的最大行数.0为不限制
 max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
 max_keys                       | 3              | int | 单表允许的最大索引数
