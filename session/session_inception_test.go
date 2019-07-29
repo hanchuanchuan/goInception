@@ -2267,3 +2267,40 @@ func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckIdentifierUpper = false
 }
+
+func (s *testSessionIncSuite) TestMaxKeys(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	//er_too_many_keys
+	config.GetGlobalConfig().Inc.MaxKeys = 2
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(name);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_MANY_KEYS, "t1", 2))
+
+	config.GetGlobalConfig().Inc.MaxKeys = 3
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(name);"
+	s.testErrorCode(c, sql)
+
+	//er_too_many_key_parts
+	config.GetGlobalConfig().Inc.MaxKeyParts = 2
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id,name,age);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_MANY_KEY_PARTS, "idx_test", "t1", 2))
+
+	config.GetGlobalConfig().Inc.MaxKeyParts = 3
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id,name,age);"
+	s.testErrorCode(c, sql)
+
+	//er_pk_too_many_parts
+	config.GetGlobalConfig().Inc.MaxPrimaryKeyParts = 2
+	sql = "drop table if exists t1; create table t1(id int,name varchar(10),age varchar(10),primary key(id,name,age));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PK_TOO_MANY_PARTS, "test_inc", "t1", 2))
+
+	config.GetGlobalConfig().Inc.MaxPrimaryKeyParts = 3
+	sql = "drop table if exists t1; create table t1(id int,name varchar(10),age varchar(10),primary key(id,name));"
+	s.testErrorCode(c, sql)
+}
