@@ -3830,7 +3830,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	if tp == ast.ConstraintPrimaryKey {
 
 		if s.Inc.MaxPrimaryKeyParts > 0 && len(keys) > int(s.Inc.MaxPrimaryKeyParts) {
-			s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, table.Schema, table.Name, s.Inc.MaxPrimaryKeyParts)
+			s.AppendErrorNo(ER_PK_TOO_MANY_PARTS, table.Schema, table.Name, s.Inc.MaxPrimaryKeyParts)
 		}
 
 		s.checkDuplicateColumnName(keys)
@@ -3888,7 +3888,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	}
 
 	if s.Inc.MaxKeyParts > 0 && len(keys) > int(s.Inc.MaxKeyParts) {
-		s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, table.Name, s.Inc.MaxKeyParts)
+		s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, name, table.Name, s.Inc.MaxKeyParts)
 	}
 
 }
