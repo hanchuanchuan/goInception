@@ -46,6 +46,7 @@ check_table_comment   |  false    |   true,false     |    建表时，表没有�
 check_timestamp_count `v0.6.0`   |  false    |   true,false     |    配置是否检查current_timestamp数量
 check_timestamp_default   |  false    |   true,false     |    建表时，如果没有为timestamp类型指定默认值，则报错
 enable_autoincrement_unsigned   |  false    |   true,false     |  自增列是不是要为无符号型
+enable_blob_not_null `v1.0` |  false    |   true,false     |   是否允许blob/text/json类型置为`not null`,默认为`false`,即不允许
 enable_blob_type   |  false    |   true,false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
 enable_change_column `v1.0.3` |  true    |   true,false     |   设置是否支持change column语法,默认值`true`
 enable_column_charset   |  false    |   true,false     |  允许列自己设置字符集
