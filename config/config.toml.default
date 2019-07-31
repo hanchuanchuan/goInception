@@ -201,3 +201,4 @@ er_with_default_add_column = 1
 er_with_insert_field = 1
 er_with_limit_condition = 1
 er_with_orderby_condition = 1
+er_wrong_and_expr = 1

@@ -612,6 +612,7 @@ type IncLevel struct {
 	ER_WITH_INSERT_FIELD            int8 `toml:"er_with_insert_field"`
 	ER_WITH_LIMIT_CONDITION         int8 `toml:"er_with_limit_condition"`
 	ER_WITH_ORDERBY_CONDITION       int8 `toml:"er_with_orderby_condition"`
+	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
 	ErCantChangeColumnPosition      int8 `toml:"er_cant_change_column_position"`
 	ErJsonTypeSupport               int8 `toml:"er_json_type_support"`
 }
@@ -804,6 +805,7 @@ var defaultConf = Config{
 		ER_WITH_INSERT_FIELD:            1,
 		ER_WITH_LIMIT_CONDITION:         1,
 		ER_WITH_ORDERBY_CONDITION:       1,
+		ErrWrongAndExpr:                 1,
 		ErCantChangeColumnPosition:      1,
 		ErJsonTypeSupport:               2,
 	},
