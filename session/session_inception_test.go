@@ -1665,6 +1665,15 @@ WHERE tt1.id=1;`
 		s.testErrorCode(c, sql)
 	}
 
+	sql = `drop table if exists t1;create table t1(id int primary key,c1 int,c2 int);
+		update t1 set c1=1 and c2 = 1 where id=1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrWrongAndExpr))
+
+	sql = `drop table if exists t1;create table t1(id int primary key,c1 int,c2 int);
+		update t1 set c1=1,c2 = 1 where id=1;`
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {

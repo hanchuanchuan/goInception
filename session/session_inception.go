@@ -5901,9 +5901,18 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	var firstColumnName string
 	if node.List != nil {
 		for _, l := range node.List {
-			originTable = l.Column.Table.L
-			firstColumnName = l.Column.Name.O
-			break
+			if firstColumnName == "" {
+				originTable = l.Column.Table.L
+				firstColumnName = l.Column.Name.O
+			}
+
+			if l.Expr != nil {
+				if expr, ok := l.Expr.(*ast.BinaryOperationExpr); ok {
+					if expr.Op == opcode.LogicAnd {
+						s.AppendErrorNo(ErrWrongAndExpr)
+					}
+				}
+			}
 		}
 	}
 
