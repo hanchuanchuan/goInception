@@ -1010,6 +1010,8 @@ func (e ErrorCode) String() string {
 		return "er_float_double_to_decimal"
 	case ErrIdentifierUpper:
 		return "er_identifier_upper"
+	case ErrWrongAndExpr:
+		return "er_wrong_and_expr"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}
