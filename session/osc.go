@@ -22,6 +22,8 @@ package session
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -453,8 +455,25 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		s.AppendErrorMessage(err.Error())
 	}
 	if migrationContext.ServeSocketFile == "" {
-		migrationContext.ServeSocketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.host, s.opt.port,
+		// unix socket file max 104 characters (or 107)
+		socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.host, s.opt.port,
 			migrationContext.DatabaseName, migrationContext.OriginalTableName)
+		if len(socketFile) > 100 {
+			// 字符串过长时转换为hash值
+			host := truncateString(s.opt.host, 30)
+			dbName := truncateString(migrationContext.DatabaseName, 30)
+			tableName := truncateString(migrationContext.OriginalTableName, 30)
+
+			socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", host, s.opt.port,
+				dbName, tableName)
+
+			if len(socketFile) > 100 {
+				socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s.sock", host, s.opt.port,
+					dbName, tableName)
+			}
+
+		}
+		migrationContext.ServeSocketFile = socketFile
 	}
 
 	migrationContext.SetHeartbeatIntervalMilliseconds(heartbeatIntervalMillis)
@@ -801,4 +820,16 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 	}
 
 	return sql
+}
+
+// truncateString: 根据指定长度做字符串截断,长度溢出时转换为hash值以避免重复
+func truncateString(str string, length int) string {
+	if len(str) <= length {
+		return str
+	}
+	v := md5.Sum([]byte(str))
+	if length < 32 {
+		return hex.EncodeToString(v[:])[:length]
+	}
+	return hex.EncodeToString(v[:])
 }
