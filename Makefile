@@ -145,7 +145,7 @@ explaintest: server
 	@cd cmd/explaintest && ./run-tests.sh -s ../../bin/goInception
 
 gotest: parserlib
-	go get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
+	$(GO) get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
 	@$(GOFAIL_ENABLE)
 ifeq ("$(TRAVIS_COVERAGE)", "1")
 	@echo "Running in TRAVIS_COVERAGE mode."
@@ -164,21 +164,21 @@ endif
 	@$(GOFAIL_DISABLE)
 
 race: parserlib
-	go get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
+	$(GO) get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
 	@$(GOFAIL_ENABLE)
 	@export log_level=debug; \
 	$(GOTEST) -timeout 20m -race $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
 	@$(GOFAIL_DISABLE)
 
 leak: parserlib
-	go get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
+	$(GO) get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
 	@$(GOFAIL_ENABLE)
 	@export log_level=debug; \
 	$(GOTEST) -tags leak $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
 	@$(GOFAIL_DISABLE)
 
 tikv_integration_test: parserlib
-	go get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
+	$(GO) get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
 	@$(GOFAIL_ENABLE)
 	$(GOTEST) ./store/tikv/. -with-tikv=true || { $(GOFAIL_DISABLE); exit 1; }
 	@$(GOFAIL_DISABLE)
