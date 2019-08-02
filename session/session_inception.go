@@ -754,6 +754,11 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 	case *ast.KillStmt:
 		return s.executeKillStmt(node)
+
+	case *ast.SetStmt:
+
+		s.checkSetStmt(node)
+
 	default:
 		log.Infof("无匹配类型:%T\n", stmtNode)
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
@@ -7227,6 +7232,23 @@ func (s *session) cleanup() {
 	if len(oscList) > 0 {
 		for _, sha1 := range oscList {
 			delete(pl, sha1)
+		}
+	}
+}
+
+func (s *session) checkSetStmt(node *ast.SetStmt) {
+	for _, variable := range node.Variables {
+		if variable.Name == ast.SetNames {
+			if value, ok := variable.Value.(*ast.ValueExpr); ok {
+				v := value.GetString()
+				if strings.EqualFold(v, "utf8") || strings.EqualFold(v, "utf8mb4") {
+					continue
+				}
+				s.AppendErrorNo(ErrCharsetNotSupport, "utf8,utf8mb4")
+			}
+		} else {
+			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+			continue
 		}
 	}
 }
