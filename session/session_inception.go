@@ -1549,6 +1549,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		*ast.TruncateTableStmt,
 
 		*ast.CreateIndexStmt,
+		*ast.SetStmt,
 		*ast.DropIndexStmt:
 
 		s.executeRemoteStatement(record)
