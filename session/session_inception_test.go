@@ -2313,3 +2313,28 @@ func (s *testSessionIncSuite) TestMaxKeys(c *C) {
 	sql = "drop table if exists t1; create table t1(id int,name varchar(10),age varchar(10),primary key(id,name));"
 	s.testErrorCode(c, sql)
 }
+
+func (s *testSessionIncSuite) TestSetStmt(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	sql = "set names abc;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+
+	sql = "set names '';"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+
+	sql = "set names utf8;"
+	s.testErrorCode(c, sql)
+
+	sql = "set names utf8mb4;"
+	s.testErrorCode(c, sql)
+
+	sql = "set autocommit = 1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NOT_SUPPORTED_YET))
+}
