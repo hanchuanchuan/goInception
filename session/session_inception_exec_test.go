@@ -453,7 +453,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	// 外键
 	sql = "drop table if exists t1;create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
+		// session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
 		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
 
 	sql = "drop table if exists t1;create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key fk_1(b, c) references product(id));"
