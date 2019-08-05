@@ -202,6 +202,9 @@ const (
 	ErrFloatDoubleToDecimal
 	ErrIdentifierUpper
 	ErrWrongAndExpr
+	ErrCannotAddForeign
+	ErrWrongFkDefWithMatch
+	ErrFkDupName
 	ER_ERROR_LAST
 )
 
@@ -368,6 +371,9 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrFloatDoubleToDecimal:        "Set column '%s' to DECIMAL type.",
 	ErrIdentifierUpper:             "Identifier '%s' must be capitalized.",
 	ErrWrongAndExpr:                "May be the wrong syntax! Separate multiple fields with commas.",
+	ErrCannotAddForeign:            "Cannot add foreign key constraint",
+	ErrWrongFkDefWithMatch:         "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
+	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
