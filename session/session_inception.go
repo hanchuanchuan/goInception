@@ -2473,6 +2473,41 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 	}
 }
 
+// mysqlForeignKeys 获取表的所有外键
+func (s *session) mysqlForeignKeys(t *TableInfo) (keys []string) {
+
+	if t.IsNew {
+		return
+	}
+
+	// sql := fmt.Sprintf("show table status from `%s` where name = '%s';", dbname, tableName)
+	sql := fmt.Sprintf(`SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+		WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' and ORDINAL_POSITION = 1;`, t.Schema, t.Name)
+
+	var name string
+
+	rows, err := s.Raw(sql)
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil {
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else if rows != nil {
+		for rows.Next() {
+			rows.Scan(&name)
+			keys = append(keys, name)
+		}
+	}
+
+	return
+}
+
 // mysqlGetTableSize 获取表估计的受影响行数
 func (s *session) mysqlGetTableSize(t *TableInfo) {
 
@@ -2910,6 +2945,11 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		if node.ReferTable != nil || len(node.Cols) > 0 {
 			dupIndexes := map[string]bool{}
 			for _, ct := range node.Constraints {
+				if ct.Tp == ast.ConstraintForeignKey {
+					s.checkCreateForeignKey(table, ct)
+					continue
+				}
+
 				s.checkCreateIndex(nil, ct.Name,
 					ct.Keys, ct.Option, table, false, ct.Tp)
 
@@ -3899,13 +3939,78 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 
 }
 
+func (s *session) checkCreateForeignKey(t *TableInfo, c *ast.Constraint) {
+	// log.Infof("%#v", c)
+
+	if !s.Inc.EnableForeignKey {
+		s.AppendErrorNo(ER_FOREIGN_KEY, t.Name)
+		return
+	}
+
+	for _, col := range c.Keys {
+		found := false
+		for _, field := range t.Fields {
+			if strings.EqualFold(field.Field, col.Column.Name.O) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, col.Column.Name.O))
+		}
+	}
+
+	refTable := s.getTableFromCache(c.Refer.Table.Schema.O, c.Refer.Table.Name.O, true)
+	if refTable != nil {
+		for _, col := range c.Refer.IndexColNames {
+			found := false
+			for _, field := range refTable.Fields {
+				if strings.EqualFold(field.Field, col.Column.Name.O) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", refTable.Name, col.Column.Name.O))
+			}
+		}
+	}
+	if len(c.Keys) != len(c.Refer.IndexColNames) {
+		s.AppendErrorNo(ErrWrongFkDefWithMatch, c.Name)
+	}
+
+	if !t.IsNew && c.Name != "" {
+		keys := s.mysqlForeignKeys(t)
+		for _, k := range keys {
+			if strings.EqualFold(k, c.Name) {
+				s.AppendErrorNo(ErrFkDupName, c.Name)
+				break
+			}
+		}
+	}
+}
+
 func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkDropForeignKey")
 
 	// log.Infof("%s \n", c)
-
-	s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-
+	if s.Inc.EnableForeignKey {
+		if !t.IsNew {
+			keys := s.mysqlForeignKeys(t)
+			found := false
+			for _, k := range keys {
+				if strings.EqualFold(k, c.Name) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, c.Name)
+			}
+		}
+	} else {
+		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+	}
 }
 func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool {
 	log.Debug("checkAlterTableDropIndex")
@@ -4315,7 +4420,8 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	case ast.ConstraintPrimaryKey:
 		s.checkCreateIndex(nil, "PRIMARY",
 			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
-
+	case ast.ConstraintForeignKey:
+		s.checkCreateForeignKey(t, c.Constraint)
 	default:
 		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		log.Info("con:", s.sessionVars.ConnectionID, " 未定义的解析: ", c.Constraint.Tp)

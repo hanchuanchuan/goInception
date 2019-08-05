@@ -627,7 +627,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	// 外键
 	sql = "create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
+		// session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
 		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
 
 	sql = "create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key fk_1(b, c) references product(id));"
@@ -2192,7 +2192,7 @@ func (s *testSessionIncSuite) TestForeignKey(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableForeignKey = false
 
-	s.execSQL(c, "drop table if exists t2; create table t2(id int primary key);drop table if exists t1; ")
+	s.execSQL(c, "drop table if exists t2; create table t2(id int primary key,c1 int,index ix_1(c1));drop table if exists t1; ")
 
 	sql = `create table t1(id int primary key,pid int,constraint FK_1 foreign key (pid) references t2(id));`
 	s.testErrorCode(c, sql,
@@ -2200,6 +2200,29 @@ func (s *testSessionIncSuite) TestForeignKey(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableForeignKey = true
 
+	sql = `create table t1(id int primary key,pid int,constraint FK_1 foreign key (pid) references t2(id));`
+	s.testErrorCode(c, sql)
+
+	sql = `create table t1(id int primary key,pid int,constraint FK_1 foreign key (pid) references t2(id1));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t2.id1"))
+
+	sql = `create table t1(id int primary key,pid int,constraint FK_1 foreign key (pid1) references t2(id));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.pid1"))
+
+	sql = `create table t1(id int primary key,c1 int,c2 int,
+				constraint foreign key (c1,c2) references t2(id));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrWrongFkDefWithMatch, ""))
+
+	sql = `create table t1(id int primary key,c1 int,c2 int,
+				constraint fk_1 foreign key (c1) references t2(id));`
+	s.testErrorCode(c, sql)
+
+	s.execSQL(c, sql)
+
+	sql = `alter table t1 drop foreign key fk_1;`
 	s.testErrorCode(c, sql)
 
 }
