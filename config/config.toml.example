@@ -281,6 +281,7 @@ lang = "en-US"
 # 全量日志
 general_log = false
 
+default_charset = "utf8mb4"
 max_allowed_packet = 4194304
 
 # 是否启用自定义审核级别设置
