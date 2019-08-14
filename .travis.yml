@@ -40,8 +40,7 @@ before_install:
   - mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
 
   # 关闭数据库,重启并开启binlog,设置字符集
-  # - ps -ef|grep mysql
-  # - sudo service mysql stop
+  - ps -ef|grep mysql
 
     # stop mysql and use row-based format binlog
   - "sudo service mysql stop || true"
@@ -51,6 +50,8 @@ before_install:
   - "echo 'binlog-format = row' | sudo tee -a /etc/mysql/conf.d/replication.cnf"
   - "echo 'gtid-mode = ON'      | sudo tee -a /etc/mysql/conf.d/replication.cnf"
   - "echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+  - "echo 'lower_case_table_names = 1' | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+  - "echo 'character_set_server = utf8' | sudo tee -a /etc/mysql/conf.d/replication.cnf"
 
   # Start mysql (avoid errors to have logs)
   - "sudo service mysql start || true"
@@ -58,7 +59,7 @@ before_install:
   - sudo tail -100 /var/log/mysql/error.log
 
   # - sudo mysqld --lower_case_table_names=1 --log-bin=on --server_id=111 --character-set-server=utf8 &
-  # - ps -ef|grep mysql
+  - ps -ef|grep mysql
 
 script:
   - rm -f go.sum
