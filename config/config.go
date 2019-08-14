@@ -281,7 +281,9 @@ type Inc struct {
 
 	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
 
-	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
+	// 连接服务器的默认字符集,默认值为utf8mb4
+	DefaultCharset              string `toml:"default_charset" json:"default_charset"`
+	EnableAutoIncrementUnsigned bool   `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
 	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`
 	EnableBlobType      bool `toml:"enable_blob_type" json:"enable_blob_type"`
@@ -714,6 +716,8 @@ var defaultConf = Config{
 		Lang:                  "en-US",
 		CheckColumnTypeChange: true,
 
+		// 连接服务器选项
+		DefaultCharset:   "utf8mb4",
 		MaxAllowedPacket: 4194304,
 		// Version:            &mysql.TiDBReleaseVersion,
 	},

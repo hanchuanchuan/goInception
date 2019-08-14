@@ -2,7 +2,11 @@ module github.com/hanchuanchuan/goInception
 
 replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3
 
-replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190304143743-afefb7676162
+replace github.com/github/gh-ost => github.com/hanchuanchuan/gh-ost v0.0.0-20190727085352-f3b4246df9e9
+
+replace github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
+
+replace vitess.io/vitess => github.com/vitessio/vitess v3.0.0-rc.3+incompatible
 
 replace golang.org/x/net => github.com/golang/net v0.0.0-20190503192946-f4e77d36d62c
 

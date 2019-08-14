@@ -949,8 +949,9 @@ func (s *session) executeCommit(ctx context.Context) {
 		if err := s.backupdb.DB().Ping(); err != nil {
 			// log.Error(err)
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
-				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort)
+			addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local",
+				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort,
+				s.Inc.DefaultCharset)
 			db, err := gorm.Open("mysql", addr)
 			if err != nil {
 				// log.Error(err)
@@ -2276,15 +2277,15 @@ func (s *session) parseOptions(sql string) {
 
 	var addr string
 	if s.opt.middlewareExtend == "" {
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=%d",
-			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.Inc.MaxAllowedPacket)
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d",
+			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
 	} else {
 		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
 			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
 
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
 			s.opt.user, s.opt.password, s.opt.host, s.opt.port,
-			s.opt.middlewareDB, s.Inc.MaxAllowedPacket)
+			s.opt.middlewareDB, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
 	}
 
 	db, err := gorm.Open("mysql", addr)
@@ -2312,8 +2313,9 @@ func (s *session) parseOptions(sql string) {
 		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 || s.Inc.BackupUser == "" {
 			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
 		} else {
-			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local",
-				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort)
+			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local",
+				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort,
+				s.Inc.DefaultCharset)
 			backupdb, err := gorm.Open("mysql", addr)
 
 			if err != nil {
