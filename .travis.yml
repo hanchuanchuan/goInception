@@ -35,14 +35,30 @@ before_install:
   - sudo chmod +x cmd/explaintest/run-tests.sh
 
   - mysql -e 'select version()'
+  - mysql -e "show variables like '%buffer_pool%'"
   - mysql -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;"
   - mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
 
   # 关闭数据库,重启并开启binlog,设置字符集
-  - ps -ef|grep mysql
-  - sudo service mysql stop
-  - sudo mysqld --lower_case_table_names=1 --log-bin=on --server_id=111 --character-set-server=utf8 &
-  - ps -ef|grep mysql
+  # - ps -ef|grep mysql
+  # - sudo service mysql stop
+
+    # stop mysql and use row-based format binlog
+  - "sudo service mysql stop || true"
+  - "echo '[mysqld]'            | sudo tee /etc/mysql/conf.d/replication.cnf"
+  - "echo 'server-id=111'         | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+  - "echo 'log-bin=on'       | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+  - "echo 'binlog-format = row' | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+  - "echo 'gtid-mode = ON'      | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+  - "echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/mysql/conf.d/replication.cnf"
+
+  # Start mysql (avoid errors to have logs)
+  - "sudo service mysql start || true"
+  - "sudo tail -100 /var/log/syslog"
+  - sudo tail -100 /var/log/mysql/error.log
+
+  # - sudo mysqld --lower_case_table_names=1 --log-bin=on --server_id=111 --character-set-server=utf8 &
+  # - ps -ef|grep mysql
 
 script:
   - rm -f go.sum
