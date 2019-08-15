@@ -75,7 +75,7 @@ require (
 	github.com/pingcap/kvproto v0.0.0-20181206061346-54cf0a0dfe55
 	github.com/pingcap/pd v2.1.0+incompatible
 	github.com/pingcap/tipb v0.0.0-20190428032612-535e1abaa330
-	github.com/prometheus/client_golang v0.9.0
+	github.com/prometheus/client_golang v0.9.0 // indirect
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
 	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39 // indirect
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
