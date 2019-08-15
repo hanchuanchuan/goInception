@@ -152,6 +152,10 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 		buf.WriteString(" --no-check-replication-filters ")
 	}
 
+	if !s.Osc.OscCheckUniqueKeyChange {
+		buf.WriteString(" --no-check-unique-key-change ")
+	}
+
 	if !s.Osc.OscCheckAlter {
 		buf.WriteString(" --no-check-alter ")
 	}
