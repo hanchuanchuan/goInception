@@ -98,7 +98,7 @@ var (
 	logSlowQuery = flag.String(nmLogSlowQuery, "", "slow query file path")
 
 	// Status
-	reportStatus = flagBoolean(nmReportStatus, true, "If enable status report HTTP service.")
+	reportStatus = flagBoolean(nmReportStatus, false, "If enable status report HTTP service.")
 	statusPort   = flag.String(nmStatusPort, "10080", "tidb server status port")
 
 	// PROXY Protocol

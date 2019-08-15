@@ -65,7 +65,6 @@ func batchRW(value []byte) {
 		go func(i int) {
 			defer wg.Done()
 			for j := 0; j < base; j++ {
-				start := time.Now()
 				k := base*i + j
 				txn, err := store.Begin()
 				if err != nil {
