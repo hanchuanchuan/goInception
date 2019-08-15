@@ -144,10 +144,8 @@ func (s *Security) ToTLSConfig() (*tls.Config, error) {
 
 // Status is the status section of the config.
 type Status struct {
-	ReportStatus    bool   `toml:"report-status" json:"report-status"`
-	StatusPort      uint   `toml:"status-port" json:"status-port"`
-	MetricsAddr     string `toml:"metrics-addr" json:"metrics-addr"`
-	MetricsInterval uint   `toml:"metrics-interval" json:"metrics-interval"`
+	ReportStatus bool `toml:"report-status" json:"report-status"`
+	StatusPort   uint `toml:"status-port" json:"status-port"`
 }
 
 // Performance is the performance section of the config.
@@ -653,9 +651,8 @@ var defaultConf = Config{
 		QueryLogMaxLen:     2048,
 	},
 	Status: Status{
-		ReportStatus:    false,
-		StatusPort:      10080,
-		MetricsInterval: 15,
+		ReportStatus: false,
+		StatusPort:   10080,
 	},
 	Performance: Performance{
 		TCPKeepAlive: false,

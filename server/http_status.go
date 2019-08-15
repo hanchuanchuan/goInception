@@ -26,7 +26,6 @@ import (
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util/printer"
 	"github.com/pingcap/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -40,8 +39,6 @@ func (s *Server) startHTTPServer() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/status", s.handleStatus).Name("Status")
-	// HTTP path for prometheus.
-	router.Handle("/metrics", prometheus.Handler()).Name("Metrics")
 
 	// HTTP path for dump statistics.
 	router.Handle("/stats/dump/{db}/{table}", s.newStatsHandler()).Name("StatsDump")

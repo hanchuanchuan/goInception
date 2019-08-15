@@ -19,7 +19,6 @@ import (
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/infoschema"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/planner"
 	plannercore "github.com/hanchuanchuan/goInception/planner/core"
 	"github.com/hanchuanchuan/goInception/sessionctx"
@@ -122,7 +121,6 @@ func CountStmtNode(stmtNode ast.StmtNode, inRestrictedSQL bool) {
 	if inRestrictedSQL {
 		return
 	}
-	metrics.StmtNodeCounter.WithLabelValues(GetStmtLabel(stmtNode)).Inc()
 }
 
 // GetStmtLabel generates a label for a statement.
