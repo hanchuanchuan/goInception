@@ -396,6 +396,8 @@ type Osc struct {
 
 	// 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
 	OscCheckReplicationFilters bool `toml:"osc_check_replication_filters" json:"osc_check_replication_filters"`
+	// 是否检查唯一索引,默认检查,如果是,则禁止
+	OscCheckUniqueKeyChange bool `toml:"osc_check_unique_key_change" json:"osc_check_unique_key_change"`
 
 	// 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
 	OscDropOldTable bool `toml:"osc_drop_old_table" json:"osc_drop_old_table"`
@@ -731,6 +733,7 @@ var defaultConf = Config{
 		OscMaxLag:                  3,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
+		OscCheckUniqueKeyChange:    true,
 		OscDropOldTable:            true,
 		OscDropNewTable:            true,
 		OscMaxThreadRunning:        80,

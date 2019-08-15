@@ -377,6 +377,9 @@ osc_check_alter = true
 # 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
 osc_check_replication_filters = true
 
+# 检查是否为添加唯一索引,如果是,则禁止
+osc_check_unique_key_change = true
+
 # 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
 osc_drop_old_table = true
 
