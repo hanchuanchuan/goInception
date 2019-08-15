@@ -44,7 +44,6 @@ import (
 
 	"github.com/blacktear23/go-proxyprotocol"
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/terror"
@@ -105,10 +104,8 @@ func (s *Server) ConnectionCount() int {
 }
 
 func (s *Server) getToken() *Token {
-	start := time.Now()
 	tok := s.concurrentLimiter.Get()
 	// Note that data smaller than one microsecond is ignored, because that case can be viewed as non-block.
-	metrics.GetTokenDurationHistogram.Observe(float64(time.Since(start).Nanoseconds() / 1e3))
 	return tok
 }
 
@@ -237,7 +234,6 @@ func (s *Server) loadTLSCertificates() {
 
 // Run runs the server.
 func (s *Server) Run() error {
-	metrics.ServerEventCounter.WithLabelValues(metrics.EventStart).Inc()
 
 	// Start HTTP API to report tidb info such as TPS.
 	if s.cfg.Status.ReportStatus {
@@ -272,7 +268,6 @@ func (s *Server) Run() error {
 	terror.Log(errors.Trace(err))
 	s.listener = nil
 	for {
-		metrics.ServerEventCounter.WithLabelValues(metrics.EventHang).Inc()
 		log.Errorf("listener stopped, waiting for manual kill.")
 		time.Sleep(time.Minute)
 	}
@@ -302,7 +297,6 @@ func (s *Server) Close() {
 		terror.Log(errors.Trace(err))
 		s.statusServer = nil
 	}
-	metrics.ServerEventCounter.WithLabelValues(metrics.EventClose).Inc()
 }
 
 // onConn runs in its own goroutine, handles queries from this connection.
@@ -311,7 +305,6 @@ func (s *Server) onConn(c net.Conn) {
 	if err := conn.handshake(); err != nil {
 		// Some keep alive services will send request to TiDB and disconnect immediately.
 		// So we only record metrics.
-		metrics.HandShakeErrorCounter.Inc()
 		err = c.Close()
 		terror.Log(errors.Trace(err))
 		return
@@ -322,9 +315,7 @@ func (s *Server) onConn(c net.Conn) {
 	}()
 	s.rwlock.Lock()
 	s.clients[conn.connectionID] = conn
-	connections := len(s.clients)
 	s.rwlock.Unlock()
-	metrics.ConnGauge.Set(float64(connections))
 
 	conn.Run()
 }
@@ -349,7 +340,6 @@ func (s *Server) Kill(connectionID uint64, query bool) {
 	s.rwlock.Lock()
 	defer s.rwlock.Unlock()
 	log.Infof("[server] Kill connectionID %d, query %t]", connectionID, query)
-	metrics.ServerEventCounter.WithLabelValues(metrics.EventKill).Inc()
 
 	conn, ok := s.clients[uint32(connectionID)]
 	if !ok {
@@ -375,7 +365,6 @@ func (s *Server) Kill(connectionID uint64, query bool) {
 // GracefulDown waits all clients to close.
 func (s *Server) GracefulDown() {
 	log.Info("[server] graceful shutdown.")
-	metrics.ServerEventCounter.WithLabelValues(metrics.EventGracefulDown).Inc()
 
 	count := s.ConnectionCount()
 	for i := 0; count > 0; i++ {

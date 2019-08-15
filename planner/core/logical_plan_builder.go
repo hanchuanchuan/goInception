@@ -27,7 +27,6 @@ import (
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/expression/aggregation"
 	"github.com/hanchuanchuan/goInception/infoschema"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/parser"
@@ -1785,7 +1784,6 @@ func getStatsTable(ctx sessionctx.Context, tblInfo *model.TableInfo, pid int64) 
 		tbl := *statsTbl
 		tbl.Pseudo = true
 		statsTbl = &tbl
-		metrics.PseudoEstimation.Inc()
 	}
 	return statsTbl
 }

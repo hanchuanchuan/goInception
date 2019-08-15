@@ -26,7 +26,6 @@ import (
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/planner"
@@ -370,9 +369,6 @@ func (a *ExecStmt) logSlowQuery(txnTS uint64, succ bool) {
 		logutil.SlowQueryLogger.Warnf(
 			"[SLOW_QUERY] %vcost_time:%v %s succ:%v con:%v user:%s txn_start_ts:%v database:%v %v%vsql:%v",
 			internal, costTime, execDetail, succ, connID, user, txnTS, currentDB, tableIDs, indexIDs, sql)
-		metrics.TotalQueryProcHistogram.Observe(costTime.Seconds())
-		metrics.TotalCopProcHistogram.Observe(execDetail.ProcessTime.Seconds())
-		metrics.TotalCopWaitHistogram.Observe(execDetail.WaitTime.Seconds())
 		var userString string
 		if user != nil {
 			userString = user.String()

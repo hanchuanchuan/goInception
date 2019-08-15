@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
@@ -158,15 +157,10 @@ func (lr *LockResolver) BatchResolveLocks(bo *Backoffer, locks []*Lock, loc Regi
 		return true, nil
 	}
 
-	metrics.TiKVLockResolverCounter.WithLabelValues("batch_resolve").Inc()
-
 	var expiredLocks []*Lock
 	for _, l := range locks {
 		if lr.store.GetOracle().IsExpired(l.TxnID, l.TTL) {
-			metrics.TiKVLockResolverCounter.WithLabelValues("expired").Inc()
 			expiredLocks = append(expiredLocks, l)
-		} else {
-			metrics.TiKVLockResolverCounter.WithLabelValues("not_expired").Inc()
 		}
 	}
 	if len(expiredLocks) != len(locks) {
@@ -248,15 +242,10 @@ func (lr *LockResolver) ResolveLocks(bo *Backoffer, locks []*Lock) (ok bool, err
 		return true, nil
 	}
 
-	metrics.TiKVLockResolverCounter.WithLabelValues("resolve").Inc()
-
 	var expiredLocks []*Lock
 	for _, l := range locks {
 		if lr.store.GetOracle().IsExpired(l.TxnID, l.TTL) {
-			metrics.TiKVLockResolverCounter.WithLabelValues("expired").Inc()
 			expiredLocks = append(expiredLocks, l)
-		} else {
-			metrics.TiKVLockResolverCounter.WithLabelValues("not_expired").Inc()
 		}
 	}
 	if len(expiredLocks) == 0 {
@@ -301,8 +290,6 @@ func (lr *LockResolver) getTxnStatus(bo *Backoffer, txnID uint64, primary []byte
 		return s, nil
 	}
 
-	metrics.TiKVLockResolverCounter.WithLabelValues("query_txn_status").Inc()
-
 	var status TxnStatus
 	req := &tikvrpc.Request{
 		Type: tikvrpc.CmdCleanup,
@@ -342,9 +329,6 @@ func (lr *LockResolver) getTxnStatus(bo *Backoffer, txnID uint64, primary []byte
 		}
 		if cmdResp.CommitVersion != 0 {
 			status = TxnStatus(cmdResp.GetCommitVersion())
-			metrics.TiKVLockResolverCounter.WithLabelValues("query_txn_status_committed").Inc()
-		} else {
-			metrics.TiKVLockResolverCounter.WithLabelValues("query_txn_status_rolled_back").Inc()
 		}
 		lr.saveResolved(txnID, status)
 		return status, nil
@@ -352,7 +336,7 @@ func (lr *LockResolver) getTxnStatus(bo *Backoffer, txnID uint64, primary []byte
 }
 
 func (lr *LockResolver) resolveLock(bo *Backoffer, l *Lock, status TxnStatus, cleanRegions map[RegionVerID]struct{}) error {
-	metrics.TiKVLockResolverCounter.WithLabelValues("query_resolve_locks").Inc()
+
 	for {
 		loc, err := lr.store.GetRegionCache().LocateKey(bo, l.Key)
 		if err != nil {

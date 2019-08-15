@@ -15,7 +15,6 @@ package distsql
 
 import (
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/statistics"
 	"github.com/hanchuanchuan/goInception/types"
@@ -55,10 +54,6 @@ func Select(ctx context.Context, sctx sessionctx.Context, kvReq *kv.Request, fie
 		}, nil
 	}
 
-	label := metrics.LblGeneral
-	if sctx.GetSessionVars().InRestrictedSQL {
-		label = metrics.LblInternal
-	}
 	return &selectResult{
 		label:      "dag",
 		resp:       resp,
@@ -68,7 +63,7 @@ func Select(ctx context.Context, sctx sessionctx.Context, kvReq *kv.Request, fie
 		fieldTypes: fieldTypes,
 		ctx:        sctx,
 		feedback:   fb,
-		sqlType:    label,
+		sqlType:    "internal",
 	}, nil
 }
 
@@ -79,17 +74,13 @@ func Analyze(ctx context.Context, client kv.Client, kvReq *kv.Request, vars *kv.
 	if resp == nil {
 		return nil, errors.New("client returns nil response")
 	}
-	label := metrics.LblGeneral
-	if isRestrict {
-		label = metrics.LblInternal
-	}
 	result := &selectResult{
 		label:    "analyze",
 		resp:     resp,
 		results:  make(chan resultWithErr, kvReq.Concurrency),
 		closed:   make(chan struct{}),
 		feedback: statistics.NewQueryFeedback(0, nil, 0, false),
-		sqlType:  label,
+		sqlType:  "internal",
 	}
 	return result, nil
 }
@@ -106,7 +97,7 @@ func Checksum(ctx context.Context, client kv.Client, kvReq *kv.Request, vars *kv
 		results:  make(chan resultWithErr, kvReq.Concurrency),
 		closed:   make(chan struct{}),
 		feedback: statistics.NewQueryFeedback(0, nil, 0, false),
-		sqlType:  metrics.LblGeneral,
+		sqlType:  "general",
 	}
 	return result, nil
 }

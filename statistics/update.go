@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/infoschema"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
@@ -195,7 +194,6 @@ func (s *SessionStatsCollector) StoreQueryFeedback(feedback interface{}, h *Hand
 	if rate >= MinLogErrorRate && (q.actual >= MinLogScanCount || q.expected >= MinLogScanCount) && log.GetLevel() == log.DebugLevel {
 		q.logDetailedInfo(h)
 	}
-	metrics.StatsInaccuracyRate.Observe(rate)
 	s.Lock()
 	defer s.Unlock()
 	isIndex := q.tp == indexType
@@ -396,11 +394,6 @@ func (h *Handle) dumpFeedbackToKV(fb *QueryFeedback) error {
 	h.mu.Lock()
 	_, err = h.mu.ctx.(sqlexec.SQLExecutor).Execute(context.TODO(), sql)
 	h.mu.Unlock()
-	if err != nil {
-		metrics.DumpFeedbackCounter.WithLabelValues(metrics.LblError).Inc()
-	} else {
-		metrics.DumpFeedbackCounter.WithLabelValues(metrics.LblOK).Inc()
-	}
 	return errors.Trace(err)
 }
 
@@ -575,7 +568,6 @@ func (h *Handle) deleteOutdatedFeedback(tableID, histID, isIndex int64) error {
 func (h *Handle) dumpStatsUpdateToKV(tableID, isIndex int64, q *QueryFeedback, hist *Histogram, cms *CMSketch) error {
 	hist = UpdateHistogram(hist, q)
 	err := h.SaveStatsToStorage(tableID, -1, int(isIndex), hist, cms, 0)
-	metrics.UpdateStatsCounter.WithLabelValues(metrics.RetLabel(err)).Inc()
 	return errors.Trace(err)
 }
 
@@ -750,13 +742,6 @@ func (h *Handle) autoAnalyzeTable(tblInfo *model.TableInfo, statsTbl *Table, sta
 }
 
 func (h *Handle) execAutoAnalyze(sql string) error {
-	startTime := time.Now()
 	_, _, err := h.restrictedExec.ExecRestrictedSQL(nil, sql)
-	metrics.AutoAnalyzeHistogram.Observe(time.Since(startTime).Seconds())
-	if err != nil {
-		metrics.AutoAnalyzeCounter.WithLabelValues("failed").Inc()
-	} else {
-		metrics.AutoAnalyzeCounter.WithLabelValues("succ").Inc()
-	}
 	return errors.Trace(err)
 }

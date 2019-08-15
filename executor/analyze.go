@@ -19,7 +19,6 @@ import (
 
 	"github.com/hanchuanchuan/goInception/distsql"
 	"github.com/hanchuanchuan/goInception/domain"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx"
@@ -123,7 +122,6 @@ func (e *AnalyzeExec) analyzeWorker(taskCh <-chan *analyzeTask, resultCh chan<- 
 			stackSize := runtime.Stack(buf, false)
 			buf = buf[:stackSize]
 			log.Errorf("analyzeWorker panic stack is:\n%s", buf)
-			metrics.PanicCounter.WithLabelValues(metrics.LabelAnalyze).Inc()
 			resultCh <- statistics.AnalyzeResult{
 				Err: errAnalyzeWorkerPanic,
 			}

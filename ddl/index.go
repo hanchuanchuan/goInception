@@ -24,7 +24,6 @@ import (
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/meta"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx"
@@ -845,7 +844,6 @@ func (w *addIndexWorker) run(d *ddlCtx) {
 		if r != nil {
 			buf := util.GetStack()
 			log.Errorf("[ddl-reorg] addIndexWorker %v %s", r, buf)
-			metrics.PanicCounter.WithLabelValues(metrics.LabelDDL).Inc()
 		}
 		w.resultCh <- &addIndexResult{err: errReorgPanic}
 	}()
@@ -993,7 +991,6 @@ func (w *worker) handleReorgTasks(reorgInfo *reorgInfo, totalAddedCount *int64, 
 		err1 := kv.RunInNewTxn(reorgInfo.d.store, true, func(txn kv.Transaction) error {
 			return errors.Trace(reorgInfo.UpdateReorgMeta(txn, nextHandle, reorgInfo.EndHandle, reorgInfo.PhysicalTableID))
 		})
-		metrics.BatchAddIdxHistogram.WithLabelValues(metrics.LblError).Observe(elapsedTime)
 		log.Warnf("[ddl-reorg] total added index for %d rows, this task [%d,%d) add index for %d failed %v, take time %v, update handle err %v",
 			*totalAddedCount, startHandle, nextHandle, taskAddedCount, err, elapsedTime, err1)
 		return errors.Trace(err)
@@ -1001,7 +998,6 @@ func (w *worker) handleReorgTasks(reorgInfo *reorgInfo, totalAddedCount *int64, 
 
 	// nextHandle will be updated periodically in runReorgJob, so no need to update it here.
 	w.reorgCtx.setNextHandle(nextHandle)
-	metrics.BatchAddIdxHistogram.WithLabelValues(metrics.LblOK).Observe(elapsedTime)
 	log.Infof("[ddl-reorg] total added index for %d rows, this task [%d,%d) added index for %d rows, take time %v",
 		*totalAddedCount, startHandle, nextHandle, taskAddedCount, elapsedTime)
 	return nil

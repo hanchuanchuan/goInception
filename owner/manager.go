@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/etcd/clientv3/concurrency"
 	"github.com/coreos/etcd/etcdserver/api/v3rpc/rpctypes"
 	"github.com/coreos/etcd/mvcc/mvccpb"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/pingcap/errors"
@@ -147,10 +146,8 @@ func NewSession(ctx context.Context, logPrefix string, etcdCli *clientv3.Client,
 		//	if closeGrpc {
 		//		etcdCli.ActiveConnection().Close()
 		//	}
-		startTime := time.Now()
 		etcdSession, err = concurrency.NewSession(etcdCli,
 			concurrency.WithTTL(ttl), concurrency.WithContext(ctx))
-		metrics.NewSessionHistogram.WithLabelValues(logPrefix, metrics.RetLabel(err)).Observe(time.Since(startTime).Seconds())
 		if err == nil {
 			break
 		}
@@ -208,16 +205,12 @@ func (m *ownerManager) campaignLoop(ctx context.Context, etcdSession *concurrenc
 		if r := recover(); r != nil {
 			buf := util.GetStack()
 			log.Errorf("[%s] recover panic:%v, %s", m.prompt, r, buf)
-			metrics.PanicCounter.WithLabelValues(metrics.LabelDDLOwner).Inc()
 		}
 	}()
 
 	logPrefix := m.logPrefix
 	var err error
 	for {
-		if err != nil {
-			metrics.CampaignOwnerCounter.WithLabelValues(m.prompt, err.Error()).Inc()
-		}
 
 		select {
 		case <-etcdSession.Done():
@@ -261,7 +254,6 @@ func (m *ownerManager) campaignLoop(ctx context.Context, etcdSession *concurrenc
 		m.watchOwner(ctx, etcdSession, ownerKey)
 		m.RetireOwner()
 
-		metrics.CampaignOwnerCounter.WithLabelValues(m.prompt, metrics.NoLongerOwner).Inc()
 		log.Warnf("%s isn't the owner", logPrefix)
 	}
 }
@@ -314,28 +306,23 @@ func (m *ownerManager) watchOwner(ctx context.Context, etcdSession *concurrency.
 		select {
 		case resp, ok := <-watchCh:
 			if !ok {
-				metrics.WatchOwnerCounter.WithLabelValues(m.prompt, metrics.WatcherClosed).Inc()
 				log.Infof("%s watcher is closed, no owner", logPrefix)
 				return
 			}
 			if resp.Canceled {
-				metrics.WatchOwnerCounter.WithLabelValues(m.prompt, metrics.Cancelled).Inc()
 				log.Infof("%s canceled, no owner", logPrefix)
 				return
 			}
 
 			for _, ev := range resp.Events {
 				if ev.Type == mvccpb.DELETE {
-					metrics.WatchOwnerCounter.WithLabelValues(m.prompt, metrics.Deleted).Inc()
 					log.Infof("%s failed, owner is deleted", logPrefix)
 					return
 				}
 			}
 		case <-etcdSession.Done():
-			metrics.WatchOwnerCounter.WithLabelValues(m.prompt, metrics.SessionDone).Inc()
 			return
 		case <-ctx.Done():
-			metrics.WatchOwnerCounter.WithLabelValues(m.prompt, metrics.CtxDone).Inc()
 			return
 		}
 	}

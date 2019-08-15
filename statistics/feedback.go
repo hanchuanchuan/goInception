@@ -24,7 +24,6 @@ import (
 
 	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/tablecodec"
@@ -199,7 +198,6 @@ func (q *QueryFeedback) Update(startKey kv.Key, counts []int64) {
 	for _, count := range counts {
 		sum += count
 	}
-	metrics.DistSQLScanKeysPartialHistogram.Observe(float64(sum))
 	q.actual += sum
 	if !q.valid || q.hist == nil {
 		return

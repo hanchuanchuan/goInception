@@ -29,7 +29,6 @@ import (
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/meta"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/owner"
 	"github.com/hanchuanchuan/goInception/privilege/privileges"
@@ -311,12 +310,9 @@ func (do *Domain) Reload() error {
 		changedTableIDs []int64
 	)
 	latestSchemaVersion, changedTableIDs, fullLoad, err = do.loadInfoSchema(do.infoHandle, schemaVersion, ver.Ver)
-	metrics.LoadSchemaDuration.Observe(time.Since(startTime).Seconds())
 	if err != nil {
-		metrics.LoadSchemaCounter.WithLabelValues("failed").Inc()
 		return errors.Trace(err)
 	}
-	metrics.LoadSchemaCounter.WithLabelValues("succ").Inc()
 
 	if fullLoad {
 		log.Info("[ddl] full load and reset schema validator.")
@@ -646,7 +642,6 @@ func (do *Domain) LoadPrivilegeLoop(ctx sessionctx.Context) error {
 
 			count = 0
 			err := do.privHandle.Update(ctx)
-			metrics.LoadPrivilegeCounter.WithLabelValues(metrics.RetLabel(err)).Inc()
 			if err != nil {
 				log.Error("[domain] load privilege fail:", errors.ErrorStack(err))
 			} else {
@@ -853,7 +848,6 @@ func recoverInDomain(funcName string, quit bool) {
 	}
 	buf := util.GetStack()
 	log.Errorf("%s, %v, %s", funcName, r, buf)
-	metrics.PanicCounter.WithLabelValues(metrics.LabelDomain).Inc()
 	if quit {
 		// Wait for metrics to be pushed.
 		time.Sleep(time.Second * 15)

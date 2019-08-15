@@ -17,11 +17,9 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/goInception/tablecodec"
 	"github.com/pingcap/errors"
@@ -67,10 +65,6 @@ func (s *tikvSnapshot) SetPriority(priority int) {
 // BatchGet gets all the keys' value from kv-server and returns a map contains key/value pairs.
 // The map will not contain nonexistent keys.
 func (s *tikvSnapshot) BatchGet(keys []kv.Key) (map[string][]byte, error) {
-	metrics.TiKVTxnCmdCounter.WithLabelValues("batch_get").Inc()
-	start := time.Now()
-	defer func() { metrics.TiKVTxnCmdHistogram.WithLabelValues("batch_get").Observe(time.Since(start).Seconds()) }()
-
 	// We want [][]byte instead of []kv.Key, use some magic to save memory.
 	bytesKeys := *(*[][]byte)(unsafe.Pointer(&keys))
 	bo := NewBackoffer(context.Background(), batchGetMaxBackoff).WithVars(s.vars)
@@ -103,8 +97,6 @@ func (s *tikvSnapshot) batchGetKeysByRegions(bo *Backoffer, keys [][]byte, colle
 	if err != nil {
 		return errors.Trace(err)
 	}
-
-	metrics.TiKVTxnRegionsNumHistogram.WithLabelValues("snapshot").Observe(float64(len(groups)))
 
 	var batches []batchKeys
 	for id, g := range groups {

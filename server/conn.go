@@ -42,7 +42,6 @@ import (
 	"io"
 	"net"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -50,7 +49,6 @@ import (
 
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/opentracing/opentracing-go"
 	// "github.com/hanchuanchuan/goInception/session"
@@ -151,9 +149,7 @@ func (cc *clientConn) handshake() error {
 func (cc *clientConn) Close() error {
 	cc.server.rwlock.Lock()
 	delete(cc.server.clients, cc.connectionID)
-	connections := len(cc.server.clients)
 	cc.server.rwlock.Unlock()
-	metrics.ConnGauge.Set(float64(connections))
 	err := cc.bufReadConn.Close()
 	terror.Log(errors.Trace(err))
 	if cc.ctx != nil {
@@ -426,7 +422,6 @@ func (cc *clientConn) Run() {
 			stackSize := runtime.Stack(buf, false)
 			buf = buf[:stackSize]
 			log.Errorf("lastCmd %s, %v, %s", cc.lastCmd, r, buf)
-			metrics.PanicCounter.WithLabelValues(metrics.LabelSession).Inc()
 		}
 		// log.Info(closedOutside)
 		if !closedOutside {
@@ -480,7 +475,6 @@ func (cc *clientConn) Run() {
 			} else if terror.ErrCritical.Equal(err) {
 				log.Errorf("con:%d critical error, stop the server listener %s",
 					cc.connectionID, errors.ErrorStack(err))
-				metrics.CriticalErrorCounter.Add(1)
 				select {
 				case cc.server.stopListenerCh <- struct{}{}:
 				default:
@@ -530,48 +524,42 @@ func errStrForLog(err error) string {
 }
 
 func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
-	var label string
-	switch cmd {
-	case mysql.ComSleep:
-		label = "Sleep"
-	case mysql.ComQuit:
-		label = "Quit"
-	case mysql.ComQuery:
-		if cc.ctx.Value(sessionctx.LastExecuteDDL) != nil {
-			// Don't take DDL execute time into account.
-			// It's already recorded by other metrics in ddl package.
-			return
-		}
-		label = "Query"
-	case mysql.ComPing:
-		label = "Ping"
-	case mysql.ComInitDB:
-		label = "InitDB"
-	case mysql.ComFieldList:
-		label = "FieldList"
-	case mysql.ComStmtPrepare:
-		label = "StmtPrepare"
-	case mysql.ComStmtExecute:
-		label = "StmtExecute"
-	case mysql.ComStmtFetch:
-		label = "StmtFetch"
-	case mysql.ComStmtClose:
-		label = "StmtClose"
-	case mysql.ComStmtSendLongData:
-		label = "StmtSendLongData"
-	case mysql.ComStmtReset:
-		label = "StmtReset"
-	case mysql.ComSetOption:
-		label = "SetOption"
-	default:
-		label = strconv.Itoa(int(cmd))
-	}
-	if err != nil {
-		metrics.QueryTotalCounter.WithLabelValues(label, "Error").Inc()
-	} else {
-		metrics.QueryTotalCounter.WithLabelValues(label, "OK").Inc()
-	}
-	metrics.QueryDurationHistogram.WithLabelValues(metrics.LblGeneral).Observe(time.Since(startTime).Seconds())
+	// var label string
+	// switch cmd {
+	// case mysql.ComSleep:
+	// 	label = "Sleep"
+	// case mysql.ComQuit:
+	// 	label = "Quit"
+	// case mysql.ComQuery:
+	// 	if cc.ctx.Value(sessionctx.LastExecuteDDL) != nil {
+	// 		// Don't take DDL execute time into account.
+	// 		// It's already recorded by other metrics in ddl package.
+	// 		return
+	// 	}
+	// 	label = "Query"
+	// case mysql.ComPing:
+	// 	label = "Ping"
+	// case mysql.ComInitDB:
+	// 	label = "InitDB"
+	// case mysql.ComFieldList:
+	// 	label = "FieldList"
+	// case mysql.ComStmtPrepare:
+	// 	label = "StmtPrepare"
+	// case mysql.ComStmtExecute:
+	// 	label = "StmtExecute"
+	// case mysql.ComStmtFetch:
+	// 	label = "StmtFetch"
+	// case mysql.ComStmtClose:
+	// 	label = "StmtClose"
+	// case mysql.ComStmtSendLongData:
+	// 	label = "StmtSendLongData"
+	// case mysql.ComStmtReset:
+	// 	label = "StmtReset"
+	// case mysql.ComSetOption:
+	// 	label = "SetOption"
+	// default:
+	// 	label = strconv.Itoa(int(cmd))
+	// }
 }
 
 // dispatch handles client request based on command which is the first byte of the data.
@@ -897,7 +885,6 @@ func (cc *clientConn) handleLoadStats(ctx context.Context, loadStatsInfo *execut
 func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	rs, err := cc.ctx.Execute(ctx, sql)
 	if err != nil {
-		metrics.ExecuteErrorCounter.WithLabelValues(metrics.ExecuteErrorToLabel(err)).Inc()
 		return errors.Trace(err)
 	}
 
