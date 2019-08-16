@@ -6206,7 +6206,8 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		s.checkItem(e.ElseClause, tables)
 
 	case *ast.DefaultExpr:
-		s.checkFieldItem(e.Name, tables)
+		// s.checkFieldItem(e.Name, tables)
+		// pass
 
 	case *ast.ParenthesesExpr:
 		s.checkItem(e.Expr, tables)
