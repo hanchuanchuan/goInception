@@ -77,6 +77,7 @@ osc_check_replication_filters          | true           | bool | 对应参数--[
 osc_chunk_size                         | 1000           | int | 对应参数--chunk-size
 osc_chunk_size_limit                   | 4              | int | 对应参数--chunk-size-limit
 osc_chunk_time                         | 1              | int | 对应参数--chunk-time
+osc_check_unique_key_change `v1.0.5` | true              | bool | 对应参数--[no]check_unique_key_change,设置是否检查唯一索引
 osc_critical_thread_connected                 | 1000           | int | 对应参数--critical-load中的thread_connected部分
 osc_critical_thread_running                   | 80             | int | 对应参数--critical-load中的thread_running部分
 osc_drop_new_table                     | true           | bool | 对应参数--[no]drop-new-table

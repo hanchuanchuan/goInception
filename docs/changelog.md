@@ -1,5 +1,18 @@
 # goInception 更新日志
 
+## [v1.0.5] - 2019-8-20
+
+### Fix
+* 修复insert values子句不支持default语法的问题
+
+### New Features
+* 添加参数`default_charset` 用以设置连接数据库的默认字符集,默认值`utf8mb4` (解决低版本不支持utf8mb4的问题)
+* 添加pt-osc参数`osc_check_unique_key_change`, 设置pt-osc是否检查唯一索引,默认为`true`
+
+### Update
+* 优化回滚功能,添加binlog_row_image设置检查,为minimal时自动修改会话级别为full
+
+
 ## [v1.0.4] - 2019-8-5
 
 ### New Features
