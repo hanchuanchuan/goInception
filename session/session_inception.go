@@ -919,6 +919,10 @@ func (s *session) executeCommit(ctx context.Context) {
 		if !s.checkBinlogFormatIsRow() {
 			s.modifyBinlogFormatRow()
 		}
+
+		if !s.checkBinlogRowImageIsFull() {
+			s.modifyBinlogRowImageFull()
+		}
 	}
 
 	if s.hasErrorBefore() {
@@ -1963,6 +1967,36 @@ func (s *session) checkBinlogFormatIsRow() bool {
 	return format == "ROW"
 }
 
+func (s *session) checkBinlogRowImageIsFull() bool {
+	log.Debug("checkBinlogRowImageIsFull")
+
+	sql := "show variables like 'binlog_row_image';"
+
+	var format string
+
+	rows, err := s.Raw(sql)
+	if rows != nil {
+		defer rows.Close()
+	}
+
+	if err != nil {
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&format, &format)
+		}
+	}
+
+	// log.Infof("binlog format: %s", format)
+	return format != "MINIMAL"
+}
+
 func (s *session) mysqlServerVersion() {
 	log.Debug("mysqlServerVersion")
 
@@ -2116,6 +2150,22 @@ func (s *session) modifyBinlogFormatRow() {
 	log.Debug("modifyBinlogFormatRow")
 
 	sql := "set session binlog_format=row;"
+
+	if _, err := s.Exec(sql, true); err != nil {
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+}
+
+func (s *session) modifyBinlogRowImageFull() {
+	log.Debug("modifyBinlogRowImageFull")
+
+	sql := "set session binlog_row_image=FULL;"
 
 	if _, err := s.Exec(sql, true); err != nil {
 		// log.Error(err)
