@@ -45,6 +45,7 @@ check_primary_key   |  false    |   true,false     |  建表时，如果没有�
 check_table_comment   |  false    |   true,false     |    建表时，表没有注释时报错
 check_timestamp_count `v0.6.0`   |  false    |   true,false     |    配置是否检查current_timestamp数量
 check_timestamp_default   |  false    |   true,false     |    建表时，如果没有为timestamp类型指定默认值，则报错
+default_charset `v1.0.5` | 'utf8mb4'    |   string  | 设置连接数据库的默认字符集,默认值为`utf8mb4` (解决低版本不支持utf8mb4的问题)
 enable_autoincrement_unsigned   |  false    |   true,false     |  自增列是不是要为无符号型
 enable_blob_not_null `v1.0` |  false    |   true,false     |   是否允许blob/text/json类型置为`not null`,默认为`false`,即不允许
 enable_blob_type   |  false    |   true,false     |   检查是不是支持BLOB字段，包括建表、修改列、新增列操作
