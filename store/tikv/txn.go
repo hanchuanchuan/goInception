@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
@@ -87,10 +86,6 @@ func (txn *tikvTxn) Reset() {
 
 // Get implements transaction interface.
 func (txn *tikvTxn) Get(k kv.Key) ([]byte, error) {
-	metrics.TiKVTxnCmdCounter.WithLabelValues("get").Inc()
-	start := time.Now()
-	defer func() { metrics.TiKVTxnCmdHistogram.WithLabelValues("get").Observe(time.Since(start).Seconds()) }()
-
 	ret, err := txn.us.Get(k)
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -116,27 +111,17 @@ func (txn *tikvTxn) String() string {
 }
 
 func (txn *tikvTxn) Seek(k kv.Key) (kv.Iterator, error) {
-	metrics.TiKVTxnCmdCounter.WithLabelValues("seek").Inc()
-	start := time.Now()
-	defer func() { metrics.TiKVTxnCmdHistogram.WithLabelValues("seek").Observe(time.Since(start).Seconds()) }()
 
 	return txn.us.Seek(k)
 }
 
 // SeekReverse creates a reversed Iterator positioned on the first entry which key is less than k.
 func (txn *tikvTxn) SeekReverse(k kv.Key) (kv.Iterator, error) {
-	metrics.TiKVTxnCmdCounter.WithLabelValues("seek_reverse").Inc()
-	start := time.Now()
-	defer func() {
-		metrics.TiKVTxnCmdHistogram.WithLabelValues("seek_reverse").Observe(time.Since(start).Seconds())
-	}()
 
 	return txn.us.SeekReverse(k)
 }
 
 func (txn *tikvTxn) Delete(k kv.Key) error {
-	metrics.TiKVTxnCmdCounter.WithLabelValues("delete").Inc()
-
 	txn.dirty = true
 	return txn.us.Delete(k)
 }
@@ -164,11 +149,6 @@ func (txn *tikvTxn) Commit(ctx context.Context) error {
 		return kv.ErrInvalidTxn
 	}
 	defer txn.close()
-
-	metrics.TiKVTxnCmdCounter.WithLabelValues("set").Add(float64(txn.setCnt))
-	metrics.TiKVTxnCmdCounter.WithLabelValues("commit").Inc()
-	start := time.Now()
-	defer func() { metrics.TiKVTxnCmdHistogram.WithLabelValues("commit").Observe(time.Since(start).Seconds()) }()
 
 	if err := txn.us.CheckLazyConditionPairs(); err != nil {
 		return errors.Trace(err)
@@ -217,13 +197,11 @@ func (txn *tikvTxn) Rollback() error {
 	}
 	txn.close()
 	log.Debugf("[kv] Rollback txn %d", txn.StartTS())
-	metrics.TiKVTxnCmdCounter.WithLabelValues("rollback").Inc()
 
 	return nil
 }
 
 func (txn *tikvTxn) LockKeys(keys ...kv.Key) error {
-	metrics.TiKVTxnCmdCounter.WithLabelValues("lock_keys").Inc()
 	txn.mu.Lock()
 	for _, key := range keys {
 		txn.lockKeys = append(txn.lockKeys, key)

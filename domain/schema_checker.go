@@ -16,8 +16,6 @@ package domain
 import (
 	"sync/atomic"
 	"time"
-
-	"github.com/hanchuanchuan/goInception/metrics"
 )
 
 // SchemaChecker is used for checking schema-validity.
@@ -53,10 +51,8 @@ func (s *SchemaChecker) Check(txnTS uint64) error {
 		case ResultSucc:
 			return nil
 		case ResultFail:
-			metrics.SchemaLeaseErrorCounter.WithLabelValues("changed").Inc()
 			return ErrInfoSchemaChanged
 		case ResultUnknown:
-			metrics.SchemaLeaseErrorCounter.WithLabelValues("outdated").Inc()
 			time.Sleep(time.Duration(schemaOutOfDateRetryInterval))
 		}
 
