@@ -27,7 +27,6 @@ import (
 	"github.com/hanchuanchuan/goInception/ddl"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/mysql"
 	plannercore "github.com/hanchuanchuan/goInception/planner/core"
 	"github.com/hanchuanchuan/goInception/privilege/privileges"
@@ -44,12 +43,9 @@ import (
 	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/hanchuanchuan/goInception/util/printer"
 	"github.com/hanchuanchuan/goInception/util/signal"
-	"github.com/hanchuanchuan/goInception/util/systimemon"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/push"
 	goMysqlLog "github.com/siddontang/go-log/log"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -72,8 +68,6 @@ const (
 	nmLogSlowQuery     = "log-slow-query"
 	nmReportStatus     = "report-status"
 	nmStatusPort       = "status"
-	nmMetricsAddr      = "metrics-addr"
-	nmMetricsInterval  = "metrics-interval"
 	nmDdlLease         = "lease"
 	nmTokenLimit       = "token-limit"
 
@@ -104,10 +98,8 @@ var (
 	logSlowQuery = flag.String(nmLogSlowQuery, "", "slow query file path")
 
 	// Status
-	reportStatus    = flagBoolean(nmReportStatus, true, "If enable status report HTTP service.")
-	statusPort      = flag.String(nmStatusPort, "10080", "tidb server status port")
-	metricsAddr     = flag.String(nmMetricsAddr, "", "prometheus pushgateway address, leaves it empty will disable prometheus push.")
-	metricsInterval = flag.Uint(nmMetricsInterval, 15, "prometheus client push interval in second, set \"0\" to disable prometheus push.")
+	reportStatus = flagBoolean(nmReportStatus, false, "If enable status report HTTP service.")
+	statusPort   = flag.String(nmStatusPort, "10080", "tidb server status port")
 
 	// PROXY Protocol
 	proxyProtocolNetworks      = flag.String(nmProxyProtocolNetworks, "", "proxy protocol networks allowed IP or *, empty mean disable proxy protocol support")
@@ -129,7 +121,6 @@ func main() {
 		os.Exit(0)
 	}
 	registerStores()
-	registerMetrics()
 	loadConfig()
 	overrideConfig()
 	validateConfig()
@@ -138,7 +129,6 @@ func main() {
 	setupTracing() // Should before createServer and after setup config.
 	printInfo()
 	setupBinlogClient()
-	setupMetrics()
 	createStoreAndDomain()
 	createServer()
 	signal.SetupSignalHandler(serverShutdown)
@@ -160,10 +150,6 @@ func registerStores() {
 	tikv.NewGCHandlerFunc = gcworker.NewGCWorker
 	err = session.RegisterStore("mocktikv", mockstore.MockDriver{})
 	terror.MustNil(err)
-}
-
-func registerMetrics() {
-	metrics.RegisterMetrics()
 }
 
 func createStoreAndDomain() {
@@ -191,37 +177,6 @@ func setupBinlogClient() {
 	binloginfo.SetGRPCTimeout(parseDuration(cfg.Binlog.WriteTimeout))
 	binloginfo.SetPumpClient(binlog.NewPumpClient(clientConn))
 	log.Infof("created binlog client at %s, ignore error %v", cfg.Binlog.BinlogSocket, cfg.Binlog.IgnoreError)
-}
-
-// Prometheus push.
-const zeroDuration = time.Duration(0)
-
-// pushMetric pushes metrics in background.
-func pushMetric(addr string, interval time.Duration) {
-	if interval == zeroDuration || len(addr) == 0 {
-		log.Info("disable Prometheus push client")
-		return
-	}
-	log.Infof("start Prometheus push client with server addr %s and interval %s", addr, interval)
-	go prometheusPushClient(addr, interval)
-}
-
-// prometheusPushClient pushes metrics to Prometheus Pushgateway.
-func prometheusPushClient(addr string, interval time.Duration) {
-	// TODO: TiDB do not have uniq name, so we use host+port to compose a name.
-	job := "tidb"
-	for {
-		err := push.AddFromGatherer(
-			job,
-			map[string]string{"instance": instanceName()},
-			addr,
-			prometheus.DefaultGatherer,
-		)
-		if err != nil {
-			log.Errorf("could not push metrics to Prometheus Pushgateway: %v", err)
-		}
-		time.Sleep(interval)
-	}
 }
 
 func instanceName() string {
@@ -332,12 +287,6 @@ func overrideConfig() {
 		terror.MustNil(err)
 		cfg.Status.StatusPort = uint(p)
 	}
-	if actualFlags[nmMetricsAddr] {
-		cfg.Status.MetricsAddr = *metricsAddr
-	}
-	if actualFlags[nmMetricsInterval] {
-		cfg.Status.MetricsInterval = *metricsInterval
-	}
 
 	// PROXY Protocol
 	if actualFlags[nmProxyProtocolNetworks] {
@@ -446,26 +395,6 @@ func serverShutdown(isgraceful bool) {
 		graceful = true
 	}
 	svr.Close()
-}
-
-func setupMetrics() {
-	// Enable the mutex profile, 1/10 of mutex blocking event sampling.
-	runtime.SetMutexProfileFraction(10)
-	systimeErrHandler := func() {
-		metrics.TimeJumpBackCounter.Inc()
-	}
-	callBackCount := 0
-	sucessCallBack := func() {
-		callBackCount++
-		// It is callback by monitor per second, we increase metrics.KeepAliveCounter per 5s.
-		if callBackCount >= 5 {
-			callBackCount = 0
-			metrics.KeepAliveCounter.Inc()
-		}
-	}
-	go systimemon.StartMonitor(time.Now, systimeErrHandler, sucessCallBack)
-
-	pushMetric(cfg.Status.MetricsAddr, time.Duration(cfg.Status.MetricsInterval)*time.Second)
 }
 
 func setupTracing() {

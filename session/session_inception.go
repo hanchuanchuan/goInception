@@ -39,7 +39,6 @@ import (
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/expression"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/parser/opcode"
@@ -366,9 +365,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 	charsetInfo, collation := s.sessionVars.GetCharsetInfo()
 
-	// Step1: Compile query string to abstract syntax trees(ASTs).
-	startTS := time.Now()
-
 	lineCount := len(sqlList) - 1
 	// batchSize := 1
 
@@ -611,12 +607,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 			// batchSize++
 		}
 	}
-
-	label := metrics.LblGeneral
-	if s.sessionVars.InRestrictedSQL {
-		label = metrics.LblInternal
-	}
-	metrics.SessionExecuteParseDuration.WithLabelValues(label).Observe(time.Since(startTS).Seconds())
 
 	if !s.haveCommit {
 		if s.opt != nil && s.opt.Print {
@@ -6266,7 +6256,8 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		s.checkItem(e.ElseClause, tables)
 
 	case *ast.DefaultExpr:
-		s.checkFieldItem(e.Name, tables)
+		// s.checkFieldItem(e.Name, tables)
+		// pass
 
 	case *ast.ParenthesesExpr:
 		s.checkItem(e.Expr, tables)
