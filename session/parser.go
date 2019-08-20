@@ -301,6 +301,7 @@ func (s *session) Parser(ctx context.Context) {
 		case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if s.checkFilter(event, record, currentThreadID) {
+
 					_, err = s.generateUpdateSql(record.TableInfo, event, e)
 					s.checkError(err)
 				} else {
@@ -624,6 +625,8 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 	var sets []string
 
 	for i, col := range t.Fields {
+		// 日志是minimal模式时, 只取有值的新列
+		// && uint8(e.ColumnBitmap2[i/8])&(1<<(uint(i)%8)) == uint8(e.ColumnBitmap2[i/8])
 		if i < int(e.ColumnCount) {
 			sets = append(sets, fmt.Sprintf(setValue, col.Field))
 		}
@@ -645,6 +648,11 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 		if i%2 == 0 {
 			// 旧值
 			for j, d := range rows {
+				// // 日志是minimal模式时, 只取有值的新列
+				// if uint8(e.ColumnBitmap2[j/8])&(1<<(uint(j)%8)) != uint8(e.ColumnBitmap2[j/8]) {
+				// 	continue
+				// }
+
 				if t.Fields[j].IsUnsigned() {
 					d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 				}
