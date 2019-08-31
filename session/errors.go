@@ -340,7 +340,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_REMOVED_SPACES:                      "Leading spaces are removed from name '%s'",
 	ER_CHANGE_COLUMN_TYPE:                  "Type conversion warning for column '%s' %s -> %s.",
 	ER_CANT_DROP_TABLE:                     "Drop/truncate '%s' is not allowed, please replace with alter rename statement.",
-	ER_CANT_DROP_DATABASE:                  "Command is forbidden! Cannot delete database '%s'.",
+	ER_CANT_DROP_DATABASE:                  "Command is forbidden! Cannot drop database '%s'.",
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
 	ER_CANT_SET_CHARSET:                    "Cannot set charset '%s'",
 	ER_CANT_SET_COLLATION:                  "Cannot set collation '%s'",
