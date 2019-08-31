@@ -1827,6 +1827,16 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	sql = "drop database test1;create database test1 character set laitn1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+
+	sql = `drop database test1;create database test1;
+	use test1;
+	create table t1(id int primary key);
+	insert into t1 values(1);
+	insert into t1 select count(1)+1 from t1;
+	alter table t1 add column c1 int;
+	update t1 set c1=1 where id=1;
+	delete from t1 where id =1;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestTimestampColumn(c *C) {

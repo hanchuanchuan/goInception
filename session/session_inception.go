@@ -168,6 +168,15 @@ type FieldInfo struct {
 	Tp *types.FieldType `gorm:"-"`
 }
 
+// DBInfo 库信息
+type DBInfo struct {
+	Name string
+	// 是否已删除
+	IsDeleted bool
+	// 是否为新增
+	IsNew bool
+}
+
 // TableInfo 表结构.
 // 表结构实现了快照功能,在表结构变更前,会复制快照,在快照上做变更
 // 在解析binlog时,基于执行时的快照做binlog解析,以实现删除列时的binlog解析
@@ -298,7 +307,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 	s.threadID = 0
 
 	s.tableCacheList = make(map[string]*TableInfo)
-	s.dbCacheList = make(map[string]bool)
+	s.dbCacheList = make(map[string]*DBInfo)
 
 	s.backupDBCacheList = make(map[string]bool)
 	s.backupTableCacheList = make(map[string]bool)
@@ -4482,7 +4491,7 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 	}
 
 	if v, ok := s.dbCacheList[strings.ToLower(db)]; ok {
-		return v
+		return !v.IsDeleted
 	}
 
 	sql := "show databases like '%s';"
@@ -4514,7 +4523,12 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		}
 		return false
 	} else {
-		s.dbCacheList[strings.ToLower(db)] = true
+		s.dbCacheList[strings.ToLower(db)] = &DBInfo{
+			Name:      db,
+			IsNew:     false,
+			IsDeleted: false,
+		}
+
 		return true
 	}
 
@@ -5005,7 +5019,7 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt, sql string) {
 		// 	// 生成回滚语句
 		// 	s.mysqlShowCreateDatabase(node.Name)
 		// }
-		s.dbCacheList[strings.ToLower(node.Name)] = false
+		s.dbCacheList[strings.ToLower(node.Name)].IsDeleted = true
 	}
 }
 
@@ -5718,7 +5732,11 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt, sql string) {
 			return
 		}
 
-		s.dbCacheList[strings.ToLower(node.Name)] = true
+		s.dbCacheList[strings.ToLower(node.Name)] = &DBInfo{
+			Name:      node.Name,
+			IsNew:     true,
+			IsDeleted: false,
+		}
 
 		// if s.opt.execute {
 		// 	s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)
@@ -5770,7 +5788,8 @@ func (s *session) checkChangeDB(node *ast.UseStmt, sql string) {
 
 	s.DBName = node.DBName
 
-	if s.checkDBExists(node.DBName, true) {
+	// 新建库跳过use 切换
+	if s.checkDBExists(node.DBName, true) && !s.dbCacheList[strings.ToLower(node.DBName)].IsNew {
 		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
 		if err != nil {
 			// log.Error(err)
@@ -6808,6 +6827,10 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 
 	if db == "" {
 		s.AppendErrorNo(ER_WRONG_DB_NAME, "")
+		return nil
+	}
+
+	if !s.checkDBExists(db, true) {
 		return nil
 	}
 
