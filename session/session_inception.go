@@ -3199,10 +3199,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	s.myRecord.TableInfo = table
 
-	if s.opt.execute {
+	if s.opt.backup {
 		s.myRecord.DDLRollback += fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
 			table.Schema, table.Name)
 	}
+	s.alterRollbackBuffer = nil
 
 	if s.Inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.Inc.MaxDDLAffectRows) {
 		s.AppendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
@@ -3278,12 +3279,25 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		}
 	}
 
-	if s.opt.execute {
+	// 生成alter回滚语句,多个时逆向
+	if !s.hasError() && s.opt.execute && s.opt.backup {
+		s.myRecord.DDLRollback = fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
+			table.Schema, table.Name)
+
+		n := len(s.alterRollbackBuffer)
+		if n > 1 {
+			swap := reflect.Swapper(s.alterRollbackBuffer)
+			for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+				swap(i, j)
+			}
+		}
+
+		s.myRecord.DDLRollback += strings.Join(s.alterRollbackBuffer, "")
 		if strings.HasSuffix(s.myRecord.DDLRollback, ",") {
 			s.myRecord.DDLRollback = strings.TrimSuffix(s.myRecord.DDLRollback, ",") + ";"
 		}
 	}
-
+	s.alterRollbackBuffer = nil
 }
 
 func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec) {
@@ -3305,9 +3319,12 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 		} else {
 			if s.opt.execute {
 				if foundField.Default == nil {
-					s.myRecord.DDLRollback += "DROP DEFAULT,"
+					// s.myRecord.DDLRollback += "DROP DEFAULT,"
+					s.alterRollbackBuffer = append(s.alterRollbackBuffer, "DROP DEFAULT,")
 				} else {
-					s.myRecord.DDLRollback += fmt.Sprintf("SET DEFAULT '%s',", *foundField.Default)
+					// s.myRecord.DDLRollback += fmt.Sprintf("SET DEFAULT '%s',", *foundField.Default)
+					s.alterRollbackBuffer = append(s.alterRollbackBuffer,
+						fmt.Sprintf("SET DEFAULT '%s',", *foundField.Default))
 				}
 			}
 
@@ -3386,7 +3403,8 @@ func (s *session) checkAlterTableRenameIndex(t *TableInfo, c *ast.AlterTableSpec
 		if s.opt.execute {
 			rollback := fmt.Sprintf("RENAME INDEX `%s` TO `%s`,",
 				newIndexName, c.FromKey.String())
-			s.myRecord.DDLRollback += rollback
+			// s.myRecord.DDLRollback += rollback
+			s.alterRollbackBuffer = append(s.alterRollbackBuffer, rollback)
 		}
 	}
 }
@@ -3414,6 +3432,8 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 		if s.opt.execute {
 			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
 				table.Schema, table.Name, t.Schema, t.Name)
+			s.alterRollbackBuffer = append(s.alterRollbackBuffer, fmt.Sprintf("RENAME TO `%s`.`%s`,",
+				t.Schema, t.Name))
 		}
 
 		// rename后旧表标记删除
@@ -3523,16 +3543,25 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					buf.WriteString(foundField.Field)
 					buf.WriteString("` ")
 					buf.WriteString(foundField.Type)
-					if foundField.Null == "NO" {
+					if foundField.Null == "NO" || foundField.Key == "PRI" {
 						buf.WriteString(" NOT NULL")
 					}
-
+					// if strings.Contains(foundField.Extra, "auto_increment") {
+					// 	buf.WriteString(" AUTO_INCREMENT")
+					// }
 					if foundField.Default != nil {
-						buf.WriteString(" DEFAULT '")
-						buf.WriteString(*foundField.Default)
-						buf.WriteString("'")
+						if *foundField.Default == "CURRENT_TIMESTAMP" {
+							buf.WriteString(" DEFAULT CURRENT_TIMESTAMP")
+						} else {
+							buf.WriteString(" DEFAULT '")
+							buf.WriteString(*foundField.Default)
+							buf.WriteString("'")
+						}
 					}
-
+					if foundField.Extra != "" {
+						buf.WriteString(" ")
+						buf.WriteString(strings.ToUpper(foundField.Extra))
+					}
 					if foundField.Comment != "" {
 						buf.WriteString(" COMMENT '")
 						buf.WriteString(foundField.Comment)
@@ -3540,7 +3569,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					}
 					buf.WriteString(",")
 
-					s.myRecord.DDLRollback += buf.String()
+					// s.myRecord.DDLRollback += buf.String()
+					s.alterRollbackBuffer = append(s.alterRollbackBuffer, buf.String())
 				}
 			}
 		} else { // 列名改变
@@ -3637,13 +3667,24 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					buf.WriteString(foundField.Field)
 					buf.WriteString("` ")
 					buf.WriteString(foundField.Type)
-					if foundField.Null == "NO" {
+					if foundField.Null == "NO" || foundField.Key == "PRI" {
 						buf.WriteString(" NOT NULL")
 					}
+					// if strings.Contains(foundField.Extra, "auto_increment") {
+					// 	buf.WriteString(" AUTO_INCREMENT")
+					// }
 					if foundField.Default != nil {
-						buf.WriteString(" DEFAULT '")
-						buf.WriteString(*foundField.Default)
-						buf.WriteString("'")
+						if *foundField.Default == "CURRENT_TIMESTAMP" {
+							buf.WriteString(" DEFAULT CURRENT_TIMESTAMP")
+						} else {
+							buf.WriteString(" DEFAULT '")
+							buf.WriteString(*foundField.Default)
+							buf.WriteString("'")
+						}
+					}
+					if foundField.Extra != "" {
+						buf.WriteString(" ")
+						buf.WriteString(strings.ToUpper(foundField.Extra))
 					}
 					if foundField.Comment != "" {
 						buf.WriteString(" COMMENT '")
@@ -3652,7 +3693,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					}
 					buf.WriteString(",")
 
-					s.myRecord.DDLRollback += buf.String()
+					// s.myRecord.DDLRollback += buf.String()
+					s.alterRollbackBuffer = append(s.alterRollbackBuffer, buf.String())
 				}
 			}
 		}
@@ -4082,6 +4124,7 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 	// } else {
 	// 	rows = t.Indexes
 	// }
+
 	if len(t.Indexes) == 0 {
 		s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, fmt.Sprintf("%s.%s", t.Name, indexName))
 		return false
@@ -4101,24 +4144,32 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 	}
 
 	if s.opt.execute {
+		var rollbackSql string
 		for i, row := range foundRows {
 			if i == 0 {
 				if indexName == "PRIMARY" {
-					s.myRecord.DDLRollback += "ADD PRIMARY KEY("
+					rollbackSql += "ADD PRIMARY KEY("
 				} else {
 					if row.NonUnique == 0 {
-						s.myRecord.DDLRollback += fmt.Sprintf("ADD UNIQUE INDEX `%s`(", indexName)
+						rollbackSql += fmt.Sprintf("ADD UNIQUE INDEX `%s`(", indexName)
 					} else {
-						s.myRecord.DDLRollback += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+						rollbackSql += fmt.Sprintf("ADD INDEX `%s`(", indexName)
 					}
 				}
-
-				s.myRecord.DDLRollback += fmt.Sprintf("`%s`", row.ColumnName)
+				rollbackSql += fmt.Sprintf("`%s`", row.ColumnName)
 			} else {
-				s.myRecord.DDLRollback += fmt.Sprintf(",`%s`", row.ColumnName)
+				rollbackSql += fmt.Sprintf(",`%s`", row.ColumnName)
 			}
 		}
-		s.myRecord.DDLRollback += "),"
+		rollbackSql += "),"
+
+		s.myRecord.DDLRollback = fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
+			t.Schema, t.Name)
+		s.myRecord.DDLRollback += rollbackSql
+		if strings.HasSuffix(s.myRecord.DDLRollback, ",") {
+			s.myRecord.DDLRollback = strings.TrimSuffix(s.myRecord.DDLRollback, ",") + ";"
+		}
+		s.alterRollbackBuffer = append(s.alterRollbackBuffer, rollbackSql)
 	}
 	return true
 }
@@ -4186,8 +4237,11 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			}
 
 			if s.opt.execute {
-				s.myRecord.DDLRollback += fmt.Sprintf("DROP COLUMN `%s`,",
-					nc.Name.Name.O)
+				s.alterRollbackBuffer = append(s.alterRollbackBuffer,
+					fmt.Sprintf("DROP COLUMN `%s`,",
+						nc.Name.Name.O))
+				// s.myRecord.DDLRollback += fmt.Sprintf("DROP COLUMN `%s`,",
+				// 	nc.Name.Name.O)
 			}
 		}
 	}
@@ -4264,8 +4318,8 @@ func (s *session) mysqlDropColumnRollback(field FieldInfo) {
 	}
 	buf.WriteString(",")
 
-	s.myRecord.DDLRollback += buf.String()
-
+	// s.myRecord.DDLRollback += buf.String()
+	s.alterRollbackBuffer = append(s.alterRollbackBuffer, buf.String())
 }
 
 func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
@@ -4290,6 +4344,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		if t == nil {
 			return
 		}
+	}
+
+	if s.myRecord.TableInfo == nil {
+		s.myRecord.TableInfo = t
 	}
 
 	if tp == ast.ConstraintPrimaryKey && IndexName == "" {
@@ -4451,11 +4509,15 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 
 	// !t.IsNew &&
 	if s.opt.execute {
+		var rollbackSql string
 		if IndexName == "PRIMARY" {
-			s.myRecord.DDLRollback += fmt.Sprintf("DROP PRIMARY KEY,")
+			rollbackSql = fmt.Sprintf("DROP PRIMARY KEY,")
 		} else {
-			s.myRecord.DDLRollback += fmt.Sprintf("DROP INDEX `%s`,", IndexName)
+			rollbackSql = fmt.Sprintf("DROP INDEX `%s`,", IndexName)
 		}
+		s.myRecord.DDLRollback = fmt.Sprintf("DROP INDEX `%s` ON `%s`.`%s`;",
+			IndexName, t.Schema, t.Name)
+		s.alterRollbackBuffer = append(s.alterRollbackBuffer, rollbackSql)
 	}
 }
 
@@ -5656,7 +5718,6 @@ func (s *session) executeInceptionShow(sql string) ([]sqlexec.RecordSet, error) 
 
 		cols, _ := rows.Columns()
 		colLength := len(cols)
-
 		var buf strings.Builder
 		buf.WriteString(sql)
 		buf.WriteString(":\n")
@@ -6888,7 +6949,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 	c := &FieldInfo{}
 
 	c.Field = field.Name.Name.String()
-	c.Type = field.Tp.CompactStr()
+	c.Type = field.Tp.InfoSchemaStr()
 	// c.Null = "YES"
 	c.Null = ""
 	c.Tp = field.Tp
@@ -6936,10 +6997,13 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 				s.AppendErrorNo(ER_AUTO_INCR_ID_WARNING, c.Field)
 			}
 			field.Tp.Flag |= mysql.AutoIncrementFlag
+			c.Extra += "auto_increment"
 		case ast.ColumnOptionOnUpdate:
 			if field.Tp.Tp == mysql.TypeTimestamp || field.Tp.Tp == mysql.TypeDatetime {
 				if !expression.IsCurrentTimestampExpr(op.Expr) {
 					s.AppendErrorNo(ER_INVALID_ON_UPDATE, c.Field)
+				} else {
+					c.Extra += "on update CURRENT_TIMESTAMP"
 				}
 			} else {
 				s.AppendErrorNo(ER_INVALID_ON_UPDATE, c.Field)

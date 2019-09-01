@@ -255,7 +255,7 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
 	res = s.makeSQL(c, tk, "alter table t1 add column (c3 int,c4 varchar(20));")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c3`,DROP COLUMN `c4`;")
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c4`,DROP COLUMN `c3`;")
 
 	// 特殊字符
 	config.GetGlobalConfig().Inc.CheckIdentifier = false
@@ -692,11 +692,11 @@ func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
 	res = s.makeSQL(c, tk, "alter table t2 rename to t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "RENAME TABLE `test_inc`.`t1` TO `test_inc`.`t2`;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t2` RENAME TO `test_inc`.`t2`;", Commentf("%v", res.Rows()))
 
 }
 
-func (s *testSessionIncBackupSuite) TestAlterTableAddIndex(c *C) {
+func (s *testSessionIncBackupSuite) TestAlterTableCreateIndex(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -708,6 +708,12 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddIndex(c *C) {
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP INDEX `idx`;", Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);")
+	res = s.makeSQL(c, tk, "create index idx on t1(c1);")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "DROP INDEX `idx` ON `test_inc`.`t1`;", Commentf("%v", res.Rows()))
 
 }
 
@@ -750,7 +756,7 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 	res = s.makeSQL(c, tk, sql)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11),DROP COLUMN `c1`;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`,ADD COLUMN `c1` int(11);", Commentf("%v", res.Rows()))
 
 	// 删除后添加索引
 	sql = "drop table if exists t1;create table t1(id int ,c1 int,key ix(c1));alter table t1 drop index ix;alter table t1 add index ix(c1);"
@@ -759,11 +765,27 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP INDEX `ix`;", Commentf("%v", res.Rows()))
 
-	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
+	sql = "drop table if exists t1;create table t1(id int,c1 int,c2 int,key ix(c2));alter table t1 drop index ix,add index ix(c1);"
 	res = s.makeSQL(c, tk, sql)
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD INDEX `ix`(`c1`),DROP INDEX `ix`;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP INDEX `ix`,ADD INDEX `ix`(`c2`);", Commentf("%v", res.Rows()))
+
+	sql = `drop table if exists t1;
+	create table t1(id int,c1 int,c2 datetime null default current_timestamp on update current_timestamp comment '123');
+	alter table t1 modify c2 datetime;`
+	res = s.makeSQL(c, tk, sql)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", res.Rows()))
+
+	sql = `drop table if exists t1;
+	create table t1(id int,c1 int,c2 datetime null default current_timestamp on update current_timestamp comment '123');
+	alter table t1 modify c2 datetime;`
+	res = s.makeSQL(c, tk, sql)
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", res.Rows()))
 
 }
 
