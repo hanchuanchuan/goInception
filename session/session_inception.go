@@ -909,6 +909,11 @@ func (s *session) executeCommit(ctx context.Context) {
 	// 如果有错误时,把错误输出放在第一行
 	s.myRecord = s.recordSets.All()[0]
 
+	if s.checkIsReadOnly() {
+		s.AppendErrorMessage("当前数据库为只读模式,无法执行!")
+		return
+	}
+
 	if s.opt.backup {
 		if !s.checkBinlogIsOn() {
 			s.AppendErrorMessage("binlog日志未开启,无法备份!")
@@ -2227,6 +2232,34 @@ func (s *session) checkBinlogIsOn() bool {
 
 	// log.Infof("log_bin is %s", format)
 	return format == "ON"
+}
+
+func (s *session) checkIsReadOnly() bool {
+	log.Debug("checkIsReadOnly")
+
+	sql := "show variables like 'read_only';"
+
+	var value string
+
+	rows, err := s.Raw(sql)
+	if rows != nil {
+		defer rows.Close()
+	}
+	if err != nil {
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&value, &value)
+		}
+	}
+
+	return value == "ON"
 }
 
 func (s *session) parseOptions(sql string) {
