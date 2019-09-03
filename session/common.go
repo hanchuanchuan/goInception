@@ -117,7 +117,8 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 		// date & time
 		return timeStorageReq(col.Type, dbVersion)
 
-	case "char", "binary", "varchar", "varbinary", "enum", "set":
+	case "char", "binary", "varchar", "varbinary", "enum", "set",
+		"geometry", "point", "linestring", "polygon":
 		// string
 		charset := "utf8mb4"
 		if col.Collation != "" {

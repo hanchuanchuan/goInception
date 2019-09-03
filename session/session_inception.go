@@ -4186,7 +4186,11 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 					if row.NonUnique == 0 {
 						rollbackSql += fmt.Sprintf("ADD UNIQUE INDEX `%s`(", indexName)
 					} else {
-						rollbackSql += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+						if row.IndexType == "SPATIAL" {
+							rollbackSql += fmt.Sprintf("ADD %s INDEX `%s`(", row.IndexType, indexName)
+						} else {
+							rollbackSql += fmt.Sprintf("ADD INDEX `%s`(", indexName)
+						}
 					}
 				}
 				rollbackSql += fmt.Sprintf("`%s`", row.ColumnName)
@@ -4518,6 +4522,10 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		return
 	}
 
+	indexType := "BTREE"
+	if tp == ast.ConstraintSpatial {
+		indexType = "SPATIAL"
+	}
 	// cache new index
 	for i, col := range IndexColNames {
 		index := &IndexInfo{
@@ -4526,7 +4534,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			IndexName:  IndexName,
 			Seq:        i + 1,
 			ColumnName: col.Column.Name.O,
-			IndexType:  "BTREE",
+			IndexType:  indexType,
 		}
 		if !unique && (tp == ast.ConstraintPrimaryKey || tp == ast.ConstraintUniq ||
 			tp == ast.ConstraintUniqIndex || tp == ast.ConstraintUniqKey) {
@@ -4558,10 +4566,13 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkAddConstraint")
 
 	switch c.Constraint.Tp {
-	case ast.ConstraintKey, ast.ConstraintIndex, ast.ConstraintUniq, ast.ConstraintUniqIndex,
-		ast.ConstraintUniqKey:
+	case ast.ConstraintKey, ast.ConstraintIndex,
+		ast.ConstraintSpatial, ast.ConstraintFulltext:
 		s.checkCreateIndex(nil, c.Constraint.Name,
 			c.Constraint.Keys, c.Constraint.Option, t, false, c.Constraint.Tp)
+	case ast.ConstraintUniq, ast.ConstraintUniqIndex, ast.ConstraintUniqKey:
+		s.checkCreateIndex(nil, c.Constraint.Name,
+			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 
 	case ast.ConstraintPrimaryKey:
 		s.checkCreateIndex(nil, "PRIMARY",

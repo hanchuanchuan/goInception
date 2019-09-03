@@ -368,6 +368,8 @@ func (t IndexType) String() string {
 		return "BTREE"
 	case IndexTypeHash:
 		return "HASH"
+	case IndexTypeRtree:
+		return "RTREE"
 	default:
 		return ""
 	}
@@ -378,6 +380,7 @@ const (
 	IndexTypeInvalid IndexType = iota
 	IndexTypeBtree
 	IndexTypeHash
+	IndexTypeRtree
 )
 
 // IndexInfo provides meta data describing a DB index.
