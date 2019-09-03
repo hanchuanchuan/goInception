@@ -125,6 +125,7 @@ import (
 	from			"FROM"
 	fulltext		"FULLTEXT"
 	generated		"GENERATED"
+	geometryType "GEOMETRY"
 	grant			"GRANT"
 	group			"GROUP"
 	having			"HAVING"
@@ -2068,6 +2069,7 @@ CreateIndexStmt:
 			IndexColNames: $10.([]*ast.IndexColName),
 			IndexOption:   indexOption,
 			KeyType:       $2.(ast.IndexKeyType),
+			Unique: 	    $2.(ast.IndexKeyType) == ast.IndexKeyTypeUnique,
 			LockAlg:       indexLockAndAlgorithm,
 		}
 	}
@@ -7044,7 +7046,11 @@ TextType:
 		x := types.NewFieldType(mysql.TypeMediumBlob)
 		$$ = x
 	}
-
+|	"GEOMETRY"
+	{
+		x := types.NewFieldType(mysql.TypeGeometry)
+		$$ = x
+	}
 
 DateAndTimeType:
 	"DATE"
