@@ -29,8 +29,10 @@ import (
 )
 
 const (
-	codeErrParse  = terror.ErrCode(mysql.ErrParse)
-	codeErrSyntax = terror.ErrCode(mysql.ErrSyntax)
+	codeErrParse                 = terror.ErrCode(mysql.ErrParse)
+	codeErrSyntax                = terror.ErrCode(mysql.ErrSyntax)
+	codeErrUnknownAlterLock      = terror.ErrCode(mysql.ErrUnknownAlterLock)
+	codeErrUnknownAlterAlgorithm = terror.ErrCode(mysql.ErrUnknownAlterAlgorithm)
 )
 
 var (
@@ -38,6 +40,11 @@ var (
 	ErrSyntax = terror.ClassParser.New(codeErrSyntax, mysql.MySQLErrName[mysql.ErrSyntax])
 	// ErrParse returns for sql parse error.
 	ErrParse = terror.ClassParser.New(codeErrParse, mysql.MySQLErrName[mysql.ErrParse])
+	// ErrUnknownAlterLock returns for no alter lock type found error.
+	ErrUnknownAlterLock = terror.ClassParser.New(codeErrUnknownAlterLock, mysql.MySQLErrName[mysql.ErrUnknownAlterLock])
+	// ErrUnknownAlterAlgorithm returns for no alter algorithm found error.
+	ErrUnknownAlterAlgorithm = terror.ClassParser.New(codeErrUnknownAlterAlgorithm, mysql.MySQLErrName[mysql.ErrUnknownAlterAlgorithm])
+
 	// SpecFieldPattern special result field pattern
 	SpecFieldPattern = regexp.MustCompile(`(\/\*!(M?[0-9]{5,6})?|\*\/)`)
 	specCodePattern  = regexp.MustCompile(`\/\*!(M?[0-9]{5,6})?([^*]|\*+[^*/])*\*+\/`)
@@ -47,8 +54,10 @@ var (
 
 func init() {
 	parserMySQLErrCodes := map[terror.ErrCode]uint16{
-		codeErrSyntax: mysql.ErrSyntax,
-		codeErrParse:  mysql.ErrParse,
+		codeErrSyntax:                mysql.ErrSyntax,
+		codeErrParse:                 mysql.ErrParse,
+		codeErrUnknownAlterLock:      mysql.ErrUnknownAlterLock,
+		codeErrUnknownAlterAlgorithm: mysql.ErrUnknownAlterAlgorithm,
 	}
 	terror.ErrClassToMySQLCodes[terror.ClassParser] = parserMySQLErrCodes
 }

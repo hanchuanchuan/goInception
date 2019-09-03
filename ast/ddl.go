@@ -249,6 +249,7 @@ const (
 	ColumnOptionReference
 	ColumnOptionCollate
 	ColumnOptionCheck
+	ColumnOptionColumnFormat
 )
 
 var (
@@ -294,6 +295,16 @@ func (n *ColumnOption) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// IndexVisibility is the option for index visibility.
+type IndexVisibility int
+
+// IndexVisibility options.
+const (
+	IndexVisibilityDefault IndexVisibility = iota
+	IndexVisibilityVisible
+	IndexVisibilityInvisible
+)
+
 // IndexOption is the index options.
 //    KEY_BLOCK_SIZE [=] value
 //  | index_type
@@ -306,6 +317,8 @@ type IndexOption struct {
 	KeyBlockSize uint64
 	Tp           model.IndexType
 	Comment      string
+	ParserName   model.CIStr
+	Visibility   IndexVisibility
 }
 
 // Accept implements Node Accept interface.
@@ -333,6 +346,7 @@ const (
 	ConstraintForeignKey
 	ConstraintFulltext
 	ConstraintCheck
+	ConstraintSpatial
 )
 
 // Constraint is constraint for table definition.
@@ -441,6 +455,7 @@ type CreateTableStmt struct {
 	ddlNode
 
 	IfNotExists bool
+	IsTemporary bool
 	Table       *TableName
 	ReferTable  *TableName
 	Cols        []*ColumnDef
@@ -635,6 +650,35 @@ func (n *CreateViewStmt) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// IndexLockAndAlgorithm stores the algorithm option and the lock option.
+type IndexLockAndAlgorithm struct {
+	node
+
+	LockTp      LockType
+	AlgorithmTp AlgorithmType
+}
+
+// Accept implements Node Accept interface.
+func (n *IndexLockAndAlgorithm) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*IndexLockAndAlgorithm)
+	return v.Leave(n)
+}
+
+// IndexKeyType is the type for index key.
+type IndexKeyType int
+
+// Index key types.
+const (
+	IndexKeyTypeNone IndexKeyType = iota
+	IndexKeyTypeUnique
+	IndexKeyTypeSpatial
+	IndexKeyTypeFullText
+)
+
 // CreateIndexStmt is a statement to create an index.
 // See https://dev.mysql.com/doc/refman/5.7/en/create-index.html
 type CreateIndexStmt struct {
@@ -649,6 +693,8 @@ type CreateIndexStmt struct {
 	Unique        bool
 	IndexColNames []*IndexColName
 	IndexOption   *IndexOption
+	KeyType       IndexKeyType
+	LockAlg       *IndexLockAndAlgorithm
 }
 
 // Accept implements Node Accept interface.
@@ -677,6 +723,13 @@ func (n *CreateIndexStmt) Accept(v Visitor) (Node, bool) {
 		}
 		n.IndexOption = node.(*IndexOption)
 	}
+	if n.LockAlg != nil {
+		node, ok := n.LockAlg.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.LockAlg = node.(*IndexLockAndAlgorithm)
+	}
 	return v.Leave(n)
 }
 
@@ -688,6 +741,7 @@ type DropIndexStmt struct {
 	IfExists  bool
 	IndexName string
 	Table     *TableName
+	LockAlg   *IndexLockAndAlgorithm
 }
 
 // Accept implements Node Accept interface.
@@ -702,6 +756,13 @@ func (n *DropIndexStmt) Accept(v Visitor) (Node, bool) {
 		return n, false
 	}
 	n.Table = node.(*TableName)
+	if n.LockAlg != nil {
+		node, ok := n.LockAlg.Accept(v)
+		if !ok {
+			return n, false
+		}
+		n.LockAlg = node.(*IndexLockAndAlgorithm)
+	}
 	return v.Leave(n)
 }
 
@@ -910,6 +971,35 @@ func (a AlterAlgorithm) String() string {
 	}
 }
 
+// AlgorithmType is the algorithm of the DDL operations.
+// See https://dev.mysql.com/doc/refman/8.0/en/alter-table.html#alter-table-performance.
+type AlgorithmType byte
+
+// DDL algorithms.
+// For now, TiDB only supported inplace and instance algorithms. If the user specify `copy`,
+// will get an error.
+const (
+	AlgorithmTypeDefault AlgorithmType = iota
+	AlgorithmTypeCopy
+	AlgorithmTypeInplace
+	AlgorithmTypeInstant
+)
+
+func (a AlgorithmType) String() string {
+	switch a {
+	case AlgorithmTypeDefault:
+		return "DEFAULT"
+	case AlgorithmTypeCopy:
+		return "COPY"
+	case AlgorithmTypeInplace:
+		return "INPLACE"
+	case AlgorithmTypeInstant:
+		return "INSTANT"
+	default:
+		return "DEFAULT"
+	}
+}
+
 // AlterTableSpec represents alter table specification.
 type AlterTableSpec struct {
 	node
@@ -931,7 +1021,7 @@ type AlterTableSpec struct {
 	OldColumnName   *ColumnName
 	Position        *ColumnPosition
 	LockType        LockType
-	Algorithm       AlterAlgorithm
+	Algorithm       AlgorithmType
 	Comment         string
 	FromKey         model.CIStr
 	ToKey           model.CIStr
@@ -939,6 +1029,7 @@ type AlterTableSpec struct {
 	PartitionNames  []model.CIStr
 	PartDefinitions []*PartitionDefinition
 	Num             uint64
+	Visibility      IndexVisibility
 }
 
 // Accept implements Node Accept interface.
