@@ -272,6 +272,10 @@ var tokenMap = map[string]int{
 	"FULLTEXT":                 fulltext,
 	"FUNCTION":                 function,
 	"GENERATED":                generated,
+	"GEOMETRY":                 geometryType,
+	"POINT":                    geometryType,
+	"LINESTRING":               geometryType,
+	"POLYGON":                  geometryType,
 	"GET":                      get,
 	"GET_FORMAT":               getFormat,
 	"GLOBAL":                   global,
@@ -583,10 +587,13 @@ var btFuncTokenMap = map[string]int{
 
 // aliases are strings directly map to another string and use the same token.
 var aliases = map[string]string{
-	"SCHEMA":  "DATABASE",
-	"SCHEMAS": "DATABASES",
-	"DEC":     "DECIMAL",
-	"SUBSTR":  "SUBSTRING",
+	"SCHEMA":     "DATABASE",
+	"SCHEMAS":    "DATABASES",
+	"DEC":        "DECIMAL",
+	"SUBSTR":     "SUBSTRING",
+	"POINT":      "GEOMETRY",
+	"LINESTRING": "GEOMETRY",
+	"POLYGON":    "GEOMETRY",
 	// "GET":     "SHOW",
 }
 
