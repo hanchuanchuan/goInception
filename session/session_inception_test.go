@@ -2027,6 +2027,9 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 
 	sql = "create table t1(id int primary key);alter table t1 drop primary key;"
 	s.testErrorCode(c, sql)
+
+	sql = "CREATE TABLE geom (g GEOMETRY NOT NULL, SPATIAL INDEX ix_1(g));"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
@@ -2080,6 +2083,19 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	sql = "alter table t1 add column c2 int;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_TOO_MUCH_ROWS, "Alter", 2, 1))
+
+	sql = `drop table if exists t1;
+	create table t1(id int primary key);
+	alter table t1 add column c1 geometry;
+	alter table t1 add column c2 point;
+	alter table t1 add column c3 linestring;
+	alter table t1 add column c4 polygon;
+
+	alter table t1 drop column c1;
+	alter table t1 drop column c2;
+	alter table t1 drop column c3;
+	alter table t1 drop column c4; `
+	s.testErrorCode(c, sql)
 
 }
 
