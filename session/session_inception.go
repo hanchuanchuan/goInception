@@ -4558,10 +4558,13 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkAddConstraint")
 
 	switch c.Constraint.Tp {
-	case ast.ConstraintKey, ast.ConstraintIndex, ast.ConstraintUniq, ast.ConstraintUniqIndex,
-		ast.ConstraintUniqKey:
+	case ast.ConstraintKey, ast.ConstraintIndex,
+		ast.ConstraintSpatial, ast.ConstraintFulltext:
 		s.checkCreateIndex(nil, c.Constraint.Name,
 			c.Constraint.Keys, c.Constraint.Option, t, false, c.Constraint.Tp)
+	case ast.ConstraintUniq, ast.ConstraintUniqIndex, ast.ConstraintUniqKey:
+		s.checkCreateIndex(nil, c.Constraint.Name,
+			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 
 	case ast.ConstraintPrimaryKey:
 		s.checkCreateIndex(nil, "PRIMARY",
