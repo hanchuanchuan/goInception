@@ -2387,3 +2387,29 @@ func (s *testSessionIncSuite) TestSetStmt(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NOT_SUPPORTED_YET))
 }
+
+func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	//er_alter_table_once
+	config.GetGlobalConfig().Inc.MergeAlterTable = true
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 add age varchar(10);alter table t1 add sex varchar(10);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_ALTER_TABLE_ONCE,"t1"))
+
+	//er_alter_table_once
+	config.GetGlobalConfig().Inc.MergeAlterTable = true
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 modify name varchar(10);alter table t1 modify name varchar(10);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_ALTER_TABLE_ONCE,"t1"))
+
+
+	//er_alter_table_once
+	config.GetGlobalConfig().Inc.MergeAlterTable = true
+	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 change name name varchar(10);alter table t1 change name name varchar(10);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_ALTER_TABLE_ONCE,"t1"))
+}

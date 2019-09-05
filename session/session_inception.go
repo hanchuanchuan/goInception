@@ -7087,6 +7087,7 @@ func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
 	p.Schema = t.Schema
 	p.Name = t.Name
 	p.AsName = t.AsName
+	p.AlterCount = t.AlterCount
 
 	p.Fields = make([]FieldInfo, len(t.Fields))
 	copy(p.Fields, t.Fields)
