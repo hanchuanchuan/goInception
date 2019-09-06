@@ -81,7 +81,7 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	c.Assert(cfg.Load(configFile), IsNil)
 
 	// 启用自定义审核级别
-	config.GetGlobalConfig().Inc.EnableLevel = true
+	// config.GetGlobalConfig().Inc.EnableLevel = true
 
 	inc := &config.GetGlobalConfig().Inc
 

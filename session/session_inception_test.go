@@ -92,8 +92,8 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-	// 启用自定义审核级别
-	config.GetGlobalConfig().Inc.EnableLevel = true
+	// // 启用自定义审核级别
+	// config.GetGlobalConfig().Inc.EnableLevel = true
 
 	session.SetLanguage("en-US")
 
@@ -2398,18 +2398,17 @@ func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 add age varchar(10);alter table t1 add sex varchar(10);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_ALTER_TABLE_ONCE,"t1"))
+		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
 
 	//er_alter_table_once
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 modify name varchar(10);alter table t1 modify name varchar(10);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_ALTER_TABLE_ONCE,"t1"))
-
+		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
 
 	//er_alter_table_once
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 change name name varchar(10);alter table t1 change name name varchar(10);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_ALTER_TABLE_ONCE,"t1"))
+		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
 }

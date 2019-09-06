@@ -297,7 +297,7 @@ type Inc struct {
 	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
 	EnableJsonType         bool `toml:"enable_json_type" json:"enable_json_type"`
 	// 是否启用自定义审核级别设置
-	EnableLevel bool `toml:"enable_level" json:"enable_level"`
+	// EnableLevel bool `toml:"enable_level" json:"enable_level"`
 	// 是否允许指定存储引擎
 	EnableSetEngine        bool `toml:"enable_set_engine" json:"enable_set_engine"`
 	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"`               // 允许空列
