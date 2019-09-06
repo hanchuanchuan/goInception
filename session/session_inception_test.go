@@ -1500,6 +1500,29 @@ insert into t2 select id from t1;`
 	insert into tt1(id)
 		select s1.id from t1 as s1 inner join t1 as s2 on s1.c1 = s2.c1 where s1.id > s2.id;`
 	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.EnableSelectStar = false
+	sql = `drop table if exists tt1;create table tt1(id int,c1 int);insert into tt1 select * from tt1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
+}
+
+func (s *testSessionIncSuite) TestSelect(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.EnableSelectStar = false
+
+	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 int);")
+	sql = `select * from t1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	sql = `select id,c1 from t1 union all select * from t1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {

@@ -681,7 +681,29 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.UpdateStmt:
 		s.checkUpdate(node, currentSql)
 
-	case *ast.UnionStmt, *ast.SelectStmt:
+	case *ast.UnionStmt:
+		for _, sel := range node.SelectList.Selects {
+			if sel.Fields != nil {
+				for _, field := range sel.Fields.Fields {
+					if field.WildCard != nil {
+						s.AppendErrorNo(ER_SELECT_ONLY_STAR)
+					}
+				}
+			}
+		}
+		s.checkSelectItem(node)
+		if s.opt.execute {
+			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+		}
+
+	case *ast.SelectStmt:
+		if node.Fields != nil {
+			for _, field := range node.Fields.Fields {
+				if field.WildCard != nil {
+					s.AppendErrorNo(ER_SELECT_ONLY_STAR)
+				}
+			}
+		}
 		s.checkSelectItem(node)
 		if s.opt.execute {
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
