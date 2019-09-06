@@ -234,6 +234,9 @@ type session struct {
 	incLevel map[string]uint8
 
 	alterRollbackBuffer []string
+
+	// 目标数据库的innodb_large_prefix设置
+	innodbLargePrefix bool
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.

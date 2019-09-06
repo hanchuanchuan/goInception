@@ -284,9 +284,6 @@ general_log = false
 default_charset = "utf8mb4"
 max_allowed_packet = 4194304
 
-# 是否启用自定义审核级别设置
-enable_level = false
-
 [inc_level]
 er_alter_table_once = 1
 er_auto_incr_id_warning = 1

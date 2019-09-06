@@ -486,7 +486,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					}
 
 					s.mysqlServerVersion()
-					s.initMysqlSQLMode()
+					// s.initMysqlSQLMode()
 					s.mysqlExplicitDefaultsForTimestamp()
 
 					if s.opt.Print {
@@ -2008,9 +2008,9 @@ func (s *session) mysqlServerVersion() {
 		return
 	}
 
-	var value string
+	var name, value string
 	// sql := "select @@version;"
-	sql := "show variables like 'version';"
+	sql := `show variables where Variable_name in ('innodb_large_prefix','version','sql_mode');`
 
 	rows, err := s.Raw(sql)
 	if rows != nil {
@@ -2026,68 +2026,94 @@ func (s *session) mysqlServerVersion() {
 			s.AppendErrorMessage(err.Error())
 		}
 	} else {
+		emptyInnodbLargePrefix := true
 		for rows.Next() {
-			rows.Scan(&value, &value)
+			rows.Scan(&name, &value)
+
+			switch name {
+			case "version":
+				if strings.Contains(strings.ToLower(value), "mariadb") {
+					s.DBType = DBTypeMariaDB
+				}
+				versionStr := strings.Split(value, "-")[0]
+				versionSeg := strings.Split(versionStr, ".")
+				if len(versionSeg) == 3 {
+					versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
+					version, err := strconv.Atoi(versionStr)
+					if err != nil {
+						s.AppendErrorMessage(err.Error())
+					}
+					s.DBVersion = version
+				} else {
+					s.AppendErrorMessage(fmt.Sprintf("无法解析版本号:%s", value))
+				}
+				log.Debug("db version: ", s.DBVersion)
+			case "innodb_large_prefix":
+				emptyInnodbLargePrefix = false
+				s.innodbLargePrefix = value == "ON"
+			case "sql_mode":
+				if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
+					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+					log.Warning(value)
+				} else {
+					sc := s.GetSessionVars().StmtCtx
+					vars := s.sessionVars
+					// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
+					sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
+				}
+			}
+		}
+
+		// 如果没有innodb_large_prefix系统变量
+		if emptyInnodbLargePrefix {
+			if s.DBVersion > 50700 {
+				s.innodbLargePrefix = true
+			} else {
+				s.innodbLargePrefix = false
+			}
 		}
 	}
 
-	if strings.Contains(strings.ToLower(value), "mariadb") {
-		s.DBType = DBTypeMariaDB
-	}
-	versionStr := strings.Split(value, "-")[0]
-	versionSeg := strings.Split(versionStr, ".")
-	if len(versionSeg) == 3 {
-		versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
-		version, err := strconv.Atoi(versionStr)
-		if err != nil {
-			s.AppendErrorMessage(err.Error())
-		}
-		s.DBVersion = version
-	} else {
-		s.AppendErrorMessage(fmt.Sprintf("无法解析版本号:%s", value))
-	}
-
-	log.Debug("db version: ", s.DBVersion)
 }
 
-func (s *session) initMysqlSQLMode() {
-	log.Debug("initMysqlSQLMode")
+// func (s *session) initMysqlSQLMode() {
+// 	log.Debug("initMysqlSQLMode")
 
-	// sc := s.GetSessionVars().StmtCtx
+// 	// sc := s.GetSessionVars().StmtCtx
 
-	var value string
-	sql := "show variables like 'sql_mode';"
+// 	var value string
+// 	sql := "show variables like 'sql_mode';"
 
-	rows, err := s.Raw(sql)
-	if rows != nil {
-		defer rows.Close()
-	}
+// 	rows, err := s.Raw(sql)
+// 	if rows != nil {
+// 		defer rows.Close()
+// 	}
 
-	if err != nil {
-		// log.Error(err)
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	} else {
-		for rows.Next() {
-			rows.Scan(&value, &value)
-		}
-	}
+// 	if err != nil {
+// 		// log.Error(err)
+// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+// 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+// 			s.AppendErrorMessage(myErr.Message)
+// 		} else {
+// 			s.AppendErrorMessage(err.Error())
+// 		}
+// 	} else {
+// 		for rows.Next() {
+// 			rows.Scan(&value, &value)
+// 		}
+// 	}
 
-	if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
-		// log.Error(err)
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		log.Warning(value)
-	} else {
-		sc := s.GetSessionVars().StmtCtx
-		vars := s.sessionVars
-		// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
-		sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
-	}
-}
+// 	if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
+// 		// log.Error(err)
+// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+// 		log.Warning(value)
+// 	} else {
+// 		sc := s.GetSessionVars().StmtCtx
+// 		vars := s.sessionVars
+// 		// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
+// 		sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
+// 	}
+// }
 
 func (s *session) mysqlExplicitDefaultsForTimestamp() {
 	log.Debug("mysqlExplicitDefaultsForTimestamp")
@@ -4476,13 +4502,19 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	}
 
 	if !isBlobColumn {
-		mysqlVersion := s.DBVersion
+		// mysqlVersion := s.DBVersion
 		// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
-		if mysqlVersion < 50700 && keyMaxLen > maxKeyLength {
-			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
-		} else if (mysqlVersion >= 50700) && keyMaxLen > maxKeyLength57 {
+		if s.innodbLargePrefix && keyMaxLen > maxKeyLength57 {
 			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
+		} else if !s.innodbLargePrefix && keyMaxLen > maxKeyLength {
+			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
 		}
+
+		// if mysqlVersion < 50700 && keyMaxLen > maxKeyLength {
+		// 	s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
+		// } else if (mysqlVersion >= 50700) && keyMaxLen > maxKeyLength57 {
+		// 	s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
+		// }
 	}
 
 	if IndexOption != nil {
@@ -6714,42 +6746,6 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 		}
 		r.Buf.WriteString("\n")
 	}
-
-	// if s.Inc.EnableLevel {
-	// 	var level uint8 = 2
-	// 	found := false
-	// 	if v, ok := s.incLevel[number.String()]; ok {
-	// 		level = v
-	// 		found = true
-	// 	} else {
-	// 		level = GetErrorLevel(number)
-	// 	}
-	// 	if (found && level > 0) || (!found && s.checkInceptionVariables(number)) {
-	// 		r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
-	// 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
-	// 		if s.stage == StageBackup {
-	// 			r.Buf.WriteString("Backup: ")
-	// 		} else if s.stage == StageExec {
-	// 			r.Buf.WriteString("Execute: ")
-	// 		}
-	// 		if len(values) == 0 {
-	// 			r.Buf.WriteString(GetErrorMessage(number))
-	// 		} else {
-	// 			r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
-	// 		}
-	// 		r.Buf.WriteString("\n")
-	// 	}
-	// } else {
-	// 	if s.checkInceptionVariables(number) {
-	// 		if s.stage == StageBackup {
-	// 			r.Buf.WriteString("Backup: ")
-	// 		} else if s.stage == StageExec {
-	// 			r.Buf.WriteString("Execute: ")
-	// 		}
-	// 		s.myRecord.AppendErrorNo(number, values...)
-	// 		s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
-	// 	}
-	// }
 }
 
 func (s *session) checkKeyWords(name string) {
