@@ -129,6 +129,9 @@ type sourceOptions struct {
 
 	// 使用count(*)计算受影响行数
 	realRowCount bool
+
+	// 连接的数据库,默认为mysql
+	db string
 }
 
 // ExplainInfo 执行计划信息
@@ -2355,6 +2358,9 @@ func (s *session) parseOptions(sql string) {
 
 	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
 
+	// 设置默认值
+	viper.SetDefault("db", "mysql")
+
 	s.opt = &sourceOptions{
 		host:           viper.GetString("host"),
 		port:           viper.GetInt("port"),
@@ -2378,6 +2384,8 @@ func (s *session) parseOptions(sql string) {
 
 		split:        viper.GetBool("split"),
 		realRowCount: viper.GetBool("realRowCount"),
+
+		db: viper.GetString("db"),
 	}
 
 	if s.opt.split || s.opt.check || s.opt.Print {
@@ -2407,8 +2415,9 @@ func (s *session) parseOptions(sql string) {
 
 	var addr string
 	if s.opt.middlewareExtend == "" {
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d",
-			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d",
+			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.opt.db,
+			s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
 	} else {
 		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
 			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
