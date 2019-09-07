@@ -391,6 +391,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 	s.stage = StageCheck
 
 	var buf []string
+
+	quotaIsDouble := true
 	for i, sql_line := range sqlList {
 
 		// 100行解析一次
@@ -398,11 +400,18 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 		// strings.HasSuffix(sql_line, ";")
 		// && batchSize >= 100)
 
-		if strings.HasSuffix(sql_line, ";") || i == lineCount || strings.HasSuffix(sql_line, ";\r") {
+		if strings.Count(sql_line, "'")%2 == 1 {
+			quotaIsDouble = !quotaIsDouble
+		}
+
+		if ((strings.HasSuffix(sql_line, ";") || strings.HasSuffix(sql_line, ";\r")) &&
+			quotaIsDouble) || i == lineCount {
 			// batchSize = 1
 			buf = append(buf, sql_line)
 			s1 := strings.Join(buf, "\n")
+
 			s1 = strings.TrimRight(s1, ";")
+
 			stmtNodes, err := s.ParseSQL(ctx, s1, charsetInfo, collation)
 
 			if err != nil {
