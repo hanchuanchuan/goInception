@@ -2067,6 +2067,19 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 
 	sql = "CREATE TABLE geom (g GEOMETRY NOT NULL, SPATIAL INDEX ix_1(g));"
 	s.testErrorCode(c, sql)
+
+	sql = "CREATE TABLE geom (g GEOMETRY NULL, SPATIAL INDEX ix_1(g));"
+	s.testErrorCode(c, sql,
+		&session.SQLError{Code: 0,
+			Message: "All parts of a SPATIAL index must be NOT NULL."})
+
+	sql = "CREATE TABLE geom (id int,g GEOMETRY NOT NULL, SPATIAL INDEX ix_1(id,g));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_MANY_KEY_PARTS, "ix_1", "geom", 1))
+
+	sql = "CREATE TABLE geom (id int,g GEOMETRY NOT NULL);alter table geom add SPATIAL INDEX ix_1(id,g);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TOO_MANY_KEY_PARTS, "ix_1", "geom", 1))
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
