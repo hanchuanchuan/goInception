@@ -4119,6 +4119,11 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 			s.AppendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, table.Name)
 		}
 
+	case ast.ConstraintSpatial:
+		if len(keys) > 1 {
+			s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, name, table.Name, 1)
+		}
+
 	default:
 		if !strings.HasPrefix(strings.ToLower(name), "idx_") {
 			s.AppendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name)
@@ -4588,7 +4593,12 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				if foundField.Null == "YES" {
 					s.AppendErrorNo(ER_PRIMARY_CANT_HAVE_NULL)
 				}
+			} else if tp == ast.ConstraintSpatial {
+				if foundField.Null == "YES" {
+					s.AppendErrorMessage("All parts of a SPATIAL index must be NOT NULL")
+				}
 			}
+
 		}
 	}
 
