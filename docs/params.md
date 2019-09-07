@@ -20,7 +20,8 @@ host   |  ''    |   string     |   线上数据库IP地址
 port | 0 | int | 线上数据库端口
 user | '' | string | 线上数据库用户名
 password | '' | string | 线上数据库密码
-check | false | bool | 开启审核功能
+db `v1.1.0` | 'mysql' | string | 默认连接的数据库。该参数可忽略，即使用默认数据库`mysql`。可设置为空""。
+check | false | bool | 开启审核功能。开启后，执行选项不再生效
 execute | false | bool | 开启执行功能
 backup | false | bool | 开启备份功能，仅在执行时生效
 ignore_warnings | false | bool | 是否忽略警告，仅在执行时生效。该参数控制有警告时是继续执行还是中止
