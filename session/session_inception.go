@@ -4298,6 +4298,61 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		} else {
 			s.mysqlCheckField(t, nc)
 
+			if !s.hasError() {
+				isPrimary := false
+				isUnique := false
+				for _, op := range nc.Options {
+					switch op.Tp {
+					case ast.ColumnOptionPrimaryKey:
+						isPrimary = true
+					case ast.ColumnOptionUniqKey:
+						isUnique = true
+					}
+				}
+				if isPrimary || isUnique {
+					rows := t.Indexes
+					indexName := ""
+					if isPrimary {
+						indexName = mysql.PrimaryKeyName
+					} else if isUnique {
+						indexName = nc.Name.Name.String()
+					}
+					if len(rows) > 0 {
+						for _, row := range rows {
+							if !row.IsDeleted {
+								if strings.EqualFold(row.IndexName, mysql.PrimaryKeyName) {
+									s.AppendErrorNo(ER_DUP_INDEX, mysql.PrimaryKeyName, t.Schema, t.Name)
+									break
+								} else if strings.EqualFold(row.IndexName, indexName) {
+									indexName = indexName + "_2"
+									break
+								}
+							}
+						}
+					}
+					key_count := 0
+					for _, row := range rows {
+						if row.Seq == 1 && !row.IsDeleted {
+							key_count += 1
+						}
+					}
+					if s.Inc.MaxKeys > 0 && key_count >= int(s.Inc.MaxKeys) {
+						s.AppendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.Inc.MaxKeys)
+					}
+					if !s.hasError() {
+						index := &IndexInfo{
+							Table:      t.Name,
+							IndexName:  indexName,
+							Seq:        1,
+							ColumnName: nc.Name.Name.String(),
+							IndexType:  "BTREE",
+							NonUnique:  0,
+						}
+						t.Indexes = append(t.Indexes, index)
+					}
+				}
+			}
+
 			newColumn := s.buildNewColumnToCache(t, nc)
 
 			// 在新的快照上变更表结构

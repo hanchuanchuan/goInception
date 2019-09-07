@@ -1074,6 +1074,20 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	// 特殊字符
 	sql = "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';"
 	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 add column c1 int primary key;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DUP_INDEX, "PRIMARY", "test_inc", "t1"))
+
+	sql = "drop table if exists t1;create table t1(id int,key c1(id));alter table t1 add column c1 int unique;"
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;
+			create table t1(id int,key c1(id));
+			alter table t1 add column c1 int unique;
+			alter table t1 add index c1(c1);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DUP_INDEX, "c1", "test_inc", "t1"))
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
