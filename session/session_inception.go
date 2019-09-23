@@ -6876,7 +6876,7 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 	case ER_WITH_INSERT_FIELD:
 		return s.Inc.CheckInsertField
 
-	case ER_NO_WHERE_CONDITION:
+	case ER_NO_WHERE_CONDITION, ErrJoinNoOnCondition:
 		return s.Inc.CheckDMLWhere
 
 	case ER_WITH_LIMIT_CONDITION:
@@ -7001,6 +7001,11 @@ func extractTableList(node ast.ResultSetNode, input []*ast.TableSource) []*ast.T
 	case *ast.Join:
 		input = extractTableList(x.Left, input)
 		input = extractTableList(x.Right, input)
+
+		// log.Infof("%#v", x.On)
+		// if x.On == nil {
+		// 	s.AppendErrorNo(ErrJoinNoOnCondition)
+		// }
 	case *ast.TableSource:
 		// if s, ok := x.Source.(*ast.TableName); ok {
 		// 	if x.AsName.L != "" {
@@ -7272,6 +7277,8 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
 		// log.Infof("%#v", x.Right)
 		if x.On != nil {
 			s.checkItem(x.On.Expr, tableInfoList)
+		} else if x.Right != nil {
+			s.AppendErrorNo(ErrJoinNoOnCondition)
 		}
 		return tableInfoList
 	case *ast.TableSource:

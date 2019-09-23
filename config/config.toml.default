@@ -37,6 +37,11 @@ log-rotate = true
 
 [inc]
 
+backup_host = ""
+backup_port = 0
+backup_user = ""
+backup_password = ""
+
 enable_nullable = true
 enable_drop_table = false
 enable_set_engine = true
@@ -135,6 +140,7 @@ osc_bin_dir = "/usr/local/bin"
 
 [ghost]
 
+ghost_on = false
 ghost_allow_on_master = true
 ghost_assume_rbr = true
 ghost_chunk_size = 1000
@@ -174,6 +180,7 @@ er_index_name_uniq_prefix = 1
 er_insert_too_much_rows = 1
 er_invalid_data_type = 1
 er_invalid_ident = 1
+er_join_no_on_condition = 1
 er_json_type_support = 2
 er_must_have_columns = 1
 er_no_where_condition = 1

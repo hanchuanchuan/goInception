@@ -205,6 +205,7 @@ const (
 	ErrCannotAddForeign
 	ErrWrongFkDefWithMatch
 	ErrFkDupName
+	ErrJoinNoOnCondition
 	ER_ERROR_LAST
 )
 
@@ -359,7 +360,6 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrCollationNotSupport:                 "Set collation to one of '%s'",
 	ErrEngineNotSupport:                    "Set engine to one of '%s'",
 	ErrJsonTypeSupport:                     "Json type not allowed in column '%s'.",
-	ER_ERROR_LAST:                          "TheLastError,ByeBye",
 	ErrMixOfGroupFuncAndFields:             "In aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; this is incompatible with sql_mode=only_full_group_by.",
 	ErrFieldNotInGroupBy:                   "Expression #%d of %s is not in GROUP BY clause and contains nonaggregated column '%s' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by.",
 	ErCantChangeColumnPosition:             "Cannot change the position of the column '%s'.",
@@ -374,6 +374,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrCannotAddForeign:            "Cannot add foreign key constraint",
 	ErrWrongFkDefWithMatch:         "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
 	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
+	ErrJoinNoOnCondition:           "set the on clause for join statement.",
+	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -533,6 +535,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrFloatDoubleToDecimal:                "列 '%s' 建议设置为 decimal 类型.",
 	ErrIdentifierUpper:                     "标识符 '%s' 必须大写.",
 	ErrWrongAndExpr:                        "可能是错误语法!更新多个字段时请使用逗号分隔.",
+	ErrJoinNoOnCondition:                   "join语句请指定on子句.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -558,6 +561,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_INVALID_IDENT,
 		ER_MUST_HAVE_COLUMNS,
 		ER_NO_WHERE_CONDITION,
+		ErrJoinNoOnCondition,
 		ER_NOT_ALLOWED_NULLABLE,
 		ER_NOT_SUPPORTED_ALTER_OPTION,
 		ER_ORDERY_BY_RAND,
@@ -1018,6 +1022,8 @@ func (e ErrorCode) String() string {
 		return "er_identifier_upper"
 	case ErrWrongAndExpr:
 		return "er_wrong_and_expr"
+	case ErrJoinNoOnCondition:
+		return "er_join_no_on_condition"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}
@@ -1036,8 +1042,10 @@ func CheckAuditSetting(cnf *config.Config) {
 
 	if cnf.Inc.CheckDMLWhere {
 		cnf.IncLevel.ER_NO_WHERE_CONDITION = int8(GetErrorLevel(ER_NO_WHERE_CONDITION))
+		cnf.IncLevel.ErrJoinNoOnCondition = int8(GetErrorLevel(ErrJoinNoOnCondition))
 	} else {
 		cnf.IncLevel.ER_NO_WHERE_CONDITION = 0
+		cnf.IncLevel.ErrJoinNoOnCondition = 0
 	}
 
 	if cnf.Inc.CheckDMLLimit {
