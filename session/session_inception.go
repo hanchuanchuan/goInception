@@ -6401,7 +6401,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 					fmt.Sprintf("%s.%s", originTable, firstColumnName))
 			}
-		} else if s.myRecord.TableInfo.IsNew || s.myRecord.TableInfo.IsNewColumns || haveNewTable {
+		} else {
 			// 新增表 or 新增列时,不能做explain
 			for _, l := range node.List {
 				found := false
@@ -6424,9 +6424,11 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 			// 	s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
 			// }
 			s.checkItem(node.Where, tableInfoList)
-		} else {
+
 			// 如果没有表结构,或者新增表 or 新增列时,不做explain
-			s.explainOrAnalyzeSql(sql)
+			if !s.hasError() && !s.myRecord.TableInfo.IsNew && !s.myRecord.TableInfo.IsNewColumns && !haveNewTable {
+				s.explainOrAnalyzeSql(sql)
+			}
 		}
 	}
 
