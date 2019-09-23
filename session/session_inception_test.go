@@ -1543,6 +1543,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
+		s.realRowCount = true
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
@@ -1621,11 +1622,33 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
+	s.realRowCount = false
 	res := s.makeSQL("create table t1(id int,c1 int);update t1 set c1 = 1;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
 
+	// 受影响行数: explain计算规则
+	s.execSQL(c, `drop table if exists t1,t2;
+			create table t1(id int primary key,c1 int);
+			create table t2(id int primary key,c1 int);
+			insert into t1(id,c1)values(1,1);
+			insert into t2(id,c1)values(1,1),(2,2),(3,3);`)
+
+	config.GetGlobalConfig().Inc.ExplainRule = "first"
+	sql = `update t1 inner join t2 on 1=1 set t1.c1=t2.c1 where 1=1;`
+	res = s.makeSQL(sql)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", res.Rows()))
+	c.Assert(row[6], Equals, "1", Commentf("%v", res.Rows()))
+
+	config.GetGlobalConfig().Inc.ExplainRule = "max"
+	res = s.makeSQL(sql)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", res.Rows()))
+	c.Assert(row[6], Equals, "3", Commentf("%v", res.Rows()))
+
+	s.execSQL(c, `drop table if exists t1,t2`)
 	// res = s.makeSQL( "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
 	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "0")

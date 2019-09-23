@@ -6133,7 +6133,15 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 	}
 
 	if len(rows) > 0 {
-		r.AffectedRows = rows[0].Rows
+		if s.Inc.ExplainRule == "max" {
+			r.AffectedRows = 0
+			for _, row := range rows {
+				r.AffectedRows = Max(r.AffectedRows, row.Rows)
+			}
+		} else {
+			r.AffectedRows = rows[0].Rows
+		}
+
 		if newRecord != nil {
 			newRecord.AffectedRows = r.AffectedRows
 		}

@@ -313,6 +313,12 @@ type Inc struct {
 	// 开启sql统计
 	EnableSqlStatistic bool `toml:"enable_sql_statistic" json:"enable_sql_statistic"`
 
+	// explain判断受影响行数时使用的规则, 默认值"first"
+	// 可选值: "first", "max"
+	// 		"first": 	使用第一行的explain结果作为受影响行数
+	// 		"max": 		使用explain结果中的最大值作为受影响行数
+	ExplainRule string `toml:"explain_rule" json:"explain_rule"`
+
 	// 全量日志
 	GeneralLog bool `toml:"general_log" json:"general_log"`
 
@@ -719,6 +725,7 @@ var defaultConf = Config{
 		// 连接服务器选项
 		DefaultCharset:   "utf8mb4",
 		MaxAllowedPacket: 4194304,
+		ExplainRule:      "first",
 		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{
