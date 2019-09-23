@@ -617,6 +617,7 @@ type IncLevel struct {
 	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
 	ErCantChangeColumnPosition      int8 `toml:"er_cant_change_column_position"`
 	ErJsonTypeSupport               int8 `toml:"er_json_type_support"`
+	ErrJoinNoOnCondition            int8 `toml:"er_join_no_on_condition"`
 }
 
 var defaultConf = Config{
@@ -785,6 +786,7 @@ var defaultConf = Config{
 		ER_INVALID_IDENT:                1,
 		ER_MUST_HAVE_COLUMNS:            1,
 		ER_NO_WHERE_CONDITION:           1,
+		ErrJoinNoOnCondition:            1,
 		ER_NOT_ALLOWED_NULLABLE:         1,
 		ER_ORDERY_BY_RAND:               1,
 		ER_PARTITION_NOT_ALLOWED:        1,

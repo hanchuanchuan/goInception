@@ -1599,6 +1599,13 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 		session.NewErr(session.ER_NO_WHERE_CONDITION))
 	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
+	// where
+	config.GetGlobalConfig().Inc.CheckDMLWhere = true
+	sql = "create table t1(id int,c1 int);create table t2(id int,c1 int);update t1 join t2 set t1.c1 = 1 where t1.id=1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrJoinNoOnCondition))
+	config.GetGlobalConfig().Inc.CheckDMLWhere = false
+
 	// limit
 	config.GetGlobalConfig().Inc.CheckDMLLimit = true
 	sql = "create table t1(id int,c1 int);update t1 set c1 = 1 limit 1;"
