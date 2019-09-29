@@ -1832,6 +1832,10 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 		delete s1 from t1 as s1 inner join t1 as s2 on s1.c1 = s2.c1 where s1.id > s2.id;`
 	s.testErrorCode(c, sql)
 
+	s.execSQL(c, "drop table if exists t1;create table t1(id int primary key,c1 int);")
+	sql = `create table t2(id int primary key,c1 int);
+			delete t1 from t1 inner join t2 where t2.c1 = 1;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
