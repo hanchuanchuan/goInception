@@ -136,7 +136,7 @@ type sourceOptions struct {
 
 // ExplainInfo 执行计划信息
 type ExplainInfo struct {
-	gorm.Model
+	// gorm.Model
 
 	SelectType   string  `gorm:"Column:select_type"`
 	Table        string  `gorm:"Column:table"`
@@ -149,11 +149,14 @@ type ExplainInfo struct {
 	Rows         int     `gorm:"Column:rows"`
 	Filtered     float32 `gorm:"Column:filtered"`
 	Extra        string  `gorm:"Column:Extra"`
+
+	// TiDB的Explain预估行数存储在Count中
+	Count float32 `gorm:"Column:count"`
 }
 
 // FieldInfo 字段信息
 type FieldInfo struct {
-	gorm.Model
+	// gorm.Model
 
 	Field      string  `gorm:"Column:Field"`
 	Type       string  `gorm:"Column:Type"`
@@ -6136,9 +6139,15 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 		if s.Inc.ExplainRule == "max" {
 			r.AffectedRows = 0
 			for _, row := range rows {
+				if row.Count > 0 && row.Rows == 0 {
+					row.Rows = int(row.Count)
+				}
 				r.AffectedRows = Max(r.AffectedRows, row.Rows)
 			}
 		} else {
+			if rows[0].Count > 0 && rows[0].Rows == 0 {
+				rows[0].Rows = int(rows[0].Count)
+			}
 			r.AffectedRows = rows[0].Rows
 		}
 
