@@ -5011,6 +5011,46 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// s.saveFingerprint(sqlId)
 }
 
+// getTableList 根据表对象获取访问的所有表，并判断是否存在新表以避免explain失败
+func (s *session) getTableList(tableList []*ast.TableSource) ([]*TableInfo, bool) {
+	var tableInfoList []*TableInfo
+
+	// 判断select中是否有新表
+	haveNewTable := false
+	for _, tblSource := range tableList {
+		tblName, ok := tblSource.Source.(*ast.TableName)
+		if ok {
+			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+			if t != nil {
+				if tblSource.AsName.L != "" {
+					t.AsName = tblSource.AsName.O
+					tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+				} else {
+					tableInfoList = append(tableInfoList, t)
+				}
+				if t.IsNew {
+					haveNewTable = true
+				}
+			}
+		} else {
+			cols := s.getSubSelectColumns(tblSource.Source)
+			if cols != nil {
+				rows := make([]FieldInfo, len(cols))
+				for i, colName := range cols {
+					rows[i].Field = colName
+				}
+				t := &TableInfo{
+					Schema: "",
+					Name:   tblSource.AsName.String(),
+					Fields: rows,
+				}
+				tableInfoList = append(tableInfoList, t)
+			}
+		}
+	}
+	return tableInfoList, haveNewTable
+}
+
 // subSelectColumns 计算子查询的列数(包含有星号列)
 func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 	switch sel := node.(type) {
@@ -6653,26 +6693,32 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	var tableList []*ast.TableSource
 	tableList = extractTableList(node.TableRefs.TableRefs, tableList)
 
-	var tableInfoList []*TableInfo
-	for _, tblSource := range tableList {
-		tblName, _ := tblSource.Source.(*ast.TableName)
+	// var tableInfoList []*TableInfo
+	// for _, tblSource := range tableList {
+	// 	tblName, _ := tblSource.Source.(*ast.TableName)
 
-		t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
-		if t != nil {
-			if tblSource.AsName.L != "" {
-				t.AsName = tblSource.AsName.O
-				tableInfoList = append(tableInfoList, s.copyTableInfo(t))
-			} else {
-				tableInfoList = append(tableInfoList, t)
-			}
+	// 	t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+	// 	if t != nil {
+	// 		if tblSource.AsName.L != "" {
+	// 			t.AsName = tblSource.AsName.O
+	// 			tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+	// 		} else {
+	// 			tableInfoList = append(tableInfoList, t)
+	// 		}
 
-			if node.Tables == nil && s.myRecord.TableInfo == nil {
-				s.myRecord.TableInfo = t
-			}
+	// 		if node.Tables == nil && s.myRecord.TableInfo == nil {
+	// 			s.myRecord.TableInfo = t
+	// 		}
+	// 	}
+	// }
+
+	tableInfoList, hasNew := s.getTableList(tableList)
+
+	if node.Tables == nil {
+		if s.myRecord.TableInfo == nil && len(tableInfoList) > 0 {
+			s.myRecord.TableInfo = tableInfoList[0]
 		}
-	}
-
-	if node.Tables != nil {
+	} else {
 		for _, name := range node.Tables.Tables {
 			found := false
 			db := name.Schema.String()
@@ -6715,7 +6761,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	if !s.hasError() {
 		// 如果没有表结构,或者新增表 or 新增列时,不做explain
 		if s.myRecord.TableInfo != nil && !s.myRecord.TableInfo.IsNew &&
-			!s.myRecord.TableInfo.IsNewColumns {
+			!s.myRecord.TableInfo.IsNewColumns && !hasNew {
 			s.explainOrAnalyzeSql(sql)
 		}
 	}
