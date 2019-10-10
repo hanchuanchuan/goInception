@@ -4835,7 +4835,12 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 	s.myRecord.TableInfo = table
 	if fieldCount == 0 {
-		fieldCount = len(table.Fields)
+		// fieldCount = len(table.Fields)
+		for _, field := range table.Fields {
+			if !field.IsDeleted {
+				fieldCount += 1
+			}
+		}
 	}
 
 	columnsCannotNull := map[string]bool{}
