@@ -458,7 +458,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 				case *ast.InceptionStartStmt:
 					if s.haveBegin {
 						s.AppendErrorNo(ER_HAVE_BEGIN)
-						s.myRecord.Sql = ""
+
+						if strings.Contains(currentSql, "*/") {
+							currentSql = currentSql[strings.Index(currentSql, "*/")+2:]
+						}
+						s.myRecord.Sql = currentSql
+
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, currentSql, "", GetErrorMessage(ER_HAVE_BEGIN))
 						} else if s.opt != nil && s.opt.split {
@@ -488,7 +493,11 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					}
 
 					if s.myRecord.ErrLevel == 2 {
-						s.myRecord.Sql = ""
+						if strings.Contains(currentSql, "*/") {
+							currentSql = currentSql[strings.Index(currentSql, "*/")+2:]
+						}
+						s.myRecord.Sql = currentSql
+
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else if s.opt != nil && s.opt.split {
