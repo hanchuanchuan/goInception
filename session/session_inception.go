@@ -5094,7 +5094,12 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 			}
 			t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 			if t != nil {
-				totalFieldCount += len(t.Fields)
+				// totalFieldCount += len(t.Fields)
+				for _, field := range t.Fields {
+					if !field.IsDeleted {
+						totalFieldCount += 1
+					}
+				}
 			} else {
 				// return
 			}
@@ -5127,7 +5132,12 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 							if ok {
 								t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, false)
 								if t != nil {
-									selectColumnCount += len(t.Fields)
+									// selectColumnCount += len(t.Fields)
+									for _, field := range t.Fields {
+										if !field.IsDeleted {
+											selectColumnCount += 1
+										}
+									}
 								}
 							} else {
 								length, err := s.subSelectColumns(tblSource.Source)
