@@ -58,6 +58,9 @@ docker pull hanchuanchuan/goinception
 - [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)
 
+#### 赞助&定制
+- [赞助与支持](https://hanchuanchuan.github.io/goInception/support/)
+
 #### 交流
 
 QQ群 **499262190**
