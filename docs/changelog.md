@@ -1,5 +1,22 @@
 # goInception 更新日志
 
+## [v1.1.1] - 2019-10-13
+
+### Fix
+* 修复TiDB数据库explain出错的问题 (#86)
+* 修复`insert select`语法在有删除列时列数校验可能不准确的问题
+
+### New Features
+* 添加审核选项 `explain_rule` ,用以设置explain获取受影响行数方式
+
+### Update
+* 完善`spatial index`审核规则
+* 调整update语法均进行逻辑审核
+* 添加join语法的ON子句审核
+* 优化delete审核规则,有新表时跳过explain审核
+* 远程数据库无法连接时,优化返回结果,添加sql内容返回
+
+
 ## [v1.1.0] - 2019-9-7
 
 ### Fix
