@@ -55,6 +55,7 @@ enable_drop_database |  false    |   true,false     |  是否允许删除数据�
 enable_drop_table   |  false    |   true,false     |  是否允许删除表
 enable_enum_set_bit   |  false    |   true,false     |    是不是支持enum,set,bit数据类型
 enable_fingerprint `v0.6.2`   |  false    |   true,false     |    sql指纹功能。dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，并提高审核速度
+explain_rule `v1.1.1`   |  "first"    |   "first", "max"     |    explain判断受影响行数时使用的规则(`"first", "max"`)。  `"first"`: 使用第一行的explain结果作为受影响行数, `"max"`: 		使用explain结果中的最大值作为受影响行数
 enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
 enable_json_type  `v0.7.2` |  false    |   true,false     |   设置是否允许json类型字段，包括建表、修改列、新增列操作
