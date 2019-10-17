@@ -2197,6 +2197,7 @@ func (s *session) fetchThreadID() uint32 {
 		return s.threadID
 	}
 
+	var threadId uint64
 	sql := "select connection_id();"
 	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
@@ -2205,7 +2206,7 @@ func (s *session) fetchThreadID() uint32 {
 	rows, err := s.Raw(sql)
 	if rows != nil {
 		for rows.Next() {
-			rows.Scan(&s.threadID)
+			rows.Scan(&threadId)
 		}
 		rows.Close()
 	}
@@ -2217,6 +2218,13 @@ func (s *session) fetchThreadID() uint32 {
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
+	}
+
+	// thread_id溢出处理
+	if threadId > math.MaxUint32 {
+		s.threadID = uint32(threadId % (1 << 32))
+	} else {
+		s.threadID = uint32(threadId)
 	}
 
 	return s.threadID
