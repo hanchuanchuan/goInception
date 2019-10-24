@@ -532,20 +532,99 @@ func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
 	res := s.makeSQL(c, tk, "update t1 set c1=10 where id = 1;")
 	row := res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `id`=1, `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals,
+		"UPDATE `test_inc`.`t1` SET `id`=1, `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
 
-	// // 受影响行数
-	// res = s.makeSQL(c,tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;")
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-	// c.Assert(row[6], Equals, "0")
-
-	// res = s.makeSQL(c,tk, "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-	// c.Assert(row[6], Equals, "1")
+	s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int primary key,c1 int);
+		insert into t1 values(1,1),(2,2);`)
+	res = s.makeSQL(c, tk, "update t1 set id=id+2 where id > 0;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals,
+		strings.Join([]string{
+			"UPDATE `test_inc`.`t1` SET `id`=1, `c1`=1 WHERE `id`=3;",
+			"UPDATE `test_inc`.`t1` SET `id`=2, `c1`=2 WHERE `id`=4;",
+		}, "\n"), Commentf("%v", res.Rows()))
 }
 
+func (s *testSessionIncBackupSuite) TestMinimalUpdate(c *C) {
+	tk := testkit.NewTestKitWithInit(c, s.store)
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+
+	config.GetGlobalConfig().Inc.EnableMinimalRollback = true
+
+	s.makeSQL(c, tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+
+	res := s.makeSQL(c, tk, "update t1 set c1=10 where id = 1;")
+	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup := s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int primary key,c1 int);
+		insert into t1 values(1,1),(2,2);`)
+
+	res = s.makeSQL(c, tk, "update t1 set c1=10 where id > 0;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals,
+		strings.Join([]string{
+			"UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1;",
+			"UPDATE `test_inc`.`t1` SET `c1`=2 WHERE `id`=2;",
+		}, "\n"), Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int primary key,c1 int);
+		insert into t1 values(1,1),(2,2);`)
+
+	res = s.makeSQL(c, tk, "update t1 set c1=2 where id > 0;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals,
+		"UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1;", Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int primary key,c1 tinyint unsigned,c2 varchar(100));
+		insert into t1 values(1,127,'t1'),(2,130,'t2');`)
+
+	res = s.makeSQL(c, tk, "update t1 set c1=130,c2='aa' where id > 0;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals,
+		strings.Join([]string{
+			"UPDATE `test_inc`.`t1` SET `c1`=127, `c2`='t1' WHERE `id`=1;",
+			"UPDATE `test_inc`.`t1` SET `c2`='t2' WHERE `id`=2;",
+		}, "\n"), Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int,c1 tinyint unsigned,c2 varchar(100));
+		insert into t1 values(1,127,'t1'),(2,130,'t2');`)
+
+	res = s.makeSQL(c, tk, "update t1 set c1=130,c2='aa' where id > 0;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals,
+		strings.Join([]string{
+			"UPDATE `test_inc`.`t1` SET `c1`=127, `c2`='t1' WHERE `id`=1 AND `c1`=130 AND `c2`='aa';",
+			"UPDATE `test_inc`.`t1` SET `c2`='t2' WHERE `id`=2 AND `c1`=130 AND `c2`='aa';",
+		}, "\n"), Commentf("%v", res.Rows()))
+
+	s.makeSQL(c, tk, `drop table if exists t1;
+		create table t1(id int primary key,c1 int);
+		insert into t1 values(1,1),(2,2);`)
+	res = s.makeSQL(c, tk, "update t1 set id=id+2 where id > 0;")
+	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals,
+		strings.Join([]string{
+			"UPDATE `test_inc`.`t1` SET `id`=1 WHERE `id`=3;",
+			"UPDATE `test_inc`.`t1` SET `id`=2 WHERE `id`=4;",
+		}, "\n"), Commentf("%v", res.Rows()))
+}
 func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
@@ -876,12 +955,13 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 func (s *testSessionIncBackupSuite) query(table, opid string) string {
 	inc := config.GetGlobalConfig().Inc
 	if s.db == nil || s.db.DB().Ping() != nil {
-
 		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
 			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
+
 		db, err := gorm.Open("mysql", addr)
 		if err != nil {
 			fmt.Println(err)
+			return err.Error()
 		}
 		// 禁用日志记录器，不显示任何日志
 		db.LogMode(false)
@@ -895,7 +975,7 @@ func (s *testSessionIncBackupSuite) query(table, opid string) string {
 	rows, err := s.db.Raw(sql, opid).Rows()
 	if err != nil {
 		fmt.Println(err)
-		panic(err)
+		return err.Error()
 	} else {
 		defer rows.Close()
 		for rows.Next() {
