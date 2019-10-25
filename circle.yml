@@ -40,7 +40,7 @@ jobs:
           command: make dev
 
       - setup_remote_docker:
-          docker_layer_caching: true
+          docker_layer_caching: false
       - run:
           name: Publish Docker Image to Docker Hub
           command: |
