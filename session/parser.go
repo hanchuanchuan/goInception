@@ -556,13 +556,11 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 	return string(buf), nil
 }
 
+// processValue 处理无符号值(unsigned)
 func processValue(value driver.Value, dataType string) driver.Value {
 	if value == nil {
 		return value
 	}
-
-	// log.Info(value)
-	// log.Infof("%T", value)
 
 	switch v := value.(type) {
 	case int8:
@@ -621,21 +619,25 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 	var columnNames []string
 	c_null := " `%s` IS ?"
 	c := " `%s`=?"
+	var sql string
 
 	var sets []string
 
-	for i, col := range t.Fields {
-		// 日志是minimal模式时, 只取有值的新列
-		// && uint8(e.ColumnBitmap2[i/8])&(1<<(uint(i)%8)) == uint8(e.ColumnBitmap2[i/8])
-		if i < int(e.ColumnCount) {
-			sets = append(sets, fmt.Sprintf(setValue, col.Field))
+	// 最小化回滚语句, 当开启时,update语句中未变更的值不再记录到回滚语句中
+	minimalMode := s.Inc.EnableMinimalRollback
+
+	if !minimalMode {
+		for i, col := range t.Fields {
+			// 日志是minimal模式时, 只取有值的新列
+			// && uint8(e.ColumnBitmap2[i/8])&(1<<(uint(i)%8)) == uint8(e.ColumnBitmap2[i/8])
+
+			if i < int(e.ColumnCount) {
+				sets = append(sets, fmt.Sprintf(setValue, col.Field))
+			}
 		}
+		sql = fmt.Sprintf(template, e.Table.Schema, e.Table.Table,
+			strings.Join(sets, ","))
 	}
-
-	sql := fmt.Sprintf(template, e.Table.Schema, e.Table.Table,
-		strings.Join(sets, ","))
-
-	// log.Info().Msg(sql)
 
 	var (
 		oldValues []driver.Value
@@ -644,7 +646,6 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 	)
 	// update时, Rows为2的倍数, 双数index为旧值,单数index为新值
 	for i, rows := range e.Rows {
-
 		if i%2 == 0 {
 			// 旧值
 			for j, d := range rows {
@@ -652,20 +653,30 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 				// if uint8(e.ColumnBitmap2[j/8])&(1<<(uint(j)%8)) != uint8(e.ColumnBitmap2[j/8]) {
 				// 	continue
 				// }
-
-				if t.Fields[j].IsUnsigned() {
-					d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
+				if minimalMode {
+					// 最小化模式下,列如果相等则省略
+					if d != e.Rows[i+1][j] {
+						if t.Fields[j].IsUnsigned() {
+							d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
+						}
+						newValues = append(newValues, d)
+						if j < len(t.Fields) {
+							sets = append(sets, fmt.Sprintf(setValue, t.Fields[j].Field))
+						}
+					}
+				} else {
+					if t.Fields[j].IsUnsigned() {
+						d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
+					}
+					newValues = append(newValues, d)
 				}
-				newValues = append(newValues, d)
 			}
 		} else {
 			// 新值
 			columnNames = nil
 			for j, d := range rows {
-
 				if t.hasPrimary {
-					_, ok := t.primarys[j]
-					if ok {
+					if _, ok := t.primarys[j]; ok {
 						if t.Fields[j].IsUnsigned() {
 							d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 						}
@@ -693,13 +704,15 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 							fmt.Sprintf(c, t.Fields[j].Field))
 					}
 				}
-
 			}
 
-			newValues = append(newValues, oldValues...)
-
+			if minimalMode {
+				sql = fmt.Sprintf(template, e.Table.Schema, e.Table.Table,
+					strings.Join(sets, ","))
+				sets = nil
+			}
 			newSql = strings.Join([]string{sql, strings.Join(columnNames, " AND")}, "")
-			// log.Info().Msg(newSql, len(newValues))
+			newValues = append(newValues, oldValues...)
 			r, err := InterpolateParams(newSql, newValues)
 			s.checkError(err)
 
@@ -708,7 +721,6 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 			oldValues = nil
 			newValues = nil
 		}
-
 	}
 
 	return string(buf), nil
