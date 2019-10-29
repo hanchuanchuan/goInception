@@ -19,13 +19,14 @@ package session
 
 import (
 	"bytes"
-	// Sql "database/sql"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql/driver"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"regexp"
-	// "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -132,6 +133,11 @@ type sourceOptions struct {
 
 	// 连接的数据库,默认为mysql
 	db string
+
+	tls     bool   // 连接加密
+	sslCA   string // 证书颁发机构（CA）证书
+	sslCert string // 客户端公共密钥证书
+	sslKey  string // 客户端私钥文件
 }
 
 // ExplainInfo 执行计划信息
@@ -2415,6 +2421,12 @@ func (s *session) parseOptions(sql string) {
 		realRowCount: viper.GetBool("realRowCount"),
 
 		db: viper.GetString("db"),
+
+		// 连接加密
+		tls:     viper.GetBool("tls"),
+		sslCA:   viper.GetString("sslCa"),
+		sslCert: viper.GetString("sslCert"),
+		sslKey:  viper.GetString("sslKey"),
 	}
 
 	if s.opt.split || s.opt.check || s.opt.Print {
@@ -2444,9 +2456,65 @@ func (s *session) parseOptions(sql string) {
 
 	var addr string
 	if s.opt.middlewareExtend == "" {
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d",
+		tlsValue := "false"
+		if s.opt.sslCA != "" {
+			var errMsg string
+			if !Exist(s.opt.sslCA) {
+				errMsg = fmt.Sprintf("file: %s cannot open!", s.opt.sslCA)
+			}
+			if !Exist(s.opt.sslCert) {
+				errMsg += fmt.Sprintf("file: %s cannot open!", s.opt.sslCA)
+			}
+			if !Exist(s.opt.sslKey) {
+				errMsg += fmt.Sprintf("file: %s cannot open!", s.opt.sslCA)
+			}
+
+			if errMsg != "" {
+				log.Errorf("con:%d %s", s.sessionVars.ConnectionID, errMsg)
+				s.AppendErrorMessage(fmt.Sprintf("con:%d %s", s.sessionVars.ConnectionID, errMsg))
+				return
+			}
+
+			tlsValue = fmt.Sprintf("%s_%d", s.opt.host, s.opt.port)
+			if len(tlsValue) > mysql.MaxDatabaseNameLength {
+				tlsValue = tlsValue[len(tlsValue)-mysql.MaxDatabaseNameLength:]
+			}
+			tlsValue = strings.Replace(tlsValue, "-", "_", -1)
+			tlsValue = strings.Replace(tlsValue, ".", "_", -1)
+
+			rootCertPool := x509.NewCertPool()
+			pem, err := ioutil.ReadFile(s.opt.sslCA)
+			if err != nil {
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+				s.AppendErrorMessage(err.Error())
+				return
+			}
+			if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+				log.Errorf("con:%d Failed to append PEM.", s.sessionVars.ConnectionID)
+				s.AppendErrorMessage(fmt.Sprintf("con:%d Failed to append PEM.", s.sessionVars.ConnectionID))
+				return
+			}
+			clientCert := make([]tls.Certificate, 0, 1)
+			certs, err := tls.LoadX509KeyPair(s.opt.sslCert, s.opt.sslKey)
+			if err != nil {
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+				s.AppendErrorMessage(err.Error())
+				return
+			}
+			clientCert = append(clientCert, certs)
+			mysqlDriver.RegisterTLSConfig(tlsValue, &tls.Config{
+				RootCAs:      rootCertPool,
+				Certificates: clientCert,
+			})
+		} else if s.opt.tls {
+			tlsValue = "skip-verify"
+		}
+
+		log.Info(tlsValue)
+		log.Infof("%#v", s.opt)
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&tls=%s",
 			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.opt.db,
-			s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
+			s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket, tlsValue)
 	} else {
 		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
 			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
@@ -2459,7 +2527,6 @@ func (s *session) parseOptions(sql string) {
 	db, err := gorm.Open("mysql", addr)
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		s.AppendErrorMessage(err.Error())
 		return
