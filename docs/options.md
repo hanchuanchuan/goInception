@@ -90,6 +90,7 @@ sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表
 support_charset | utf8,utf8mb4              | string | 支持的字符集,多个时以逗号分隔
 support_collation `v0.7` | ''             | string | 支持的排序规则,多个时以逗号分隔
 support_engine `v1.0-rc4` | 'innodb'    |   string  | 支持的存储引擎类型.默认为`innodb`,此处可以设置多个,以逗号分隔,或者修改默认的存在引擎类型
+wait_timeout `v1.1.2` | 0      | int | 远端数据库等待超时时间, 单位:秒, 默认值为 `0` 时表示使用数据库默认值
 
 
 <!--
