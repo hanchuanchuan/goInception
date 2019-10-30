@@ -960,6 +960,8 @@ func (s *session) executeCommit(ctx context.Context) {
 		return
 	}
 
+	s.modifyWaitTimeout()
+
 	if s.opt.backup {
 		if !s.checkBinlogIsOn() {
 			s.AppendErrorMessage("binlog日志未开启,无法备份!")
@@ -2234,6 +2236,26 @@ func (s *session) modifyBinlogFormatRow() {
 	log.Debug("modifyBinlogFormatRow")
 
 	sql := "set session binlog_format=row;"
+
+	if _, err := s.Exec(sql, true); err != nil {
+		// log.Error(err)
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+	}
+}
+
+// 设置超时时间
+func (s *session) modifyWaitTimeout() {
+	if s.Inc.WaitTimeout <= 0 {
+		return
+	}
+	log.Debug("modifyWaitTimeout")
+
+	sql := fmt.Sprintf("set session wait_timeout=%d;", s.Inc.WaitTimeout)
 
 	if _, err := s.Exec(sql, true); err != nil {
 		// log.Error(err)
