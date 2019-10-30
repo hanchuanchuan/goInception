@@ -59,6 +59,7 @@ explain_rule `v1.1.1`   |  "first"    |   "first", "max"     |    explain判断�
 enable_foreign_key   |  false    |   true,false     |     是不是支持外键
 enable_identifer_keyword   |  false    |   true,false     |   检查在SQL语句中，是不是有标识符被写成MySQL的关键字，默认值为报警。
 enable_json_type  `v0.7.2` |  false    |   true,false     |   设置是否允许json类型字段，包括建表、修改列、新增列操作
+enable_minimal_rollback `v1.1.2` |  false    |   true,false     |   设置是否启用最小化回滚SQL，当开启时，update的回滚语句仅记录最小化变更(未变更列不再记录), 默认为`false`
 enable_not_innodb  `v1.0-rc4 已删除`  |  false    |   true,false     |  `已删除!` 请使用 `enable_set_engine`和 `support_engine`以便于更灵活的指定存储引擎。 *建表指定的存储引擎不为Innodb，不报错*
 enable_nullable   |  false    |   true,false     |    创建或者新增列时如果列为NULL，是不是报错
 enable_null_index_name `v0.7.1`|  false    |   true,false     |    创建索引时是否允许空索引名
@@ -89,6 +90,7 @@ sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表
 support_charset | utf8,utf8mb4              | string | 支持的字符集,多个时以逗号分隔
 support_collation `v0.7` | ''             | string | 支持的排序规则,多个时以逗号分隔
 support_engine `v1.0-rc4` | 'innodb'    |   string  | 支持的存储引擎类型.默认为`innodb`,此处可以设置多个,以逗号分隔,或者修改默认的存在引擎类型
+wait_timeout `v1.1.2` | 0      | int | 远端数据库等待超时时间, 单位:秒, 默认值为 `0` 时表示使用数据库默认值
 
 
 <!--

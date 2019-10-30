@@ -363,6 +363,8 @@ type Inc struct {
 
 	// 支持的存储引擎,多个时以分号分隔
 	SupportEngine string `toml:"support_engine" json:"support_engine"`
+	// 远端数据库等待超时时间，单位:秒
+	WaitTimeout int `toml:"wait_timeout" json:"wait_timeout"`
 }
 
 // Osc online schema change 工具参数配置
