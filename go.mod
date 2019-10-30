@@ -10,6 +10,8 @@ replace github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
 
 replace vitess.io/vitess => github.com/vitessio/vitess v3.0.0-rc.3+incompatible
 
+replace github.com/go-sql-driver/mysql => github.com/go-sql-driver/mysql v1.4.1-0.20191022112324-6ea7374bc1b0
+
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/CorgiMan/json2 v0.0.0-20150213135156-e72957aba209
@@ -32,7 +34,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
-	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a // indirect
+	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/github/gh-ost v1.0.48
 	github.com/go-sql-driver/mysql v1.4.1
