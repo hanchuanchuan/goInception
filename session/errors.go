@@ -486,7 +486,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_UNKNOWN_TABLE:                       "Unknown table '%s' in %s.",
 	ER_INVALID_GROUP_FUNC_USE:              "Invalid use of group function.",
 	ER_INDEX_USE_ALTER_TABLE:               "暂不支持create/drop index和rename语法,请使用alter语句替换.",
-	ER_WITH_DEFAULT_ADD_COLUMN:             "表 '%s' 请设置默认值(表'%s')",
+	ER_WITH_DEFAULT_ADD_COLUMN:             "列 '%s' 请设置默认值(表'%s')",
 	ER_TRUNCATED_WRONG_VALUE:               "Truncated incorrect %s value: '%s'",
 	ER_TEXT_NOT_NULLABLE_ERROR:             "TEXT/BLOB 列 '%s' 禁止设置为not null(表'%s').",
 	ER_WRONG_VALUE_FOR_VAR:                 "Variable '%s' can't be set to the value of '%s'",
