@@ -206,6 +206,7 @@ const (
 	ErrWrongFkDefWithMatch
 	ErrFkDupName
 	ErrJoinNoOnCondition
+	ErrColumnTypeImplicitConversion
 	ER_ERROR_LAST
 )
 
@@ -366,16 +367,17 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErCantChangeColumn:                     "Not supported statement of change column('%s').",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
-	ER_DATETIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
-	ER_TOO_MUCH_AUTO_DATETIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
-	ErrFloatDoubleToDecimal:        "Set column '%s' to DECIMAL type.",
-	ErrIdentifierUpper:             "Identifier '%s' must be capitalized.",
-	ErrWrongAndExpr:                "May be the wrong syntax! Separate multiple fields with commas.",
-	ErrCannotAddForeign:            "Cannot add foreign key constraint",
-	ErrWrongFkDefWithMatch:         "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
-	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
-	ErrJoinNoOnCondition:           "set the on clause for join statement.",
-	ER_ERROR_LAST:                  "TheLastError,ByeBye",
+	ER_DATETIME_DEFAULT:             "Set default value for DATETIME column '%s'.",
+	ER_TOO_MUCH_AUTO_DATETIME_COLS:  "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
+	ErrFloatDoubleToDecimal:         "Set column '%s' to DECIMAL type.",
+	ErrIdentifierUpper:              "Identifier '%s' must be capitalized.",
+	ErrWrongAndExpr:                 "May be the wrong syntax! Separate multiple fields with commas.",
+	ErrCannotAddForeign:             "Cannot add foreign key constraint",
+	ErrWrongFkDefWithMatch:          "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
+	ErrFkDupName:                    "Duplicate foreign key constraint name '%s'",
+	ErrJoinNoOnCondition:            "set the on clause for join statement.",
+	ErrColumnTypeImplicitConversion: "Column type implicit conversion is not allowed(column '%s',type '%s').",
+	ER_ERROR_LAST:                   "TheLastError,ByeBye",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -536,6 +538,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrIdentifierUpper:                     "标识符 '%s' 必须大写.",
 	ErrWrongAndExpr:                        "可能是错误语法!更新多个字段时请使用逗号分隔.",
 	ErrJoinNoOnCondition:                   "join语句请指定on子句.",
+	ErrColumnTypeImplicitConversion:        "不允许列类型隐式转换(列'%s',类型'%s').",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {

@@ -6668,6 +6668,44 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 	// s.saveFingerprint(sqlId)
 }
 
+// checkColumnTypeImplicitConversion 列类型隐式转换检查
+func (s *session) checkColumnTypeImplicitConversion(expr ast.ExprNode, tables []*TableInfo) {
+	if !s.Inc.CheckColumnTypeConversion {
+		return
+	}
+	log.Debug("checkColumnTypeImplicitConversion")
+
+	switch e := expr.(type) {
+	case *ast.BinaryOperationExpr:
+		col, ok1 := e.L.(*ast.ColumnNameExpr)
+		val, ok2 := e.R.(*ast.ValueExpr)
+		// && val != nil 可以判断非空列的is null逻辑
+
+		if ok1 && ok2 && val != nil {
+			field := getFieldInfo(col.Name, tables)
+			if field != nil {
+				fieldType := strings.Split(strings.ToLower(field.Type), "(")[0]
+				switch fieldType {
+				case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
+					"bigint", "decimal", "float", "double", "real":
+					if !types.IsTypeNumeric(val.Type.Tp) {
+						s.AppendErrorNo(ErrColumnTypeImplicitConversion, field.Field, fieldType)
+					}
+				case "date", "time", "datetime", "timestamp",
+					"char", "binary", "varchar", "varbinary", "enum", "set",
+					"tibyblob", "tinytext", "blob", "text",
+					"mediumblob", "mediumtext", "longblob", "longtext":
+					// "year",
+					// "geometry", "point", "linestring", "polygon",
+					if !types.IsString(val.Type.Tp) && !types.IsTypeTemporal(val.Type.Tp) {
+						s.AppendErrorNo(ErrColumnTypeImplicitConversion, field.Field, fieldType)
+					}
+				}
+			}
+		}
+	}
+}
+
 func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 
 	if expr == nil {
@@ -6684,6 +6722,12 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		}
 
 	case *ast.BinaryOperationExpr:
+		// log.Infof("%#v", e.L)
+		// log.Infof("%#v", e.R)
+		if s.Inc.CheckColumnTypeConversion {
+			s.checkColumnTypeImplicitConversion(expr, tables)
+		}
+
 		return s.checkItem(e.L, tables) && s.checkItem(e.R, tables)
 
 	case *ast.UnaryOperationExpr:
@@ -6806,6 +6850,29 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 		}
 		return false
 	}
+}
+
+// getFieldItem 获取字段信息
+func getFieldInfo(name *ast.ColumnName, tables []*TableInfo) *FieldInfo {
+	db := name.Schema.L
+	for _, t := range tables {
+		var tName string
+		if t.AsName != "" {
+			tName = t.AsName
+		} else {
+			tName = t.Name
+		}
+		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+			(strings.EqualFold(tName, name.Table.L)) ||
+			name.Table.L == "" {
+			for i, field := range t.Fields {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+					return &t.Fields[i]
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // checkFuncItem 检查函数的字段
