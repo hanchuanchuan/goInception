@@ -901,13 +901,15 @@ func (s *testSessionIncSuite) TestDropTable(c *C) {
 	sql = "create table t1(id int);drop table t1;"
 	s.testErrorCode(c, sql)
 
-	s.execSQL(c, `drop table if exists t1;
+	if s.getDBVersion(c) < 80000 {
+		s.execSQL(c, `drop table if exists t1;
 			create table t1(id int auto_increment primary key,c1 int);
 			insert into t1(id,c1)values(1,1),(2,2);`)
-	config.GetGlobalConfig().Inc.MaxDDLAffectRows = 1
-	sql = "drop table t1;"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CHANGE_TOO_MUCH_ROWS, "Drop", 2, 1))
+		config.GetGlobalConfig().Inc.MaxDDLAffectRows = 1
+		sql = "drop table t1;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_CHANGE_TOO_MUCH_ROWS, "Drop", 2, 1))
+	}
 }
 
 func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
@@ -2162,11 +2164,13 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	sql = "alter table t1 auto_increment 20 comment '123';"
 	s.testErrorCode(c, sql)
 
-	config.GetGlobalConfig().Inc.MaxDDLAffectRows = 1
-	s.execSQL(c, "insert into t1(id,c1)values(1,1),(2,2);")
-	sql = "alter table t1 add column c2 int;"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CHANGE_TOO_MUCH_ROWS, "Alter", 2, 1))
+	if s.getDBVersion(c) < 80000 {
+		config.GetGlobalConfig().Inc.MaxDDLAffectRows = 1
+		s.execSQL(c, "insert into t1(id,c1)values(1,1),(2,2);")
+		sql = "alter table t1 add column c2 int;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_CHANGE_TOO_MUCH_ROWS, "Alter", 2, 1))
+	}
 
 	sql = `drop table if exists t1;
 	create table t1(id int primary key);
