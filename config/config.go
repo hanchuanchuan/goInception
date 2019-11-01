@@ -254,6 +254,8 @@ type Inc struct {
 	CheckAutoIncrementName      bool `toml:"check_autoincrement_name" json:"check_autoincrement_name"`
 	CheckColumnComment          bool `toml:"check_column_comment" json:"check_column_comment"`
 	CheckColumnDefaultValue     bool `toml:"check_column_default_value" json:"check_column_default_value"`
+	// 检查列类型隐式转换
+	CheckColumnTypeConversion bool `toml:"check_column_type_conversion" json:"check_column_type_conversion"`
 	// 检查列顺序变更 #40
 	CheckColumnPositionChange bool `toml:"check_column_position_change" json:"check_column_position_change"`
 	// 检查列类型变更(允许长度变更,类型变更时警告)
