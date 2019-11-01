@@ -223,20 +223,31 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	res = s.makeSQL(c, tk, "drop table t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+	// mysql 8.0版本默认字符集改成了utf8mb4
+	if s.getDBVersion(c) < 80000 {
+		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+	} else {
+		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
+	}
 
 	s.makeSQL(c, tk, "create table t1(id int) default charset utf8mb4;")
 	res = s.makeSQL(c, tk, "drop table t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
-
+	if s.getDBVersion(c) < 80000 {
+		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
+	} else {
+		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
+	}
 	s.makeSQL(c, tk, "create table t1(id int not null default 0);")
 	res = s.makeSQL(c, tk, "drop table t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) NOT NULL DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
-
+	if s.getDBVersion(c) < 80000 {
+		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) NOT NULL DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+	} else {
+		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) NOT NULL DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
+	}
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
