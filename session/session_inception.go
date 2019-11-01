@@ -498,6 +498,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						defer s.backupdb.Close()
 					}
 
+					s.mysqlServerVersion()
+
+					if s.opt.backup && s.DBType == DBTypeTiDB {
+						s.AppendErrorMessage("TiDB暂不支持备份功能.")
+					}
+
 					if s.myRecord.ErrLevel == 2 {
 						if strings.Contains(currentSql, "*/") {
 							currentSql = currentSql[strings.Index(currentSql, "*/")+2:]
@@ -515,7 +521,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						return s.makeResult()
 					}
 
-					s.mysqlServerVersion()
 					// s.initMysqlSQLMode()
 					s.mysqlExplicitDefaultsForTimestamp()
 
@@ -2088,7 +2093,10 @@ func (s *session) mysqlServerVersion() {
 			case "version":
 				if strings.Contains(strings.ToLower(value), "mariadb") {
 					s.DBType = DBTypeMariaDB
+				} else if strings.Contains(strings.ToLower(value), "tidb") {
+					s.DBType = DBTypeTiDB
 				}
+
 				versionStr := strings.Split(value, "-")[0]
 				versionSeg := strings.Split(versionStr, ".")
 				if len(versionSeg) == 3 {
@@ -2241,7 +2249,7 @@ func (s *session) fetchThreadID() uint32 {
 func (s *session) modifyBinlogFormatRow() {
 	log.Debug("modifyBinlogFormatRow")
 
-	sql := "set session binlog_format=row;"
+	sql := "set session binlog_format='row';"
 
 	if _, err := s.Exec(sql, true); err != nil {
 		// log.Error(err)
@@ -2277,7 +2285,7 @@ func (s *session) modifyWaitTimeout() {
 func (s *session) modifyBinlogRowImageFull() {
 	log.Debug("modifyBinlogRowImageFull")
 
-	sql := "set session binlog_row_image=FULL;"
+	sql := "set session binlog_row_image='FULL';"
 
 	if _, err := s.Exec(sql, true); err != nil {
 		// log.Error(err)
@@ -2338,8 +2346,7 @@ func (s *session) checkBinlogIsOn() bool {
 		}
 	}
 
-	// log.Infof("log_bin is %s", format)
-	return format == "ON"
+	return format == "ON" || format == "1"
 }
 
 func (s *session) checkIsReadOnly() bool {
