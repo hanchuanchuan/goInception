@@ -1,7 +1,15 @@
 version: 2
 
+general:
+  branches:
+    ignore:
+      - gh-pages
+
 jobs:
   build:
+    branches:
+      ignore: gh-pages
+
     docker:
       - image: circleci/golang:1.12
       - image: circleci/mysql:5.7
@@ -10,10 +18,6 @@ jobs:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
 
     working_directory: /go/src/github.com/hanchuanchuan/goInception
-
-    filters:
-      branches:
-        ignore: gh-pages
 
     steps:
       - run:
