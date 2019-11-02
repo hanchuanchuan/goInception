@@ -254,22 +254,21 @@ type Inc struct {
 	CheckAutoIncrementName      bool `toml:"check_autoincrement_name" json:"check_autoincrement_name"`
 	CheckColumnComment          bool `toml:"check_column_comment" json:"check_column_comment"`
 	CheckColumnDefaultValue     bool `toml:"check_column_default_value" json:"check_column_default_value"`
-	// 检查列类型隐式转换
-	CheckColumnTypeConversion bool `toml:"check_column_type_conversion" json:"check_column_type_conversion"`
 	// 检查列顺序变更 #40
 	CheckColumnPositionChange bool `toml:"check_column_position_change" json:"check_column_position_change"`
 	// 检查列类型变更(允许长度变更,类型变更时警告)
-	CheckColumnTypeChange bool `toml:"check_column_type_change" json:"check_column_type_change"`
-	CheckDMLLimit         bool `toml:"check_dml_limit" json:"check_dml_limit"`
-	CheckDMLOrderBy       bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
-	CheckDMLWhere         bool `toml:"check_dml_where" json:"check_dml_where"`
-	CheckIdentifier       bool `toml:"check_identifier" json:"check_identifier"`
-	CheckIndexPrefix      bool `toml:"check_index_prefix" json:"check_index_prefix"`
-	CheckInsertField      bool `toml:"check_insert_field" json:"check_insert_field"`
-	CheckPrimaryKey       bool `toml:"check_primary_key" json:"check_primary_key"`
-	CheckTableComment     bool `toml:"check_table_comment" json:"check_table_comment"`
-	CheckTimestampDefault bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
-	CheckTimestampCount   bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
+	CheckColumnTypeChange       bool `toml:"check_column_type_change" json:"check_column_type_change"`
+	CheckDMLLimit               bool `toml:"check_dml_limit" json:"check_dml_limit"`
+	CheckDMLOrderBy             bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
+	CheckDMLWhere               bool `toml:"check_dml_where" json:"check_dml_where"`
+	CheckIdentifier             bool `toml:"check_identifier" json:"check_identifier"`
+	CheckImplicitTypeConversion bool `toml:"check_implicit_type_conversion"` // 检查where条件中的类型隐式转换
+	CheckIndexPrefix            bool `toml:"check_index_prefix" json:"check_index_prefix"`
+	CheckInsertField            bool `toml:"check_insert_field" json:"check_insert_field"`
+	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
+	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
+	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
+	CheckTimestampCount         bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
 	EnableTimeStampType  bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
@@ -630,7 +629,7 @@ type IncLevel struct {
 	ErCantChangeColumnPosition      int8 `toml:"er_cant_change_column_position"`
 	ErJsonTypeSupport               int8 `toml:"er_json_type_support"`
 	ErrJoinNoOnCondition            int8 `toml:"er_join_no_on_condition"`
-	ErrColumnTypeImplicitConversion int8 `toml:"er_column_type_implicit_conversion"`
+	ErrImplicitTypeConversion       int8 `toml:"er_implicit_type_conversion"`
 }
 
 var defaultConf = Config{
@@ -828,7 +827,7 @@ var defaultConf = Config{
 		ErrWrongAndExpr:                 1,
 		ErCantChangeColumnPosition:      1,
 		ErJsonTypeSupport:               2,
-		ErrColumnTypeImplicitConversion: 1,
+		ErrImplicitTypeConversion:       1,
 	},
 }
 
