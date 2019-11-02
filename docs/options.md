@@ -39,6 +39,7 @@ check_dml_where   |  false    |   true,false     |    在DML语句中没有WHERE
 check_float_double `v1.0.2` |  false    |   true,false     |    开启时,当使用 `float/double` 类型时提示转成 `decimal` 类型
 check_identifier  |  false    |   true,false     |    检查标识符是否正确,规则是[a-z,A-Z,0-9,_]
 check_identifier_upper  `v1.0.2` |  false    |   true,false     |    要求标识符即表名、列名、索引名等必须为大写,默认为`false`
+check_implicit_type_conversion `v1.1.3` | false | true,false | 检查where条件中是否存在隐式类型转换,默认值`false`
 check_index_prefix   |  false    |   true,false     |     是不是要检查索引名字前缀为"idx_"，检查唯一索引前缀是不是"uniq_"
 check_insert_field   |  false    |   true,false     |     是不是要检查插入语句中的列链表的存在性
 check_primary_key   |  false    |   true,false     |  建表时，如果没有主键，则报错

@@ -262,7 +262,7 @@ type Inc struct {
 	CheckDMLOrderBy             bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
 	CheckDMLWhere               bool `toml:"check_dml_where" json:"check_dml_where"`
 	CheckIdentifier             bool `toml:"check_identifier" json:"check_identifier"`
-	CheckImplicitTypeConversion bool `toml:"check_implicit_type_conversion"` // 检查where条件中的类型隐式转换
+	CheckImplicitTypeConversion bool `toml:"check_implicit_type_conversion"` // 检查where条件中的隐式类型转换
 	CheckIndexPrefix            bool `toml:"check_index_prefix" json:"check_index_prefix"`
 	CheckInsertField            bool `toml:"check_insert_field" json:"check_insert_field"`
 	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
