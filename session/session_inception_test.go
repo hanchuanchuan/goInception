@@ -1746,31 +1746,31 @@ WHERE tt1.id=1;`
 	// 列隐式转换审核
 	s.execSQL(c, `drop table if exists t1;`)
 
-	config.GetGlobalConfig().Inc.CheckColumnTypeConversion = true
+	config.GetGlobalConfig().Inc.CheckImplicitTypeConversion = true
 	sql = `create table t1(id int primary key,c1 char(100));
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrColumnTypeImplicitConversion, "c1", "char"))
+		session.NewErr(session.ErrImplicitTypeConversion, "c1", "char"))
 
 	sql = `create table t1(id int primary key,c1 varchar(100));
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrColumnTypeImplicitConversion, "c1", "varchar"))
+		session.NewErr(session.ErrImplicitTypeConversion, "c1", "varchar"))
 
 	sql = `create table t1(id int primary key,c1 json);
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrColumnTypeImplicitConversion, "c1", "json"))
+		session.NewErr(session.ErrImplicitTypeConversion, "c1", "json"))
 
 	sql = `create table t1(id int primary key,c1 int);
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1="1";`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrColumnTypeImplicitConversion, "c1", "int"))
+		session.NewErr(session.ErrImplicitTypeConversion, "c1", "int"))
 
 	sql = `create table t1(id int primary key,c1 int);
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1="1";`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrColumnTypeImplicitConversion, "c1", "int"))
+		session.NewErr(session.ErrImplicitTypeConversion, "c1", "int"))
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
