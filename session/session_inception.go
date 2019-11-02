@@ -6692,7 +6692,8 @@ func (s *session) checkColumnTypeImplicitConversion(e *ast.BinaryOperationExpr, 
 			case "date", "time", "datetime", "timestamp",
 				"char", "binary", "varchar", "varbinary", "enum", "set",
 				"tibyblob", "tinytext", "blob", "text",
-				"mediumblob", "mediumtext", "longblob", "longtext":
+				"mediumblob", "mediumtext", "longblob", "longtext", "json",
+				"geometry", "point", "linestring", "polygon":
 				// "year",
 				// "geometry", "point", "linestring", "polygon",
 				if !types.IsString(val.Type.Tp) && !types.IsTypeTemporal(val.Type.Tp) {

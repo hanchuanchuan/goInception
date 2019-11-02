@@ -177,6 +177,7 @@ er_change_too_much_rows = 1
 er_char_to_varchar_len = 1
 er_charset_on_column = 1
 er_column_have_no_comment = 1
+er_column_type_implicit_conversion = 1
 er_datetime_default = 1
 er_foreign_key = 2
 er_ident_use_keyword = 1
