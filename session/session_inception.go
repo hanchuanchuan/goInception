@@ -6669,37 +6669,34 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 }
 
 // checkColumnTypeImplicitConversion 列类型隐式转换检查
-func (s *session) checkColumnTypeImplicitConversion(expr ast.ExprNode, tables []*TableInfo) {
+func (s *session) checkColumnTypeImplicitConversion(e *ast.BinaryOperationExpr, tables []*TableInfo) {
 	if !s.Inc.CheckColumnTypeConversion {
 		return
 	}
 	log.Debug("checkColumnTypeImplicitConversion")
 
-	switch e := expr.(type) {
-	case *ast.BinaryOperationExpr:
-		col, ok1 := e.L.(*ast.ColumnNameExpr)
-		val, ok2 := e.R.(*ast.ValueExpr)
-		// && val != nil 可以判断非空列的is null逻辑
+	col, ok1 := e.L.(*ast.ColumnNameExpr)
+	val, ok2 := e.R.(*ast.ValueExpr)
+	// && val != nil 可以判断非空列的is null逻辑
 
-		if ok1 && ok2 && val != nil {
-			field := getFieldInfo(col.Name, tables)
-			if field != nil {
-				fieldType := strings.Split(strings.ToLower(field.Type), "(")[0]
-				switch fieldType {
-				case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
-					"bigint", "decimal", "float", "double", "real":
-					if !types.IsTypeNumeric(val.Type.Tp) {
-						s.AppendErrorNo(ErrColumnTypeImplicitConversion, field.Field, fieldType)
-					}
-				case "date", "time", "datetime", "timestamp",
-					"char", "binary", "varchar", "varbinary", "enum", "set",
-					"tibyblob", "tinytext", "blob", "text",
-					"mediumblob", "mediumtext", "longblob", "longtext":
-					// "year",
-					// "geometry", "point", "linestring", "polygon",
-					if !types.IsString(val.Type.Tp) && !types.IsTypeTemporal(val.Type.Tp) {
-						s.AppendErrorNo(ErrColumnTypeImplicitConversion, field.Field, fieldType)
-					}
+	if ok1 && ok2 && val != nil {
+		field := getFieldInfo(col.Name, tables)
+		if field != nil {
+			fieldType := strings.Split(strings.ToLower(field.Type), "(")[0]
+			switch fieldType {
+			case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
+				"bigint", "decimal", "float", "double", "real":
+				if !types.IsTypeNumeric(val.Type.Tp) {
+					s.AppendErrorNo(ErrColumnTypeImplicitConversion, field.Field, fieldType)
+				}
+			case "date", "time", "datetime", "timestamp",
+				"char", "binary", "varchar", "varbinary", "enum", "set",
+				"tibyblob", "tinytext", "blob", "text",
+				"mediumblob", "mediumtext", "longblob", "longtext":
+				// "year",
+				// "geometry", "point", "linestring", "polygon",
+				if !types.IsString(val.Type.Tp) && !types.IsTypeTemporal(val.Type.Tp) {
+					s.AppendErrorNo(ErrColumnTypeImplicitConversion, field.Field, fieldType)
 				}
 			}
 		}
@@ -6722,10 +6719,8 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		}
 
 	case *ast.BinaryOperationExpr:
-		// log.Infof("%#v", e.L)
-		// log.Infof("%#v", e.R)
 		if s.Inc.CheckColumnTypeConversion {
-			s.checkColumnTypeImplicitConversion(expr, tables)
+			s.checkColumnTypeImplicitConversion(e, tables)
 		}
 
 		return s.checkItem(e.L, tables) && s.checkItem(e.R, tables)

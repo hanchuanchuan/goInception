@@ -596,6 +596,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrTableCollationNotSupport,
 		ER_DATETIME_DEFAULT,
 		ErrWrongAndExpr,
+		ErrColumnTypeImplicitConversion,
 		ER_WITH_INSERT_FIELD:
 		return 1
 
@@ -1027,6 +1028,8 @@ func (e ErrorCode) String() string {
 		return "er_wrong_and_expr"
 	case ErrJoinNoOnCondition:
 		return "er_join_no_on_condition"
+	case ErrColumnTypeImplicitConversion:
+		return "er_column_type_implicit_conversion"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}
@@ -1233,5 +1236,11 @@ func CheckAuditSetting(cnf *config.Config) {
 		cnf.IncLevel.ER_TEXT_NOT_NULLABLE_ERROR = int8(GetErrorLevel(ER_TEXT_NOT_NULLABLE_ERROR))
 	} else {
 		cnf.IncLevel.ER_TEXT_NOT_NULLABLE_ERROR = 0
+	}
+
+	if cnf.Inc.CheckColumnTypeConversion {
+		cnf.IncLevel.ErrColumnTypeImplicitConversion = int8(GetErrorLevel(ErrColumnTypeImplicitConversion))
+	} else {
+		cnf.IncLevel.ErrColumnTypeImplicitConversion = 0
 	}
 }
