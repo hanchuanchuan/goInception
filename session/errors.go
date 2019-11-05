@@ -376,7 +376,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrWrongFkDefWithMatch:         "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
 	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
 	ErrJoinNoOnCondition:           "set the on clause for join statement.",
-	ErrImplicitTypeConversion:      "Implicit type conversion is not allowed(column '%s',type '%s').",
+	ErrImplicitTypeConversion:      "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -538,7 +538,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrIdentifierUpper:                     "标识符 '%s' 必须大写.",
 	ErrWrongAndExpr:                        "可能是错误语法!更新多个字段时请使用逗号分隔.",
 	ErrJoinNoOnCondition:                   "join语句请指定on子句.",
-	ErrImplicitTypeConversion:              "不允许隐式类型转换(列'%s',类型'%s').",
+	ErrImplicitTypeConversion:              "不允许隐式类型转换(列'%s.%s',类型'%s').",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
