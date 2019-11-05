@@ -1531,7 +1531,7 @@ func (s *testSessionIncSuite) TestSelect(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableSelectStar = false
 
-	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 int);")
+	s.execSQL(c, "drop table if exists t1;create table t1(id int,c1 integer);")
 	sql = `select * from t1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_SELECT_ONLY_STAR))
@@ -1539,6 +1539,12 @@ func (s *testSessionIncSuite) TestSelect(c *C) {
 	sql = `select id,c1 from t1 union all select * from t1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	// 列隐式转换审核
+	config.GetGlobalConfig().Inc.CheckImplicitTypeConversion = true
+	sql = `select id,c1 from t1 where c1 ="1";`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrImplicitTypeConversion, "t1", "c1", "int"))
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
@@ -1750,27 +1756,27 @@ WHERE tt1.id=1;`
 	sql = `create table t1(id int primary key,c1 char(100));
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrImplicitTypeConversion, "c1", "char"))
+		session.NewErr(session.ErrImplicitTypeConversion, "s1", "c1", "char"))
 
 	sql = `create table t1(id int primary key,c1 varchar(100));
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrImplicitTypeConversion, "c1", "varchar"))
+		session.NewErr(session.ErrImplicitTypeConversion, "s1", "c1", "varchar"))
 
 	sql = `create table t1(id int primary key,c1 json);
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1=1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrImplicitTypeConversion, "c1", "json"))
+		session.NewErr(session.ErrImplicitTypeConversion, "s1", "c1", "json"))
 
 	sql = `create table t1(id int primary key,c1 int);
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1="1";`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrImplicitTypeConversion, "c1", "int"))
+		session.NewErr(session.ErrImplicitTypeConversion, "s1", "c1", "int"))
 
 	sql = `create table t1(id int primary key,c1 int);
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1="1";`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrImplicitTypeConversion, "c1", "int"))
+		session.NewErr(session.ErrImplicitTypeConversion, "s1", "c1", "int"))
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
@@ -1866,6 +1872,14 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 	sql = `create table t2(id int primary key,c1 int);
 			delete t1 from t1 inner join t2 where t2.c1 = 1;`
 	s.testErrorCode(c, sql)
+
+	// 列隐式转换审核
+	config.GetGlobalConfig().Inc.CheckImplicitTypeConversion = true
+	sql = `drop table if exists t1;
+		create table t1(id int primary key,c1 char(100));
+		delete from t1 where c1 =1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrImplicitTypeConversion, "t1", "c1", "char"))
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {

@@ -6680,14 +6680,14 @@ func (s *session) checkColumnTypeImplicitConversion(e *ast.BinaryOperationExpr, 
 	// && val != nil 可以判断非空列的is null逻辑
 
 	if ok1 && ok2 && val != nil {
-		field := getFieldInfo(col.Name, tables)
+		field, tableName := getFieldInfo(col.Name, tables)
 		if field != nil {
 			fieldType := strings.Split(strings.ToLower(field.Type), "(")[0]
 			switch fieldType {
 			case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
 				"bigint", "decimal", "float", "double", "real":
 				if !types.IsTypeNumeric(val.Type.Tp) {
-					s.AppendErrorNo(ErrImplicitTypeConversion, field.Field, fieldType)
+					s.AppendErrorNo(ErrImplicitTypeConversion, tableName, field.Field, fieldType)
 				}
 			case "date", "time", "datetime", "timestamp",
 				"char", "binary", "varchar", "varbinary", "enum", "set",
@@ -6697,7 +6697,7 @@ func (s *session) checkColumnTypeImplicitConversion(e *ast.BinaryOperationExpr, 
 				// "year",
 				// "geometry", "point", "linestring", "polygon",
 				if !types.IsString(val.Type.Tp) && !types.IsTypeTemporal(val.Type.Tp) {
-					s.AppendErrorNo(ErrImplicitTypeConversion, field.Field, fieldType)
+					s.AppendErrorNo(ErrImplicitTypeConversion, tableName, field.Field, fieldType)
 				}
 			}
 		}
@@ -6849,7 +6849,7 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 }
 
 // getFieldItem 获取字段信息
-func getFieldInfo(name *ast.ColumnName, tables []*TableInfo) *FieldInfo {
+func getFieldInfo(name *ast.ColumnName, tables []*TableInfo) (*FieldInfo, string) {
 	db := name.Schema.L
 	for _, t := range tables {
 		var tName string
@@ -6863,12 +6863,12 @@ func getFieldInfo(name *ast.ColumnName, tables []*TableInfo) *FieldInfo {
 			name.Table.L == "" {
 			for i, field := range t.Fields {
 				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
-					return &t.Fields[i]
+					return &t.Fields[i], tName
 				}
 			}
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 // checkFuncItem 检查函数的字段
