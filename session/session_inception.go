@@ -498,10 +498,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						defer s.backupdb.Close()
 					}
 
-					s.mysqlServerVersion()
+					if s.myRecord.ErrLevel != 2 {
+						s.mysqlServerVersion()
 
-					if s.opt.backup && s.DBType == DBTypeTiDB {
-						s.AppendErrorMessage("TiDB暂不支持备份功能.")
+						if s.opt.backup && s.DBType == DBTypeTiDB {
+							s.AppendErrorMessage("TiDB暂不支持备份功能.")
+						}
 					}
 
 					if s.myRecord.ErrLevel == 2 {
