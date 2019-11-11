@@ -6637,6 +6637,10 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				if !found {
 					s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 						fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
+				} else {
+					if len(tableInfoList) > 1 {
+						s.checkFieldItem(l.Column, tableInfoList)
+					}
 				}
 
 				s.checkItem(l.Expr, tableInfoList)
@@ -6814,6 +6818,9 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 	found := false
 	db := name.Schema.L
 
+	// 未指定列别名时，判断列是否有歧义
+	// Error 1052: Column 'refund_amounts' in field list is ambiguous
+	isAmbiguous := false
 	for _, t := range tables {
 		var tName string
 		if t.AsName != "" {
@@ -6822,19 +6829,38 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 			tName = t.Name
 		}
 
-		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
-			(strings.EqualFold(tName, name.Table.L)) ||
-			name.Table.L == "" {
-			for _, field := range t.Fields {
-				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
-					found = true
+		if name.Table.L != "" {
+			if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+				(strings.EqualFold(tName, name.Table.L)) {
+				for _, field := range t.Fields {
+					if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+						found = true
+						break
+					}
+				}
+				if found {
 					break
 				}
 			}
-			if found {
+		} else {
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+					if found {
+						isAmbiguous = true
+						break
+					} else {
+						found = true
+					}
+				}
+			}
+			if isAmbiguous {
 				break
 			}
 		}
+	}
+
+	if isAmbiguous {
+		s.AppendErrorNo(ER_NON_UNIQ_ERROR, name.Name.O)
 	}
 
 	if found {
