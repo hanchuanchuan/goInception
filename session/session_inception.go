@@ -2420,44 +2420,50 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	opt := buf.String()
-	viper.SetConfigType("yaml")
 
-	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
+	v := viper.New()
+	v.SetConfigType("yaml")
+	v.ReadConfig(bytes.NewBuffer([]byte(opt)))
+	v.SetDefault("db", "mysql")
 
-	// 设置默认值
-	viper.SetDefault("db", "mysql")
+	//viper.SetConfigType("yaml")
+	//
+	//viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
+	//
+	//// 设置默认值
+	//viper.SetDefault("db", "mysql")
 
 	s.opt = &sourceOptions{
-		host:           viper.GetString("host"),
-		port:           viper.GetInt("port"),
-		user:           viper.GetString("user"),
-		password:       viper.GetString("password"),
-		check:          viper.GetBool("check"),
-		execute:        viper.GetBool("execute"),
-		backup:         viper.GetBool("backup"),
-		ignoreWarnings: viper.GetBool("ignoreWarnings"),
-		sleep:          viper.GetInt("sleep"),
-		sleepRows:      viper.GetInt("sleepRows"),
+		host:           v.GetString("host"),
+		port:           v.GetInt("port"),
+		user:           v.GetString("user"),
+		password:       v.GetString("password"),
+		check:          v.GetBool("check"),
+		execute:        v.GetBool("execute"),
+		backup:         v.GetBool("backup"),
+		ignoreWarnings: v.GetBool("ignoreWarnings"),
+		sleep:          v.GetInt("sleep"),
+		sleepRows:      v.GetInt("sleepRows"),
 
-		middlewareExtend: viper.GetString("middlewareExtend"),
-		middlewareDB:     viper.GetString("middlewareDB"),
-		parseHost:        viper.GetString("parseHost"),
-		parsePort:        viper.GetInt("parsePort"),
+		middlewareExtend: v.GetString("middlewareExtend"),
+		middlewareDB:     v.GetString("middlewareDB"),
+		parseHost:        v.GetString("parseHost"),
+		parsePort:        v.GetInt("parsePort"),
 
-		fingerprint: viper.GetBool("fingerprint"),
+		fingerprint: v.GetBool("fingerprint"),
 
-		Print: viper.GetBool("queryPrint"),
+		Print: v.GetBool("queryPrint"),
 
-		split:        viper.GetBool("split"),
-		realRowCount: viper.GetBool("realRowCount"),
+		split:        v.GetBool("split"),
+		realRowCount: v.GetBool("realRowCount"),
 
-		db: viper.GetString("db"),
+		db: v.GetString("db"),
 
 		// 连接加密
-		ssl:     viper.GetString("ssl"),
-		sslCA:   viper.GetString("sslCa"),
-		sslCert: viper.GetString("sslCert"),
-		sslKey:  viper.GetString("sslKey"),
+		ssl:     v.GetString("ssl"),
+		sslCA:   v.GetString("sslCa"),
+		sslCert: v.GetString("sslCert"),
+		sslKey:  v.GetString("sslKey"),
 	}
 
 	if s.opt.split || s.opt.check || s.opt.Print {
