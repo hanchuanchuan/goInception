@@ -2420,8 +2420,9 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	opt := buf.String()
-	viper.SetConfigType("yaml")
 
+	viper := viper.New()
+	viper.SetConfigType("yaml")
 	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
 
 	// 设置默认值
