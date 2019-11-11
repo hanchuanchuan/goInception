@@ -1777,6 +1777,28 @@ WHERE tt1.id=1;`
 		update t1 s1 inner join t1 s2 on s1.id=s2.id set s1.c1=s2.c1 where s1.c1="1";`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrImplicitTypeConversion, "s1", "c1", "int"))
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set c1=t2.c2 where t1.id1=t2.id2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set t1.c1=t2.c2 where t1.id1=t2.id2 and c1=2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set t1.c1=c2 where t1.id1=t2.id2 and c1=2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c2"),
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
