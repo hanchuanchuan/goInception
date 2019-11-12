@@ -5,6 +5,12 @@ go_import_path: github.com/hanchuanchuan/goInception
 go:
   - "1.12"
 
+cache:
+  directories:
+    - $HOME/.cache/go-build
+    - $HOME/gopath/pkg/mod
+
+
 services:
 # - docker
 - mysql
