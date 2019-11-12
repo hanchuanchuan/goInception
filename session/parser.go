@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"reflect"
 )
 
 const digits01 = "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
@@ -654,8 +655,14 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 				// 	continue
 				// }
 				if minimalMode {
+					equal := false
+					if _,ok := d.([]byte);ok {
+						equal = reflect.DeepEqual(d, e.Rows[i+1][j])
+					} else {
+						equal = d == e.Rows[i+1][j]
+					}
 					// 最小化模式下,列如果相等则省略
-					if d != e.Rows[i+1][j] {
+					if !equal {
 						if t.Fields[j].IsUnsigned() {
 							d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 						}
