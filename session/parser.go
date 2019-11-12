@@ -655,11 +655,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 				// }
 				if minimalMode {
 					equal := false
-
-					switch d.(type) {
-					case []byte:
+					if _,ok := d.([]byte);ok {
 						equal = reflect.DeepEqual(d, e.Rows[i+1][j])
-					default:
+					} else {
 						equal = d == e.Rows[i+1][j]
 					}
 					// 最小化模式下,列如果相等则省略
