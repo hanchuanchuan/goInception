@@ -4,17 +4,19 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
-	mysqlDriver "github.com/go-sql-driver/mysql"
-	"github.com/juju/errors"
-	"github.com/siddontang/go-mysql/mysql"
-	"github.com/siddontang/go-mysql/replication"
-	log "github.com/sirupsen/logrus"
 	"math"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"reflect"
+
+	mysqlDriver "github.com/go-sql-driver/mysql"
+	"github.com/juju/errors"
+	"github.com/shopspring/decimal"
+	"github.com/siddontang/go-mysql/mysql"
+	"github.com/siddontang/go-mysql/replication"
+	log "github.com/sirupsen/logrus"
 )
 
 const digits01 = "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
@@ -214,11 +216,11 @@ func (s *session) Parser(ctx context.Context) {
 		ServerID: 2000111111 + uint32(s.sessionVars.ConnectionID%10000),
 		Flavor:   flavor,
 
-		Host:     host,
-		Port:     port,
-		User:     s.opt.user,
-		Password: s.opt.password,
-		// UseDecimal: true,
+		Host:       host,
+		Port:       port,
+		User:       s.opt.user,
+		Password:   s.opt.password,
+		UseDecimal: true,
 		// RawModeEnabled:  p.cfg.RawMode,
 		// SemiSyncEnabled: p.cfg.SemiSync,
 	}
@@ -656,9 +658,16 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 				// }
 				if minimalMode {
 					equal := false
-					if _,ok := d.([]byte);ok {
+					switch v := d.(type) {
+					case []byte:
 						equal = reflect.DeepEqual(d, e.Rows[i+1][j])
-					} else {
+					case decimal.Decimal:
+						if newDec, ok := e.Rows[i+1][j].(decimal.Decimal); ok {
+							equal = v.Equal(newDec)
+						} else {
+							equal = false
+						}
+					default:
 						equal = d == e.Rows[i+1][j]
 					}
 					// 最小化模式下,列如果相等则省略
@@ -776,6 +785,8 @@ func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
 			buf = strconv.AppendUint(buf, uint64(v), 10)
 		case int:
 			buf = strconv.AppendInt(buf, int64(v), 10)
+		case decimal.Decimal:
+			buf = append(buf, v.String()...)
 		case float32:
 			buf = strconv.AppendFloat(buf, float64(v), 'g', -1, 32)
 		case float64:
