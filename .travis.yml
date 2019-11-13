@@ -70,7 +70,7 @@ before_install:
 script:
   - rm -f go.sum
   # - docker ps
-  - make dev upload-coverage
+  - travis_wait make dev upload-coverage
 
 after_failure:
   - netstat -nltp
