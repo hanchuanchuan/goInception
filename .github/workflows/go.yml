@@ -1,0 +1,53 @@
+name: Go
+on:
+  push:
+    branches:
+    - master
+    - release/*
+      
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+  
+    - name: Shutdown Ubuntu MySQL (SUDO)
+      run: sudo service mysql stop # Shutdown the Default MySQL, "sudo" is necessary, please not remove it
+
+    - name: Setup MySQL
+      uses: mirromutth/mysql-action@v1.1
+      with:
+        # host port: 3800 # Optional, default value is 3306. The port of host
+        # container port: 3307 # Optional, default value is 3306. The port of container
+        # character set server: 'utf8mb4' # Optional, default value is 'utf8mb4'. The '--character-set-server' option for mysqld
+        # collation server: 'utf8_general_ci' # Optional, default value is 'utf8mb4_general_ci'. The '--collation-server' option for mysqld
+        lower case table names: 1
+        log bin: 1
+        server id: 111
+        binlog format: 'row'
+        gtid mode: 1
+        enforce gtid consistency: 1
+        mysql version: '8.0' # Optional, default value is "latest". The version of the MySQL
+        mysql database: 'test,test_inc' # Optional, default value is "test". The specified database which will be create
+        mysql root password: '' # Required if "mysql user" is empty, default is empty. The root superuser password
+        mysql user: 'test' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
+        mysql password: 'test' # Required if "mysql user" exists. The password for the "mysql user"
+
+    - name: Init MySQL
+      run: |
+        mysql -e "show variables like '%buffer_pool%'"
+        mysql -h 127.0.0.1 -u root -e "select version();create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
+        sudo tail -100 /var/log/mysql/error.log
+        
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: "Build & Test"
+      run: make dev
