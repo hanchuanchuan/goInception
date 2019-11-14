@@ -25,8 +25,8 @@ jobs:
     - name: Setup MySQL
       uses: mirromutth/mysql-action@v1.1
       with:
-        # host port: 3800 # Optional, default value is 3306. The port of host
-        # container port: 3307 # Optional, default value is 3306. The port of container
+        host port: 3306 # Optional, default value is 3306. The port of host
+        container port: 3306 # Optional, default value is 3306. The port of container
         # character set server: 'utf8mb4' # Optional, default value is 'utf8mb4'. The '--character-set-server' option for mysqld
         # collation server: 'utf8_general_ci' # Optional, default value is 'utf8mb4_general_ci'. The '--collation-server' option for mysqld
         lower case table names: 1
@@ -41,9 +41,19 @@ jobs:
         mysql user: 'test' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
         mysql password: 'test' # Required if "mysql user" exists. The password for the "mysql user"
 
+    - name: Waiting for MySQL to be ready
+      run: |
+        for i in `seq 1 10`;
+        do
+          nc -z localhost 3306 && echo Success && exit 0
+          echo -n .
+          sleep 1
+        done
+        echo Failed waiting for MySQL && exit 1
+     
     - name: Init MySQL
       run: |
-        mysql -e "show variables like '%buffer_pool%'"
+        mysql -h 127.0.0.1 -u root -e "show variables like '%buffer_pool%'"
         mysql -h 127.0.0.1 -u root -e "select version();create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
         sudo tail -100 /var/log/mysql/error.log
         
