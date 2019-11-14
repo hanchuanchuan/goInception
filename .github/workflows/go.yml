@@ -25,7 +25,7 @@ jobs:
     - name: Setup MySQL
       uses: samin/mysql-action@v1
       with:
-        host port: 3306 # Optional, default value is 3306. The port of host
+        host port: 3307 # Optional, default value is 3306. The port of host
         container name: mysql
         container label: mysql
         container port: 3306 # Optional, default value is 3306. The port of container
@@ -66,6 +66,8 @@ jobs:
         date "+%Y-%m-%d %H:%M:%S"
         sleep 10
         date "+%Y-%m-%d %H:%M:%S"
+        mysql -h 127.0.0.1 -P 3307  -u root -p'root' -e "show variables like '%buffer_pool%'"
+        
         mysql -h 127.0.0.1 -P 3306  -u root -p'root' -e "show variables like '%buffer_pool%'"
         mysql -h 127.0.0.1 -P 3306  -u root -p'root' -e "select version();create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
         sudo tail -100 /var/log/mysql/error.log
