@@ -15,11 +15,13 @@ jobs:
 
     - name: show mysql info
       run: |
-        sudo ps -ef|grep mysql        
-        mysql -uroot -p'root' -e 'select version()'
+        mysql -uroot -p'root' -e "select version()"
+        mysql -uroot -p'root' -e "show variables like '%data%';"
+        mysql -uroot -p'root' -e "show variables like '%dir%';"
+        mysql -uroot -p'root' -e "show variables like '%log%';"
         mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
         mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8mb4;create database if not exists test_inc DEFAULT CHARACTER SET utf8mb4;"
-        mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
+        mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"
         mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
 
       
@@ -27,9 +29,10 @@ jobs:
       run: sudo ps -ef|grep mysql
 
     - name: Shutdown Ubuntu MySQL (SUDO)
-      run: |
-        sudo service mysql stop 
-        sudo /usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111
+      run: sudo service mysql stop 
+    
+    - name: Startup MySQL
+      run: sudo /usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111 --explicit_defaults_for_timestamp=1 || tail -n100 /var/log/messages
 
 
   
@@ -88,7 +91,7 @@ jobs:
       with:
         go-version: 1.13
       id: go
-              
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
