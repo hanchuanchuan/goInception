@@ -95,4 +95,6 @@ jobs:
       uses: actions/checkout@v1
 
     - name: "Build & Test"
-      run: make dev
+      run: |
+        rm -f go.sum
+        make dev
