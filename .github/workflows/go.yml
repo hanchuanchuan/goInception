@@ -36,6 +36,7 @@ jobs:
         server id: 111
         binlog format: 'row'
         gtid mode: 1
+        bind address: '*' 
         enforce gtid consistency: 1
         mysql version: '8.0' # Optional, default value is "latest". The version of the MySQL
         mysql database: 'test,test_inc' # Optional, default value is "test". The specified database which will be create
@@ -45,8 +46,8 @@ jobs:
 
     - name: docker ps
       run: |
-        docker ps
-        docker logs mysql
+        docker ps        
+        docker logs $(docker ps -q)         
       
     - name: Waiting for MySQL to be ready
       run: |
