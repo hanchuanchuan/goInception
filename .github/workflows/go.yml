@@ -21,7 +21,7 @@ jobs:
 
     - name: show mysql info
       run: |
-        sudo service mysql stop || true
+        sudo service mysql stop
         echo '[mysqld]'            | sudo tee /etc/my.cnf
         echo 'server-id=111'         | sudo tee -a /etc/my.cnf
         echo 'log-bin=on'       | sudo tee -a /etc/my.cnf
@@ -31,7 +31,7 @@ jobs:
         echo 'lower_case_table_names = 1' | sudo tee -a /etc/my.cnf
         echo 'character_set_server = utf8' | sudo tee -a /etc/my.cnf
 
-      - name: Startup MySQL
+    - name: Startup MySQL
       run: |
         sudo service mysql start || true
         sudo tail -100 /var/log/syslog
