@@ -15,9 +15,9 @@ jobs:
 
 
     - name: show mysql info
-      run: ll /etc/my*
+      run: ls -l /etc/my* || true
 
-    - name: show mysql info
+    - name: show mysql info 2
       run: |
         sudo service mysql stop
         echo '[mysqld]'            | sudo tee /etc/my.cnf
