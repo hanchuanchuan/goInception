@@ -15,9 +15,7 @@ jobs:
 
 
     - name: show mysql info
-      run: |
-        mysql -h|grep my.cnf
-        ll /etc/my*
+      run: ll /etc/my*
 
     - name: show mysql info
       run: |
