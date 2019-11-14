@@ -13,6 +13,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+
+    - name: show mysql info
+      run: |
+        mysql -h|grep my.cnf
+        ll /etc/my*
+
+    - name: show mysql info
+      run: |
+        sudo service mysql stop || true
+        echo '[mysqld]'            | sudo tee /etc/my.cnf
+        echo 'server-id=111'         | sudo tee -a /etc/my.cnf
+        echo 'log-bin=on'       | sudo tee -a /etc/my.cnf
+        echo 'binlog-format = row' | sudo tee -a /etc/my.cnf
+        echo 'gtid-mode = ON'      | sudo tee -a /etc/my.cnf
+        echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/my.cnf
+        echo 'lower_case_table_names = 1' | sudo tee -a /etc/my.cnf
+        echo 'character_set_server = utf8' | sudo tee -a /etc/my.cnf
+
+      - name: Startup MySQL
+      run: |
+        sudo service mysql start || true
+        sudo tail -100 /var/log/syslog
+        sudo tail -100 /var/log/mysql/error.log
+
     - name: show mysql info
       run: |
         mysql -uroot -p'root' -e "select version()"
