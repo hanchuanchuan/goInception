@@ -13,49 +13,58 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Set up Go 1.13
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.13
-      id: go
-  
+    - name: show mysql info
+      run: |
+        sudo ps -ef|grep mysql        
+        mysql -uroot -p'root' -e 'select version()'
+        mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
+        mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8mb4;create database if not exists test_inc DEFAULT CHARACTER SET utf8mb4;"
+        mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;select '初始化成功!';"
+        mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
+
+      
     - name: show mysql info
       run: sudo ps -ef|grep mysql
-      
-    - name: Shutdown Ubuntu MySQL (SUDO)
-      run: sudo service mysql stop # Shutdown the Default MySQL, "sudo" is necessary, please not remove it
 
-    - name: Setup MySQL
-      uses: samin/mysql-action@v1
-      with:
-        host port: 3306 # Optional, default value is 3306. The port of host
-        container name: mysql
-        container label: mysql
-        container port: 3306 # Optional, default value is 3306. The port of container
-        # character set server: 'utf8mb4' # Optional, default value is 'utf8mb4'. The '--character-set-server' option for mysqld
-        # collation server: 'utf8_general_ci' # Optional, default value is 'utf8mb4_general_ci'. The '--collation-server' option for mysqld
-        lower case table names: 1
-        log bin: 1
-        server id: 111
-        binlog format: 'row'
-        gtid mode: 1
-        bind address: '*' 
-        enforce gtid consistency: 1
-        skip name resolve: 1
-        mysql version: '5.7' # Optional, default value is "latest". The version of the MySQL
-        mysql database: 'test' # Optional, default value is "test". The specified database which will be create
-        mysql root password: 'root' # Required if "mysql user" is empty, default is empty. The root superuser password
-        mysql user: 'test' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
-        mysql password: 'test' # Required if "mysql user" exists. The password for the "mysql user"
+    - name: Shutdown Ubuntu MySQL (SUDO)
+      run: |
+        sudo service mysql stop 
+        sudo /usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111
+
+
+  
+    # - name: Setup MySQL
+    #   uses: samin/mysql-action@v1
+    #   with:
+    #     host port: 3306 # Optional, default value is 3306. The port of host
+    #     container name: mysql
+    #     container label: mysql
+    #     container port: 3306 
+    #     character set server: 'utf8mb4'
+    #     collation server: 'utf8_general_ci' 
+    #     lower case table names: 1
+    #     log bin: 1
+    #     server id: 111
+    #     binlog format: 'row'
+    #     gtid mode: 1
+    #     bind address: '*' 
+    #     enforce gtid consistency: 1
+    #     skip name resolve: 1
+    #     mysql version: '5.7' 
+    #     mysql database: 'test' 
+    #     mysql root password: 'root' 
+    #     mysql user: 'test' 
+    #     mysql password: 'test' 
 
     - name: docker ps
       run: |
         date "+%Y-%m-%d %H:%M:%S"
         docker ps        
-        docker logs $(docker ps -q)         
+        # docker logs $(docker ps -q)         
       
     - name: Waiting for MySQL to be ready
       run: |
+        sleep 2
         for i in `seq 1 10`;
         do
           nc -z 127.0.0.1 3306 && echo Success && exit 0
@@ -67,14 +76,19 @@ jobs:
     - name: Init MySQL
       run: |
         date "+%Y-%m-%d %H:%M:%S"
-        sleep 10
-        date "+%Y-%m-%d %H:%M:%S"
-        # mysql -h 127.0.0.1 -P 3307  -u root -p'root' -e "show variables like '%buffer_pool%'"
+        sleep 5
+        date "+%Y-%m-%d %H:%M:%S"        
         
         mysql -h 127.0.0.1 -P 3306  -u test -p'test' -e "show variables like '%buffer_pool%'"
         mysql -h 127.0.0.1 -P 3306  -u root -p'root' -e "select version();create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
         sudo tail -100 /var/log/mysql/error.log
-        
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+              
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
