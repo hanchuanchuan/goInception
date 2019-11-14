@@ -38,7 +38,7 @@ jobs:
         gtid mode: 1
         bind address: '*' 
         enforce gtid consistency: 1
-        mysql version: '8.0' # Optional, default value is "latest". The version of the MySQL
+        mysql version: '5.7' # Optional, default value is "latest". The version of the MySQL
         mysql database: 'test,test_inc' # Optional, default value is "test". The specified database which will be create
         mysql root password: '' # Required if "mysql user" is empty, default is empty. The root superuser password
         mysql user: 'test' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
