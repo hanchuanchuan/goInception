@@ -45,9 +45,9 @@ jobs:
       run: |
         for i in `seq 1 10`;
         do
-          nc -z localhost 3306 && echo Success && exit 0
+          nc -z localhost 3306 && echo Success && sleep 5 && exit 0
           echo -n .
-          sleep 1
+          sleep 2
         done
         echo Failed waiting for MySQL && exit 1
      
