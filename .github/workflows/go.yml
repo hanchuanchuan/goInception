@@ -23,7 +23,7 @@ jobs:
       run: sudo service mysql stop # Shutdown the Default MySQL, "sudo" is necessary, please not remove it
 
     - name: Setup MySQL
-      uses: mirromutth/mysql-action@v1.1
+      uses: samin/mysql-action@v1
       with:
         host port: 3306 # Optional, default value is 3306. The port of host
         container port: 3306 # Optional, default value is 3306. The port of container
@@ -48,7 +48,7 @@ jobs:
       run: |
         for i in `seq 1 10`;
         do
-          nc -z localhost 3306 && echo Success && sleep 5 && exit 0
+          nc -z localhost 3306 && echo Success && exit 0
           echo -n .
           sleep 2
         done
@@ -56,6 +56,7 @@ jobs:
      
     - name: Init MySQL
       run: |
+        sleep 5
         mysql -h 127.0.0.1 -u root -e "show variables like '%buffer_pool%'"
         mysql -h 127.0.0.1 -u root -e "select version();create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
         sudo tail -100 /var/log/mysql/error.log
