@@ -13,9 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-
-    - name: show mysql info
-      run: ls -l /etc/my* || true
+    # - name: show mysql info
+    #   run: ls -l /etc/my* || true
 
     - name: show mysql info 2
       run: |
@@ -31,33 +30,21 @@ jobs:
 
     - name: Startup MySQL
       run: |
-        sudo service mysql start || true
-        sudo tail -100 /var/log/syslog
+        sudo service mysql start || true        
         sudo tail -100 /var/log/mysql/error.log
 
-    - name: show mysql info
+    - name: show mysql version
+      run: mysql -uroot -p'root' -e "select version()"
+    
+    - name: show mysql buffer_pool
+      run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
+
+    - name: Init MySQL Database and User
       run: |
-        mysql -uroot -p'root' -e "select version()"
-        mysql -uroot -p'root' -e "show variables like '%data%';"
-        mysql -uroot -p'root' -e "show variables like '%dir%';"
-        mysql -uroot -p'root' -e "show variables like '%log%';"
-        mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
         mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8mb4;create database if not exists test_inc DEFAULT CHARACTER SET utf8mb4;"
         mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"
         mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
-
       
-    - name: show mysql info
-      run: sudo ps -ef|grep mysql
-
-    - name: Shutdown Ubuntu MySQL (SUDO)
-      run: sudo service mysql stop 
-    
-    - name: Startup MySQL
-      run: sudo /usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111 --explicit_defaults_for_timestamp=1 || tail -n100 /var/log/messages
-
-
-  
     # - name: Setup MySQL
     #   uses: samin/mysql-action@v1
     #   with:
@@ -81,11 +68,11 @@ jobs:
     #     mysql user: 'test' 
     #     mysql password: 'test' 
 
-    - name: docker ps
-      run: |
-        date "+%Y-%m-%d %H:%M:%S"
-        docker ps        
-        # docker logs $(docker ps -q)         
+    # - name: docker ps
+    #   run: |
+    #     date "+%Y-%m-%d %H:%M:%S"
+    #     docker ps        
+    #     # docker logs $(docker ps -q)         
       
     - name: Waiting for MySQL to be ready
       run: |
@@ -98,16 +85,6 @@ jobs:
         done
         echo Failed waiting for MySQL && exit 1
      
-    - name: Init MySQL
-      run: |
-        date "+%Y-%m-%d %H:%M:%S"
-        sleep 5
-        date "+%Y-%m-%d %H:%M:%S"        
-        
-        mysql -h 127.0.0.1 -P 3306  -u test -p'test' -e "show variables like '%buffer_pool%'"
-        mysql -h 127.0.0.1 -P 3306  -u root -p'root' -e "select version();create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
-        sudo tail -100 /var/log/mysql/error.log
-
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
       with:
