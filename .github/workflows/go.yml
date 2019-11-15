@@ -43,8 +43,8 @@ jobs:
         echo 'character_set_server = utf8' | sudo tee -a /etc/mysql/my.cnf
         echo ''
         
-        cat /etc/my.cnf
-        cat /etc/mysql/my.cnf
+        cat /etc/my.cnf || true
+        cat /etc/mysql/my.cnf || true
 
     - name: Startup MySQL
       run: |
