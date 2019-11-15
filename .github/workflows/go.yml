@@ -39,12 +39,12 @@ jobs:
     - name: Show MySQL Variables
       run: mysql -uroot -p'root' -e "show variables where Variable_name in ('server_id','log_bin','lower_case_table_names','version');"
     
-    - name: Show MySQL buffer_pool
-      run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
+    # - name: Show MySQL buffer_pool
+    #   run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
 
     - name: Init MySQL Database and User
       run: |
-        mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8mb4;create database if not exists test_inc DEFAULT CHARACTER SET utf8mb4;"
+        mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;"
         mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"
         mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
       
