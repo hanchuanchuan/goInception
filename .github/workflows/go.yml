@@ -34,7 +34,9 @@ jobs:
         sudo tail -100 /var/log/mysql/error.log
 
     - name: show mysql version
-      run: mysql -uroot -p'root' -e "select version()"
+      run: |
+        mysql -uroot -p'root' -e "select version()"
+        mysql -uroot -p'root' -e "show variables where Variable_name in ('server_id','log_bin','lower_case_table_names');"
     
     - name: show mysql buffer_pool
       run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
