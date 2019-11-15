@@ -13,25 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: show mysql info
-      run: ls -l /etc/my* || true
+    # - name: show mysql info
+    #   run: ls -l /etc/my* || true
     
-    - name: show mysql info 33
-      run: cat /etc/alternatives/my.cnf
-      
-    - name: show mysql info 2
+    - name: Set MySQL Config
       run: |
-        sudo service mysql stop
-        # echo '[mysqld]'            | sudo tee /etc/my.cnf
-        # echo 'server-id=111'         | sudo tee -a /etc/my.cnf
-        # echo 'log-bin=on'       | sudo tee -a /etc/my.cnf
-        # echo 'binlog-format = row' | sudo tee -a /etc/my.cnf
-        # echo 'gtid-mode = ON'      | sudo tee -a /etc/my.cnf
-        # echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/my.cnf
-        # echo 'lower_case_table_names = 1' | sudo tee -a /etc/my.cnf
-        # echo 'character_set_server = utf8' | sudo tee -a /etc/my.cnf
-        # echo ''
-        
+        sudo service mysql stop        
         sudo mkdir -p /etc/mysql/ || true
         echo '[mysqld]'            | sudo tee /etc/mysql/my.cnf
         echo 'server-id=111'         | sudo tee -a /etc/mysql/my.cnf
@@ -41,20 +28,18 @@ jobs:
         echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/mysql/my.cnf
         echo 'lower_case_table_names = 1' | sudo tee -a /etc/mysql/my.cnf
         echo 'character_set_server = utf8' | sudo tee -a /etc/mysql/my.cnf
-        echo ''
-        
-        cat /etc/my.cnf || true
-        cat /etc/mysql/my.cnf || true
+                        
+        # cat /etc/mysql/my.cnf || true
 
     - name: Startup MySQL
       run: |
         sudo service mysql start || true        
         sudo tail -100 /var/log/mysql/error.log
 
-    - name: show mysql variables
+    - name: Show MySQL Variables
       run: mysql -uroot -p'root' -e "show variables where Variable_name in ('server_id','log_bin','lower_case_table_names','version');"
     
-    - name: show mysql buffer_pool
+    - name: Show MySQL buffer_pool
       run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
 
     - name: Init MySQL Database and User
