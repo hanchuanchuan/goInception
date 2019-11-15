@@ -1,0 +1,103 @@
+name: Go
+on:
+  push:
+    branches:
+    - master
+    - release/*
+  pull_request:
+      
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    # - name: show mysql info
+    #   run: ls -l /etc/my* || true
+    
+    - name: Set MySQL Config
+      run: |
+        sudo service mysql stop        
+        sudo mkdir -p /etc/mysql/ || true
+        echo '[mysqld]'            | sudo tee /etc/mysql/my.cnf
+        echo 'server-id=111'         | sudo tee -a /etc/mysql/my.cnf
+        echo 'log-bin=on'       | sudo tee -a /etc/mysql/my.cnf
+        echo 'binlog-format = row' | sudo tee -a /etc/mysql/my.cnf
+        echo 'gtid-mode = ON'      | sudo tee -a /etc/mysql/my.cnf
+        echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/mysql/my.cnf
+        echo 'lower_case_table_names = 1' | sudo tee -a /etc/mysql/my.cnf
+        echo 'character_set_server = utf8' | sudo tee -a /etc/mysql/my.cnf
+                        
+        # cat /etc/mysql/my.cnf || true
+
+    - name: Startup MySQL
+      run: |
+        sudo service mysql start || true        
+        sudo tail -100 /var/log/mysql/error.log
+
+    - name: Show MySQL Variables
+      run: mysql -uroot -p'root' -e "show variables where Variable_name in ('server_id','log_bin','lower_case_table_names','version');"
+    
+    - name: Show MySQL buffer_pool
+      run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
+
+    - name: Init MySQL Database and User
+      run: |
+        mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8mb4;create database if not exists test_inc DEFAULT CHARACTER SET utf8mb4;"
+        mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"
+        mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
+      
+    # - name: Setup MySQL
+    #   uses: samin/mysql-action@v1
+    #   with:
+    #     host port: 3306 # Optional, default value is 3306. The port of host
+    #     container name: mysql
+    #     container label: mysql
+    #     container port: 3306 
+    #     character set server: 'utf8mb4'
+    #     collation server: 'utf8_general_ci' 
+    #     lower case table names: 1
+    #     log bin: 1
+    #     server id: 111
+    #     binlog format: 'row'
+    #     gtid mode: 1
+    #     bind address: '*' 
+    #     enforce gtid consistency: 1
+    #     skip name resolve: 1
+    #     mysql version: '5.7' 
+    #     mysql database: 'test' 
+    #     mysql root password: 'root' 
+    #     mysql user: 'test' 
+    #     mysql password: 'test' 
+
+    # - name: docker ps
+    #   run: |
+    #     date "+%Y-%m-%d %H:%M:%S"
+    #     docker ps        
+    #     # docker logs $(docker ps -q)         
+      
+    - name: Waiting for MySQL to be ready
+      run: |
+        sleep 2
+        for i in `seq 1 10`;
+        do
+          nc -z 127.0.0.1 3306 && echo Success && exit 0
+          echo -n .
+          sleep 2
+        done
+        echo Failed waiting for MySQL && exit 1
+     
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    - name: "Build & Test"
+      run: |
+        rm -f go.sum
+        make dev
