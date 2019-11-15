@@ -13,9 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    # - name: show mysql info
-    #   run: ls -l /etc/my* || true
-
+    - name: show mysql info
+      run: ls -l /etc/my* || true
+    
+    - name: show mysql info 33
+      run: cat /etc/alternatives/my.cnf
+        
+    - name: show mysql info 344
+      run: cat /etc/mysql.cnf
+      
     - name: show mysql info 2
       run: |
         sudo service mysql stop
@@ -27,6 +33,8 @@ jobs:
         echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/my.cnf
         echo 'lower_case_table_names = 1' | sudo tee -a /etc/my.cnf
         echo 'character_set_server = utf8' | sudo tee -a /etc/my.cnf
+        echo ''
+        cat /etc/my.cnf
 
     - name: Startup MySQL
       run: |
