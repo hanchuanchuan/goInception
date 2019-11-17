@@ -1,7 +1,7 @@
 #!/bin/bash
 # set -ueax
 # when you want to debug, please uncomment the above line and comment the following line.
-set -uea
+set -ea
 
 OLD_GOPATH=$GOPATH
 PINGCAP_PATH="$(dirname $PWD)"
