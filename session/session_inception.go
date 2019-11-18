@@ -4993,7 +4993,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, c.Name.O) && !field.IsDeleted {
 				found = true
-				if field.Null == "NO" {
+				if field.Null == "NO" && !strings.Contains(field.Extra, "auto_increment") {
 					columnsCannotNull[c.Name.L] = true
 				}
 				break
