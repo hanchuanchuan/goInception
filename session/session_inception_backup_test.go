@@ -875,7 +875,7 @@ func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
 	res = s.makeSQL(c, tk, "alter table t2 rename to t1;")
 	row = res.Rows()[int(tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t2` RENAME TO `test_inc`.`t2`;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` RENAME TO `test_inc`.`t2`;", Commentf("%v", res.Rows()))
 
 }
 

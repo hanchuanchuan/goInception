@@ -3442,10 +3442,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	s.mysqlShowTableStatus(table)
 	s.mysqlGetTableSize(table)
 
+	// 如果修改了表名,则调整回滚语句
+	hasRenameTable := false
 	for _, alter := range node.Specs {
 		if alter.Tp != ast.AlterTableRenameTable {
 			s.checkAlterUseOsc(table)
 		} else {
+			hasRenameTable = true
 			s.myRecord.useOsc = false
 			break
 		}
@@ -3535,8 +3538,26 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	// 生成alter回滚语句,多个时逆向
 	if !s.hasError() && s.opt.execute && s.opt.backup {
-		s.myRecord.DDLRollback = fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
-			table.Schema, table.Name)
+		if hasRenameTable {
+			for _, alter := range node.Specs {
+				if alter.Tp == ast.AlterTableRenameTable {
+					table := &TableInfo{
+						Name: alter.NewTable.Name.String(),
+					}
+					if alter.NewTable.Schema.O == "" {
+						table.Schema = s.DBName
+					} else {
+						table.Schema = alter.NewTable.Schema.O
+					}
+					s.myRecord.DDLRollback = fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
+						table.Schema, table.Name)
+					break
+				}
+			}
+		} else {
+			s.myRecord.DDLRollback = fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
+				table.Schema, table.Name)
+		}
 
 		n := len(s.alterRollbackBuffer)
 		if n > 1 {
