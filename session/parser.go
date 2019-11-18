@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/juju/errors"
@@ -414,6 +416,8 @@ func (s *session) flush(table string, record *Record) {
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				record.StageStatus = StatusBackupFail
 				record.AppendErrorMessage(myErr.Message)
+				// log.Error(fmt.Sprintf(sql, table, values))
+				// log.Error(s.insertBuffer)
 				log.Error(myErr)
 			}
 		}
@@ -486,7 +490,7 @@ func (s *session) generateInsertSql(t *TableInfo, e *replication.RowsEvent,
 			// }
 		}
 
-		r, err := InterpolateParams(sql, vv)
+		r, err := InterpolateParams(sql, vv, s.Inc.HexBlob)
 		s.checkError(err)
 
 		s.write(r, binEvent)
@@ -549,7 +553,7 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 		}
 		newSql := strings.Join([]string{sql, strings.Join(columnNames, " AND")}, "")
 
-		r, err := InterpolateParams(newSql, vv)
+		r, err := InterpolateParams(newSql, vv, s.Inc.HexBlob)
 		s.checkError(err)
 
 		s.write(r, binEvent)
@@ -729,7 +733,7 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 			}
 			newSql = strings.Join([]string{sql, strings.Join(columnNames, " AND")}, "")
 			newValues = append(newValues, oldValues...)
-			r, err := InterpolateParams(newSql, newValues)
+			r, err := InterpolateParams(newSql, newValues, s.Inc.HexBlob)
 			s.checkError(err)
 
 			s.write(r, binEvent)
@@ -742,7 +746,7 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 	return string(buf), nil
 }
 
-func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
+func InterpolateParams(query string, args []driver.Value, hexBlob bool) ([]byte, error) {
 	// Number of ? should be same to len(args)
 	if strings.Count(query, "?") != len(args) {
 		log.Error("sql", query, "需要参数", strings.Count(query, "?"),
@@ -771,6 +775,9 @@ func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
 			buf = append(buf, "NULL"...)
 			continue
 		}
+
+		// log.Info(arg)
+		// log.Infof("%T", arg)
 
 		switch v := arg.(type) {
 		case int8:
@@ -843,18 +850,41 @@ func InterpolateParams(query string, args []driver.Value) ([]byte, error) {
 				buf = append(buf, '\'')
 			}
 		case string:
-			buf = append(buf, '\'')
-			buf = escapeBytesBackslash(buf, []byte(v))
+			if hexBlob {
+				if utf8.ValidString(v) {
+					buf = append(buf, '\'')
+					buf = escapeBytesBackslash(buf, []byte(v))
+				} else {
+					buf = append(buf, 'X')
+					buf = append(buf, '\'')
+					b := hex.EncodeToString([]byte(v))
+					buf = append(buf, b...)
+				}
+			} else {
+				buf = append(buf, '\'')
+				buf = escapeBytesBackslash(buf, []byte(v))
+			}
+
 			buf = append(buf, '\'')
 		case []byte:
 			if v == nil {
 				buf = append(buf, "NULL"...)
 			} else {
 				// buf = append(buf, "_binary'"...)
-				buf = append(buf, '\'')
-
-				buf = escapeBytesBackslash(buf, v)
-
+				if hexBlob {
+					if utf8.Valid(v) {
+						buf = append(buf, '\'')
+						buf = escapeBytesBackslash(buf, v)
+					} else {
+						buf = append(buf, 'X')
+						buf = append(buf, '\'')
+						b := hex.EncodeToString(v)
+						buf = append(buf, b...)
+					}
+				} else {
+					buf = append(buf, '\'')
+					buf = escapeBytesBackslash(buf, v)
+				}
 				buf = append(buf, '\'')
 			}
 		default:
