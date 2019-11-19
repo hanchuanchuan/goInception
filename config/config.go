@@ -324,8 +324,10 @@ type Inc struct {
 
 	// 全量日志
 	GeneralLog bool `toml:"general_log" json:"general_log"`
-
-	Lang string `toml:"lang" json:"lang"`
+	// 使用十六进制表示法转储二进制列
+	// 受影响的数据类型为BINARY，VARBINARY，BLOB类型
+	HexBlob bool   `toml:"hex_blob" json:"hex_blob"`
+	Lang    string `toml:"lang" json:"lang"`
 	// 连接服务器允许的最大包大小,以字节为单位 默认值为4194304(即4MB)
 	MaxAllowedPacket uint `toml:"max_allowed_packet" json:"max_allowed_packet"`
 	MaxCharLength    uint `toml:"max_char_length" json:"max_char_length"`

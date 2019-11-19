@@ -6159,7 +6159,7 @@ func (s *session) executeInceptionShow(sql string) ([]sqlexec.RecordSet, error) 
 				vv = append(vv, *val)
 			}
 
-			res, err := InterpolateParams(paramValues, vv)
+			res, err := InterpolateParams(paramValues, vv, s.Inc.HexBlob)
 			if err != nil {
 				s.AppendErrorMessage(err.Error())
 				return nil, nil
