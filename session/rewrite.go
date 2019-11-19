@@ -77,6 +77,7 @@ func delete2Select(stmt *sqlparser.Delete) string {
 		From:    stmt.TableExprs,
 		Where:   stmt.Where,
 		OrderBy: stmt.OrderBy,
+		Limit:   stmt.Limit,
 	}
 	return sqlparser.String(newSQL)
 }
@@ -135,8 +136,20 @@ func (rw *Rewrite) select2Count() string {
 			Where:    stmt.Where,
 			GroupBy:  stmt.GroupBy,
 			Having:   stmt.Having,
-			Limit:    stmt.Limit,
 		}
+
+		//fix the bug when the 'limit' we assign will not be the condition which what we exactly want
+		//for example we want to get the affected rows from the sql 'select * from table where id < 100 limit 10'
+		//before the bug fixed bug, the rewrited sql is 'select count(*) from table where id < 100 limit 10', which is incorrect
+		//what we exactly want is 'select count(*) from (select 1 from table where id < 100 limit 10)'
+		if stmt.Limit != nil {
+			newSQL.Limit = stmt.Limit
+			newSQL.SelectExprs = []sqlparser.SelectExpr{
+				new(sqlparser.StarExpr),
+			}
+			return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", sqlparser.String(newSQL))
+		}
+
 		return sqlparser.String(newSQL)
 	// case *sqlparser.Union, *sqlparser.ParenSelect:
 	// 	return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", rw.SQL)
