@@ -23,9 +23,8 @@ import (
 
 // Rewrite 用于重写SQL
 type Rewrite struct {
-	SQL    string
-	NewSQL string
-	Stmt   sqlparser.Statement
+	SQL  string
+	Stmt sqlparser.Statement
 }
 
 // NewRewrite 返回一个*Rewrite对象，如果SQL无法被正常解析，将错误输出到日志中，返回一个nil
@@ -42,30 +41,28 @@ func NewRewrite(sql string) (*Rewrite, error) {
 }
 
 // Rewrite 入口函数
-func (rw *Rewrite) Rewrite() (*Rewrite, error) {
+func (rw *Rewrite) Rewrite() error {
 	return rw.RewriteDML2Select()
 }
 
 // RewriteDML2Select dml2select: DML 转成 SELECT，兼容低版本的 EXPLAIN
-func (rw *Rewrite) RewriteDML2Select() (*Rewrite, error) {
+func (rw *Rewrite) RewriteDML2Select() error {
 	if rw.Stmt == nil {
-		return rw, nil
+		return nil
 	}
-
 	switch stmt := rw.Stmt.(type) {
 	case *sqlparser.Select:
-		rw.NewSQL = rw.SQL
-		return rw, nil
+		return nil
 	case *sqlparser.Delete: // Multi DELETE not support yet.
-		rw.NewSQL = delete2Select(stmt)
+		rw.SQL = delete2Select(stmt)
 	case *sqlparser.Insert:
-		rw.NewSQL = insert2Select(stmt)
+		rw.SQL = insert2Select(stmt)
 	case *sqlparser.Update: // Multi UPDATE not support yet.
-		rw.NewSQL = update2Select(stmt)
+		rw.SQL = update2Select(stmt)
 	}
 	var err error
-	rw.Stmt, err = sqlparser.Parse(rw.NewSQL)
-	return rw, err
+	rw.Stmt, err = sqlparser.Parse(rw.SQL)
+	return err
 }
 
 // delete2Select 将 Delete 语句改写成 Select
@@ -105,6 +102,10 @@ func insert2Select(stmt *sqlparser.Insert) string {
 	}
 
 	return "select 1 from DUAL"
+}
+
+func (rw *Rewrite) TestSelect2Count() string {
+	return rw.select2Count()
 }
 
 // select2Count : SELECT 转成 COUNT语句
