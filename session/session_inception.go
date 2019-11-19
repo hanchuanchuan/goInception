@@ -6488,20 +6488,13 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			s.AppendErrorMessage(err.Error())
 		} else {
-			rw, err = rw.RewriteDML2Select()
+			err = rw.RewriteDML2Select()
 			if err != nil {
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(err.Error())
 			} else {
-				stmt, err := NewRewrite(rw.NewSQL)
-				if err != nil {
-					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-					s.AppendErrorMessage(err.Error())
-				} else {
-					sql = stmt.select2Count()
-					// log.Info(sql)
-					s.getRealRowCount(sql, sqlId)
-				}
+				sql = rw.select2Count()
+				s.getRealRowCount(sql, sqlId)
 			}
 		}
 		return
@@ -6512,12 +6505,12 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(err.Error())
 			} else {
-				rw, err = rw.RewriteDML2Select()
+				err = rw.RewriteDML2Select()
 				if err != nil {
 					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 					s.AppendErrorMessage(err.Error())
 				} else {
-					sql = rw.NewSQL
+					sql = rw.SQL
 					if sql == "" {
 						return
 					}
