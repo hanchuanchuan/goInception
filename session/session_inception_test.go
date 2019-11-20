@@ -2564,3 +2564,98 @@ func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
 }
+
+func (s *testSessionIncSuite) TestNewRewrite(c *C) {
+	var (
+		newSql string
+		rw     *session.Rewrite
+	)
+
+	sqls := []struct {
+		sql       string
+		selectSql string
+		countSql  string
+	}{
+		{
+			"insert into t2 select * from t1 where id >0;",
+			"select * from t1 where id > 0",
+			"select count(*) from t1 where id > 0",
+		},
+		{
+			"insert into t2 select * from t1 where id >0 limit 10;",
+			"select * from t1 where id > 0 limit 10",
+			"SELECT COUNT(1) FROM (select * from t1 where id > 0 limit 10)t",
+		},
+		{
+			"insert into t2 select * from t1 where id >0 order by c1 desc limit 10;",
+			"select * from t1 where id > 0 order by c1 desc limit 10",
+			"SELECT COUNT(1) FROM (select * from t1 where id > 0 limit 10)t",
+		},
+		{
+			"insert into t2 select distinct id from t1 where id >0 order by c1 desc limit 10;",
+			"select distinct id from t1 where id > 0 order by c1 desc limit 10",
+			"SELECT COUNT(1) FROM (select distinct id from t1 where id > 0 order by c1 desc limit 10)t",
+		},
+		{
+			"insert into t2 select c1,count(1) as cnt from t1 where id >0 group by c1 limit 10;",
+			"select c1, count(1) as cnt from t1 where id > 0 group by c1 limit 10",
+			"SELECT COUNT(1) FROM (select c1, count(1) as cnt from t1 where id > 0 group by c1 limit 10)t",
+		},
+
+		{
+			"delete from t1 where id >0;",
+			"select * from t1 where id > 0",
+			"select count(*) from t1 where id > 0",
+		},
+		{
+			"delete from t1 where id >0 limit 10;",
+			"select * from t1 where id > 0 limit 10",
+			"SELECT COUNT(1) FROM (select * from t1 where id > 0 limit 10)t",
+		},
+		{
+			"delete from t1 where id >0 order by c1 desc limit 10;",
+			"select * from t1 where id > 0 order by c1 desc limit 10",
+			"SELECT COUNT(1) FROM (select * from t1 where id > 0 limit 10)t",
+		},
+
+		{
+			"update t1 set c1=1 where id >0;",
+			"select * from t1 where id > 0",
+			"select count(*) from t1 where id > 0",
+		},
+		{
+			"update t1 set c1=1 where id >0 limit 10;",
+			"select * from t1 where id > 0 limit 10",
+			"SELECT COUNT(1) FROM (select * from t1 where id > 0 limit 10)t",
+		},
+		{
+			"update t1 set c1=1 where id >0 order by c1 desc limit 10;",
+			"select * from t1 where id > 0 order by c1 desc limit 10",
+			"SELECT COUNT(1) FROM (select * from t1 where id > 0 limit 10)t",
+		},
+		{
+			"update t1 inner join t2 on t1.id=t2.id2  set t1.c1=t2.c1 where c11=1;",
+			"select * from t1 join t2 on t1.id = t2.id2 where c11 = 1",
+			"select count(*) from t1 join t2 on t1.id = t2.id2 where c11 = 1",
+		},
+		{
+			"update t1,t2 set t1.c1=t2.c1 where t1.id=t2.id2 and c11=1;",
+			"select * from t1, t2 where t1.id = t2.id2 and c11 = 1",
+			"select count(*) from t1, t2 where t1.id = t2.id2 and c11 = 1",
+		},
+		{
+			"update t1,t2 set t1.c1=t2.c1 where t1.id=t2.id2 and c11=1 limit 10;",
+			"select * from t1, t2 where t1.id = t2.id2 and c11 = 1 limit 10",
+			"SELECT COUNT(1) FROM (select * from t1, t2 where t1.id = t2.id2 and c11 = 1 limit 10)t",
+		},
+	}
+
+	for _, row := range sqls {
+		rw, _ = session.NewRewrite(row.sql)
+		rw.RewriteDML2Select()
+		c.Assert(rw.SQL, Equals, row.selectSql)
+
+		newSql = rw.TestSelect2Count()
+		c.Assert(newSql, Equals, row.countSql)
+	}
+}
