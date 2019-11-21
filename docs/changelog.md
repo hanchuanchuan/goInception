@@ -1,6 +1,17 @@
 # goInception 更新日志
 
 
+## [v1.1.4] - 2019-11-21
+
+### Fix
+* 修复非空字段insert时对自增列的处理 (#113)
+* 修复alter table rename语句的回滚SQL生成错误问题
+* 修复在开启`real_row_count`选项时,DML转select count时未处理limit的问题 (#119)
+
+### New Features
+* 添加新参数 `hex_blob` ,以支持回滚时解析二进制类型 (#101)
+
+
 ## [v1.1.3] - 2019-11-13
 
 ### Fix
