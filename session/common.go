@@ -177,7 +177,7 @@ func StringStorageReq(dataType string, charset string) int {
 		}
 		return typeLength[0]
 	case "varchar", "varbinary":
-		if typeLength[0] < 255 {
+		if typeLength[0] <= 255 {
 			return typeLength[0]*bysPerChar + 1
 		}
 		return typeLength[0]*bysPerChar + 2
