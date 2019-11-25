@@ -33,7 +33,6 @@ import (
 )
 
 var _ = Suite(&testSessionIncSuite{})
-var sql string
 
 func TestAudit(t *testing.T) {
 	TestingT(t)
@@ -620,7 +619,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "create table t1(a int) character set laitn1;"
+	sql = "create table t1(a int) character set latin1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 
@@ -684,6 +683,32 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table test_error_code_3(c1 int,c2 text, unique uq_1(c1,c2(3069)));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+	// ----------------- 索引长度审核 varchar ----------------------
+	if indexMaxLength == 3072 {
+		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(1024),c3 int, key uq_1(c2,c3)) default charset utf8;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(1023),c3 int, key uq_1(c2,c3)) default charset utf8;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(1022),c3 int, key uq_1(c2,c3)) default charset utf8;"
+		s.testErrorCode(c, sql)
+	} else {
+		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(256),c3 int, key uq_1(c2,c3)) default charset utf8;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(255),c3 int, key uq_1(c2,c3)) default charset utf8;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(254),c3 int, key uq_1(c2,c3)) default charset utf8;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+	}
 
 	// sql = "create table test_error_code_3(c1 int,c2 text, unique uq_1(c1,c2(3068)));"
 	// if indexMaxLength == 3072 {
@@ -2350,7 +2375,8 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8"
 	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8_bin;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8"),
+		session.NewErrf("字符集和排序规则不匹配!"))
 
 	config.GetGlobalConfig().Inc.SupportCollation = "utf8_bin"
 	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8mb4_bin;`

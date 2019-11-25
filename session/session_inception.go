@@ -4758,7 +4758,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
-			maxLength := foundField.GetDataBytes(s.DBVersion)
+			maxLength := foundField.GetDataBytes(s.DBVersion, s.Inc.DefaultCharset)
 
 			// Length must be specified for BLOB and TEXT column indexes.
 			// if types.IsTypeBlob(col.FieldType.Tp) && ic.Length == types.UnspecifiedLength {
@@ -4773,7 +4773,8 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 					col.Length = types.UnspecifiedLength
 				}
 
-				if (strings.Contains(strings.ToLower(foundField.Type), "char") ||
+				if (strings.Contains(strings.ToLower(foundField.Type), "blob") ||
+					strings.Contains(strings.ToLower(foundField.Type), "char") ||
 					strings.Contains(strings.ToLower(foundField.Type), "text")) &&
 					col.Length > maxLength {
 					s.AppendErrorNo(ER_WRONG_SUB_KEY)
@@ -4784,11 +4785,29 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			if col.Length == types.UnspecifiedLength {
 				keyMaxLen += maxLength
 			} else {
-				if foundField.Collation == "" || strings.HasPrefix(foundField.Collation, "utf8mb4") {
-					keyMaxLen += col.Length * 4
-				} else {
-					keyMaxLen += col.Length * 3
+				tmpField := &FieldInfo{
+					Field:     foundField.Field,
+					Type:      fmt.Sprintf("%s(%d)", GetDataTypeBase(foundField.Type), col.Length),
+					Collation: foundField.Collation,
 				}
+
+				keyMaxLen += tmpField.GetDataLength(s.DBVersion, s.Inc.DefaultCharset)
+
+				// bysPerChar := 3
+				// charset := s.Inc.DefaultCharset
+				// if foundField.Collation != "" {
+				// 	charset = strings.SplitN(foundField.Collation, "_", 2)[0]
+				// }
+				// if _, ok := charSets[strings.ToLower(charset)]; ok {
+				// 	bysPerChar = charSets[strings.ToLower(charset)]
+				// }
+				// keyMaxLen += col.Length * bysPerChar
+
+				// if foundField.Collation == "" || strings.HasPrefix(foundField.Collation, "utf8mb4") {
+				// 	keyMaxLen += col.Length * 4
+				// } else {
+				// 	keyMaxLen += col.Length * 3
+				// }
 			}
 
 			if tp == ast.ConstraintPrimaryKey {
@@ -7531,12 +7550,18 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			}
 			field.Tp.Flag |= mysql.OnUpdateNowFlag
 		case ast.ColumnOptionCollate:
-			c.Collation = op.Expr.GetDatum().GetString()
+			c.Collation = op.StrValue
 		}
 	}
 
 	if c.Collation == "" && t.Collation != "" {
-		c.Collation = t.Collation
+		// 字符串类型才需要排序规则
+		switch strings.ToLower(GetDataTypeBase(c.Type)) {
+		case "char", "binary", "varchar", "varbinary", "enum", "set",
+			"geometry", "point", "linestring", "polygon",
+			"tinytext", "text", "mediumtext", "longtext":
+			c.Collation = t.Collation
+		}
 	}
 
 	if c.Key != "PRI" && mysql.HasPriKeyFlag(field.Tp.Flag) {
