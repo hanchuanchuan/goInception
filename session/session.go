@@ -237,6 +237,8 @@ type session struct {
 
 	// 目标数据库的innodb_large_prefix设置
 	innodbLargePrefix bool
+	// 目标数据库的lower-case-table-names设置, 默认值为1,即不区分大小写
+	LowerCaseTableNames int
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
@@ -1319,6 +1321,7 @@ func createSession(store kv.Storage) (*session, error) {
 		sessionVars:     variable.NewSessionVars(),
 		ddlOwnerChecker: dom.DDL().OwnerManager(),
 
+		LowerCaseTableNames: 1,
 		// haveBegin:  false,
 		// haveCommit: false,
 
