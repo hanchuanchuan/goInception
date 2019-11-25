@@ -369,7 +369,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "drop table if exists t1;create table t1(a int) character set laitn1;"
+	sql = "drop table if exists t1;create table t1(a int) character set latin1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 
@@ -1217,7 +1217,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "drop database if exists test123456;create database test123456 character set laitn1;"
+	sql = "drop database if exists test123456;create database test123456 character set latin1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 }
