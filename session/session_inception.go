@@ -2071,7 +2071,7 @@ func (s *session) mysqlServerVersion() {
 
 	var name, value string
 	// sql := "select @@version;"
-	sql := `show variables where Variable_name in ('innodb_large_prefix','version','sql_mode');`
+	sql := `show variables where Variable_name in ('innodb_large_prefix','version','sql_mode','lower_case_table_names');`
 
 	rows, err := s.Raw(sql)
 	if rows != nil {
@@ -2124,6 +2124,13 @@ func (s *session) mysqlServerVersion() {
 					vars := s.sessionVars
 					// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
 					sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
+				}
+			case "lower_case_table_names":
+				if v, err := strconv.Atoi(value); err != nil {
+					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+					log.Warning(value)
+				} else {
+					s.LowerCaseTableNames = v
 				}
 			}
 		}
@@ -4909,7 +4916,11 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		return false
 	}
 
-	if v, ok := s.dbCacheList[strings.ToLower(db)]; ok {
+	key := db
+	if s.IgnoreCase() {
+		key = strings.ToLower(db)
+	}
+	if v, ok := s.dbCacheList[key]; ok {
 		return !v.IsDeleted
 	}
 
@@ -4942,7 +4953,7 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		}
 		return false
 	} else {
-		s.dbCacheList[strings.ToLower(db)] = &DBInfo{
+		s.dbCacheList[key] = &DBInfo{
 			Name:      db,
 			IsNew:     false,
 			IsDeleted: false,
@@ -7381,7 +7392,10 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 	}
 
 	key := fmt.Sprintf("%s.%s", db, tableName)
-	key = strings.ToLower(key)
+
+	if s.IgnoreCase() {
+		key = strings.ToLower(key)
+	}
 
 	if t, ok := s.tableCacheList[key]; ok {
 		// 如果表已删除, 之后又使用到,则报错
@@ -7976,4 +7990,9 @@ func (s *session) checkSetStmt(node *ast.SetStmt) {
 			continue
 		}
 	}
+}
+
+// IgnoreCase 判断是否忽略大小写
+func (s *session) IgnoreCase() bool {
+	return s.LowerCaseTableNames > 0
 }
