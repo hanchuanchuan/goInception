@@ -20,7 +20,6 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/util/testkit"
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
 )
@@ -57,22 +56,6 @@ func (s *testSessionIncBackupSuite) TearDownSuite(c *C) {
 
 func (s *testSessionIncBackupSuite) TearDownTest(c *C) {
 	s.tearDownTest(c)
-}
-
-func (s *testSessionIncBackupSuite) mustRunBackup(c *C, sql string) *testkit.Result {
-	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
-inception_magic_start;
-use test_inc;
-%s;
-inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
-
-	// 需要成功执行
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
-	}
-
-	return res
 }
 
 func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
@@ -444,8 +427,26 @@ func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
 	res = s.mustRunBackup(c, "update t1 set c1 = 123456789012 where id>0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `c1`=123456789012.1234 WHERE `id`=1;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals,
+		"UPDATE `test_inc`.`t1` SET `c1`=123456789012.1234 WHERE `id`=1;", Commentf("%v", res.Rows()))
 
+	// -------------------- 多表update -------------------
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,1,null,null);
+		update table1 t1,table2 t2 set t1.c1=10,t2.c22=20 where t1.id1=t2.id2 and t2.c1=1;`
+	// res = s.mustRunBackup(c, sql)
+	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	// backup = s.query("table1", row[7].(string))
+	// c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `c1`=123456789012.1234 WHERE `id`=1;", Commentf("%v", res.Rows()))
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=1;",
+		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=2;",
+	)
 }
 
 func (s *testSessionIncBackupSuite) TestMinimalUpdate(c *C) {
