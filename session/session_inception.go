@@ -6708,21 +6708,29 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		} else {
 			// 新增表 or 新增列时,不能做explain
 			for _, l := range node.List {
-				found := false
-				for _, field := range s.myRecord.TableInfo.Fields {
-					if strings.EqualFold(field.Field, l.Column.Name.L) && !field.IsDeleted {
-						found = true
-						break
-					}
+				// 未指定表别名时加默认设置
+				if l.Column.Table.L == "" && len(tableInfoList) == 1 {
+					l.Column.Table = model.NewCIStr(s.myRecord.TableInfo.Name)
 				}
-				if !found {
-					s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
-						fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
-				} else {
-					if len(tableInfoList) > 1 {
-						s.checkFieldItem(l.Column, tableInfoList)
-					}
-				}
+
+				s.checkFieldItem(l.Column, tableInfoList)
+
+				// 多表update情况时，下面的判断会有问题
+				// found := false
+				// for _, field := range s.myRecord.TableInfo.Fields {
+				// 	if strings.EqualFold(field.Field, l.Column.Name.L) && !field.IsDeleted {
+				// 		found = true
+				// 		break
+				// 	}
+				// }
+				// if !found {
+				// 	s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
+				// 		fmt.Sprintf("%s.%s", s.myRecord.TableInfo.Name, l.Column.Name.L))
+				// } else {
+				// 	if len(tableInfoList) > 1 {
+				// 		s.checkFieldItem(l.Column, tableInfoList)
+				// 	}
+				// }
 
 				s.checkItem(l.Expr, tableInfoList)
 			}

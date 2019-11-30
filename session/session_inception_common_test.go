@@ -34,6 +34,9 @@ import (
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/parser"
 )
 
 var _ = Suite(&testCommon{})
@@ -61,6 +64,9 @@ type testCommon struct {
 	ignoreCase bool
 
 	realRowCount bool
+
+	remoteBackupTable string
+	parser            *parser.Parser
 }
 
 func (s *testCommon) initSetUp(c *C) {
@@ -109,10 +115,13 @@ func (s *testCommon) initSetUp(c *C) {
 
 	session.SetLanguage("en-US")
 
+	s.remoteBackupTable = "$_$Inception_backup_information$_$"
+	s.parser = parser.New()
+
 	c.Assert(s.mysqlServerVersion(), IsNil)
 	c.Assert(s.sqlMode, Not(Equals), "")
 	// log.Infof("%#v", s)
-	fmt.Println("数据库版本: ", s.DBVersion)
+	log.Info("数据库版本: ", s.DBVersion)
 }
 
 func (s *testCommon) tearDownSuite(c *C) {
@@ -163,13 +172,13 @@ inception_magic_commit;`
 		}
 		n := strings.Replace(name, "'", "", -1)
 		res := s.tk.MustQueryInc(fmt.Sprintf(exec, s.getAddr(), "drop table `"+n+"`"))
-		// fmt.Println(res.Rows())
+		// log.Info(res.Rows())
 		c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
 		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 		c.Assert(row[2], Equals, "0", Commentf("%v", row))
 		c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
 		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
-		// fmt.Println(row[4])
+		// log.Info(row[4])
 		// c.Assert(row[4].(string), IsNil)
 	}
 
@@ -200,6 +209,23 @@ inception_magic_commit;`
 	return tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
 }
 
+func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+	session.CheckAuditSetting(config.GetGlobalConfig())
+	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+
+	return res
+}
+
 func (s *testCommon) runBackup(sql string) *testkit.Result {
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
@@ -218,23 +244,6 @@ inception_magic_commit;`
 	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
 
 	// 需要成功执行
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
-	}
-
-	return res
-}
-
-func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
-	config.GetGlobalConfig().Inc.EnableDropTable = true
-	session.CheckAuditSetting(config.GetGlobalConfig())
-	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
-inception_magic_start;
-use test_inc;
-%s;
-inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
-
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
@@ -268,7 +277,7 @@ func (s *testCommon) mysqlServerVersion() error {
 	}
 
 	var name, value string
-	sql := `show variables where Variable_name in 
+	sql := `show variables where Variable_name in
 		('explicit_defaults_for_timestamp','innodb_large_prefix','version','sql_mode','lower_case_table_names');`
 	rows, err := s.db.Raw(sql).Rows()
 	if err != nil {
@@ -320,4 +329,235 @@ func (s *testCommon) mysqlServerVersion() error {
 		}
 	}
 	return nil
+}
+
+func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...string) error {
+	c.Assert(len(rows), Not(Equals), 0)
+
+	inc := config.GetGlobalConfig().Inc
+	if s.db == nil || s.db.DB().Ping() != nil {
+		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
+			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
+
+		db, err := gorm.Open("mysql", addr)
+		if err != nil {
+			log.Info(err)
+			return err
+		}
+		// 禁用日志记录器，不显示任何日志
+		db.LogMode(false)
+		s.db = db
+	}
+
+	// 有可能是 不同的表,不同的库
+
+	result := []string{}
+
+	// affectedRows := 0
+	// opid := ""
+	// backupDBName := ""
+	// sqlIndex := 0
+	for _, row := range rows {
+		opid := ""
+		backupDBName := ""
+		runSql := ""
+
+		if row[5] != nil {
+			runSql = row[5].(string)
+		}
+
+		affectedRows := 0
+		if row[6] != nil {
+			a := row[6].(string)
+			affectedRows, _ = strconv.Atoi(a)
+		}
+
+		if row[7] != nil {
+			opid = row[7].(string)
+		}
+		if row[8] != nil {
+			backupDBName = row[8].(string)
+		}
+		currentSql := ""
+		if row[5] != nil {
+			currentSql = row[5].(string)
+		}
+
+		if !strings.Contains(row[3].(string), "Backup Successfully") || strings.HasSuffix(opid, "00000000") {
+			continue
+		}
+
+		// 获取表名（改为从语法中自动获取）
+		// sql := "select tablename from %s.%s where opid_time = ?"
+		// sql = fmt.Sprintf(sql, backupDBName, s.remoteBackupTable)
+		// tableName := ""
+		// rows, err := s.db.Raw(sql, opid).Rows()
+		// c.Assert(err, IsNil)
+		// for rows.Next() {
+		// 	rows.Scan(&tableName)
+		// }
+		// rows.Close()
+
+		// if sqlIndex >= len(rollbackSqls) {
+
+		// }
+
+		tableName := s.getObjectName(currentSql)
+		c.Assert(tableName, Not(Equals), "", Commentf("%v", currentSql))
+
+		sql := "select rollback_statement from %s.`%s` where opid_time = ?;"
+		sql = fmt.Sprintf(sql, backupDBName, tableName)
+		rows, err := s.db.Raw(sql, opid).Rows()
+		c.Assert(err, IsNil)
+		str := ""
+		// count := 0
+
+		result1 := []string{}
+		for rows.Next() {
+			rows.Scan(&str)
+			result1 = append(result1, s.trim(str))
+			// count++
+		}
+		rows.Close()
+
+		if affectedRows > 0 {
+			if strings.HasPrefix(runSql, "update") &&
+				(strings.Contains(runSql, ",") || strings.Contains(runSql, "join")) {
+				// update多表时受影响行数为两表之和
+				// 待实现...
+			} else {
+				c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
+			}
+		}
+
+		result = append(result, result1...)
+	}
+
+	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", result))
+
+	for i := range result {
+		c.Assert(result[i], Equals, rollbackSqls[i], Commentf("%v", result))
+	}
+
+	return nil
+}
+
+func (s *testCommon) trim(str string) string {
+	if strings.Contains(str, "  ") {
+		return s.trim(strings.Replace(str, "  ", " ", -1))
+	}
+	return str
+}
+
+func getLeftTable(node ast.ResultSetNode) *ast.TableSource {
+	if node == nil {
+		return nil
+	}
+	log.Infof("%T", node)
+	switch x := node.(type) {
+	case *ast.Join:
+		return getLeftTable(x.Left)
+	case *ast.TableSource:
+		return x
+	case *ast.SelectStmt:
+		if x.From != nil {
+			return getLeftTable(x.From.TableRefs)
+		}
+	case *ast.UnionStmt:
+		for _, sel := range x.SelectList.Selects {
+			return getLeftTable(sel)
+		}
+	}
+	return nil
+}
+
+// getObjectName 解析操作表名
+func (s *testCommon) getObjectName(sql string) (name string) {
+
+	stmtNodes, _, _ := s.parser.Parse(sql, "utf8mb4", "utf8mb4_bin")
+
+	for _, stmtNode := range stmtNodes {
+		switch node := stmtNode.(type) {
+		case *ast.InsertStmt:
+			tableRefs := node.Table
+			if tableRefs == nil || tableRefs.TableRefs == nil || tableRefs.TableRefs.Right != nil {
+				return ""
+			}
+			tblSrc, ok := tableRefs.TableRefs.Left.(*ast.TableSource)
+			if !ok {
+				return ""
+			}
+			if tblSrc.AsName.L != "" {
+				return ""
+			}
+			tblName, ok := tblSrc.Source.(*ast.TableName)
+			if !ok {
+				return ""
+			}
+
+			name = tblName.Name.String()
+
+		case *ast.UpdateStmt:
+			tblSrc := getLeftTable(node.TableRefs.TableRefs)
+			if tblSrc == nil {
+				log.Errorf("未找到表名！！！ sql: %s", sql)
+				return ""
+			}
+			tblName, ok := tblSrc.Source.(*ast.TableName)
+			if !ok {
+				log.Infof("%#v", tblSrc.Source)
+				return ""
+			}
+
+			name = tblName.Name.String()
+		case *ast.DeleteStmt:
+			tableRefs := node.TableRefs
+			if tableRefs == nil || tableRefs.TableRefs == nil || tableRefs.TableRefs.Right != nil {
+				return ""
+			}
+			tblSrc, ok := tableRefs.TableRefs.Left.(*ast.TableSource)
+			if !ok {
+				return ""
+			}
+			if tblSrc.AsName.L != "" {
+				return ""
+			}
+			tblName, ok := tblSrc.Source.(*ast.TableName)
+			if !ok {
+				return ""
+			}
+
+			name = tblName.Name.String()
+
+		case *ast.CreateDatabaseStmt, *ast.DropDatabaseStmt:
+
+		case *ast.CreateTableStmt:
+			name = node.Table.Name.String()
+		case *ast.AlterTableStmt:
+			name = node.Table.Name.String()
+		case *ast.DropTableStmt:
+			for _, t := range node.Tables {
+				name = t.Name.String()
+				break
+			}
+
+		case *ast.RenameTableStmt:
+			name = node.OldTable.Name.String()
+
+		case *ast.TruncateTableStmt:
+
+			name = node.Table.Name.String()
+
+		case *ast.CreateIndexStmt:
+			name = node.Table.Name.String()
+		case *ast.DropIndexStmt:
+			name = node.Table.Name.String()
+
+		default:
+
+		}
+
+		return name
+	}
+	return ""
 }

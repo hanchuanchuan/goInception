@@ -1598,6 +1598,40 @@ WHERE tt1.id=1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NON_UNIQ_ERROR, "c2"),
 		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	// -------------------- 多表update -------------------
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set t1.c1=c2,t2.c22=2 where t1.id1=t2.id2 and c1=2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c2"),
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set t1.c1=c2,t2.c222=2 where t1.id1=t2.id2 and c1=2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c2"),
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t2.c222"),
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set t1.c1=c2,c222=2 where t1.id1=t2.id2 and c1=2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c2"),
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "c222"),
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		update table1 t1,table2 t2 set c1=2 where t1.id1=t2.id2 and t2.c1=2;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
