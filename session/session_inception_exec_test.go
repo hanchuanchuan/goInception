@@ -1066,6 +1066,19 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "1", Commentf("%v", res.Rows()))
+
+	// -------------------- 多表update -------------------
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,null,null,null);
+		update table1 t1,table2 t2 set t1.c1=10,t2.c22=20 where t1.id1=t2.id2 and t2.c1=1;`
+	res = s.mustRunExec(c, sql)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "2", Commentf("%v", res.Rows()))
+
 }
 
 func (s *testSessionIncExecSuite) TestDelete(c *C) {
