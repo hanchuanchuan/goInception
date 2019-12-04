@@ -135,7 +135,8 @@ inception_magic_commit;`
 
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 1)
 	row := res.Rows()[s.tk.Se.AffectedRows()-1]
-	c.Assert(row[3], Equals, "line 1 column 3 near \"\" (total length 3)")
+	// c.Assert(row[3], Equals, "line 1 column 3 near \"\" (total length 3)")
+	c.Assert(row[3], Equals, "You have an error in your SQL syntax, near '' at line 1")
 }
 
 func (s *testSessionSplitSuite) TestInsert(c *C) {

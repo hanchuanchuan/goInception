@@ -141,7 +141,8 @@ func (s *testSessionPrintSuite) TestInsert(c *C) {
 	res = s.makeSQL("insert into t1 values;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2", Commentf("%v", row))
-	c.Assert(row[4], Equals, "line 1 column 21 near \"\" (total length 21)", Commentf("%v", row))
+	// c.Assert(row[4], Equals, "line 1 column 21 near \"\" (total length 21)", Commentf("%v", row))
+	c.Assert(row[4], Equals, "You have an error in your SQL syntax, near '' at line 1", Commentf("%v", row))
 
 }
 

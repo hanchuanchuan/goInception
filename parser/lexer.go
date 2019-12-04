@@ -127,7 +127,9 @@ func (s *Scanner) Errorf(format string, a ...interface{}) (err error) {
 	if len(val) > 2048 {
 		val = val[:2048]
 	}
-	err = fmt.Errorf("line %d column %d near \"%s\"%s (total length %d)", s.r.p.Line, s.r.p.Col, val, str, len(s.r.s))
+	// err = fmt.Errorf("line %d column %d near \"%s\"%s (total length %d)", s.r.p.Line, s.r.p.Col, val, str, len(s.r.s))
+	err = fmt.Errorf("You have an error in your SQL syntax, near '%-.200s'%s at line %d",
+		val, str, s.r.p.Line)
 	return
 }
 
@@ -207,8 +209,8 @@ func (s *Scanner) GetSQLMode() mysql.SQLMode {
 }
 
 // EnableWindowFunc enables the scanner to recognize the keywords of window function.
-func (s *Scanner) EnableWindowFunc() {
-	s.supportWindowFunc = true
+func (s *Scanner) EnableWindowFunc(val bool) {
+	s.supportWindowFunc = val
 }
 
 // NewScanner returns a new scanner object.
