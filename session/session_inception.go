@@ -4035,8 +4035,9 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			return
 		}
 
+		// 列类型转换审核
 		fieldType := nc.Tp.CompactStr()
-		if fieldType != foundField.Type {
+		if s.Inc.CheckColumnTypeChange && fieldType != foundField.Type {
 			switch nc.Tp.Tp {
 			case mysql.TypeDecimal, mysql.TypeNewDecimal,
 				mysql.TypeVarchar,
@@ -4065,7 +4066,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 						foundField.Type, fieldType)
 				}
 			default:
-				log.Info(fieldType, ":", foundField.Type)
+				// log.Info(fieldType, ":", foundField.Type)
 
 				oldType := GetDataTypeBase(foundField.Type)
 				newType := GetDataTypeBase(fieldType)
