@@ -1019,17 +1019,58 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	sql = "create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);"
 	s.testErrorCode(c, sql)
 
+	// ----------------- 列类型变更 -----------------
 	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
-	sql = "create table t1(c1 int,c1 int);alter table t1 modify column c1 varchar(10);"
+	sql = "create table t1(c1 int);alter table t1 modify column c1 varchar(10);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "varchar(10)"))
 
-	// 变更长度时不影响
-	sql = "create table t1(c1 char(100));alter table t1 modify column c1 char(20);"
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 smallint);alter table t1 modify column c1 int;"
 	s.testErrorCode(c, sql)
 
-	sql = "create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(10);"
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 int);alter table t1 modify column c1 smallint;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "smallint(6)"))
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 int);alter table t1 modify column c1 smallint(5);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "smallint(5)"))
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(20);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "varchar(100)", "varchar(20)"))
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 float);alter table t1 modify column c1 double;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "float", "double"))
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 decimal(10,4));alter table t1 modify column c1 int;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "decimal(10,4)", "int(11)"))
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 decimal(10,4));alter table t1 modify column c1 decimal(8,4);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "decimal(10,4)", "decimal(8,4)"))
+
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = true
+	sql = "create table t1(c1 decimal(10,4));alter table t1 modify column c1 decimal(12,4);"
 	s.testErrorCode(c, sql)
+
+	// 变更长度时不影响(仅长度变小时警告)
+	sql = "create table t1(c1 char(100));alter table t1 modify column c1 char(20);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "char(100)", "char(20)"))
+
+	sql = "create table t1(c1 varchar(100));alter table t1 modify column c1 char(10);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "varchar(100)", "char(10)"))
 
 	sql = "create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
 	if s.explicitDefaultsForTimestamp || !(strings.Contains(s.sqlMode, "TRADITIONAL") ||
