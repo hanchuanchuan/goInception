@@ -303,7 +303,9 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		}
 	}
 
-	if strings.HasPrefix(lowerSql, "select high_priority") {
+	if lowerSql == "select database()" {
+		return s.execute(ctx, sql)
+	} else if strings.HasPrefix(lowerSql, "select high_priority") {
 		return s.execute(ctx, sql)
 	} else if strings.HasPrefix(lowerSql,
 		`select variable_value from mysql.tidb where variable_name = "system_tz"`) {
@@ -565,6 +567,11 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.executeCommit(ctx)
 					return s.makeResult()
 				default:
+					// TiDB原生执行器
+					if !s.haveBegin && s.isRunToTiDB(stmtNode) {
+						return s.execute(ctx, currentSql)
+					}
+
 					need := s.needDataSource(stmtNode)
 
 					if !s.haveBegin && need {
@@ -695,6 +702,48 @@ func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
 	} else {
 		return s.recordSets.Rows(), nil
 	}
+}
+
+func (s *session) isRunToTiDB(stmtNode ast.StmtNode) bool {
+	switch node := stmtNode.(type) {
+	case *ast.UseStmt:
+		return true
+	case *ast.SelectStmt:
+
+		if node.From != nil {
+			join := node.From.TableRefs
+			if join.Right == nil {
+				switch x := node.From.TableRefs.Left.(type) {
+				case *ast.TableSource:
+					if s, ok := x.Source.(*ast.TableName); ok {
+						// log.Infof("%#v", s)
+						if s.Name.L == "user" {
+							return true
+						}
+						return false
+					}
+				default:
+					log.Infof("%T", x)
+					// log.Infof("%#v", x)
+				}
+			}
+		}
+
+	case *ast.ShowStmt:
+		if node.IsInception {
+			return false
+		} else {
+			// 添加部分命令支持
+			switch node.Tp {
+			case ast.ShowDatabases, ast.ShowTables,
+				ast.ShowTableStatus, ast.ShowColumns,
+				ast.ShowWarnings, ast.ShowGrants:
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
