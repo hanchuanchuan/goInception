@@ -1673,6 +1673,16 @@ WHERE tt1.id=1;`
 		update table1 t1,table2 t2 set c1=2 where t1.id1=t2.id2 and t2.c1=2;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NON_UNIQ_ERROR, "c1"))
+
+	sql = `drop table if exists table1,table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		update table1 t1 join (select 1 as id2) t2 set c1=2 where t1.id1=t2.id2;`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists table1,table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		update table1 t1 join (select 1 as id2 union all select 2) t2 set c1=2 where t1.id1=t2.id2;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {

@@ -7743,7 +7743,23 @@ func (s *session) checkSelectItem(node ast.ResultSetNode) []*TableInfo {
 			s.checkSubSelectItem(tblSource)
 
 			cols := s.getSubSelectColumns(tblSource)
+			if cols != nil {
+				rows := make([]FieldInfo, len(cols))
+				for i, colName := range cols {
+					rows[i].Field = colName
+				}
+				t := &TableInfo{
+					Schema: "",
+					Name:   x.AsName.String(),
+					Fields: rows,
+				}
+				return []*TableInfo{t}
+			}
 
+		case *ast.UnionStmt:
+			s.checkSelectItem(tblSource)
+
+			cols := s.getSubSelectColumns(tblSource)
 			if cols != nil {
 				rows := make([]FieldInfo, len(cols))
 				for i, colName := range cols {
