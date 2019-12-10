@@ -34,6 +34,9 @@ WORKDIR /
 
 EXPOSE 4000
 
+ENV LANG="en_US.UTF-8"
+ENV TZ=Asia/Shanghai
+
 # ENV PERCONA_TOOLKIT_VERSION 3.0.4
 
 # && wget -O /tmp/percona-toolkit.tar.gz https://www.percona.com/downloads/percona-toolkit/${PERCONA_TOOLKIT_VERSION}/source/tarball/percona-toolkit-${PERCONA_TOOLKIT_VERSION}.tar.gz \
@@ -51,10 +54,8 @@ EXPOSE 4000
 
 
 RUN set -x \
-  && apk add --no-cache perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata
-
-ENV LANG="en_US.UTF-8"
-ENV TZ=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+  && apk add --no-cache perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata \
+  && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+  && chmod +x /usr/local/bin/pt-online-schema-change
 
 ENTRYPOINT ["/usr/local/bin/dumb-init", "/goInception","--config=/etc/config.toml"]
