@@ -815,14 +815,6 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "varchar(10)"))
 
-	res = s.runExec("drop table if exists t1;create table t1(c1 char(100));alter table t1 modify column c1 char(20);")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
-
-	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(10);")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
-
 	if s.DBVersion >= 50600 {
 		sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
 		if s.explicitDefaultsForTimestamp || !(strings.Contains(s.sqlMode, "TRADITIONAL") ||
