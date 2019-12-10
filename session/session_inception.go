@@ -4035,37 +4035,59 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			return
 		}
 
+		// 列类型转换审核
 		fieldType := nc.Tp.CompactStr()
-
-		switch nc.Tp.Tp {
-		case mysql.TypeDecimal, mysql.TypeNewDecimal,
-			mysql.TypeVarchar,
-			mysql.TypeVarString:
-			str := string([]byte(foundField.Type)[:7])
-			if !strings.Contains(fieldType, str) {
-				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
-					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-					foundField.Type, fieldType)
-			}
-		case mysql.TypeString:
-			str := string([]byte(foundField.Type)[:4])
-			if !strings.Contains(fieldType, str) {
-				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
-					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-					foundField.Type, fieldType)
-			}
-		default:
-			if strings.Contains(fieldType, "(") && strings.Contains(foundField.Type, "(") {
-				if fieldType[:strings.Index(fieldType, "(")] !=
-					foundField.Type[:strings.Index(foundField.Type, "(")] {
+		if s.Inc.CheckColumnTypeChange && fieldType != foundField.Type {
+			switch nc.Tp.Tp {
+			case mysql.TypeDecimal, mysql.TypeNewDecimal,
+				mysql.TypeVarchar,
+				mysql.TypeVarString:
+				str := string([]byte(foundField.Type)[:7])
+				// 类型不一致
+				if !strings.Contains(fieldType, str) {
+					s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+						foundField.Type, fieldType)
+				} else if GetDataTypeLength(fieldType)[0] < GetDataTypeLength(foundField.Type)[0] {
 					s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 						foundField.Type, fieldType)
 				}
-			} else if fieldType != foundField.Type {
-				s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
-					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-					foundField.Type, fieldType)
+			case mysql.TypeString:
+				str := string([]byte(foundField.Type)[:4])
+				// 类型不一致
+				if !strings.Contains(fieldType, str) {
+					s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+						foundField.Type, fieldType)
+				} else if GetDataTypeLength(fieldType)[0] < GetDataTypeLength(foundField.Type)[0] {
+					s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+						foundField.Type, fieldType)
+				}
+			default:
+				// log.Info(fieldType, ":", foundField.Type)
+
+				oldType := GetDataTypeBase(foundField.Type)
+				newType := GetDataTypeBase(fieldType)
+
+				// 判断如果是int8 >> int16 >> int32等转换,则忽略
+				oldTypeIndex, ok1 := IntegerOrderedMaps[GetDataTypeBase(foundField.Type)]
+				newTypeIndex, ok2 := IntegerOrderedMaps2[nc.Tp.Tp]
+				if ok1 && ok2 {
+					if newTypeIndex < oldTypeIndex {
+						s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+							fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+							foundField.Type, fieldType)
+					}
+				} else if oldType == newType &&
+					(oldType == "enum" || oldType == "set") {
+
+				} else {
+					s.AppendErrorNo(ER_CHANGE_COLUMN_TYPE,
+						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+						foundField.Type, fieldType)
+				}
 			}
 		}
 	}
