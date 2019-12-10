@@ -638,13 +638,13 @@ func (cc *clientConn) dispatch(data []byte) error {
 		return cc.handleQuery(ctx1, hack.String(data))
 	case mysql.ComPing:
 		return cc.writeOK()
-	// case mysql.ComInitDB:
-	// 	if err := cc.useDB(ctx1, hack.String(data)); err != nil {
-	// 		return errors.Trace(err)
-	// 	}
-	// 	return cc.writeOK()
-	// case mysql.ComFieldList:
-	// 	return cc.handleFieldList(hack.String(data))
+	case mysql.ComInitDB:
+		if err := cc.useDB(ctx1, hack.String(data)); err != nil {
+			return errors.Trace(err)
+		}
+		return cc.writeOK()
+	case mysql.ComFieldList:
+		return cc.handleFieldList(hack.String(data))
 	// case mysql.ComStmtPrepare:
 	// 	return cc.handleStmtPrepare(hack.String(data))
 	// case mysql.ComStmtExecute:
