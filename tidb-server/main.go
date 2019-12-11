@@ -346,7 +346,12 @@ func setGlobalVars() {
 	ddl.RunWorker = cfg.RunDDL
 	ddl.EnableSplitTableRegion = cfg.SplitTable
 	plannercore.AllowCartesianProduct = cfg.Performance.CrossJoin
-	privileges.SkipWithGrant = cfg.Security.SkipGrantTable
+	// 权限参数冗余设置,开启任一鉴权即可,默认跳过鉴权
+	skip := cfg.SkipGrantTable && cfg.Security.SkipGrantTable && cfg.Inc.SkipGrantTable
+	cfg.Security.SkipGrantTable = skip
+	cfg.Inc.SkipGrantTable = skip
+	cfg.SkipGrantTable = skip
+	privileges.SkipWithGrant = skip
 	variable.ForcePriority = int32(mysql.Str2Priority(cfg.Performance.ForcePriority))
 
 	variable.SysVars[variable.TIDBMemQuotaQuery].Value = strconv.FormatInt(cfg.MemQuotaQuery, 10)
