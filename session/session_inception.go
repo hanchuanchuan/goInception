@@ -303,7 +303,9 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		}
 	}
 
-	if strings.HasPrefix(lowerSql, "select high_priority") {
+	if lowerSql == "select database()" {
+		return s.execute(ctx, sql)
+	} else if strings.HasPrefix(lowerSql, "select high_priority") {
 		return s.execute(ctx, sql)
 	} else if strings.HasPrefix(lowerSql,
 		`select variable_value from mysql.tidb where variable_name = "system_tz"`) {
@@ -367,6 +369,9 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 	sqlList := strings.Split(sql, "\n")
 
+	// tidb执行的SQL关闭general日志
+	logging := s.Inc.GeneralLog
+
 	defer func() {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
 			if s.opt != nil && s.opt.Print {
@@ -377,9 +382,13 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
 			}
 		}
+
+		if logging {
+			logQuery(sql, s.sessionVars)
+		}
 	}()
 
-	defer logQuery(sql, s.sessionVars)
+	// defer logQuery(sql, s.sessionVars)
 
 	s.PrepareTxnCtx(ctx)
 	connID := s.sessionVars.ConnectionID
@@ -565,6 +574,20 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.executeCommit(ctx)
 					return s.makeResult()
 				default:
+					// TiDB原生执行器
+					if !s.haveBegin {
+						istidb, isFlush := s.isRunToTiDB(stmtNode)
+						if istidb {
+							r, err := s.execute(ctx, currentSql)
+							if isFlush {
+								// 权限模块的SQL在执行后自动刷新
+								s.execute(ctx, "FLUSH PRIVILEGES")
+							}
+							logging = false
+							return r, err
+						}
+					}
+
 					need := s.needDataSource(stmtNode)
 
 					if !s.haveBegin && need {
@@ -695,6 +718,64 @@ func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
 	} else {
 		return s.recordSets.Rows(), nil
 	}
+}
+
+func (s *session) isRunToTiDB(stmtNode ast.StmtNode) (is bool, isFlush bool) {
+
+	switch node := stmtNode.(type) {
+	case *ast.UseStmt:
+		return true, false
+
+	case *ast.ExplainStmt:
+		return true, false
+
+	case *ast.UnionStmt:
+		return true, false
+
+	case *ast.SelectStmt:
+		return true, false
+
+		if node.From != nil {
+			join := node.From.TableRefs
+			if join.Right == nil {
+				switch x := node.From.TableRefs.Left.(type) {
+				case *ast.TableSource:
+					if s, ok := x.Source.(*ast.TableName); ok {
+						// log.Infof("%#v", s)
+						if s.Name.L == "user" {
+							return true, false
+						}
+						return false, false
+					}
+				default:
+					log.Infof("%T", x)
+					// log.Infof("%#v", x)
+				}
+			}
+		} else {
+			return true, false
+		}
+
+	case *ast.CreateUserStmt, *ast.AlterUserStmt, *ast.DropUserStmt,
+		*ast.GrantStmt, *ast.RevokeStmt,
+		*ast.SetPwdStmt:
+		return true, true
+	case *ast.FlushStmt:
+		return true, false
+
+	case *ast.ShowStmt:
+		if !node.IsInception {
+			// 添加部分命令支持
+			switch node.Tp {
+			case ast.ShowDatabases, ast.ShowTables,
+				ast.ShowTableStatus, ast.ShowColumns,
+				ast.ShowWarnings, ast.ShowGrants:
+				return true, false
+			}
+		}
+	}
+
+	return false, false
 }
 
 func (s *session) needDataSource(stmtNode ast.StmtNode) bool {
@@ -5440,6 +5521,9 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 					switch e := f.Expr.(type) {
 					case *ast.ColumnNameExpr:
 						columns = append(columns, e.Name.Name.String())
+					// case *ast.VariableExpr:
+					//  todo ...
+					// 	log.Infof("con:%d %#v", s.sessionVars.ConnectionID, e)
 					default:
 						log.Infof("con:%d %T", s.sessionVars.ConnectionID, e)
 					}

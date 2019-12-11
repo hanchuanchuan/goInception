@@ -77,6 +77,9 @@ type Config struct {
 	Ghost               Ghost             `toml:"ghost" json:"ghost"`
 	IncLevel            IncLevel          `toml:"inc_level" json:"inc_level"`
 	CompatibleKillQuery bool              `toml:"compatible-kill-query" json:"compatible-kill-query"`
+
+	// 是否跳过用户权限校验
+	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
 }
 
 // Log is the log section of config.
@@ -98,7 +101,7 @@ type Log struct {
 
 // Security is the security section of the config.
 type Security struct {
-	SkipGrantTable bool   `toml:"skip-grant-table" json:"skip-grant-table"`
+	SkipGrantTable bool   `toml:"skip_grant_table" json:"skip_grant_table"`
 	SSLCA          string `toml:"ssl-ca" json:"ssl-ca"`
 	SSLCert        string `toml:"ssl-cert" json:"ssl-cert"`
 	SSLKey         string `toml:"ssl-key" json:"ssl-key"`
@@ -348,6 +351,8 @@ type Inc struct {
 	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
 	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
 
+	// 是否跳过用户权限校验
+	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
 	// 要跳过的sql语句, 多个时以分号分隔
 	SkipSqls string `toml:"skip_sqls" json:"skip_sqls"`
 
@@ -709,6 +714,8 @@ var defaultConf = Config{
 		WriteTimeout: "15s",
 	},
 	// 默认跳过权限校验 2019-1-26
+	// 为配置方便,在config节点也添加相同参数
+	SkipGrantTable: true,
 	Security: Security{
 		SkipGrantTable: true,
 	},
@@ -734,6 +741,9 @@ var defaultConf = Config{
 		DefaultCharset:   "utf8mb4",
 		MaxAllowedPacket: 4194304,
 		ExplainRule:      "first",
+
+		// 为配置方便,在config节点也添加相同参数
+		SkipGrantTable: true,
 		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{
