@@ -48,6 +48,8 @@ lower-case-table-names = 2
 # turn on this option when TiDB server is behind a proxy.
 compatible-kill-query = false
 
+skip_grant_table = true
+
 [log]
 # Log level: debug, info, warn, error, fatal.
 level = "info"
@@ -88,7 +90,7 @@ max-backups = 0
 log-rotate = true
 
 [security]
-skip-grant-table = true
+skip_grant_table = true
 
 # Path of file that contains list of trusted SSL CAs for connection with mysql client.
 ssl-ca = ""
@@ -278,6 +280,8 @@ explain_rule = "first"
 # 0  表示关闭安全更新
 # 1  表示开启安全更新
 sql_safe_updates = -1
+
+skip_grant_table = true
 
 support_charset = "utf8,utf8mb4"
 support_engine = "innodb"
