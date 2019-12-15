@@ -251,6 +251,38 @@ inception_magic_commit;`
 	return res
 }
 
+func (s *testCommon) mustRunBackupTran(c *C, sql string) *testkit.Result {
+	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;--tran-batch=3;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+
+	// 需要成功执行
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+
+	return res
+}
+
+func (s *testCommon) runExecTran(c *C, sql string) *testkit.Result {
+	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--tran-batch=10;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+
+	// 需要成功执行
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+
+	return res
+}
+
 func (s *testCommon) getAddr() string {
 	if s.dbAddr != "" {
 		return s.dbAddr
