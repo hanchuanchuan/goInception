@@ -21,7 +21,6 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
@@ -57,41 +56,6 @@ func (s *testSessionIncTranSuite) TearDownSuite(c *C) {
 
 func (s *testSessionIncTranSuite) TearDownTest(c *C) {
 	s.tearDownTest(c)
-}
-
-func (s *testSessionIncTranSuite) makeSQL(c *C, tk *testkit.TestKit, sql string) *testkit.Result {
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=1;--port=3306;--enable-ignore-warnings;real_row_count=%v;--tran-batch=3;*/
-inception_magic_start;
-use test_inc;
-%s;
-inception_magic_commit;`
-	res := tk.MustQueryInc(fmt.Sprintf(a, s.realRowCount, sql))
-
-	// 需要成功执行
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
-	}
-	return res
-}
-
-func (s *testSessionIncTranSuite) runTranSQL(sql string, batch int) *testkit.Result {
-	// session.CheckAuditSetting(config.GetGlobalConfig())
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=1;--port=3306;--enable-ignore-warnings;real_row_count=%v;--tran-batch=%d;*/
-inception_magic_start;
-use test_inc;
-%s;
-inception_magic_commit;`
-	return s.tk.MustQueryInc(fmt.Sprintf(a, s.realRowCount, batch, sql))
-}
-
-func (s *testSessionIncTranSuite) makeExecSQL(tk *testkit.TestKit, sql string) *testkit.Result {
-	session.CheckAuditSetting(config.GetGlobalConfig())
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;real_row_count=%v;--tran-batch=10;*/
-inception_magic_start;
-use test_inc;
-%s;
-inception_magic_commit;`
-	return tk.MustQueryInc(fmt.Sprintf(a, s.realRowCount, sql))
 }
 
 func (s *testSessionIncTranSuite) TestInsert(c *C) {
@@ -138,7 +102,7 @@ update t1 set c1='10' where id>0;`)
 		"UPDATE `test_inc`.`t1` SET `id`=3, `c1`='3', `c2`=NULL WHERE `id`=3;",
 		"UPDATE `test_inc`.`t1` SET `id`=4, `c1`='4', `c2`=NULL WHERE `id`=4;")
 
-	s.runExecTran(c, `create database if not exists test;`)
+	s.runTranSQL(`create database if not exists test;`, 10)
 
 	res = s.mustRunBackupTran(c, `drop table if exists t1;
 create table t1(id int primary key,c1 varchar(100),c2 int);
@@ -221,6 +185,39 @@ update t1 set c1='10' where id>0;`, 2)
 		"DELETE FROM `test_inc`.`t1` WHERE `id`=2;",
 		"DELETE FROM `test_inc`.`t1` WHERE `id`=3;",
 		"DELETE FROM `test_inc`.`t1` WHERE `id`=4;",
+	)
+
+	// 测试不同分批下的大量数据
+	s.insertMulti(c, 2)
+	s.insertMulti(c, 3)
+	s.insertMulti(c, 13)
+	s.insertMulti(c, 73)
+
+	// for i := 2; i <= 20; i++ {
+	// 	s.insertMulti(c, i)
+	// }
+}
+
+func (s *testSessionIncTranSuite) insertMulti(c *C, batch int) {
+	// 插入大量数据
+	insert_sql := []string{
+		"drop table if exists t1;",
+		"create table t1(id int primary key,c1 varchar(100),c2 int);",
+	}
+
+	var rollback_sql []string
+	for i := 1; i <= 1000; i++ {
+		insert_sql = append(insert_sql,
+			fmt.Sprintf("insert into t1(id,c1) values(%d,'%d');", i, i))
+
+		rollback_sql = append(rollback_sql,
+			fmt.Sprintf("DELETE FROM `test_inc`.`t1` WHERE `id`=%d;", i))
+	}
+
+	res := s.runTranSQL(strings.Join(insert_sql, "\n"), batch)
+
+	s.assertRows(c, res.Rows()[3:],
+		rollback_sql...,
 	)
 }
 
@@ -556,7 +553,7 @@ func (s *testSessionIncTranSuite) TestAlterTableDropIndex(c *C) {
 	sql = `drop table if exists t1;
     create table t1(id int primary key,c1 GEOMETRY not null);
     alter table t1 add SPATIAL index ix_1(c1);`
-	s.runExecTran(c, sql)
+	s.runTranSQL(sql, 10)
 	sql = "alter table t1 drop index ix_1;"
 	res = s.mustRunBackupTran(c, sql)
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -638,7 +635,7 @@ func (s *testSessionIncTranSuite) TestAlterTable(c *C) {
     alter table t1 add column c2 point;
     alter table t1 add column c3 linestring;
     alter table t1 add column c4 polygon;`
-	s.runExecTran(c, sql)
+	s.runTranSQL(sql, 10)
 
 	sql = `alter table t1 drop column c1,drop column c2,drop column c3,drop column c4; `
 	res = s.mustRunBackupTran(c, sql)

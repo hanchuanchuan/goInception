@@ -2810,7 +2810,7 @@ func (s *session) parseOptions(sql string) {
 		sslKey:  viper.GetString("sslKey"),
 
 		// 开启事务功能，设置一次提交多少记录
-		tranBatch: viper.GetInt("tranBatch"),
+		tranBatch: viper.GetInt("trans"),
 	}
 
 	if s.opt.split || s.opt.check || s.opt.Print {

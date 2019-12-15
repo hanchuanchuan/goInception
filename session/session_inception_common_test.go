@@ -252,7 +252,7 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) mustRunBackupTran(c *C, sql string) *testkit.Result {
-	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;--tran-batch=3;*/
+	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;--trans=3;*/
 inception_magic_start;
 use test_inc;
 %s;
@@ -267,8 +267,19 @@ inception_magic_commit;`
 	return res
 }
 
-func (s *testCommon) runExecTran(c *C, sql string) *testkit.Result {
-	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--tran-batch=10;*/
+func (s *testCommon) runTranSQL(sql string, batch int) *testkit.Result {
+	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--trans=%d;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, batch, sql))
+
+	return res
+}
+
+func (s *testCommon) mustrunTranSQL(c *C, sql string) *testkit.Result {
+	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--trans=10;*/
 inception_magic_start;
 use test_inc;
 %s;
