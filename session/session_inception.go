@@ -139,6 +139,8 @@ type sourceOptions struct {
 	sslCA   string // 证书颁发机构（CA）证书
 	sslCert string // 客户端公共密钥证书
 	sslKey  string // 客户端私钥文件
+
+	tranBatch int
 }
 
 // ExplainInfo 执行计划信息
@@ -1101,14 +1103,12 @@ func (s *session) executeCommit(ctx context.Context) {
 
 		// 如果连接已断开
 		if err := s.backupdb.DB().Ping(); err != nil {
-			// log.Error(err)
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local",
 				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort,
 				s.Inc.DefaultCharset)
 			db, err := gorm.Open("mysql", addr)
 			if err != nil {
-				// log.Error(err)
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(err.Error())
 				return
@@ -1198,7 +1198,6 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 	sql := buf.String()
 
 	if err := s.backupdb.Exec(sql).Error; err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1416,7 +1415,6 @@ func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
 	if _, ok := s.backupDBCacheList[backupDBName]; !ok {
 		sql := fmt.Sprintf("create database if not exists `%s`;", backupDBName)
 		if err := s.backupdb.Exec(sql).Error; err != nil {
-			// log.Error(err)
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
@@ -1435,7 +1433,6 @@ func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
 	if _, ok := s.backupTableCacheList[key]; !ok {
 		createSql := s.mysqlCreateSqlFromTableInfo(backupDBName, record.TableInfo)
 		if err := s.backupdb.Exec(createSql).Error; err != nil {
-			// log.Error(err)
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
@@ -1490,7 +1487,6 @@ func (s *session) checkBackupTableSqlStmtColumnType(dbname string) (longDataType
 
 	rows, err2 := s.backupdb.DB().Query(sql)
 	if err2 != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err2)
 		if myErr, ok := err2.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1553,10 +1549,7 @@ func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) stri
 }
 
 func (s *session) mysqlRealQueryBackup(sql string) (err error) {
-
-	// err := res.Error
 	if _, err = s.Exec(sql, true); err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1628,6 +1621,11 @@ func (s *session) executeAllStatement(ctx context.Context) {
 	}
 
 	count := len(s.recordSets.All())
+	var trans []*Record
+	if s.opt.tranBatch > 1 {
+		trans = make([]*Record, 0, s.opt.tranBatch)
+	}
+
 	for i, record := range s.recordSets.All() {
 
 		// 忽略不需要备份的类型
@@ -1638,7 +1636,75 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 		s.SetMyProcessInfo(record.Sql, time.Now(), float64(i)/float64(count))
 
-		s.executeRemoteCommand(record)
+		if s.opt.tranBatch > 1 {
+			// 非DML操作时,执行并清空事务集合
+			switch record.Type.(type) {
+			case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+				if len(trans) < s.opt.tranBatch {
+					trans = append(trans, record)
+				} else {
+					s.executeTransaction(trans)
+					trans = nil
+					trans = append(trans, record)
+
+					if s.opt.sleep > 0 && s.opt.sleepRows > 0 {
+						if s.opt.sleepRows == 1 {
+							mysqlSleep(s.opt.sleep)
+						} else if i%s.opt.sleepRows == 0 {
+							mysqlSleep(s.opt.sleep)
+						}
+					}
+				}
+			case *ast.UseStmt, *ast.SetStmt:
+				// 环境命令
+				// 事务内部和非事务均需要执行
+				// log.Infof("1111: [%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
+				_, err := s.Exec(record.Sql, true)
+				if err != nil {
+					// log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+					if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+						s.AppendErrorMessage(myErr.Message)
+					} else {
+						s.AppendErrorMessage(err.Error())
+					}
+					break
+				}
+
+				// s.executeRemoteCommand(record)
+
+				if len(trans) < s.opt.tranBatch {
+					trans = append(trans, record)
+				} else {
+					s.executeTransaction(trans)
+
+					trans = nil
+					trans = append(trans, record)
+				}
+
+			default:
+				if len(trans) > 0 {
+					s.executeTransaction(trans)
+					trans = nil
+				}
+
+				s.executeRemoteCommand(record)
+
+				// trans = append(trans, record)
+				// s.executeTransaction(trans)
+				// trans = nil
+
+				if s.opt.sleep > 0 && s.opt.sleepRows > 0 {
+					if s.opt.sleepRows == 1 {
+						mysqlSleep(s.opt.sleep)
+					} else if i%s.opt.sleepRows == 0 {
+						mysqlSleep(s.opt.sleep)
+					}
+				}
+			}
+		} else {
+			s.executeRemoteCommand(record)
+		}
+
 		if s.hasErrorBefore() {
 			break
 		}
@@ -1653,7 +1719,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 			break
 		}
 
-		if s.opt.sleep > 0 && s.opt.sleepRows > 0 {
+		if s.opt.tranBatch <= 1 && s.opt.sleep > 0 && s.opt.sleepRows > 0 {
 			if s.opt.sleepRows == 1 {
 				mysqlSleep(s.opt.sleep)
 			} else if i%s.opt.sleepRows == 0 {
@@ -1661,6 +1727,11 @@ func (s *session) executeAllStatement(ctx context.Context) {
 			}
 		}
 	}
+
+	if !s.hasErrorBefore() && s.opt.tranBatch > 1 && len(trans) > 0 {
+		s.executeTransaction(trans)
+	}
+	trans = nil
 }
 
 // mysqlSleep Sleep for a while
@@ -1679,6 +1750,171 @@ func mysqlSleep(ms int) {
 	return
 
 	// time.Sleep(time.Duration(ms) * time.Millisecond)
+}
+
+func (s *session) executeTransaction(records []*Record) int {
+	if records == nil {
+		return 2
+	}
+
+	// for _, record := range records {
+	// 	log.Info("sql: ", record.Sql)
+	// }
+
+	// 如果事务最后的命令是use或set命令,则忽略掉
+	// 如果是use命令,在操作完成后切换会话的数据库
+	newUseDB := ""
+	skipIndex := len(records)
+	for i := len(records) - 1; i >= 0; i-- {
+		record := records[i]
+		switch node := record.Type.(type) {
+		case *ast.UseStmt:
+			if newUseDB == "" {
+				newUseDB = node.DBName
+			}
+			skipIndex = i
+			continue
+		case *ast.SetStmt:
+			skipIndex = i
+			continue
+		}
+
+		break
+	}
+	defer func() {
+		if newUseDB != "" {
+			s.DBName = newUseDB
+		}
+	}()
+	if skipIndex == 0 {
+		return 0
+	} else if skipIndex < len(records)-1 {
+		records = records[0:skipIndex]
+	}
+
+	// 开始事务
+	tx := s.db.Begin()
+
+	if s.DBName != "" {
+		res := tx.Exec(fmt.Sprintf("USE `%s`", s.DBName))
+		if errs := res.GetErrors(); len(errs) > 0 {
+			tx.Rollback()
+			s.myRecord = records[0]
+			for _, err := range errs {
+				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+					s.AppendErrorMessage(myErr.Message)
+				} else {
+					s.AppendErrorMessage(err.Error())
+				}
+			}
+			return 2
+		}
+	}
+
+	currentThreadId := s.fetchTranThreadID(tx)
+
+	for i := range records {
+		record := records[i]
+		s.myRecord = record
+
+		if i == 0 && s.opt.backup {
+			if currentThreadId == 0 {
+				s.AppendErrorMessage("无法获取线程号")
+				tx.Rollback()
+				return 2
+			}
+			masterStatus := s.mysqlFetchMasterBinlogPosition()
+			if masterStatus == nil {
+				s.AppendErrorNo(ErrNotFoundMasterStatus)
+				tx.Rollback()
+				return 2
+			} else {
+				record.StartFile = masterStatus.File
+				record.StartPosition = masterStatus.Position
+			}
+		}
+
+		record.Stage = StageExec
+
+		start := time.Now()
+		res := tx.Exec(record.Sql)
+
+		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
+		record.ExecTimestamp = time.Now().Unix()
+
+		if errs := res.GetErrors(); len(errs) > 0 {
+			tx.Rollback()
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, errs)
+
+			for j := range records {
+				r := records[j]
+				s.myRecord = r
+				r.StageStatus = StatusExecFail
+				r.ExecComplete = false
+				for _, err := range errs {
+					if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+						s.AppendErrorMessage(myErr.Message)
+					} else {
+						s.AppendErrorMessage(err.Error())
+					}
+				}
+				if j >= i {
+					break
+				}
+			}
+			return 2
+		} else {
+			// log.Infof("TRAN!!! [%s] [%d] %s,RowsAffected: %d", s.DBName, currentThreadId, record.Sql, res.RowsAffected)
+			record.AffectedRows = int(res.RowsAffected)
+			record.ThreadId = currentThreadId
+
+			record.StageStatus = StatusExecOK
+			record.ExecComplete = true
+			s.TotalChangeRows += record.AffectedRows
+
+			switch node := record.Type.(type) {
+			case *ast.UseStmt:
+				s.DBName = node.DBName
+			}
+		}
+	}
+	if !s.hasError() {
+		tx.Commit()
+
+		if s.opt.backup {
+			record := records[0]
+			masterStatus := s.mysqlFetchMasterBinlogPosition()
+			if masterStatus == nil {
+				s.AppendErrorNo(ErrNotFoundMasterStatus)
+				return 2
+			} else {
+				record.EndFile = masterStatus.File
+				record.EndPosition = masterStatus.Position
+
+				// 开始位置和结束位置一样,无变更
+				if record.StartFile == record.EndFile &&
+					record.StartPosition == record.EndPosition {
+
+					record.StartFile = ""
+					record.StartPosition = 0
+					record.EndFile = ""
+					record.EndPosition = 0
+					return 0
+				}
+			}
+
+			for i, r := range records {
+				if i > 0 {
+					r.StartFile = record.StartFile
+					r.StartPosition = record.StartPosition
+					r.EndFile = record.EndFile
+					r.EndPosition = record.EndPosition
+				}
+			}
+		}
+	}
+
+	return 0
 }
 
 func (s *session) executeRemoteCommand(record *Record) int {
@@ -1850,7 +2086,6 @@ func (s *session) sqlStatisticsSave() {
 	}
 
 	if err := s.backupdb.Exec(sql, values...).Error; err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -1861,7 +2096,6 @@ func (s *session) sqlStatisticsSave() {
 func (s *session) createStatisticsTable() {
 	sql := "create database if not exists inception;"
 	if err := s.backupdb.Exec(sql).Error; err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
@@ -1874,7 +2108,6 @@ func (s *session) createStatisticsTable() {
 
 	sql = statisticsTableSQL()
 	if err := s.backupdb.Exec(sql).Error; err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
@@ -1949,7 +2182,6 @@ func (s *session) executeRemoteStatement(record *Record) {
 		record.ExecTimestamp = time.Now().Unix()
 
 		if err != nil {
-			// log.Error(err)
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				s.AppendErrorMessage(myErr.Message)
@@ -1977,6 +2209,9 @@ func (s *session) executeRemoteStatement(record *Record) {
 					s.AppendErrorMessage("The execution result is unknown! Please confirm manually.")
 				}
 			}
+
+			// log.Infof("[%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
+
 			return
 		} else {
 			affectedRows, err := res.RowsAffected()
@@ -1993,9 +2228,14 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 			record.StageStatus = StatusExecOK
 
-			switch record.Type.(type) {
+			// log.Infof("[%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
+
+			switch node := record.Type.(type) {
+			// switch record.Type.(type) {
 			case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
 				s.TotalChangeRows += record.AffectedRows
+			case *ast.UseStmt:
+				s.DBName = node.DBName
 			}
 
 			if _, ok := record.Type.(*ast.CreateTableStmt); ok &&
@@ -2070,7 +2310,6 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2100,7 +2339,6 @@ func (s *session) checkBinlogFormatIsRow() bool {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2130,7 +2368,6 @@ func (s *session) checkBinlogRowImageIsFull() bool {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2164,7 +2401,6 @@ func (s *session) mysqlServerVersion() {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2246,7 +2482,6 @@ func (s *session) mysqlServerVersion() {
 // 	}
 
 // 	if err != nil {
-// 		// log.Error(err)
 // 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 // 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 // 			s.AppendErrorMessage(myErr.Message)
@@ -2260,7 +2495,6 @@ func (s *session) mysqlServerVersion() {
 // 	}
 
 // 	if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
-// 		// log.Error(err)
 // 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 // 		log.Warning(value)
 // 	} else {
@@ -2283,7 +2517,6 @@ func (s *session) mysqlExplicitDefaultsForTimestamp() {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2340,13 +2573,42 @@ func (s *session) fetchThreadID() uint32 {
 	return s.threadID
 }
 
+func (s *session) fetchTranThreadID(tx *gorm.DB) uint32 {
+
+	var threadId uint64
+	sql := "select connection_id();"
+	rows, err := tx.Raw(sql).Rows()
+	if err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.AppendErrorMessage(myErr.Message)
+		} else {
+			s.AppendErrorMessage(err.Error())
+		}
+		return 0
+	} else if rows != nil {
+		for rows.Next() {
+			rows.Scan(&threadId)
+		}
+		rows.Close()
+	}
+
+	var currentThreadId uint32
+
+	if threadId > math.MaxUint32 {
+		currentThreadId = uint32(threadId % (1 << 32))
+	} else {
+		currentThreadId = uint32(threadId)
+	}
+
+	return currentThreadId
+}
+
 func (s *session) modifyBinlogFormatRow() {
 	log.Debug("modifyBinlogFormatRow")
 
 	sql := "set session binlog_format='row';"
 
 	if _, err := s.Exec(sql, true); err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2366,7 +2628,6 @@ func (s *session) modifyWaitTimeout() {
 	sql := fmt.Sprintf("set session wait_timeout=%d;", s.Inc.WaitTimeout)
 
 	if _, err := s.Exec(sql, true); err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2382,7 +2643,6 @@ func (s *session) modifyBinlogRowImageFull() {
 	sql := "set session binlog_row_image='FULL';"
 
 	if _, err := s.Exec(sql, true); err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2405,7 +2665,6 @@ func (s *session) setSqlSafeUpdates() {
 	}
 
 	if _, err := s.Exec(sql, true); err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2427,7 +2686,6 @@ func (s *session) checkBinlogIsOn() bool {
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2455,7 +2713,6 @@ func (s *session) checkIsReadOnly() bool {
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2551,6 +2808,9 @@ func (s *session) parseOptions(sql string) {
 		sslCA:   viper.GetString("sslCa"),
 		sslCert: viper.GetString("sslCert"),
 		sslKey:  viper.GetString("sslKey"),
+
+		// 开启事务功能，设置一次提交多少记录
+		tranBatch: viper.GetInt("tranBatch"),
 	}
 
 	if s.opt.split || s.opt.check || s.opt.Print {
@@ -2626,7 +2886,6 @@ func (s *session) parseOptions(sql string) {
 			backupdb, err := gorm.Open("mysql", addr)
 
 			if err != nil {
-				// log.Error(err)
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(err.Error())
 				return
@@ -2858,7 +3117,6 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2892,7 +3150,6 @@ func (s *session) mysqlForeignKeys(t *TableInfo) (keys []string) {
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2927,7 +3184,6 @@ func (s *session) mysqlGetTableSize(t *TableInfo) {
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2959,7 +3215,6 @@ func (s *session) mysqlShowCreateTable(t *TableInfo) {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -2989,7 +3244,6 @@ func (s *session) mysqlShowCreateDatabase(name string) {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -5092,7 +5346,6 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -6291,7 +6544,6 @@ func (s *session) executeInceptionShow(sql string) ([]sqlexec.RecordSet, error) 
 		defer rows.Close()
 	}
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -6437,7 +6689,6 @@ func (s *session) checkChangeDB(node *ast.UseStmt, sql string) {
 	if s.checkDBExists(node.DBName, true) && !s.dbCacheList[strings.ToLower(node.DBName)].IsNew {
 		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
 		if err != nil {
-			// log.Error(err)
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				s.AppendErrorMessage(myErr.Message)
@@ -6521,7 +6772,6 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 
 	// if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
 	if err := s.RawScan(sql, &rows); err != nil {
-		// log.Error(err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 			if newRecord != nil {
@@ -6595,7 +6845,6 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 	}
 
 	if err != nil {
-		// log.Error(err)
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
@@ -7241,7 +7490,6 @@ func (s *session) QueryTableFromDB(db string, tableName string, reportNotExists 
 	if err := s.RawScan(sql, &rows); err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 {
-				// log.Error(err)
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(myErr.Message + ".")
 			} else if reportNotExists {
@@ -7265,7 +7513,6 @@ func (s *session) QueryIndexFromDB(db string, tableName string, reportNotExists 
 	if err := s.RawScan(sql, &rows); err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			if myErr.Number != 1146 {
-				// log.Error(err)
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.AppendErrorMessage(myErr.Message + ".")
 			} else if reportNotExists {

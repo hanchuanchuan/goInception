@@ -244,6 +244,10 @@ func (s *session) Parser(ctx context.Context) {
 
 	currentPosition := startPosition
 	var currentThreadID uint32
+
+	// 已解析行数，如果行数大于等于record的实际受影响行数，则可以直接切换到下一record
+	var changeRows int
+
 	for {
 		e, err := logSync.GetEvent(context.Background())
 		if err != nil {
@@ -285,6 +289,7 @@ func (s *session) Parser(ctx context.Context) {
 		case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if s.checkFilter(event, record, currentThreadID) {
+					changeRows += len(event.Rows)
 					_, err = s.generateDeleteSql(record.TableInfo, event, e)
 					s.checkError(err)
 				} else {
@@ -296,6 +301,7 @@ func (s *session) Parser(ctx context.Context) {
 
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if s.checkFilter(event, record, currentThreadID) {
+					changeRows += len(event.Rows)
 					_, err = s.generateInsertSql(record.TableInfo, event, e)
 					s.checkError(err)
 				} else {
@@ -306,7 +312,7 @@ func (s *session) Parser(ctx context.Context) {
 		case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
 				if s.checkFilter(event, record, currentThreadID) {
-
+					changeRows += len(event.Rows) / 2
 					_, err = s.generateUpdateSql(record.TableInfo, event, e)
 					s.checkError(err)
 				} else {
@@ -338,6 +344,26 @@ func (s *session) Parser(ctx context.Context) {
 				record = next
 			} else {
 				break
+			}
+		} else if s.opt.tranBatch > 1 {
+			if record.AffectedRows <= changeRows {
+				if record.AffectedRows > 0 {
+					record.StageStatus = StatusBackupOK
+				}
+				record.BackupCostTime = fmt.Sprintf("%.3f", time.Since(startTime).Seconds())
+
+				changeRows = 0
+				next := s.GetNextBackupRecord()
+				if next != nil {
+					startPosition = mysql.Position{next.StartFile, uint32(next.StartPosition)}
+					stopPosition = mysql.Position{next.EndFile, uint32(next.EndPosition)}
+					startTime = time.Now()
+
+					s.myRecord = next
+					record = next
+				} else {
+					break
+				}
 			}
 		}
 
