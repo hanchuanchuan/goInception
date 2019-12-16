@@ -431,19 +431,95 @@ func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
 		"UPDATE `test_inc`.`t1` SET `c1`=123456789012.1234 WHERE `id`=1;", Commentf("%v", res.Rows()))
 
 	// -------------------- 多表update -------------------
+	config.GetGlobalConfig().Inc.EnableMinimalRollback = false
 	sql = `drop table if exists table1;drop table if exists table2;
 		create table table1(id1 int primary key,c1 int,c2 int);
 		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
 		insert into table1 values(1,1,1),(2,1,1);
 		insert into table2 values(1,1,1,null),(2,1,null,null);
 		update table1 t1,table2 t2 set t1.c1=10,t2.c22=20 where t1.id1=t2.id2 and t2.c1=1;`
-	// res = s.mustRunBackup(c, sql)
-	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	// backup = s.query("table1", row[7].(string))
-	// c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `c1`=123456789012.1234 WHERE `id`=1;", Commentf("%v", res.Rows()))
 
 	res = s.mustRunBackup(c, sql)
 	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table2` SET `id2`=1, `c1`=1, `c2`=1, `c22`=NULL WHERE `id2`=1;",
+		"UPDATE `test_inc`.`table2` SET `id2`=2, `c1`=1, `c2`=NULL, `c22`=NULL WHERE `id2`=2;",
+		"UPDATE `test_inc`.`table1` SET `id1`=1, `c1`=1, `c2`=1 WHERE `id1`=1;",
+		"UPDATE `test_inc`.`table1` SET `id1`=2, `c1`=1, `c2`=1 WHERE `id1`=2;",
+	)
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,1,null,null);
+		update table1 t1,table2 t2 set t2.c22=20,t1.c1=10 where t1.id1=t2.id2 and t2.c1=1;`
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table2` SET `id2`=1, `c1`=1, `c2`=1, `c22`=NULL WHERE `id2`=1;",
+		"UPDATE `test_inc`.`table2` SET `id2`=2, `c1`=1, `c2`=NULL, `c22`=NULL WHERE `id2`=2;",
+		"UPDATE `test_inc`.`table1` SET `id1`=1, `c1`=1, `c2`=1 WHERE `id1`=1;",
+		"UPDATE `test_inc`.`table1` SET `id1`=2, `c1`=1, `c2`=1 WHERE `id1`=2;",
+	)
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,1,null,null);
+		update table1 t1,table2 t2 set c22=20,t1.c1=10 where t1.id1=t2.id2 and t2.c1=1;`
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table2` SET `id2`=1, `c1`=1, `c2`=1, `c22`=NULL WHERE `id2`=1;",
+		"UPDATE `test_inc`.`table2` SET `id2`=2, `c1`=1, `c2`=NULL, `c22`=NULL WHERE `id2`=2;",
+		"UPDATE `test_inc`.`table1` SET `id1`=1, `c1`=1, `c2`=1 WHERE `id1`=1;",
+		"UPDATE `test_inc`.`table1` SET `id1`=2, `c1`=1, `c2`=1 WHERE `id1`=2;",
+	)
+
+	config.GetGlobalConfig().Inc.EnableMinimalRollback = true
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,1,null,null);
+		update table1 t1,table2 t2 set t1.c1=10,t2.c22=20 where t1.id1=t2.id2 and t2.c1=1;`
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table2` SET `c22`=NULL WHERE `id2`=1;",
+		"UPDATE `test_inc`.`table2` SET `c22`=NULL WHERE `id2`=2;",
+		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=1;",
+		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=2;",
+	)
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,1,null,null);
+		update table1 t1,table2 t2 set t2.c22=20,t1.c1=10 where t1.id1=t2.id2 and t2.c1=1;`
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table2` SET `c22`=NULL WHERE `id2`=1;",
+		"UPDATE `test_inc`.`table2` SET `c22`=NULL WHERE `id2`=2;",
+		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=1;",
+		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=2;",
+	)
+
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,1,null,null);
+		update table1 t1,table2 t2 set c22=20,t1.c1=10 where t1.id1=t2.id2 and t2.c1=1;`
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[int(s.tk.Se.AffectedRows())-1:],
+		"UPDATE `test_inc`.`table2` SET `c22`=NULL WHERE `id2`=1;",
+		"UPDATE `test_inc`.`table2` SET `c22`=NULL WHERE `id2`=2;",
 		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=1;",
 		"UPDATE `test_inc`.`table1` SET `c1`=1 WHERE `id1`=2;",
 	)

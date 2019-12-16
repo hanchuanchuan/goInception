@@ -15,7 +15,6 @@ package session_test
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -24,8 +23,6 @@ import (
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
-
-	"github.com/hanchuanchuan/goInception/ast"
 )
 
 var _ = Suite(&testSessionIncTranSuite{})
@@ -191,9 +188,9 @@ update t1 set c1='10' where id>0;`, 2)
 	s.insertMulti(c, 2)
 	s.insertMulti(c, 3)
 	s.insertMulti(c, 13)
-	s.insertMulti(c, 73)
+	s.insertMulti(c, 79)
 
-	// for i := 2; i <= 20; i++ {
+	// for i := 41; i <= 60; i++ {
 	// 	s.insertMulti(c, i)
 	// }
 }
@@ -680,104 +677,6 @@ func (s *testSessionIncTranSuite) query(table, opid string) string {
 	return strings.Join(result, "\n")
 }
 
-func (s *testSessionIncTranSuite) assertRows(c *C, rows [][]interface{}, rollbackSqls ...string) error {
-	c.Assert(len(rows), Not(Equals), 0)
-
-	inc := config.GetGlobalConfig().Inc
-	if s.db == nil || s.db.DB().Ping() != nil {
-		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
-			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
-
-		db, err := gorm.Open("mysql", addr)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		// 禁用日志记录器，不显示任何日志
-		db.LogMode(false)
-		s.db = db
-	}
-
-	// 有可能是 不同的表,不同的库
-
-	result := []string{}
-
-	// affectedRows := 0
-	// opid := ""
-	// backupDBName := ""
-	// sqlIndex := 0
-	for _, row := range rows {
-		opid := ""
-		backupDBName := ""
-		affectedRows := 0
-		if row[6] != nil {
-			a := row[6].(string)
-			affectedRows, _ = strconv.Atoi(a)
-		}
-		if row[7] != nil {
-			opid = row[7].(string)
-		}
-		if row[8] != nil {
-			backupDBName = row[8].(string)
-		}
-		currentSql := ""
-		if row[5] != nil {
-			currentSql = row[5].(string)
-		}
-
-		if !strings.Contains(row[3].(string), "Backup Successfully") || strings.HasSuffix(opid, "00000000") {
-			continue
-		}
-
-		// 获取表名（改为从语法中自动获取）
-		// sql := "select tablename from %s.%s where opid_time = ?"
-		// sql = fmt.Sprintf(sql, backupDBName, s.remoteBackupTable)
-		// tableName := ""
-		// rows, err := s.db.Raw(sql, opid).Rows()
-		// c.Assert(err, IsNil)
-		// for rows.Next() {
-		// 	rows.Scan(&tableName)
-		// }
-		// rows.Close()
-
-		// if sqlIndex >= len(rollbackSqls) {
-
-		// }
-
-		tableName := s.getObjectName(currentSql)
-		c.Assert(tableName, Not(Equals), "", Commentf("%v", currentSql))
-
-		sql := "select rollback_statement from %s.`%s` where opid_time = ?;"
-		sql = fmt.Sprintf(sql, backupDBName, tableName)
-		rows, err := s.db.Raw(sql, opid).Rows()
-		c.Assert(err, IsNil)
-		str := ""
-		// count := 0
-
-		result1 := []string{}
-		for rows.Next() {
-			rows.Scan(&str)
-			result1 = append(result1, s.trim(str))
-			// count++
-		}
-		rows.Close()
-
-		if affectedRows > 0 {
-			c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
-		}
-
-		result = append(result, result1...)
-	}
-
-	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", result))
-
-	for i := range result {
-		c.Assert(result[i], Equals, rollbackSqls[i], Commentf("%v", result))
-	}
-
-	return nil
-}
-
 func (s *testSessionIncTranSuite) queryStatistics() []int {
 	inc := config.GetGlobalConfig().Inc
 	if s.db == nil || s.db.DB().Ping() != nil {
@@ -980,102 +879,4 @@ func (s *testSessionIncTranSuite) TestStatistics(c *C) {
 	for i, v := range statistics {
 		c.Assert(v, Equals, result[i], Commentf("%v", statistics))
 	}
-}
-
-// getObjectName 解析操作表名
-func (s *testSessionIncTranSuite) getObjectName(sql string) (name string) {
-
-	stmtNodes, _, _ := s.parser.Parse(sql, "utf8mb4", "utf8mb4_bin")
-
-	for _, stmtNode := range stmtNodes {
-		switch node := stmtNode.(type) {
-		case *ast.InsertStmt:
-			tableRefs := node.Table
-			if tableRefs == nil || tableRefs.TableRefs == nil || tableRefs.TableRefs.Right != nil {
-				return ""
-			}
-			tblSrc, ok := tableRefs.TableRefs.Left.(*ast.TableSource)
-			if !ok {
-				return ""
-			}
-			if tblSrc.AsName.L != "" {
-				return ""
-			}
-			tblName, ok := tblSrc.Source.(*ast.TableName)
-			if !ok {
-				return ""
-			}
-
-			name = tblName.Name.String()
-
-		case *ast.UpdateStmt:
-			// name = node.Table.Name.String()
-			tableRefs := node.TableRefs
-			if tableRefs == nil || tableRefs.TableRefs == nil || tableRefs.TableRefs.Right != nil {
-				return ""
-			}
-			tblSrc, ok := tableRefs.TableRefs.Left.(*ast.TableSource)
-			if !ok {
-				return ""
-			}
-			if tblSrc.AsName.L != "" {
-				return ""
-			}
-			tblName, ok := tblSrc.Source.(*ast.TableName)
-			if !ok {
-				return ""
-			}
-
-			name = tblName.Name.String()
-		case *ast.DeleteStmt:
-			// name = node.Table.Name.String()
-			tableRefs := node.TableRefs
-			if tableRefs == nil || tableRefs.TableRefs == nil || tableRefs.TableRefs.Right != nil {
-				return ""
-			}
-			tblSrc, ok := tableRefs.TableRefs.Left.(*ast.TableSource)
-			if !ok {
-				return ""
-			}
-			if tblSrc.AsName.L != "" {
-				return ""
-			}
-			tblName, ok := tblSrc.Source.(*ast.TableName)
-			if !ok {
-				return ""
-			}
-
-			name = tblName.Name.String()
-
-		case *ast.CreateDatabaseStmt, *ast.DropDatabaseStmt:
-
-		case *ast.CreateTableStmt:
-			name = node.Table.Name.String()
-		case *ast.AlterTableStmt:
-			name = node.Table.Name.String()
-		case *ast.DropTableStmt:
-			for _, t := range node.Tables {
-				name = t.Name.String()
-				break
-			}
-
-		case *ast.RenameTableStmt:
-			name = node.OldTable.Name.String()
-
-		case *ast.TruncateTableStmt:
-
-			name = node.Table.Name.String()
-
-		case *ast.CreateIndexStmt:
-			name = node.Table.Name.String()
-		case *ast.DropIndexStmt:
-			name = node.Table.Name.String()
-
-		default:
-
-		}
-
-		return name
-	}
-	return ""
 }
