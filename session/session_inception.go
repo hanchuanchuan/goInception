@@ -6686,14 +6686,20 @@ func (s *session) checkChangeDB(node *ast.UseStmt, sql string) {
 	s.DBName = node.DBName
 
 	// 新建库跳过use 切换
-	if s.checkDBExists(node.DBName, true) && !s.dbCacheList[strings.ToLower(node.DBName)].IsNew {
-		_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
-		if err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				s.AppendErrorMessage(myErr.Message)
-			} else {
-				s.AppendErrorMessage(err.Error())
+	if s.checkDBExists(node.DBName, true) {
+		key := node.DBName
+		if s.IgnoreCase() {
+			key = strings.ToLower(key)
+		}
+		if v, ok := s.dbCacheList[key]; ok && !v.IsNew {
+			_, err := s.Exec(fmt.Sprintf("USE `%s`", node.DBName), true)
+			if err != nil {
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+					s.AppendErrorMessage(myErr.Message)
+				} else {
+					s.AppendErrorMessage(err.Error())
+				}
 			}
 		}
 	}
@@ -6987,6 +6993,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 					}
 				}
 			}
+
 		}
 	}
 
@@ -7068,7 +7075,28 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 					l.Column.Table = model.NewCIStr(s.myRecord.TableInfo.Name)
 				}
 
-				s.checkFieldItem(l.Column, tableInfoList)
+				if s.checkFieldItem(l.Column, tableInfoList) {
+
+					// update多表操作
+					// set不同的表
+					// 存储其他表到MultiTables对象
+					if len(tableInfoList) > 1 {
+						if t := getFieldWithTableInfo(l.Column, tableInfoList); t != nil {
+							if !strings.EqualFold(t.Schema, s.myRecord.TableInfo.Schema) ||
+								!strings.EqualFold(t.Name, s.myRecord.TableInfo.Name) {
+								key := fmt.Sprintf("%s.%s", t.Schema, t.Name)
+								key = strings.ToLower(key)
+
+								if s.myRecord.MultiTables == nil {
+									s.myRecord.MultiTables = make(map[string]*TableInfo, 0)
+									s.myRecord.MultiTables[key] = t
+								} else if _, ok := s.myRecord.MultiTables[key]; !ok {
+									s.myRecord.MultiTables[key] = t
+								}
+							}
+						}
+					}
+				}
 
 				// 多表update情况时，下面的判断会有问题
 				// found := false
@@ -7318,6 +7346,29 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 		}
 		return false
 	}
+}
+
+// getFieldWithTableInfo 获取字段对应的表信息
+func getFieldWithTableInfo(name *ast.ColumnName, tables []*TableInfo) *TableInfo {
+	db := name.Schema.L
+	for _, t := range tables {
+		var tName string
+		if t.AsName != "" {
+			tName = t.AsName
+		} else {
+			tName = t.Name
+		}
+		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+			(strings.EqualFold(tName, name.Table.L)) ||
+			name.Table.L == "" {
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+					return t
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // getFieldItem 获取字段信息
