@@ -403,11 +403,11 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 	for _, row := range rows {
 		opid := ""
 		backupDBName := ""
-		runSql := ""
 
-		if row[5] != nil {
-			runSql = row[5].(string)
-		}
+		// runSql := ""
+		// if row[5] != nil {
+		// 	runSql = row[5].(string)
+		// }
 
 		affectedRows := 0
 		if row[6] != nil {
@@ -446,7 +446,18 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 		// }
 
 		tableName := s.getObjectName(currentSql)
-		c.Assert(tableName, Not(Equals), "", Commentf("%v", currentSql))
+		// 表名没有时,查询一下
+		if tableName == "" {
+			sql := "select tablename from `%s`.`%s` where opid_time = ?"
+			sql = fmt.Sprintf(sql, backupDBName, s.remoteBackupTable)
+			rows, err := s.db.Raw(sql, opid).Rows()
+			c.Assert(err, IsNil)
+			for rows.Next() {
+				rows.Scan(&tableName)
+			}
+			rows.Close()
+		}
+		c.Assert(tableName, Not(Equals), "", Commentf("%v", row))
 
 		sql := "select rollback_statement from %s.`%s` where opid_time = ?;"
 		sql = fmt.Sprintf(sql, backupDBName, tableName)
@@ -464,13 +475,14 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 		rows.Close()
 
 		if affectedRows > 0 {
-			if strings.HasPrefix(runSql, "update") &&
-				(strings.Contains(runSql, ",") || strings.Contains(runSql, "join")) {
-				// update多表时受影响行数为两表之和
-				// 待实现...
-			} else {
-				c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
-			}
+			// if strings.HasPrefix(runSql, "update") &&
+			// 	(strings.Contains(runSql, ",") || strings.Contains(runSql, "join")) {
+			// 	// update多表时受影响行数为两表之和
+			// 	// 待实现...
+			// } else {
+			// 	c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
+			// }
+			c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
 		}
 
 		result = append(result, result1...)
@@ -541,6 +553,8 @@ func (s *testCommon) getObjectName(sql string) (name string) {
 			name = tblName.Name.String()
 
 		case *ast.UpdateStmt:
+			return ""
+
 			tblSrc := getLeftTable(node.TableRefs.TableRefs)
 			if tblSrc == nil {
 				log.Errorf("未找到表名！！！ sql: %s", sql)
@@ -551,6 +565,12 @@ func (s *testCommon) getObjectName(sql string) (name string) {
 				log.Infof("%#v", tblSrc.Source)
 				return ""
 			}
+
+			// for _, l := range node.List {
+			// 	originTable := l.Column.Table.L
+			// 	firstColumnName := l.Column.Name.O
+
+			// }
 
 			name = tblName.Name.String()
 		case *ast.DeleteStmt:

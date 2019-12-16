@@ -111,7 +111,13 @@ func (s *session) GetNextBackupRecord() *Record {
 				if r.StageStatus != StatusExecFail {
 					r.StageStatus = StatusBackupFail
 				}
+				// 清理已删除的列
 				clearDeleteColumns(r.TableInfo)
+				if r.MultiTables != nil {
+					for _, t := range r.MultiTables {
+						clearDeleteColumns(t)
+					}
+				}
 
 				return r
 			}
@@ -146,6 +152,7 @@ func configPrimaryKey(t *TableInfo) {
 	}
 }
 
+// clearDeleteColumns 清理已删除的列,方便解析binlog
 func clearDeleteColumns(t *TableInfo) {
 	if t == nil || t.IsClear {
 		return
@@ -291,7 +298,9 @@ func (s *session) Parser(ctx context.Context) {
 				if s.checkFilter(event, record, currentThreadID) {
 					changeRows += len(event.Rows)
 					_, err = s.generateDeleteSql(record.TableInfo, event, e)
-					s.checkError(err)
+					if err != nil {
+						log.Error(err)
+					}
 				} else {
 					goto ENDCHECK
 				}
@@ -303,7 +312,9 @@ func (s *session) Parser(ctx context.Context) {
 				if s.checkFilter(event, record, currentThreadID) {
 					changeRows += len(event.Rows)
 					_, err = s.generateInsertSql(record.TableInfo, event, e)
-					s.checkError(err)
+					if err != nil {
+						log.Error(err)
+					}
 				} else {
 					goto ENDCHECK
 				}
@@ -311,10 +322,16 @@ func (s *session) Parser(ctx context.Context) {
 
 		case replication.UPDATE_ROWS_EVENTv1, replication.UPDATE_ROWS_EVENTv2:
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
-				if s.checkFilter(event, record, currentThreadID) {
+				if ok, t := s.checkUpdateFilter(event, record, currentThreadID); ok {
 					changeRows += len(event.Rows) / 2
-					_, err = s.generateUpdateSql(record.TableInfo, event, e)
-					s.checkError(err)
+					if t != nil {
+						_, err = s.generateUpdateSql(t, event, e)
+					} else {
+						_, err = s.generateUpdateSql(record.TableInfo, event, e)
+					}
+					if err != nil {
+						log.Error(err)
+					}
 				} else {
 					goto ENDCHECK
 				}
@@ -402,6 +419,47 @@ func (s *session) checkFilter(event *replication.RowsEvent,
 		return false
 	}
 	return true
+}
+
+// checkUpdateFilter 检查update的筛选条件
+// update会涉及多表更新问题,所以需要把匹配到的表返回
+func (s *session) checkUpdateFilter(event *replication.RowsEvent,
+	record *Record, currentThreadID uint32) (bool, *TableInfo) {
+	var multiTable *TableInfo
+	if record.MultiTables == nil {
+		if !strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) ||
+			!strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
+			return false, nil
+		}
+	} else {
+		found := false
+		if strings.EqualFold(string(event.Table.Schema), record.TableInfo.Schema) &&
+			strings.EqualFold(string(event.Table.Table), record.TableInfo.Name) {
+			found = true
+		} else {
+			for _, t := range record.MultiTables {
+				if strings.EqualFold(string(event.Table.Schema), t.Schema) &&
+					strings.EqualFold(string(event.Table.Table), t.Name) {
+					multiTable = t
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			return false, nil
+		}
+	}
+
+	if currentThreadID == 0 && s.DBType == DBTypeMariaDB {
+		if record.ErrLevel != 1 {
+			record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+		}
+		return true, multiTable
+	} else if record.ThreadId != currentThreadID {
+		return false, nil
+	}
+	return true, multiTable
 }
 
 // 解析的sql写入缓存,并定期入库
@@ -517,7 +575,9 @@ func (s *session) generateInsertSql(t *TableInfo, e *replication.RowsEvent,
 		}
 
 		r, err := InterpolateParams(sql, vv, s.Inc.HexBlob)
-		s.checkError(err)
+		if err != nil {
+			log.Error(err)
+		}
 
 		s.write(r, binEvent)
 	}
@@ -580,7 +640,9 @@ func (s *session) generateDeleteSql(t *TableInfo, e *replication.RowsEvent,
 		newSql := strings.Join([]string{sql, strings.Join(columnNames, " AND")}, "")
 
 		r, err := InterpolateParams(newSql, vv, s.Inc.HexBlob)
-		s.checkError(err)
+		if err != nil {
+			log.Error(err)
+		}
 
 		s.write(r, binEvent)
 
@@ -760,7 +822,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 			newSql = strings.Join([]string{sql, strings.Join(columnNames, " AND")}, "")
 			newValues = append(newValues, oldValues...)
 			r, err := InterpolateParams(newSql, newValues, s.Inc.HexBlob)
-			s.checkError(err)
+			if err != nil {
+				log.Error(err)
+			}
 
 			s.write(r, binEvent)
 
