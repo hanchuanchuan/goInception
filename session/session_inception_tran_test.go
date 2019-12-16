@@ -186,8 +186,6 @@ update t1 set c1='10' where id>0;`, 2)
 
 	// 测试不同分批下的大量数据
 	s.insertMulti(c, 2)
-	s.insertMulti(c, 3)
-	s.insertMulti(c, 13)
 	s.insertMulti(c, 79)
 
 	// for i := 41; i <= 60; i++ {
