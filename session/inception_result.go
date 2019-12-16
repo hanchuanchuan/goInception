@@ -80,6 +80,7 @@ type Record struct {
 	DBName    string
 	TableName string
 	TableInfo *TableInfo
+
 	// ddl回滚
 	DDLRollback string
 	OPID        string
@@ -88,6 +89,11 @@ type Record struct {
 
 	// 是否开启OSC
 	useOsc bool
+
+	// update多表时,记录多余的表
+	// update多表时,默认set第一列的表为主表,其余表才会记录到该处
+	// 仅在发现多表操作时,初始化该参数
+	MultiTables map[string]*TableInfo
 }
 
 type recordSet struct {

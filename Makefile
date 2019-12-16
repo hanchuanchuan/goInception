@@ -159,7 +159,7 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 else
 	@echo "Running in native mode."
 	@export log_level=error; \
-	$(GOTEST) -timeout 20m -ldflags '$(TEST_LDFLAGS)' -cover $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
+	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' -cover $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
 endif
 	@$(GOFAIL_DISABLE)
 
@@ -167,7 +167,7 @@ race: parserlib
 	$(GO) get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a
 	@$(GOFAIL_ENABLE)
 	@export log_level=debug; \
-	$(GOTEST) -timeout 20m -race $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
+	$(GOTEST) -timeout 30m -race $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
 	@$(GOFAIL_DISABLE)
 
 leak: parserlib
