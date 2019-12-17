@@ -93,55 +93,6 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	}
 }
 
-func (s *testSessionIncExecSuite) TestBegin(c *C) {
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	}
-
-	res := s.tk.MustQueryInc("drop table if exists t1;create table t1(id int);")
-
-	c.Assert(len(res.Rows()), Equals, 1, Commentf("%v", res.Rows()))
-
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Must start as begin statement.")
-	}
-}
-
-func (s *testSessionIncExecSuite) TestNoSourceInfo(c *C) {
-	res := s.tk.MustQueryInc("inception_magic_start;\ncreate table t1(id int);")
-
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 1)
-
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Invalid source infomation.")
-	}
-}
-
-func (s *testSessionIncExecSuite) TestWrongDBName(c *C) {
-	res := s.tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;create table t1(id int);inception_magic_commit;`)
-
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 1)
-
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Incorrect database name ''.")
-	}
-}
-
-func (s *testSessionIncExecSuite) TestEnd(c *C) {
-	res := s.tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;use test_inc;create table t1(id int);`)
-
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 3)
-
-	row := res.Rows()[2]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Must end with commit.")
-}
-
 func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
@@ -156,92 +107,10 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	sql = "drop table if exists nullkeytest1;create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key ix_1(c2));"
 	s.testErrorCode(c, sql)
 
-	// 表存在
-	res := s.runExec("drop table if exists t1;create table t1(id int);create table t1(id int);")
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 't1' already exists.")
-
-	// 重复列
-	sql = "create table test_error_code1 (c1 int, c2 int, c2 int)"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
-
-	// 主键
-	config.GetGlobalConfig().Inc.CheckPrimaryKey = true
-	res = s.runExec("drop table t1;create table t1(id int);")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set a primary key for table 't1'.")
-	config.GetGlobalConfig().Inc.CheckPrimaryKey = false
-
-	// 数据类型 警告
-	res = s.runExec("drop table if exists t1;create table t1(id int,c1 bit);")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
-
-	res = s.runExec("drop table if exists t1;create table t1(id int,c1 enum('red', 'blue', 'black'));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
-
-	res = s.runExec("drop table if exists t1;create table t1(id int,c1 set('red', 'blue', 'black'));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
-
-	// char列建议
-	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = s.runExec(`drop table if exists t1;create table t1(id int,c1 char(200));`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
-
-	// 字符集
-	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20) character set utf8,
-        c2 varchar(20) COLLATE utf8_bin);`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
-		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
-
-	config.GetGlobalConfig().Inc.EnableSetCharset = false
-	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) character set utf8;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
-
-	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrTableCollationNotSupport, "t1"))
-
-	// 关键字
-	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
-	config.GetGlobalConfig().Inc.CheckIdentifier = true
-
-	res = s.runExec("drop table if exists t1;create table t1(id int, TABLES varchar(20),`c1$` varchar(20),c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\nIdentifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
-
-	// 列注释
-	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(20));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
-
-	config.GetGlobalConfig().Inc.CheckColumnComment = false
-
 	// 表注释
-	config.GetGlobalConfig().Inc.CheckTableComment = true
-	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(20));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set comments for table 't1'.")
-
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(20));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	res := s.runExec("drop table if exists t1;create table t1(c1 varchar(20));")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
 	// 无效默认值
