@@ -14,13 +14,11 @@
 package session_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
 )
 
@@ -1029,99 +1027,6 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c4` polygon,ADD COLUMN `c3` linestring,ADD COLUMN `c2` point,ADD COLUMN `c1` geometry;", Commentf("%v", res.Rows()))
 
-}
-
-func (s *testSessionIncBackupSuite) query(table, opid string) string {
-	inc := config.GetGlobalConfig().Inc
-	if s.db == nil || s.db.DB().Ping() != nil {
-		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
-			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
-
-		db, err := gorm.Open("mysql", addr)
-		if err != nil {
-			fmt.Println(err)
-			return err.Error()
-		}
-		// 禁用日志记录器，不显示任何日志
-		db.LogMode(false)
-		s.db = db
-	}
-
-	result := []string{}
-	sql := "select rollback_statement from 127_0_0_1_%d_test_inc.`%s` where opid_time = ?;"
-	sql = fmt.Sprintf(sql, inc.BackupPort, table)
-
-	rows, err := s.db.Raw(sql, opid).Rows()
-	if err != nil {
-		fmt.Println(err)
-		return err.Error()
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			str := ""
-			rows.Scan(&str)
-			result = append(result, trim(str))
-		}
-	}
-	return strings.Join(result, "\n")
-}
-
-func (s *testSessionIncBackupSuite) queryStatistics() []int {
-	inc := config.GetGlobalConfig().Inc
-	if s.db == nil || s.db.DB().Ping() != nil {
-
-		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
-			inc.BackupUser, inc.BackupPassword, inc.BackupHost, inc.BackupPort)
-		db, err := gorm.Open("mysql", addr)
-		if err != nil {
-			fmt.Println(err)
-		}
-		// 禁用日志记录器，不显示任何日志
-		db.LogMode(false)
-		s.db = db
-	}
-
-	sql := `select usedb, deleting, inserting, updating,
-		selecting, altertable, renaming, createindex, dropindex, addcolumn,
-		dropcolumn, changecolumn, alteroption, alterconvert,
-		createtable, droptable, CREATEDB, truncating from inception.statistic order by id desc limit 1;`
-	values := make([]int, 18)
-
-	rows, err := s.db.Raw(sql).Rows()
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			rows.Scan(&values[0],
-				&values[1],
-				&values[2],
-				&values[3],
-				&values[4],
-				&values[5],
-				&values[6],
-				&values[7],
-				&values[8],
-				&values[9],
-				&values[10],
-				&values[11],
-				&values[12],
-				&values[13],
-				&values[14],
-				&values[15],
-				&values[16],
-				&values[17])
-		}
-	}
-	return values
-}
-
-func trim(s string) string {
-	if strings.Contains(s, "  ") {
-		return trim(strings.Replace(s, "  ", " ", -1))
-	}
-	return s
 }
 
 func (s *testSessionIncBackupSuite) TestStatistics(c *C) {
