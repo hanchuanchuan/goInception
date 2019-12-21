@@ -101,6 +101,7 @@ jobs:
       run: |
         sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
         sudo chmod +x /usr/local/bin/pt-online-schema-change
+        sudo apt-get install libdbi-perl
         rm -f go.sum
         sudo chmod +x cmd/explaintest/run-tests.sh
         make checklist parserlib gotest
