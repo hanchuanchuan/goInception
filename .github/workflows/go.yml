@@ -97,11 +97,14 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
-    - name: "Build & Test"
+    - name: Install pt-online-schema-change
       run: |
         sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
         sudo chmod +x /usr/local/bin/pt-online-schema-change
-        sudo apt-get install libdbi-perl
+        sudo apt-get install libdbi-perl libdbd-mysql-perl
+
+    - name: "Build & Test"
+      run: |
         rm -f go.sum
         sudo chmod +x cmd/explaintest/run-tests.sh
         make checklist parserlib gotest
