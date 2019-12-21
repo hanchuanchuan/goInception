@@ -1257,3 +1257,46 @@ func (s *testSessionIncExecSuite) TestAlterTable(c *C) {
 	s.testErrorCode(c, sql)
 
 }
+
+func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	savedOsc := config.GetGlobalConfig().Osc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+		config.GetGlobalConfig().Osc = savedOsc
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+	config.GetGlobalConfig().Osc.OscOn = true
+
+	sql := "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int);"
+	s.mustRunExec(c, sql)
+
+	// 删除后添加列
+	sql = "alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 drop column c1,add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 drop column c1,add column c1 varchar(20) comment '123';"
+	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 add column `c2` varchar(20) comment '!@#$%^&*()_+[]{}\\|;:\",.<>/?';"
+	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 add column `c3` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
+	s.testErrorCode(c, sql)
+
+	// 删除后添加索引
+	sql = "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int,key ix(c1));"
+	s.mustRunExec(c, sql)
+	sql = "alter table t1 drop index ix;alter table t1 add index ix(c1);"
+	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 drop index ix,add index ix(c1);"
+	s.testErrorCode(c, sql)
+
+}

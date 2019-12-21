@@ -36,17 +36,19 @@ import (
 	"time"
 
 	// "github.com/hanchuanchuan/goInception/ast"
-	// "github.com/hanchuanchuan/goInception/server"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
-
-	// "github.com/pingcap/errors"
 
 	"github.com/github/gh-ost/go/base"
 	"github.com/github/gh-ost/go/logic"
 	ghostlog "github.com/outbrain/golib/log"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/pingcap/parser"
+	"github.com/pingcap/parser/ast"
+	"github.com/pingcap/parser/format"
+	_ "github.com/pingcap/tidb/types/parser_driver"
 )
 
 var (
@@ -106,14 +108,14 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	buf := bytes.NewBufferString("pt-online-schema-change")
 
-	buf.WriteString(" --alter \"")
+	buf.WriteString(" --alter '")
 	buf.WriteString(s.getAlterTablePostPart(r.Sql, true))
 
 	if s.hasError() {
 		return
 	}
 
-	buf.WriteString("\" ")
+	buf.WriteString("' ")
 	if s.Osc.OscPrintSql {
 		buf.WriteString(" --print ")
 	}
@@ -754,6 +756,19 @@ func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
 
 func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 
+	part, ok := s.getAlterPartSql(sql)
+	if !ok {
+		return ""
+	}
+	return part
+
+	// gh-ost不需要处理`,pt-osc需要处理
+	if isPtOSC {
+		part = strings.Replace(part, "`", "\\`", -1)
+	}
+
+	return part
+
 	var buf []string
 	for _, line := range strings.Split(sql, "\n") {
 		line = strings.TrimSpace(line)
@@ -824,6 +839,53 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 	}
 
 	return sql
+}
+
+// getAlterPartSql 获取alter子句部分
+func (s *session) getAlterPartSql(sql string) (string, bool) {
+	sql = strings.Replace(sql, "\n", " ", -1)
+	sql = strings.Replace(sql, "\r", " ", -1)
+
+	p := parser.New()
+
+	charsetInfo, collation := s.sessionVars.GetCharsetInfo()
+
+	// stmtNodes, _, err := p.Parse("alter table t1 add column c1", "utf8mb4", "utf8mb4_bin")
+	stmtNodes, _, err := p.Parse(sql, charsetInfo, collation)
+	if err != nil {
+		s.AppendErrorMessage(err.Error())
+		return "", false
+	}
+	var builder strings.Builder
+	var columns []string
+
+	for _, stmtNode := range stmtNodes {
+		switch node := stmtNode.(type) {
+		case *ast.AlterTableStmt:
+			for _, alter := range node.Specs {
+				builder.Reset()
+				err = alter.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
+				if err != nil {
+					s.AppendErrorMessage(err.Error())
+					return "", false
+				}
+				restoreSQL := builder.String()
+				restoreSQL = strings.Replace(restoreSQL, "\"", "\\\"", -1)
+				restoreSQL = strings.Replace(restoreSQL, "'", "\"", -1)
+				columns = append(columns, restoreSQL)
+			}
+		default:
+			s.AppendErrorMessage(fmt.Sprintf("无效类型: %v", stmtNode))
+			return "", false
+		}
+	}
+
+	if len(columns) > 0 {
+		return strings.Join(columns, ", "), true
+	}
+
+	s.AppendErrorMessage(fmt.Sprintf("未正确解析SQL: %s", sql))
+	return "", false
 }
 
 // truncateString: 根据指定长度做字符串截断,长度溢出时转换为hash值以避免重复
