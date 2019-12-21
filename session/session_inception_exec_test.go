@@ -82,11 +82,13 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", row))
 	}
 
-	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
+	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", res.Rows()))
 	// 无错误时需要校验结果是否标记为已执行
 	if errCode == 0 {
-		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"), Equals, true, Commentf("%v", row))
-		c.Assert(row[2].(string), Not(Equals), "2", Commentf("%v", row))
+		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"), Equals, true, Commentf("%v", res.Rows()))
+		for _, row := range res.Rows() {
+			c.Assert(row[2], Not(Equals), "2", Commentf("%v", res.Rows()))
+		}
 	}
 
 	return res.Rows()
