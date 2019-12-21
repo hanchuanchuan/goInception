@@ -109,7 +109,9 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf := bytes.NewBufferString("pt-online-schema-change")
 
 	buf.WriteString(" --alter '")
-	buf.WriteString(s.getAlterTablePostPart(r.Sql, true))
+	if alter, ok := s.getAlterPartSql(r.Sql); ok {
+		buf.WriteString(alter)
+	}
 
 	if s.hasError() {
 		return
@@ -760,6 +762,7 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 	if !ok {
 		return ""
 	}
+
 	return part
 
 	// gh-ost不需要处理`,pt-osc需要处理

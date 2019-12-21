@@ -54,7 +54,7 @@ func (s *testSessionIncExecSuite) TearDownTest(c *C) {
 	s.tearDownTest(c)
 }
 
-func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
+func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) [][]interface{} {
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
@@ -85,12 +85,11 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
 	// 无错误时需要校验结果是否标记为已执行
 	if errCode == 0 {
-		if !strings.Contains(row[3].(string), "Execute Successfully") {
-			fmt.Println(res.Rows())
-		}
-		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"), Equals, true)
-		// c.Assert(row[4].(string), IsNil)
+		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"), Equals, true, Commentf("%v", row))
+		c.Assert(row[2].(string), Not(Equals), "2", Commentf("%v", row))
 	}
+
+	return res.Rows()
 }
 
 func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
@@ -1270,6 +1269,8 @@ func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	config.GetGlobalConfig().Osc.OscOn = true
+	config.GetGlobalConfig().Ghost.GhostOn = false
+	config.GetGlobalConfig().Osc.OscMinTableSize = 0
 
 	sql := "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int);"
 	s.mustRunExec(c, sql)
@@ -1284,11 +1285,16 @@ func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
 	sql = "alter table t1 drop column c1,add column c1 varchar(20) comment '123';"
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 add column `c2` varchar(20) comment '!@#$%^&*()_+[]{}\\|;:\",.<>/?';"
+	sql = "alter table t1 add column c2 varchar(20) comment '!@#$%^&*()_+[]{}\\|;:\",.<>/?';"
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 add column `c3` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
+	sql = "alter table t1 add column c3 varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
 	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 add column `c4` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
+	s.testErrorCode(c, sql)
+
+	// fmt.Println(fmt.Sprintf("%#v", rows))
 
 	// 删除后添加索引
 	sql = "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int,key ix(c1));"
