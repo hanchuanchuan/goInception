@@ -14,10 +14,12 @@
 package ast
 
 import (
+	. "github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/types"
+	"github.com/pingcap/errors"
 )
 
 var (
@@ -63,6 +65,23 @@ type DatabaseOption struct {
 	Value string
 }
 
+// Restore implements Node interface.
+func (n *DatabaseOption) Restore(ctx *RestoreCtx) error {
+	switch n.Tp {
+	case DatabaseOptionCharset:
+		ctx.WriteKeyWord("CHARACTER SET")
+		ctx.WritePlain(" = ")
+		ctx.WritePlain(n.Value)
+	case DatabaseOptionCollate:
+		ctx.WriteKeyWord("COLLATE")
+		ctx.WritePlain(" = ")
+		ctx.WritePlain(n.Value)
+	default:
+		return errors.Errorf("invalid DatabaseOptionType: %d", n.Tp)
+	}
+	return nil
+}
+
 // CreateDatabaseStmt is a statement to create a database.
 // See https://dev.mysql.com/doc/refman/5.7/en/create-database.html
 type CreateDatabaseStmt struct {
@@ -73,6 +92,23 @@ type CreateDatabaseStmt struct {
 	Options     []*DatabaseOption
 }
 
+// Restore implements Node interface.
+func (n *CreateDatabaseStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("CREATE DATABASE ")
+	if n.IfNotExists {
+		ctx.WriteKeyWord("IF NOT EXISTS ")
+	}
+	ctx.WriteName(n.Name)
+	for i, option := range n.Options {
+		ctx.WritePlain(" ")
+		err := option.Restore(ctx)
+		if err != nil {
+			return errors.Annotatef(err, "An error occurred while splicing CreateDatabaseStmt DatabaseOption: [%v]", i)
+		}
+	}
+	return nil
+}
+
 // Accept implements Node Accept interface.
 func (n *CreateDatabaseStmt) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -80,6 +116,43 @@ func (n *CreateDatabaseStmt) Accept(v Visitor) (Node, bool) {
 		return v.Leave(newNode)
 	}
 	n = newNode.(*CreateDatabaseStmt)
+	return v.Leave(n)
+}
+
+// AlterDatabaseStmt is a statement to change the structure of a database.
+// See https://dev.mysql.com/doc/refman/5.7/en/alter-database.html
+type AlterDatabaseStmt struct {
+	ddlNode
+
+	Name                 string
+	AlterDefaultDatabase bool
+	Options              []*DatabaseOption
+}
+
+// Restore implements Node interface.
+func (n *AlterDatabaseStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("ALTER DATABASE")
+	if !n.AlterDefaultDatabase {
+		ctx.WritePlain(" ")
+		ctx.WriteName(n.Name)
+	}
+	for i, option := range n.Options {
+		ctx.WritePlain(" ")
+		err := option.Restore(ctx)
+		if err != nil {
+			return errors.Annotatef(err, "An error occurred while splicing AlterDatabaseStmt DatabaseOption: [%v]", i)
+		}
+	}
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *AlterDatabaseStmt) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*AlterDatabaseStmt)
 	return v.Leave(n)
 }
 

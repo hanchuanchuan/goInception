@@ -18,9 +18,11 @@ import (
 	"fmt"
 	"strings"
 
+	. "github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/util/auth"
+	"github.com/pingcap/errors"
 )
 
 var (
@@ -43,13 +45,6 @@ var (
 	_ StmtNode = &FlushStmt{}
 	_ StmtNode = &KillStmt{}
 
-	_ StmtNode = &InceptionStartStmt{}
-	_ StmtNode = &InceptionCommitStmt{}
-	_ StmtNode = &InceptionStmt{}
-	_ StmtNode = &InceptionSetStmt{}
-
-	_ StmtNode = &ShowOscStmt{}
-
 	_ Node = &PrivElem{}
 	_ Node = &VariableAssignment{}
 )
@@ -64,6 +59,14 @@ const (
 	// Valid formats for explain statement.
 	ExplainFormatROW = "row"
 	ExplainFormatDOT = "dot"
+	PumpType         = "PUMP"
+	DrainerType      = "DRAINER"
+)
+
+// Transaction mode constants.
+const (
+	Optimistic  = "OPTIMISTIC"
+	Pessimistic = "PESSIMISTIC"
 )
 
 var (
@@ -94,6 +97,18 @@ type AuthOption struct {
 	AuthString   string
 	HashString   string
 	// TODO: support auth_plugin
+}
+
+// Restore implements Node interface.
+func (n *AuthOption) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("IDENTIFIED BY ")
+	if n.ByAuthString {
+		ctx.WriteString(n.AuthString)
+	} else {
+		ctx.WriteKeyWord("PASSWORD ")
+		ctx.WriteString(n.HashString)
+	}
+	return nil
 }
 
 // TraceStmt is a statement to trace what sql actually does at background.
@@ -266,6 +281,12 @@ type CommitStmt struct {
 	stmtNode
 }
 
+// Restore implements Node interface.
+func (n *CommitStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("COMMIT")
+	return nil
+}
+
 // Accept implements Node Accept interface.
 func (n *CommitStmt) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -280,6 +301,12 @@ func (n *CommitStmt) Accept(v Visitor) (Node, bool) {
 // See https://dev.mysql.com/doc/refman/5.7/en/commit.html
 type RollbackStmt struct {
 	stmtNode
+}
+
+// Restore implements Node interface.
+func (n *RollbackStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("ROLLBACK")
+	return nil
 }
 
 // Accept implements Node Accept interface.
@@ -298,6 +325,13 @@ type UseStmt struct {
 	stmtNode
 
 	DBName string
+}
+
+// Restore implements Node interface.
+func (n *UseStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("USE ")
+	ctx.WriteName(n.DBName)
+	return nil
 }
 
 // Accept implements Node Accept interface.
@@ -398,6 +432,19 @@ type KillStmt struct {
 	TiDBExtension bool
 }
 
+// Restore implements Node interface.
+func (n *KillStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("KILL")
+	if n.TiDBExtension {
+		ctx.WriteKeyWord(" TIDB")
+	}
+	if n.Query {
+		ctx.WriteKeyWord(" QUERY")
+	}
+	ctx.WritePlainf(" %d", n.ConnectionID)
+	return nil
+}
+
 // Accept implements Node Accept interface.
 func (n *KillStmt) Accept(v Visitor) (Node, bool) {
 	newNode, skipChildren := v.Enter(n)
@@ -481,30 +528,31 @@ func (n *SetPwdStmt) Accept(v Visitor) (Node, bool) {
 type UserSpec struct {
 	User    *auth.UserIdentity
 	AuthOpt *AuthOption
+	IsRole  bool
 }
 
 // SecurityString formats the UserSpec without password information.
-func (u *UserSpec) SecurityString() string {
+func (n *UserSpec) SecurityString() string {
 	withPassword := false
-	if opt := u.AuthOpt; opt != nil {
+	if opt := n.AuthOpt; opt != nil {
 		if len(opt.AuthString) > 0 || len(opt.HashString) > 0 {
 			withPassword = true
 		}
 	}
 	if withPassword {
-		return fmt.Sprintf("{%s password = ***}", u.User)
+		return fmt.Sprintf("{%s password = ***}", n.User)
 	}
-	return u.User.String()
+	return n.User.String()
 }
 
 // EncodedPassword returns the encoded password (which is the real data mysql.user).
 // The boolean value indicates input's password format is legal or not.
-func (u *UserSpec) EncodedPassword() (string, bool) {
-	if u.AuthOpt == nil {
+func (n *UserSpec) EncodedPassword() (string, bool) {
+	if n.AuthOpt == nil {
 		return "", true
 	}
 
-	opt := u.AuthOpt
+	opt := n.AuthOpt
 	if opt.ByAuthString {
 		return auth.EncodePassword(opt.AuthString), true
 	}
@@ -516,13 +564,119 @@ func (u *UserSpec) EncodedPassword() (string, bool) {
 	return opt.HashString, true
 }
 
+const (
+	TslNone = iota
+	Ssl
+	X509
+	Cipher
+	Issuer
+	Subject
+)
+
+type TslOption struct {
+	Type  int
+	Value string
+}
+
+func (t *TslOption) Restore(ctx *RestoreCtx) error {
+	switch t.Type {
+	case TslNone:
+		ctx.WriteKeyWord("NONE")
+	case Ssl:
+		ctx.WriteKeyWord("SSL")
+	case X509:
+		ctx.WriteKeyWord("X509")
+	case Cipher:
+		ctx.WriteKeyWord("CIPHER ")
+		ctx.WriteString(t.Value)
+	case Issuer:
+		ctx.WriteKeyWord("ISSUER ")
+		ctx.WriteString(t.Value)
+	case Subject:
+		ctx.WriteKeyWord("CIPHER")
+		ctx.WriteString(t.Value)
+	default:
+		return errors.Errorf("Unsupported TslOption.Type %d", t.Type)
+	}
+	return nil
+}
+
+const (
+	MaxQueriesPerHour = iota + 1
+	MaxUpdatesPerHour
+	MaxConnectionsPerHour
+	MaxUserConnections
+)
+
+type ResourceOption struct {
+	Type  int
+	Count int64
+}
+
+func (r *ResourceOption) Restore(ctx *RestoreCtx) error {
+	switch r.Type {
+	case MaxQueriesPerHour:
+		ctx.WriteKeyWord("MAX_QUERIES_PER_HOUR ")
+	case MaxUpdatesPerHour:
+		ctx.WriteKeyWord("MAX_UPDATES_PER_HOUR ")
+	case MaxConnectionsPerHour:
+		ctx.WriteKeyWord("MAX_CONNECTIONS_PER_HOUR ")
+	case MaxUserConnections:
+		ctx.WriteKeyWord("MAX_USER_CONNECTIONS ")
+	default:
+		return errors.Errorf("Unsupported ResourceOption.Type %d", r.Type)
+	}
+	ctx.WritePlainf("%d", r.Count)
+	return nil
+}
+
+const (
+	PasswordExpire = iota + 1
+	PasswordExpireDefault
+	PasswordExpireNever
+	PasswordExpireInterval
+	Lock
+	Unlock
+)
+
+type PasswordOrLockOption struct {
+	Type  int
+	Count int64
+}
+
+func (p *PasswordOrLockOption) Restore(ctx *RestoreCtx) error {
+	switch p.Type {
+	case PasswordExpire:
+		ctx.WriteKeyWord("PASSWORD EXPIRE")
+	case PasswordExpireDefault:
+		ctx.WriteKeyWord("PASSWORD EXPIRE DEFAULT")
+	case PasswordExpireNever:
+		ctx.WriteKeyWord("PASSWORD EXPIRE NEVER")
+	case PasswordExpireInterval:
+		ctx.WriteKeyWord("PASSWORD EXPIRE NEVER")
+		ctx.WritePlainf(" %d", p.Count)
+		ctx.WriteKeyWord(" DAY")
+	case Lock:
+		ctx.WriteKeyWord("ACCOUNT LOCK")
+	case Unlock:
+		ctx.WriteKeyWord("ACCOUNT UNLOCK")
+	default:
+		return errors.Errorf("Unsupported PasswordOrLockOption.Type %d", p.Type)
+	}
+	return nil
+}
+
 // CreateUserStmt creates user account.
 // See https://dev.mysql.com/doc/refman/5.7/en/create-user.html
 type CreateUserStmt struct {
 	stmtNode
 
-	IfNotExists bool
-	Specs       []*UserSpec
+	IsCreateRole          bool
+	IfNotExists           bool
+	Specs                 []*UserSpec
+	TslOptions            []*TslOption
+	ResourceOptions       []*ResourceOption
+	PasswordOrLockOptions []*PasswordOrLockOption
 }
 
 // Accept implements Node Accept interface.
@@ -582,8 +736,9 @@ func (n *AlterUserStmt) Accept(v Visitor) (Node, bool) {
 type DropUserStmt struct {
 	stmtNode
 
-	IfExists bool
-	UserList []*auth.UserIdentity
+	IfExists   bool
+	IsDropRole bool
+	UserList   []*auth.UserIdentity
 }
 
 // Accept implements Node Accept interface.
@@ -636,6 +791,11 @@ const (
 	AdminShowDDLJobQueries
 	AdminChecksumTable
 	AdminShowSlow
+	AdminShowNextRowID
+	AdminReloadExprPushdownBlacklist
+	AdminReloadOptRuleBlacklist
+	AdminPluginDisable
+	AdminPluginEnable
 )
 
 // HandleRange represents a range where handle value >= Begin and < End.
@@ -675,6 +835,30 @@ type ShowSlow struct {
 	Kind  ShowSlowKind
 }
 
+// Restore implements Node interface.
+func (n *ShowSlow) Restore(ctx *RestoreCtx) error {
+	switch n.Tp {
+	case ShowSlowRecent:
+		ctx.WriteKeyWord("RECENT ")
+	case ShowSlowTop:
+		ctx.WriteKeyWord("TOP ")
+		switch n.Kind {
+		case ShowSlowKindDefault:
+			// do nothing
+		case ShowSlowKindInternal:
+			ctx.WriteKeyWord("INTERNAL ")
+		case ShowSlowKindAll:
+			ctx.WriteKeyWord("ALL ")
+		default:
+			return errors.New("Unsupported kind of ShowSlowTop")
+		}
+	default:
+		return errors.New("Unsupported type of ShowSlow")
+	}
+	ctx.WritePlainf("%d", n.Count)
+	return nil
+}
+
 // AdminStmt is the struct for Admin statement.
 type AdminStmt struct {
 	stmtNode
@@ -687,6 +871,128 @@ type AdminStmt struct {
 
 	HandleRanges []HandleRange
 	ShowSlow     *ShowSlow
+	Plugins      []string
+}
+
+// Restore implements Node interface.
+func (n *AdminStmt) Restore(ctx *RestoreCtx) error {
+	restoreTables := func() error {
+		for i, v := range n.Tables {
+			if i != 0 {
+				ctx.WritePlain(", ")
+			}
+			if err := v.Restore(ctx); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore AdminStmt.Tables[%d]", i)
+			}
+		}
+		return nil
+	}
+	restoreJobIDs := func() {
+		for i, v := range n.JobIDs {
+			if i != 0 {
+				ctx.WritePlain(", ")
+			}
+			ctx.WritePlainf("%d", v)
+		}
+	}
+
+	ctx.WriteKeyWord("ADMIN ")
+	switch n.Tp {
+	case AdminShowDDL:
+		ctx.WriteKeyWord("SHOW DDL")
+	case AdminShowDDLJobs:
+		ctx.WriteKeyWord("SHOW DDL JOBS")
+		if n.JobNumber != 0 {
+			ctx.WritePlainf(" %d", n.JobNumber)
+		}
+	case AdminShowNextRowID:
+		ctx.WriteKeyWord("SHOW ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+		ctx.WriteKeyWord(" NEXT_ROW_ID")
+	case AdminCheckTable:
+		ctx.WriteKeyWord("CHECK TABLE ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+	case AdminCheckIndex:
+		ctx.WriteKeyWord("CHECK INDEX ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+		ctx.WritePlainf(" %s", n.Index)
+	case AdminRecoverIndex:
+		ctx.WriteKeyWord("RECOVER INDEX ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+		ctx.WritePlainf(" %s", n.Index)
+	case AdminCleanupIndex:
+		ctx.WriteKeyWord("CLEANUP INDEX ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+		ctx.WritePlainf(" %s", n.Index)
+	case AdminCheckIndexRange:
+		ctx.WriteKeyWord("CHECK INDEX ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+		ctx.WritePlainf(" %s", n.Index)
+		if n.HandleRanges != nil {
+			ctx.WritePlain(" ")
+			for i, v := range n.HandleRanges {
+				if i != 0 {
+					ctx.WritePlain(", ")
+				}
+				ctx.WritePlainf("(%d,%d)", v.Begin, v.End)
+			}
+		}
+	case AdminChecksumTable:
+		ctx.WriteKeyWord("CHECKSUM TABLE ")
+		if err := restoreTables(); err != nil {
+			return err
+		}
+	case AdminCancelDDLJobs:
+		ctx.WriteKeyWord("CANCEL DDL JOBS ")
+		restoreJobIDs()
+	case AdminShowDDLJobQueries:
+		ctx.WriteKeyWord("SHOW DDL JOB QUERIES ")
+		restoreJobIDs()
+	case AdminShowSlow:
+		ctx.WriteKeyWord("SHOW SLOW ")
+		if err := n.ShowSlow.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore AdminStmt.ShowSlow")
+		}
+	case AdminReloadExprPushdownBlacklist:
+		ctx.WriteKeyWord("RELOAD EXPR_PUSHDOWN_BLACKLIST")
+	case AdminReloadOptRuleBlacklist:
+		ctx.WriteKeyWord("RELOAD OPT_RULE_BLACKLIST")
+	case AdminPluginEnable:
+		ctx.WriteKeyWord("PLUGINS ENABLE")
+		for i, v := range n.Plugins {
+			if i == 0 {
+				ctx.WritePlain(" ")
+			} else {
+				ctx.WritePlain(", ")
+			}
+			ctx.WritePlain(v)
+		}
+	case AdminPluginDisable:
+		ctx.WriteKeyWord("PLUGINS DISABLE")
+		for i, v := range n.Plugins {
+			if i == 0 {
+				ctx.WritePlain(" ")
+			} else {
+				ctx.WritePlain(", ")
+			}
+			ctx.WritePlain(v)
+		}
+	default:
+		return errors.New("Unsupported AdminStmt type")
+	}
+	return nil
 }
 
 // Accept implements Node Accept interface.
@@ -743,6 +1049,19 @@ const (
 	ObjectTypeTable
 )
 
+// Restore implements Node interface.
+func (n ObjectTypeType) Restore(ctx *RestoreCtx) error {
+	switch n {
+	case ObjectTypeNone:
+		// do nothing
+	case ObjectTypeTable:
+		ctx.WriteKeyWord("TABLE")
+	default:
+		return errors.New("Unsupported object type")
+	}
+	return nil
+}
+
 // GrantLevelType is the type for grant level.
 type GrantLevelType int
 
@@ -762,6 +1081,28 @@ type GrantLevel struct {
 	Level     GrantLevelType
 	DBName    string
 	TableName string
+}
+
+// Restore implements Node interface.
+func (n *GrantLevel) Restore(ctx *RestoreCtx) error {
+	switch n.Level {
+	case GrantLevelDB:
+		if n.DBName == "" {
+			ctx.WritePlain("*")
+		} else {
+			ctx.WriteName(n.DBName)
+			ctx.WritePlain(".*")
+		}
+	case GrantLevelGlobal:
+		ctx.WritePlain("*.*")
+	case GrantLevelTable:
+		if n.DBName != "" {
+			ctx.WriteName(n.DBName)
+			ctx.WritePlain(".")
+		}
+		ctx.WriteName(n.TableName)
+	}
+	return nil
 }
 
 // RevokeStmt is the struct for REVOKE statement.
@@ -877,158 +1218,11 @@ func (n *TableOptimizerHint) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
-type OscOptionType int
+// NewDecimal creates a types.Decimal value, it's provided by parser driver.
+var NewDecimal func(string) (interface{}, error)
 
-const (
-	// 显示osc进程信息
-	OscOptionNone OscOptionType = iota
-	// kill进程
-	OscOptionKill
-	// 暂停进程(仅gh-ost支持)
-	OscOptionPause
-	// 恢复进程(仅gh-ost支持)
-	OscOptionResume
-)
+// NewHexLiteral creates a types.HexLiteral value, it's provided by parser driver.
+var NewHexLiteral func(string) (interface{}, error)
 
-// ShowOscStmt pt-osc和gh-ost的语法解析
-type ShowOscStmt struct {
-	stmtNode
-
-	Sqlsha1 string
-
-	// Kill bool
-	Tp OscOptionType
-}
-
-// Accept implements Node Accept interface.
-func (n *ShowOscStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	n = newNode.(*ShowOscStmt)
-	return v.Leave(n)
-}
-
-// InceptionSetStmt is the statement to set variables.
-type InceptionSetStmt struct {
-	stmtNode
-	// Variables is the list of variable assignment.
-	Variables []*VariableAssignment
-}
-
-// Accept implements Node Accept interface.
-func (n *InceptionSetStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	n = newNode.(*InceptionSetStmt)
-	for i, val := range n.Variables {
-		node, ok := val.Accept(v)
-		if !ok {
-			return n, false
-		}
-		n.Variables[i] = node.(*VariableAssignment)
-	}
-	return v.Leave(n)
-}
-
-// CommitStmt is a statement to commit the current transaction.
-// See https://dev.mysql.com/doc/refman/5.7/en/commit.html
-type InceptionStmt struct {
-	stmtNode
-
-	resultSetNode
-
-	Tp     ShowStmtType // Databases/Tables/Columns/....
-	DBName string
-	Table  *TableName  // Used for showing columns.
-	Column *ColumnName // Used for `desc table column`.
-	Flag   int         // Some flag parsed from sql, such as FULL.
-	Full   bool
-	User   *auth.UserIdentity // Used for show grants.
-
-	// GlobalScope is used by show variables
-	GlobalScope bool
-	Pattern     *PatternLikeExpr
-	Where       ExprNode
-}
-
-// Accept implements Node Accept interface.
-func (n *InceptionStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	n = newNode.(*InceptionStmt)
-	if n.Table != nil {
-		node, ok := n.Table.Accept(v)
-		if !ok {
-			return n, false
-		}
-		n.Table = node.(*TableName)
-	}
-	if n.Column != nil {
-		node, ok := n.Column.Accept(v)
-		if !ok {
-			return n, false
-		}
-		n.Column = node.(*ColumnName)
-	}
-	if n.Pattern != nil {
-		node, ok := n.Pattern.Accept(v)
-		if !ok {
-			return n, false
-		}
-		n.Pattern = node.(*PatternLikeExpr)
-	}
-
-	switch n.Tp {
-	case ShowTriggers, ShowProcedureStatus, ShowProcessList, ShowEvents:
-		// We don't have any data to return for those types,
-		// but visiting Where may cause resolving error, so return here to avoid error.
-		return v.Leave(n)
-	}
-
-	if n.Where != nil {
-		node, ok := n.Where.Accept(v)
-		if !ok {
-			return n, false
-		}
-		n.Where = node.(ExprNode)
-	}
-	return v.Leave(n)
-}
-
-// CommitStmt is a statement to commit the current transaction.
-// See https://dev.mysql.com/doc/refman/5.7/en/commit.html
-type InceptionStartStmt struct {
-	stmtNode
-}
-
-// Accept implements Node Accept interface.
-func (n *InceptionStartStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	n = newNode.(*InceptionStartStmt)
-	return v.Leave(n)
-}
-
-// CommitStmt is a statement to commit the current transaction.
-// See https://dev.mysql.com/doc/refman/5.7/en/commit.html
-type InceptionCommitStmt struct {
-	stmtNode
-}
-
-// Accept implements Node Accept interface.
-func (n *InceptionCommitStmt) Accept(v Visitor) (Node, bool) {
-	newNode, skipChildren := v.Enter(n)
-	if skipChildren {
-		return v.Leave(newNode)
-	}
-	n = newNode.(*InceptionCommitStmt)
-	return v.Leave(n)
-}
+// NewBitLiteral creates a types.BitLiteral value, it's provided by parser driver.
+var NewBitLiteral func(string) (interface{}, error)
