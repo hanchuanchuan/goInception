@@ -4466,9 +4466,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 	log.Debug("mysqlCheckField")
 
 	tableName := t.Name
-	if field.Tp.Tp == mysql.TypeEnum ||
+	if !s.Inc.EnableEnumSetBit && (field.Tp.Tp == mysql.TypeEnum ||
 		field.Tp.Tp == mysql.TypeSet ||
-		field.Tp.Tp == mysql.TypeBit {
+		field.Tp.Tp == mysql.TypeBit) {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
@@ -7737,10 +7737,13 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		if s.Inc.EnablePartitionTable {
 			return false
 		}
-	case ER_USE_ENUM, ER_INVALID_DATA_TYPE:
+	case ER_USE_ENUM:
 		if s.Inc.EnableEnumSetBit {
 			return false
 		}
+	case ER_INVALID_DATA_TYPE:
+		return true
+
 	case ER_INDEX_NAME_IDX_PREFIX, ER_INDEX_NAME_UNIQ_PREFIX:
 		return s.Inc.CheckIndexPrefix
 
