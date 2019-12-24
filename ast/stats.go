@@ -13,7 +13,11 @@
 
 package ast
 
-import "github.com/hanchuanchuan/goInception/model"
+import (
+	// "github.com/pingcap/errors"
+	. "github.com/hanchuanchuan/goInception/format"
+	"github.com/hanchuanchuan/goInception/model"
+)
 
 var (
 	_ StmtNode = &AnalyzeTableStmt{}
@@ -78,6 +82,13 @@ type LoadStatsStmt struct {
 	stmtNode
 
 	Path string
+}
+
+// Restore implements Node interface.
+func (n *LoadStatsStmt) Restore(ctx *RestoreCtx) error {
+	ctx.WriteKeyWord("LOAD STATS ")
+	ctx.WriteString(n.Path)
+	return nil
 }
 
 // Accept implements Node Accept interface.

@@ -14,9 +14,11 @@
 package ast
 
 import (
+	. "github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/util/auth"
+	"github.com/pingcap/errors"
 )
 
 var (
@@ -118,7 +120,36 @@ type TableName struct {
 	DBInfo    *model.DBInfo
 	TableInfo *model.TableInfo
 
-	IndexHints []*IndexHint
+	IndexHints     []*IndexHint
+	PartitionNames []model.CIStr
+}
+
+// Restore implements Node interface.
+func (n *TableName) Restore(ctx *RestoreCtx) error {
+	if n.Schema.String() != "" {
+		ctx.WriteName(n.Schema.String())
+		ctx.WritePlain(".")
+	}
+	ctx.WriteName(n.Name.String())
+	if len(n.PartitionNames) > 0 {
+		ctx.WriteKeyWord(" PARTITION")
+		ctx.WritePlain("(")
+		for i, v := range n.PartitionNames {
+			if i != 0 {
+				ctx.WritePlain(", ")
+			}
+			ctx.WriteName(v.String())
+		}
+		ctx.WritePlain(")")
+	}
+	for _, value := range n.IndexHints {
+		ctx.WritePlain(" ")
+		if err := value.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while splicing IndexHints")
+		}
+	}
+
+	return nil
 }
 
 // IndexHintType is the type for index hint use, ignore or force.
@@ -147,6 +178,47 @@ type IndexHint struct {
 	IndexNames []model.CIStr
 	HintType   IndexHintType
 	HintScope  IndexHintScope
+}
+
+// IndexHint Restore (The const field uses switch to facilitate understanding)
+func (n *IndexHint) Restore(ctx *RestoreCtx) error {
+	indexHintType := ""
+	switch n.HintType {
+	case 1:
+		indexHintType = "USE INDEX"
+	case 2:
+		indexHintType = "IGNORE INDEX"
+	case 3:
+		indexHintType = "FORCE INDEX"
+	default: // Prevent accidents
+		return errors.New("IndexHintType has an error while matching")
+	}
+
+	indexHintScope := ""
+	switch n.HintScope {
+	case 1:
+		indexHintScope = ""
+	case 2:
+		indexHintScope = " FOR JOIN"
+	case 3:
+		indexHintScope = " FOR ORDER BY"
+	case 4:
+		indexHintScope = " FOR GROUP BY"
+	default: // Prevent accidents
+		return errors.New("IndexHintScope has an error while matching")
+	}
+	ctx.WriteKeyWord(indexHintType)
+	ctx.WriteKeyWord(indexHintScope)
+	ctx.WritePlain(" (")
+	for i, value := range n.IndexNames {
+		if i > 0 {
+			ctx.WritePlain(", ")
+		}
+		ctx.WriteName(value.O)
+	}
+	ctx.WritePlain(")")
+
+	return nil
 }
 
 // Accept implements Node Accept interface.
@@ -968,7 +1040,6 @@ const (
 	ShowMasterStatus
 	ShowPrivileges
 	ShowErrors
-	ShowLevels
 )
 
 // ShowStmt is a statement to provide information about databases, tables, columns and so on.
