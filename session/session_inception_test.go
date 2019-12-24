@@ -61,7 +61,7 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
 
-	session.CheckAuditSetting(config.GetGlobalConfig())
+	// session.CheckAuditSetting(config.GetGlobalConfig())
 
 	res := s.runCheck(sql)
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -191,6 +191,15 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table t1(id int,c1 set('red', 'blue', 'black'));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
+
+	config.GetGlobalConfig().Inc.EnableTimeStampType = false
+	sql = "create table t1(id int,c1 timestamp);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
+
+	config.GetGlobalConfig().Inc.EnableTimeStampType = true
+	sql = "create table t1(id int,c1 timestamp);"
+	s.testErrorCode(c, sql)
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
