@@ -104,7 +104,8 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	sql = "drop table if exists nullkeytest1;create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key ix_1(c2));"
+	sql = `drop table if exists nullkeytest1;
+	create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key ix_1(c2));`
 	s.testErrorCode(c, sql)
 
 	// 表注释

@@ -16,6 +16,9 @@ package mysql
 import (
 	"fmt"
 	"strings"
+
+	. "github.com/hanchuanchuan/goInception/format"
+	"github.com/pingcap/errors"
 )
 
 func newInvalidModeErr(s string) error {
@@ -179,6 +182,10 @@ const (
 	GlobalStatusTable = "GLOBAL_STATUS"
 	// TiDBTable is the table contains tidb info.
 	TiDBTable = "tidb"
+	//  RoleEdgesTable is the table contains role relation info
+	RoleEdgeTable = "role_edges"
+	// DefaultRoleTable is the table contain default active role info
+	DefaultRoleTable = "default_roles"
 )
 
 // PrivilegeType  privilege
@@ -218,6 +225,14 @@ const (
 	ExecutePriv
 	// IndexPriv is the privilege to create/drop index.
 	IndexPriv
+	// CreateViewPriv is the privilege to create view.
+	CreateViewPriv
+	// ShowViewPriv is the privilege to show create view.
+	ShowViewPriv
+	// CreateRolePriv the privilege to create a role.
+	CreateRolePriv
+	// DropRolePriv is the privilege to drop a role.
+	DropRolePriv
 	// AllPriv is the privilege for all actions.
 	AllPriv
 )
@@ -232,19 +247,22 @@ const (
 	// which is 1 more than the maximum number of decimals permitted for the DECIMAL, FLOAT, and DOUBLE data types.
 	NotFixedDec = 31
 
-	MaxIntWidth             = 20
-	MaxRealWidth            = 23
-	MaxFloatingTypeScale    = 30
-	MaxFloatingTypeWidth    = 255
-	MaxDecimalScale         = 30
-	MaxDecimalWidth         = 65
-	MaxDateWidth            = 10 // YYYY-MM-DD.
-	MaxDatetimeWidthNoFsp   = 19 // YYYY-MM-DD HH:MM:SS
-	MaxDatetimeWidthWithFsp = 26 // YYYY-MM-DD HH:MM:SS[.fraction]
-	MaxDatetimeFullWidth    = 29 // YYYY-MM-DD HH:MM:SS.###### AM
-	MaxDurationWidthNoFsp   = 10 // HH:MM:SS
-	MaxDurationWidthWithFsp = 15 // HH:MM:SS[.fraction]
-	MaxBlobWidth            = 16777216
+	MaxIntWidth              = 20
+	MaxRealWidth             = 23
+	MaxFloatingTypeScale     = 30
+	MaxFloatingTypeWidth     = 255
+	MaxDecimalScale          = 30
+	MaxDecimalWidth          = 65
+	MaxDateWidth             = 10 // YYYY-MM-DD.
+	MaxDatetimeWidthNoFsp    = 19 // YYYY-MM-DD HH:MM:SS
+	MaxDatetimeWidthWithFsp  = 26 // YYYY-MM-DD HH:MM:SS[.fraction]
+	MaxDatetimeFullWidth     = 29 // YYYY-MM-DD HH:MM:SS.###### AM
+	MaxDurationWidthNoFsp    = 10 // HH:MM:SS
+	MaxDurationWidthWithFsp  = 15 // HH:MM:SS[.fraction]
+	MaxBlobWidth             = 16777216
+	MaxBitDisplayWidth       = 64
+	MaxFloatPrecisionLength  = 24
+	MaxDoublePrecisionLength = 53
 )
 
 // MySQL max type field length.
@@ -541,6 +559,7 @@ const (
 	ModeHighNotPrecedence
 	ModeNoEngineSubstitution
 	ModePadCharToFullLength
+	ModeAllowInvalidDates
 )
 
 // FormatSQLModeStr re-format 'SQL_MODE' variable.
@@ -618,6 +637,7 @@ var Str2SQLMode = map[string]SQLMode{
 	"HIGH_NOT_PRECEDENCE":        ModeHighNotPrecedence,
 	"NO_ENGINE_SUBSTITUTION":     ModeNoEngineSubstitution,
 	"PAD_CHAR_TO_FULL_LENGTH":    ModePadCharToFullLength,
+	"ALLOW_INVALID_DATES":        ModeAllowInvalidDates,
 }
 
 // CombinationSQLMode is the special modes that provided as shorthand for combinations of mode values.
@@ -687,6 +707,23 @@ func Str2Priority(val string) PriorityEnum {
 	default:
 		return NoPriority
 	}
+}
+
+// Restore implements Node interface.
+func (n *PriorityEnum) Restore(ctx *RestoreCtx) error {
+	switch *n {
+	case NoPriority:
+		return nil
+	case LowPriority:
+		ctx.WriteKeyWord("LOW_PRIORITY")
+	case HighPriority:
+		ctx.WriteKeyWord("HIGH_PRIORITY")
+	case DelayedPriority:
+		ctx.WriteKeyWord("DELAYED")
+	default:
+		return errors.Errorf("undefined PriorityEnum Type[%d]", *n)
+	}
+	return nil
 }
 
 // PrimaryKeyName defines primary key name.
