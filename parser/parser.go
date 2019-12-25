@@ -8887,8 +8887,7 @@ yynewstate:
 	case 394:
 		{
 			parser.yyVAL.item = &ast.IndexOption{
-				// TODO bug should be fix here!
-				// KeyBlockSize: $1.(uint64),
+				KeyBlockSize: yyS[yypt-0].item.(uint64),
 			}
 		}
 	case 395:
