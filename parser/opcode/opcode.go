@@ -16,6 +16,9 @@ package opcode
 import (
 	"fmt"
 	"io"
+
+	. "github.com/hanchuanchuan/goInception/format"
+	"github.com/pingcap/errors"
 )
 
 // Op is opcode type.
@@ -100,9 +103,9 @@ func (o Op) String() string {
 }
 
 var opsLiteral = map[Op]string{
-	LogicAnd:   "&&",
-	LogicOr:    "||",
-	LogicXor:   "^",
+	LogicAnd:   " AND ",
+	LogicOr:    " OR ",
+	LogicXor:   " XOR ",
 	LeftShift:  "<<",
 	RightShift: ">>",
 	GE:         ">=",
@@ -135,4 +138,13 @@ var opsLiteral = map[Op]string{
 // Format the ExprNode into a Writer.
 func (o Op) Format(w io.Writer) {
 	fmt.Fprintf(w, "%s", opsLiteral[o])
+}
+
+// Restore the Op into a Writer
+func (o Op) Restore(ctx *RestoreCtx) error {
+	if v, ok := opsLiteral[o]; ok {
+		ctx.WriteKeyWord(v)
+		return nil
+	}
+	return errors.Errorf("Invalid opcode type %d during restoring AST to SQL text", o)
 }

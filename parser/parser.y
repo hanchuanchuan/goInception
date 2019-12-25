@@ -2219,7 +2219,7 @@ CreateTableStmt:
 		if $7 != nil {
 			stmt.Partition = $7.(*ast.PartitionOptions)
 		}
-		stmt.OnDuplicate = $8.(ast.OnDuplicateCreateTableSelectType)
+		stmt.OnDuplicate = $8.(ast.OnDuplicateKeyHandlingType)
 		stmt.Select = $10.(*ast.CreateTableStmt).Select
 		$$ = stmt
 	}
@@ -2535,15 +2535,15 @@ PartDefValuesOpt:
 
 DuplicateOpt:
 	{
-		$$ = ast.OnDuplicateCreateTableSelectError
+		$$ = ast.OnDuplicateKeyHandlingError
 	}
 |   "IGNORE"
 	{
-		$$ = ast.OnDuplicateCreateTableSelectIgnore
+		$$ = ast.OnDuplicateKeyHandlingIgnore
 	}
 |   "REPLACE"
 	{
-		$$ = ast.OnDuplicateCreateTableSelectReplace
+		$$ = ast.OnDuplicateKeyHandlingReplace
 	}
 
 AsOpt:

@@ -388,7 +388,7 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 			return err
 		}
 		// 禁用日志记录器，不显示任何日志
-		db.LogMode(false)
+		db.LogMode(true)
 		s.db = db
 	}
 
@@ -400,6 +400,9 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 	// opid := ""
 	// backupDBName := ""
 	// sqlIndex := 0
+
+	var lastTable, currentTable string
+	var ids []string
 	for _, row := range rows {
 		opid := ""
 		backupDBName := ""
@@ -409,11 +412,11 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 		// 	runSql = row[5].(string)
 		// }
 
-		affectedRows := 0
-		if row[6] != nil {
-			a := row[6].(string)
-			affectedRows, _ = strconv.Atoi(a)
-		}
+		// affectedRows := 0
+		// if row[6] != nil {
+		// 	a := row[6].(string)
+		// 	affectedRows, _ = strconv.Atoi(a)
+		// }
 
 		if row[7] != nil {
 			opid = row[7].(string)
@@ -430,21 +433,6 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 			continue
 		}
 
-		// 获取表名（改为从语法中自动获取）
-		// sql := "select tablename from %s.%s where opid_time = ?"
-		// sql = fmt.Sprintf(sql, backupDBName, s.remoteBackupTable)
-		// tableName := ""
-		// rows, err := s.db.Raw(sql, opid).Rows()
-		// c.Assert(err, IsNil)
-		// for rows.Next() {
-		// 	rows.Scan(&tableName)
-		// }
-		// rows.Close()
-
-		// if sqlIndex >= len(rollbackSqls) {
-
-		// }
-
 		tableName := s.getObjectName(currentSql)
 		// 表名没有时,查询一下
 		if tableName == "" {
@@ -459,32 +447,54 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 		}
 		c.Assert(tableName, Not(Equals), "", Commentf("%v", row))
 
-		sql := "select rollback_statement from %s.`%s` where opid_time = ?;"
-		sql = fmt.Sprintf(sql, backupDBName, tableName)
-		rows, err := s.db.Raw(sql, opid).Rows()
-		c.Assert(err, IsNil)
-		str := ""
-		// count := 0
+		currentTable = fmt.Sprintf("%s.`%s`", backupDBName, tableName)
+		if lastTable == "" {
+			lastTable = currentTable
+		}
 
+		// 如果表改变了,或者超过500行了
+		if lastTable != currentTable || len(ids) >= 500 {
+			lastTable = currentTable
+			if len(ids) > 0 {
+				sql := "select rollback_statement from %s where opid_time in (?) order by opid_time,id;"
+				sql = fmt.Sprintf(sql, currentTable)
+				rows, err := s.db.Raw(sql, ids).Rows()
+				c.Assert(err, IsNil)
+
+				str := ""
+				result1 := []string{}
+				for rows.Next() {
+					rows.Scan(&str)
+					result1 = append(result1, s.trim(str))
+				}
+				rows.Close()
+
+				c.Assert(len(result1), Not(Equals), 0, Commentf("-----------: %v", sql))
+				result = append(result, result1...)
+
+				ids = nil
+			}
+		}
+
+		ids = append(ids, opid)
+	}
+
+	// for循环可能提前退出,所以最后的查询放在外面
+	if len(ids) > 0 {
+		sql := "select rollback_statement from %s where opid_time in (?) order by opid_time,id;"
+		sql = fmt.Sprintf(sql, currentTable)
+		rows, err := s.db.Raw(sql, ids).Rows()
+		c.Assert(err, IsNil)
+
+		str := ""
 		result1 := []string{}
 		for rows.Next() {
 			rows.Scan(&str)
 			result1 = append(result1, s.trim(str))
-			// count++
 		}
 		rows.Close()
 
-		if affectedRows > 0 {
-			// if strings.HasPrefix(runSql, "update") &&
-			// 	(strings.Contains(runSql, ",") || strings.Contains(runSql, "join")) {
-			// 	// update多表时受影响行数为两表之和
-			// 	// 待实现...
-			// } else {
-			// 	c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
-			// }
-			c.Assert(affectedRows, Equals, len(result1), Commentf("%v", result1))
-		}
-
+		c.Assert(len(result1), Not(Equals), 0, Commentf("------2-----: %v", sql))
 		result = append(result, result1...)
 	}
 
@@ -716,4 +726,13 @@ func (s *testCommon) query(table, opid string) string {
 		}
 	}
 	return strings.Join(result, "\n")
+}
+
+// parserStmt 解析sql变成ast语法
+func (s *testCommon) parserStmt(sql string) ast.StmtNode {
+	stmtNodes, _, _ := s.parser.Parse(sql, "utf8mb4", "utf8mb4_bin")
+	for _, stmtNode := range stmtNodes {
+		return stmtNode
+	}
+	return nil
 }
