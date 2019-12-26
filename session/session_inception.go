@@ -40,6 +40,7 @@ import (
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/expression"
+	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/parser/opcode"
@@ -50,16 +51,13 @@ import (
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/stringutil"
-	// "vitess.io/vitess/go/vt/sqlparser"
-	// "github.com/hanchuanchuan/parser/ast"
 	"github.com/jinzhu/gorm"
 	"github.com/percona/go-mysql/query"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
-	// "os"
-	// "runtime/pprof"
+	// "vitess.io/vitess/go/vt/sqlparser"
 )
 
 // MasterStatus 主库状态信息,包括当前日志文件,位置等
@@ -3483,7 +3481,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 								}
 								// NOT NULL 并且 没有默认值时,自动设置DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 								if hasNotNullFlag && !hasDefault {
-									nowFunc := &ast.FuncCallExpr{FnName: model.NewCIStr("CURRENT_TIMESTAMP")}
+									nowFunc := &ast.FuncCallExpr{FnName: model.NewCIStr(ast.CurrentTimestamp)}
 									field.Options = append(field.Options,
 										&ast.ColumnOption{Tp: ast.ColumnOptionDefaultValue, Expr: nowFunc})
 									field.Options = append(field.Options,
@@ -4201,8 +4199,9 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					// 	buf.WriteString(" AUTO_INCREMENT")
 					// }
 					if foundField.Default != nil {
-						if *foundField.Default == "CURRENT_TIMESTAMP" {
-							buf.WriteString(" DEFAULT CURRENT_TIMESTAMP")
+						if *foundField.Default == ast.CurrentTimestamp {
+							buf.WriteString(" DEFAULT ")
+							buf.WriteString(strings.ToUpper(ast.CurrentTimestamp))
 						} else {
 							buf.WriteString(" DEFAULT '")
 							buf.WriteString(*foundField.Default)
@@ -4325,8 +4324,9 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					// 	buf.WriteString(" AUTO_INCREMENT")
 					// }
 					if foundField.Default != nil {
-						if *foundField.Default == "CURRENT_TIMESTAMP" {
-							buf.WriteString(" DEFAULT CURRENT_TIMESTAMP")
+						if *foundField.Default == ast.CurrentTimestamp {
+							buf.WriteString(" DEFAULT ")
+							buf.WriteString(strings.ToUpper(ast.CurrentTimestamp))
 						} else {
 							buf.WriteString(" DEFAULT '")
 							buf.WriteString(*foundField.Default)
@@ -7953,27 +7953,25 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			field.Tp.Flag |= mysql.UniqueKeyFlag
 
 		case ast.ColumnOptionDefaultValue:
-			if op.Expr.GetDatum().IsNull() {
-				switch op.Expr.(type) {
-				case *ast.FuncCallExpr:
-					// 如果字段默认值为函数, 则需要进一步判断是否为为current_timestamp()函数
-					if expression.IsCurrentTimestampExpr(op.Expr) {
-						c.Default = new(string)
-						*c.Default = ast.CurrentTimestamp
-					} else {
-						c.Null = "YES"
-						// *c.Default = "NULL"
-						c.Default = nil
-					}
-				default:
-					c.Null = "YES"
-					// *c.Default = "NULL"
-					c.Default = nil
-				}
-			} else {
+			switch v := op.Expr.(type) {
+			case *ast.FuncCallExpr:
 				c.Default = new(string)
-				*c.Default = fmt.Sprint(op.Expr.GetValue())
+				*c.Default = v.FnName.L
+			case *ast.ValueExpr:
+				if v.GetValue() == nil {
+					c.Null = "YES"
+					c.Default = nil
+				} else {
+					c.Default = new(string)
+					*c.Default = v.GetString()
+				}
+			default:
+				c.Default = new(string)
+				var builder strings.Builder
+				op.Expr.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
+				*c.Default = builder.String()
 			}
+
 		case ast.ColumnOptionAutoIncrement:
 			if strings.ToLower(c.Field) != "id" {
 				s.AppendErrorNo(ER_AUTO_INCR_ID_WARNING, c.Field)

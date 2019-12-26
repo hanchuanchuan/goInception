@@ -990,7 +990,7 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 	res = s.mustRunBackup(c, sql)
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", res.Rows()))
 
 	sql = `drop table if exists t1;
 	create table t1(id int,c1 int,c2 datetime null default current_timestamp on update current_timestamp comment '123');
@@ -998,7 +998,7 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 	res = s.mustRunBackup(c, sql)
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", res.Rows()))
 
 	// 空间类型使用的是别名,逆向SQL还有问题,待修复
 	sql = `drop table if exists t1;
