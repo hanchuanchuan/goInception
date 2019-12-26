@@ -133,6 +133,12 @@ func (s *Server) skipAuth() bool {
 	return s.cfg.Socket != ""
 }
 
+func (s *Server) InitOscProcessList() {
+	if s.oscProcessList == nil {
+		s.oscProcessList = make(map[string]*util.OscProcessInfo, 0)
+	}
+}
+
 // NewServer creates a new Server.
 func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
 	s := &Server{
