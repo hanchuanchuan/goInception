@@ -57,24 +57,23 @@ func buildTablePartitionInfo(ctx sessionctx.Context, d *ddl, s *ast.CreateTableS
 		}
 	}
 	for _, def := range s.Partition.Definitions {
+		comment, _ := def.Comment()
 		// TODO: generate multiple global ID for paritions, reduce the times of obtaining the global ID from the storage.
 		pid, err := d.genGlobalID()
 		if err != nil {
 			return nil, errors.Trace(err)
 		}
+
 		piDef := model.PartitionDefinition{
 			Name:    def.Name,
 			ID:      pid,
-			Comment: def.Comment,
+			Comment: comment,
 		}
 
 		if s.Partition.Tp == model.PartitionTypeRange {
-			if s.Partition.ColumnNames == nil && len(def.LessThan) != 1 {
-				return nil, ErrTooManyValues.GenWithStackByArgs(s.Partition.Tp.String())
-			}
 			buf := new(bytes.Buffer)
 			// Range columns partitions support multi-column partitions.
-			for _, expr := range def.LessThan {
+			for _, expr := range def.Clause.(*ast.PartitionDefinitionClauseLessThan).Exprs {
 				expr.Format(buf)
 				piDef.LessThan = append(piDef.LessThan, buf.String())
 				buf.Reset()

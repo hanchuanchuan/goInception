@@ -21,6 +21,7 @@ import (
 
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/auth"
 	"github.com/hanchuanchuan/goInception/util/hack"
 	"github.com/pingcap/errors" // SchemaState is the state for schema elements.
 	"github.com/pingcap/tipb/go-tipb"
@@ -279,14 +280,89 @@ func (t *TableInfo) ColumnIsInIndex(c *ColumnInfo) bool {
 	return false
 }
 
+// ViewAlgorithm is VIEW's SQL AlGORITHM characteristic.
+// See https://dev.mysql.com/doc/refman/5.7/en/view-algorithms.html
+type ViewAlgorithm int
+
+const (
+	AlgorithmUndefined ViewAlgorithm = iota
+	AlgorithmMerge
+	AlgorithmTemptable
+)
+
+func (v *ViewAlgorithm) String() string {
+	switch *v {
+	case AlgorithmMerge:
+		return "MERGE"
+	case AlgorithmTemptable:
+		return "TEMPTABLE"
+	case AlgorithmUndefined:
+		return "UNDEFINED"
+	default:
+		return "UNDEFINED"
+	}
+}
+
+// ViewSecurity is VIEW's SQL SECURITY characteristic.
+// See https://dev.mysql.com/doc/refman/5.7/en/create-view.html
+type ViewSecurity int
+
+const (
+	SecurityDefiner ViewSecurity = iota
+	SecurityInvoker
+)
+
+func (v *ViewSecurity) String() string {
+	switch *v {
+	case SecurityInvoker:
+		return "INVOKER"
+	case SecurityDefiner:
+		return "DEFINER"
+	default:
+		return "DEFINER"
+	}
+}
+
+// ViewCheckOption is VIEW's WITH CHECK OPTION clause part.
+// See https://dev.mysql.com/doc/refman/5.7/en/view-check-option.html
+type ViewCheckOption int
+
+const (
+	CheckOptionLocal ViewCheckOption = iota
+	CheckOptionCascaded
+)
+
+func (v *ViewCheckOption) String() string {
+	switch *v {
+	case CheckOptionLocal:
+		return "LOCAL"
+	case CheckOptionCascaded:
+		return "CASCADED"
+	default:
+		return "CASCADED"
+	}
+}
+
+// ViewInfo provides meta data describing a DB view.
+type ViewInfo struct {
+	Algorithm   ViewAlgorithm      `json:"view_algorithm"`
+	Definer     *auth.UserIdentity `json:"view_definer"`
+	Security    ViewSecurity       `json:"view_security"`
+	SelectStmt  string             `json:"view_select"`
+	CheckOption ViewCheckOption    `json:"view_checkoption"`
+	Cols        []CIStr            `json:"view_cols"`
+}
+
 // PartitionType is the type for PartitionInfo
 type PartitionType int
 
 // Partition types.
 const (
-	PartitionTypeRange PartitionType = 1
-	PartitionTypeHash  PartitionType = 2
-	PartitionTypeList  PartitionType = 3
+	PartitionTypeRange      PartitionType = 1
+	PartitionTypeHash                     = 2
+	PartitionTypeList                     = 3
+	PartitionTypeKey                      = 4
+	PartitionTypeSystemTime               = 5
 )
 
 func (p PartitionType) String() string {
@@ -297,6 +373,10 @@ func (p PartitionType) String() string {
 		return "HASH"
 	case PartitionTypeList:
 		return "LIST"
+	case PartitionTypeKey:
+		return "KEY"
+	case PartitionTypeSystemTime:
+		return "SYSTEM_TIME"
 	default:
 		return ""
 	}
@@ -315,6 +395,17 @@ type PartitionInfo struct {
 	Enable bool `json:"enable"`
 
 	Definitions []PartitionDefinition `json:"definitions"`
+	Num         uint64                `json:"num"`
+}
+
+// GetNameByID gets the partition name by ID.
+func (pi *PartitionInfo) GetNameByID(id int64) string {
+	for _, def := range pi.Definitions {
+		if id == def.ID {
+			return def.Name.L
+		}
+	}
+	return ""
 }
 
 // PartitionDefinition defines a single partition.
@@ -351,6 +442,8 @@ func (t IndexType) String() string {
 		return "BTREE"
 	case IndexTypeHash:
 		return "HASH"
+	case IndexTypeRtree:
+		return "RTREE"
 	default:
 		return ""
 	}
@@ -361,6 +454,7 @@ const (
 	IndexTypeInvalid IndexType = iota
 	IndexTypeBtree
 	IndexTypeHash
+	IndexTypeRtree
 )
 
 // IndexInfo provides meta data describing a DB index.

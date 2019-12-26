@@ -17,6 +17,10 @@
 
 package session
 
+import (
+	"github.com/hanchuanchuan/goInception/mysql"
+)
+
 // 数据库类型
 const (
 	DBTypeMysql = iota
@@ -29,6 +33,7 @@ const (
 	StageOK byte = iota
 	StageCheck
 	StageExec
+	StageBackup
 )
 
 // 审核状态
@@ -41,10 +46,30 @@ const (
 )
 
 var (
-	stageList  = [3]string{"RERUN", "CHECKED", "EXECUTED"}
+	stageList  = [4]string{"RERUN", "CHECKED", "EXECUTED", "BACKUP"}
 	statusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully",
 		"Execute Successfully\nBackup failed", "Execute Successfully\nBackup Successfully"}
 )
+
+// int类型map(用以数值列类型变更审核)
+var IntegerOrderedMaps = map[string]int{
+	"bit":       1,
+	"tinyint":   2,
+	"smallint":  3,
+	"mediumint": 4,
+	"int":       5,
+	"bigint":    6,
+}
+
+// int类型map(用以数值列类型变更审核)
+var IntegerOrderedMaps2 = map[byte]int{
+	mysql.TypeBit:      1,
+	mysql.TypeTiny:     2,
+	mysql.TypeShort:    3,
+	mysql.TypeInt24:    4,
+	mysql.TypeLong:     5,
+	mysql.TypeLonglong: 6,
+}
 
 // Keywords 数据库关键字
 var Keywords = map[string]bool{

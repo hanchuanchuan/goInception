@@ -26,7 +26,6 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/store/tikv/latch"
 	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
 	"github.com/hanchuanchuan/goInception/store/tikv/oracle/oracles"
@@ -237,11 +236,9 @@ func (s *tikvStore) runSafePointChecker() {
 		case spCachedTime := <-time.After(d):
 			cachedSafePoint, err := loadSafePoint(s.GetSafePointKV(), GcSavedSafePoint)
 			if err == nil {
-				metrics.TiKVLoadSafepointCounter.WithLabelValues("ok").Inc()
 				s.UpdateSPCache(cachedSafePoint, spCachedTime)
 				d = gcSafePointUpdateInterval
 			} else {
-				metrics.TiKVLoadSafepointCounter.WithLabelValues("fail").Inc()
 				log.Errorf("fail to load safepoint from pd: %v", err)
 				d = gcSafePointQuickRepeatInterval
 			}
@@ -256,7 +253,6 @@ func (s *tikvStore) Begin() (kv.Transaction, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	metrics.TiKVTxnCounter.Inc()
 	return txn, nil
 }
 
@@ -266,13 +262,11 @@ func (s *tikvStore) BeginWithStartTS(startTS uint64) (kv.Transaction, error) {
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	metrics.TiKVTxnCounter.Inc()
 	return txn, nil
 }
 
 func (s *tikvStore) GetSnapshot(ver kv.Version) (kv.Snapshot, error) {
 	snapshot := newTiKVSnapshot(s, ver)
-	metrics.TiKVSnapshotCounter.Inc()
 	return snapshot, nil
 }
 

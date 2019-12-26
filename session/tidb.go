@@ -125,7 +125,7 @@ func Parse(ctx sessionctx.Context, src string) ([]ast.StmtNode, error) {
 	charset, collation := ctx.GetSessionVars().GetCharsetInfo()
 	p := parser.New()
 	p.SetSQLMode(ctx.GetSessionVars().SQLMode)
-	stmts, err := p.Parse(src, charset, collation)
+	stmts, _, err := p.Parse(src, charset, collation)
 	if err != nil {
 		log.Warnf("compiling %s, error: %v", src, err)
 		return nil, errors.Trace(err)

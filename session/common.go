@@ -6,11 +6,14 @@ package session
 
 import (
 	"bytes"
+	"context"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
 	// "github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/ast"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -98,7 +101,7 @@ func HTMLEscapeString(s string) string {
 // GetDataBytes 计算数据类型字节数
 // https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html
 // return -1 表示该列无法计算数据大小
-func (col *FieldInfo) GetDataBytes(dbVersion int) int {
+func (col *FieldInfo) GetDataBytes(dbVersion int, defaultCharset string) int {
 	if col.Type == "" {
 		log.Warnf("Can't get %s data type", col.Field)
 		return -1
@@ -115,13 +118,14 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 		// date & time
 		return timeStorageReq(col.Type, dbVersion)
 
-	case "char", "binary", "varchar", "varbinary", "enum", "set":
+	case "char", "binary", "varchar", "varbinary", "enum", "set",
+		"geometry", "point", "linestring", "polygon":
 		// string
-		charset := "utf8mb4"
+		// charset := "utf8mb4"
 		if col.Collation != "" {
-			charset = strings.SplitN(col.Collation, "_", 2)[0]
+			defaultCharset = strings.SplitN(col.Collation, "_", 2)[0]
 		}
-		return StringStorageReq(col.Type, charset)
+		return StringStorageReq(col.Type, defaultCharset)
 	case "tibyblob", "tinytext":
 		return 1<<8 - 1
 	case "blob", "text":
@@ -136,7 +140,54 @@ func (col *FieldInfo) GetDataBytes(dbVersion int) int {
 	// 	// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
 	// 	return MaxKeyLength + 1
 	default:
-		log.Warnf("Type %s not support:", col.Type)
+		log.Warnf("Type %v not support:", col.Type)
+		return -1
+	}
+}
+
+func (col *FieldInfo) GetDataLength(dbVersion int, defaultCharset string) int {
+	if col.Type == "" {
+		log.Warnf("Can't get %s data type", col.Field)
+		return -1
+	}
+	// get length
+	typeLength := GetDataTypeLength(col.Type)
+	if typeLength[0] == -1 {
+		return 0
+	}
+
+	length := typeLength[0]
+	if col.Collation != "" {
+		defaultCharset = strings.SplitN(col.Collation, "_", 2)[0]
+	}
+
+	switch strings.ToLower(GetDataTypeBase(col.Type)) {
+	case "tinyint", "smallint", "mediumint",
+		"int", "integer", "bigint",
+		"double", "real", "float", "decimal",
+		"numeric", "bit":
+		// numeric
+		return numericStorageReq(col.Type)
+
+	case "year", "date", "time", "datetime", "timestamp":
+		// date & time
+		return timeStorageReq(col.Type, dbVersion)
+
+	case "char", "varchar", "enum", "set",
+		"geometry", "point", "linestring", "polygon":
+		return StringStorageReq(col.Type, defaultCharset)
+
+	case "tinytext", "text", "mediumtext", "longtext":
+		return StringStorageReq(col.Type, defaultCharset)
+		// 二进制不限长度
+	case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
+		return length
+
+	// 	// strings length depend on it's values
+	// 	// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
+	// 	return MaxKeyLength + 1
+	default:
+		log.Warnf("Type %v not support:", col.Type)
 		return -1
 	}
 }
@@ -172,8 +223,8 @@ func StringStorageReq(dataType string, charset string) int {
 			typeLength[0] = 255
 		}
 		return typeLength[0]
-	case "varchar", "varbinary":
-		if typeLength[0] < 255 {
+	case "varchar", "tinytext", "text", "mediumtext", "longtext":
+		if typeLength[0] <= 255 {
 			return typeLength[0]*bysPerChar + 1
 		}
 		return typeLength[0]*bysPerChar + 2
@@ -183,6 +234,7 @@ func StringStorageReq(dataType string, charset string) int {
 	case "set":
 		// 1, 2, 3, 4, or 8 bytes, depending on the number of set members (64 members maximum)
 		return typeLength[0]/8 + 1
+
 	default:
 		return 0
 	}
@@ -410,3 +462,60 @@ func GetDataTypeLength(dataType string) []int {
 
 // 	return v.ToString()
 // }
+
+// func (b *BinlogSyncer) isClosed(ctx context.Context) bool {
+// 	select {
+// 	case <-ctx.Done():
+// 		return true
+// 	default:
+// 		return false
+// 	}
+// }
+
+func checkClose(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return nil
+	}
+}
+
+// if err := checkGoContext(ctx); err != nil {
+// 	return nil, err
+// }
+
+func findColumn(c *ast.ColumnNameExpr, t *TableInfo) *FieldInfo {
+	var tName string
+	db := c.Name.Schema.L
+	if t.AsName != "" {
+		tName = t.AsName
+	} else {
+		tName = t.Name
+	}
+	if c.Name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+		(strings.EqualFold(tName, c.Name.Table.L)) ||
+		c.Name.Table.L == "" {
+		for i, field := range t.Fields {
+			if strings.EqualFold(field.Field, c.Name.Name.L) && !field.IsDeleted {
+				return &t.Fields[i]
+			}
+		}
+	}
+	return nil
+}
+
+func findColumnWithList(c *ast.ColumnNameExpr, tables []*TableInfo) *FieldInfo {
+	for _, t := range tables {
+		f := findColumn(c, t)
+		if f != nil {
+			return f
+		}
+	}
+	return nil
+}
+
+func Exist(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil || os.IsExist(err)
+}

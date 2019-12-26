@@ -1,292 +1,182 @@
-# Contribution Guide
+# 贡献指南
 
-TiDB is a community driven open source project and we welcome any contributor. The process of contributing to the TiDB project
-may be different than many other projects you have been involved in. This document outlines some conventions about development workflow, commit message formatting, contact points and other resources to make it easier to get your contribution accepted. This document is the canonical source of truth for things like supported toolchain versions for building and testing TiDB.
+本文档约定了一些操作步骤，以方便快速提交PR，并易于合并。
 
-## What is a Contributor?
+在提交PR前，请先提交一个[Issue](https://github.com/hanchuanchuan/goInception/issues/new/choose)，以方便沟通。
 
-A Contributor refers to the person who contributes to the following projects:
-- TiDB: https://github.com/pingcap/tidb 
-- TiKV: https://github.com/tikv/tikv 
-- TiSpark: https://github.com/pingcap/tispark 
-- PD: https://github.com/pingcap/pd 
-- Docs: https://github.com/pingcap/docs 
-- Docs-cn: https://github.com/pingcap/docs-cn 
-
-## How to become a TiDB Contributor?
-
-If a PR (Pull Request) submitted to the TiDB / TiKV / TiSpark / PD / Docs／Docs-cn projects by you is approved and merged, then you become a TiDB Contributor. 
-
-You are also encouraged to participate in the projects in the following ways:
-- Actively answer technical questions asked by community users.
-- Help to test the projects.
-- Help to review the pull requests (PRs) submitted by others.
-- Help to improve technical documents.
-- Submit valuable issues.
-- Report or fix known and unknown bugs.
-- Participate in the existing discussion about features in the roadmap, and have interest in implementing a certain feature independently.
-- Write articles about the source code analysis and usage cases for the projects.
-
-## Pre submit pull request/issue flight checks
-
-Before you move on, please make sure what your issue and/or pull request is, a simple bug fix or an architecture change.
-
-In order to save reviewers' time, each issue should be filed with template and should be sanity-checkable in under 5 minutes.
-
-### Is this a simple bug fix?
-
-Bug fixes usually come with tests. With the help of continuous integration test, patches can be easy to review. Please update the unit tests so that they catch the bug! Please check example [here](https://github.com/pingcap/tidb/pull/2808).
-
-### Is this an architecture improvement?
-
-Some examples of "Architecture" improvements:
-
-- Converting structs to interfaces.
-- Improving test coverage.
-- Decoupling logic or creation of new utilities.
-- Making code more resilient (sleeps, backoffs, reducing flakiness, etc).
-
-If you are improving the quality of code, then justify/state exactly what you are 'cleaning up' in your Pull Request so as to save reviewers' time. An example will be this [pull request](https://github.com/pingcap/tidb/pull/3113).
-
-If you're making code more resilient, test it locally to demonstrate how exactly your patch changes
-things.
-
-## Building TiDB on a local OS/shell environment
-
-TiDB development only requires `go` set-up. If you already have, simply type `make` from terminal.
 
 ### Go
 
-TiDB is written in [Go](http://golang.org).
-If you don't have a Go development environment,
-please [set one up](http://golang.org/doc/code.html).
+`goInception`使用 [`Go`](http://golang.org) 语言编写，
 
-The version of GO should be **1.10** or above.
+GO版本应该在 **1.12** 及以上。
 
-After installation, you'll need `GOPATH` defined,
-and `PATH` modified to access your Go binaries.
+#### 依赖管理
 
-A common setup is the following but you could always google a setup for your own flavor.
+*项目采用 [`Go Modules`](https://github.com/golang/go/wiki/Modules) 管理依赖。*
 
-```sh
+您仍须定义`GOPATH`，并修改`PATH`以访问您的Go二进制文件。
+
+*由于单元测试使用gofail做模拟测试，所以仍须使用`GOPATH`*
+
+例如：
+
+```SH
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 ```
 
-#### Dependency management
+## 工作流
 
-TiDB uses [`dep`](https://github.com/golang/dep) to manage dependencies.
+### Step 1: Fork项目
 
-```sh
-go get -u github.com/golang/dep/cmd/dep
-```
+1. 打开 https://github.com/hanchuanchuan/goInception
+2. 点击右上角 `Fork` 按钮，将项目fork到自己的仓库中，等待Fork完成。
 
-## Workflow
+### Step 2: 克隆fork项目到本地
 
-### Step 1: Fork in the cloud
 
-1. Visit https://github.com/pingcap/tidb
-2. Click `Fork` button (top right) to establish a cloud-based fork.
-
-### Step 2: Clone fork to local storage
-
-Per Go's [workspace instructions][go-workspace], place TiDB's code on your
-`GOPATH` using the following cloning procedure.
-
-Define a local working directory:
+将代码放在你的`GOPATH`目录下，定义本地工作目录：
 
 ```sh
-# If your GOPATH has multiple paths, pick
-# just one and use it instead of $GOPATH here.
-working_dir=$GOPATH/src/github.com/pingcap
-```
-
-> If you already worked with Go development on github before, the `pingcap` directory
-> will be a sibling to your existing `github.com` directory.
-
-Set `user` to match your github profile name:
-
-```sh
+# 设置你的github用户名`user`:
 user={your github profile name}
-```
 
-Create your clone:
+working_dir=$GOPATH/src/github.com/${user}
+```
 
 ```sh
 mkdir -p $working_dir
 cd $working_dir
-git clone https://github.com/$user/tidb.git
-# the following is recommended
-# or: git clone git@github.com:$user/tidb.git
 
-cd $working_dir/tidb
-git remote add upstream https://github.com/pingcap/tidb.git
-# or: git remote add upstream git@github.com:pingcap/tidb.git
+git clone https://github.com/${user}/goInception.git
+# 或者: git clone git@github.com/${user}/goInception.git
 
-# Never push to upstream master since you do not have write access.
+cd $working_dir/goInception
+git remote add upstream https://github.com/hanchuanchuan/goInception.git
+# 或者: git remote add upstream git@github.com/hanchuanchuan/goInception.git
+
+# 避免误推送
 git remote set-url --push upstream no_push
 
-# Confirm that your remotes make sense:
-# It should look like:
-# origin    git@github.com:$(user)/tidb.git (fetch)
-# origin    git@github.com:$(user)/tidb.git (push)
-# upstream  https://github.com/pingcap/tidb (fetch)
-# upstream  no_push (push)
+# 配置检查
 git remote -v
+# 结果应该有四条:
+# origin    git@github.com:$(user)/goInception.git (fetch)
+# origin    git@github.com:$(user)/goInception.git (push)
+# upstream  https://github.com/hanchuanchuan/goInception (fetch)
+# upstream  no_push (push)
 ```
 
-#### Define a pre-commit hook
+#### 定义提交前检查
 
-Please link the TiDB pre-commit hook into your `.git` directory.
-
-This hook checks your commits for formatting, building, doc generation, etc.
+*这个hook定义了提交前的格式检查*
 
 ```sh
-cd $working_dir/tidb/.git/hooks
+cd $working_dir/goInception/.git/hooks
 ln -s ../../hooks/pre-commit .
-```
-Sometime, pre-commit hook can not be executable. In such case, you have to make it executable manually.
-
-```sh
-cd $working_dir/tidb/.git/hooks
 chmod +x pre-commit
+cd ../..
 ```
 
-### Step 3: Branch
+### Step 3: 创建分支
 
-Get your local master up to date:
+获取最新版本的goInception
 
 ```sh
-cd $working_dir/tidb
+# 切换到项目目录
+cd $working_dir/goInception/
+# 获取最新更新
 git fetch upstream
+
+# 切换到本地master
 git checkout master
+# 版本合并
 git rebase upstream/master
 ```
 
-Branch from master:
+创建分支
 
 ```sh
-git checkout -b myfeature
+# 创建并切换到新分支
+# 新功能建议以feature开头,bug修改建议以fix开头
+git checkout -b feature-test
 ```
 
-### Step 4: Develop
+### Step 4: 开发
 
-#### Edit the code
+#### 代码开发
 
-You can now edit the code on the `myfeature` branch.
+现在可以在`feature-test`分支进行开发了.
 
-#### Run stand-alone mode
 
-If you want to reproduce and investigate an issue, you may need
-to run TiDB in stand-alone mode.
+#### 准备测试环境
 
-```sh
-# Build the binary.
-make server
+运行本地测试需要一个mysql环境，用来测试审核、执行及备份功能。
+* mysql建议版本: `5.7`
+* mysql启动参数(可设置my.cnf) `mysqld --log-bin=on --server_id=111 --character-set-server=utf8mb4`
+* 测试数据库 `mysql -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;"`
+* 测试用户  `mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"`
 
-# Run in stand-alone mode. The data is stored in `/tmp/tidb`.
-bin/tidb-server
-```
+#### 运行测试
 
-Then you can connect to TiDB with mysql client.
+运行完整测试
 
-```sh
-mysql -h127.0.0.1 -P4000 -uroot test
-```
-
-If you use MySQL client 8, you may get the `ERROR 1105 (HY000): Unknown charset id 255` error. To solve it, you can add `--default-character-set utf8` in MySQL client 8's arguments.
+*完整测试可能由于环境问题无法通过，此时需要保证`GO111MODULE=on go test session/session_inception_*.go`通过*
 
 ```sh
-mysql -h127.0.0.1 -P4000 -uroot test --default-character-set utf8
-```
-
-#### Run Test
-
-```sh
-# Run unit test to make sure all test passed.
+# 单元测试
 make dev
 
-# Check checklist before you move on.
+# 检查checklist
 make checklist
 ```
 
-### Step 5: Keep your branch in sync
+运行指定测试
 
 ```sh
-# While on your myfeature branch.
+GO111MODULE=on go test session/session_inception_*.go
+# 或者:
+GO111MODULE=on go test session/session_inception_test.go
+```
+
+### Step 5: 保持分支同步
+
+*分支在提交前需要先合并goInception最新版本，以免PR无法合并*
+
+```sh
+# 在`feature-test`分支(`git checkout feature-test`)
 git fetch upstream
 git rebase upstream/master
 ```
 
-### Step 6: Commit
+### Step 6: 提交
 
-Commit your changes.
+提交变更
 
 ```sh
 git commit
 ```
 
-Likely you'll go back and edit/build/test some more than `commit --amend`
-in a few cycles.
-
 ### Step 7: Push
 
-When ready to review (or just to establish an offsite backup or your work),
-push your branch to your fork on `github.com`:
-
+推送分支到`github.com`
 ```sh
-git push -f origin myfeature
+git push -f origin feature-test
 ```
 
-### Step 8: Create a pull request
+### Step 8: 创建PR
 
-1. Visit your fork at https://github.com/$user/tidb (replace `$user` obviously).
-2. Click the `Compare & pull request` button next to your `myfeature` branch.
+1. 访问fork项目地址 `https://github.com/$user/goInception`
+2. 点击 `feature-test` 分支旁边的 `Compare & pull request` 按钮
 
-### Step 9: Get a code review
+### Step 9: code review
 
-Once your pull request has been opened, it will be assigned to at least two
-reviewers. Those reviewers will do a thorough code review, looking for
-correctness, bugs, opportunities for improvement, documentation and comments,
-and style.
+在PR提交后，会自动进行travisci测试和circleci测试，
+在review时,有什么变动可以直接在该分支上修改和提交，PR会使用最新的commit，不用再次提交PR,
+如果一个PR涉及了多个功能或者修复,建议分成多个分支，以便于review以及合并。
 
-Commit changes made in response to review comments to the same branch on your
-fork.
 
-Very small PRs are easy to review. Very large PRs are very difficult to
-review.
+## 代码风格
 
-## Code style
-
-The coding style suggested by the Golang community is used in TiDB. See the [style doc](https://github.com/golang/go/wiki/CodeReviewComments) for details.
-
-## Commit message style
-
-Please follow this style to make TiDB easy to review, maintain and develop.
-
-```
-<subsystem>: <what changed>
-<BLANK LINE>
-<why this change was made>
-<BLANK LINE>
-<footer>(optional)
-```
-
-The first line is the subject and should be no longer than 70 characters, the
-second line is always blank, and other lines should be wrapped at 80 characters.
-This allows the message to be easier to read on GitHub as well as in various
-git tools.
-
-If the change affects more than one subsystem, you can use comma to separate them like `util/codec,util/types:`.
-
-If the change affects many subsystems, you can use ```*``` instead, like ```*:```.
-
-For the why part, if no specific reason for the change,
-you can use one of some generic reasons like "Improve documentation.",
-"Improve performance.", "Improve robustness.", "Improve test coverage."
-
-[Os X GNU tools]: https://www.topbug.net/blog/2013/04/14/install-and-use-gnu-command-line-tools-in-mac-os-x
-[go-1.8]: https://blog.golang.org/go1.8
-[go-workspace]: https://golang.org/doc/code.html#Workspaces
-[issue]: https://github.com/pingcap/tidb/issues
-[mercurial]: http://mercurial.selenic.com/wiki/Download
+可参考Golang社区建议的编码风格 [style doc](https://github.com/golang/go/wiki/CodeReviewComments)

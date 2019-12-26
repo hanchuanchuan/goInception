@@ -14,10 +14,7 @@
 package distsql
 
 import (
-	"time"
-
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/statistics"
 	"github.com/hanchuanchuan/goInception/terror"
@@ -75,11 +72,8 @@ func (r *selectResult) Fetch(ctx context.Context) {
 }
 
 func (r *selectResult) fetch(ctx context.Context) {
-	startTime := time.Now()
 	defer func() {
 		close(r.results)
-		duration := time.Since(startTime)
-		metrics.DistSQLQueryHistgram.WithLabelValues(r.label, r.sqlType).Observe(duration.Seconds())
 	}()
 	for {
 		resultSubset, err := r.resp.Next(ctx)
@@ -186,10 +180,6 @@ func (r *selectResult) readRowsData(chk *chunk.Chunk) (err error) {
 // Close closes selectResult.
 func (r *selectResult) Close() error {
 	// Close this channel tell fetch goroutine to exit.
-	if r.feedback.Actual() >= 0 {
-		metrics.DistSQLScanKeysHistogram.Observe(float64(r.feedback.Actual()))
-	}
-	metrics.DistSQLPartialCountHistogram.Observe(float64(r.partialCount))
 	close(r.closed)
 	return r.resp.Close()
 }

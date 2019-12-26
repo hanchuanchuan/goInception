@@ -20,10 +20,15 @@ package session
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
+	// "time"
 
 	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/hanchuanchuan/goInception/planner/core"
+	// "github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/pingcap/errors"
@@ -181,16 +186,46 @@ func isDefaultValNowSymFunc(expr ast.ExprNode) bool {
 	return false
 }
 
-func isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
+func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 	tp := colDef.Tp
+
+	// utc := &stmtctx.StatementContext{TimeZone: time.UTC}
 	// Check the last default value.
 	for i := len(colDef.Options) - 1; i >= 0; i-- {
 		columnOpt := colDef.Options[i]
 		if columnOpt.Tp == ast.ColumnOptionDefaultValue {
-			// log.Infof("%#v", columnOpt.Expr)
+
 			if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime) && isDefaultValNowSymFunc(columnOpt.Expr) {
 				return true
+			} else {
+				if !types.IsTypeTime(tp.Tp) ||
+					columnOpt.Expr.GetDatum().IsNull() || isDefaultValNowSymFunc(columnOpt.Expr) {
+					return false
+				}
+
+				d, err := expression.GetTimeValue(s, columnOpt.Expr, tp.Tp, tp.Decimal)
+				if err != nil {
+					// log.Warning(err)
+					return true
+				}
+
+				vars := s.sessionVars
+
+				// 根据服务器sql_mode设置处理零值日期
+				t := d.GetMysqlTime()
+				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroDateMode(), t.IsZero())
+				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroInDateMode(), t.InvalidZero())
+				if t.IsZero() {
+					if s.Inc.EnableZeroDate {
+						return vars.StrictSQLMode && vars.SQLMode.HasNoZeroDateMode()
+					} else {
+						return true
+					}
+				} else if t.InvalidZero() {
+					return vars.StrictSQLMode && vars.SQLMode.HasNoZeroInDateMode()
+				}
 			}
+
 			break
 		}
 	}
@@ -258,7 +293,7 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 
 	if len(stmt.Cols) == 0 && stmt.ReferTable == nil {
-		s.AppendErrorNo(ER_MUST_HAVE_COLUMNS)
+		s.AppendErrorNo(ER_MUST_AT_LEAST_ONE_COLUMN)
 	}
 }
 
@@ -375,4 +410,101 @@ func isPrimary(ops []*ast.ColumnOption) int {
 		}
 	}
 	return 0
+}
+
+func (s *session) checkOnlyFullGroupByWithOutGroupClause(fields []*ast.SelectField) error {
+	var (
+		firstNonAggCol *ast.ColumnName
+		// exprIdx           int
+		firstNonAggColIdx int
+		hasAggFunc        bool
+	)
+	for idx, field := range fields {
+		switch t := field.Expr.(type) {
+		case *ast.AggregateFuncExpr:
+			hasAggFunc = true
+		case *ast.ColumnNameExpr:
+			if firstNonAggCol == nil {
+				firstNonAggCol, firstNonAggColIdx = t.Name, idx
+			}
+		}
+		if hasAggFunc && firstNonAggCol != nil {
+			s.AppendErrorNo(ErrMixOfGroupFuncAndFields, firstNonAggColIdx+1, firstNonAggCol.Name.O)
+			return nil
+		}
+	}
+	return nil
+}
+
+func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, tables []*TableInfo) error {
+	gbyCols := make(map[*FieldInfo]struct{}, len(sel.Fields.Fields))
+	gbyExprs := make([]ast.ExprNode, 0, len(sel.Fields.Fields))
+
+	for _, byItem := range sel.GroupBy.Items {
+		if colExpr, ok := byItem.Expr.(*ast.ColumnNameExpr); ok {
+
+			col := findColumnWithList(colExpr, tables)
+			if col == nil {
+				continue
+			}
+			gbyCols[col] = struct{}{}
+		} else {
+			gbyExprs = append(gbyExprs, byItem.Expr)
+		}
+	}
+
+	notInGbyCols := make(map[*FieldInfo]core.ErrExprLoc, len(sel.Fields.Fields))
+	for offset, field := range sel.Fields.Fields {
+		// log.Info(field.Auxiliary, "---", field.Expr)
+		if field.Auxiliary {
+			continue
+		}
+		checkExprInGroupBy(field.Expr, offset, core.ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+	}
+
+	if sel.OrderBy != nil {
+		for offset, item := range sel.OrderBy.Items {
+			checkExprInGroupBy(item.Expr, offset, core.ErrExprInOrderBy, gbyCols, gbyExprs, notInGbyCols, tables)
+		}
+	}
+
+	if len(notInGbyCols) == 0 {
+		return nil
+	}
+
+	for _, errExprLoc := range notInGbyCols {
+		switch errExprLoc.Loc {
+		case core.ErrExprInSelect:
+			s.AppendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
+				sel.Fields.Fields[errExprLoc.Offset].Text())
+			return nil
+		case core.ErrExprInOrderBy:
+			s.AppendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
+				sel.OrderBy.Items[errExprLoc.Offset].Expr.Text())
+			return nil
+		}
+		return nil
+	}
+	return nil
+}
+
+func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
+	gbyCols map[*FieldInfo]struct{}, gbyExprs []ast.ExprNode, notInGbyCols map[*FieldInfo]core.ErrExprLoc, tables []*TableInfo) {
+	if _, ok := expr.(*ast.AggregateFuncExpr); ok {
+		return
+	}
+	if c, ok := expr.(*ast.ColumnNameExpr); ok {
+		col := findColumnWithList(c, tables)
+		if col != nil {
+			if _, ok := gbyCols[col]; !ok {
+				notInGbyCols[col] = core.ErrExprLoc{Offset: offset, Loc: loc}
+			}
+		}
+	} else {
+		for _, gbyExpr := range gbyExprs {
+			if reflect.DeepEqual(gbyExpr, expr) {
+				return
+			}
+		}
+	}
 }

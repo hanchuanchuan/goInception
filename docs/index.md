@@ -24,7 +24,7 @@ inception_magic_commit;
 
 
 #### 致谢
-    goInception基于TiDB的语法解析器，和业内有名的inpcetion审核工具重构。
+    goInception基于TiDB的语法解析器，和业内有名的inception审核工具重构。
 
 - [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)

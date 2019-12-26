@@ -1,0 +1,218 @@
+
+# IP地址
+host = "0.0.0.0"
+
+# 端口
+port = 4000
+
+# TiDB数据库目录
+path = "/tmp/tidb"
+
+[log]
+# 日志级别: debug, info, warn, error, fatal.
+level = "info"
+
+# 日志格式, one of json, text, console.
+format = "text"
+
+# 禁用时间戳输出
+disable-timestamp = false
+
+# 日志文件
+[log.file]
+# 日志文件名
+filename = ""
+
+# 日志文件的最大上限(MB)
+max-size = 300
+
+# Max日志文件的保存天数，默认值 `0`，即不清理
+max-days = 0
+
+# 要保留的最大旧日志文件数，默认值 `0`，即不清理
+max-backups = 0
+
+# 日志轮询，默认值 `true`，即开启
+log-rotate = true
+
+[inc]
+
+backup_host = ""
+backup_port = 0
+backup_user = ""
+backup_password = ""
+
+enable_nullable = true
+enable_drop_table = false
+enable_set_engine = true
+enable_change_column = true
+
+check_timestamp_count = true
+check_table_comment = false
+check_column_comment = false
+
+# 审核列类型变更
+check_column_type_change = true
+
+# explain判断受影响行数时使用的规则, 默认值"first"
+# 可选值: "first", "max"
+#      "first":    使用第一行的explain结果作为受影响行数
+#      "max":      使用explain结果中的最大值作为受影响行数
+explain_rule = "first"
+
+# 安全更新是否开启(mysql自身的功能).
+# -1 表示不做操作,基于远端数据库 [默认值]
+# 0  表示关闭安全更新
+# 1  表示开启安全更新
+sql_safe_updates = -1
+
+support_charset = "utf8,utf8mb4"
+support_engine = "innodb"
+
+lang = "en-US"
+
+# 全量日志
+general_log = false
+
+[osc]
+
+# 用来设置在arkit返回结果集中，对于原来OSC在执行过程的标准输出信息是不是要打印到结果集对应的错误信息列中，
+# 如果设置为1，就不打印，如果设置为0，就打印。而如果出现了错误，则都会打印。默认值：OFF
+osc_print_none = false
+
+# 对应参数pt-online-schema-change中的参数--print。默认值：OFF
+osc_print_sql = false
+
+# 全局的OSC开关，默认是打开的，如果想要关闭则设置为OFF，这样就会直接修改。默认值：OFF
+osc_on = false
+
+# 这个参数实际上是一个OSC开关，如果设置为0，则全部ALTER语句都使用OSC方式，
+# 如果设置为非0，则当这个表占用空间大小大于这个值时才使用OSC方式。
+# 单位为M，这个表大小的计算方式是通过语句
+# select (DATA_LENGTH + INDEX_LENGTH)/1024/1024 from information_schema.tables
+# where table_schema = 'dbname' and table_name = 'tablename' 来实现的。默认值：16
+# [0-1048576]
+osc_min_table_size = 16
+
+# 对应参数pt-online-schema-change中的参数alter-foreign-keys-method，具体意义可以参考OSC官方手册。默认值：none
+# [auto | none | rebuild_constraints | drop_swap]
+osc_alter_foreign_keys_method = "none"
+
+# 对应参数pt-online-schema-change中的参数recursion_method，具体意义可以参考OSC官方手册。默认值：processlist
+# [processlist | hosts | none]
+osc_recursion_method = "processlist"
+
+# 对应参数pt-online-schema-change中的参数--max-lag。默认值：3
+osc_max_lag = 3
+
+# 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
+osc_check_alter = true
+
+# 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
+osc_check_replication_filters = true
+
+# 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
+osc_drop_old_table = true
+
+# 对应参数pt-online-schema-change中的参数--[no]drop-new-table。默认值：ON
+osc_drop_new_table = true
+
+# 对应参数pt-online-schema-change中的参数--max-load中的thread_running部分。默认值：80
+osc_max_thread_running = 80
+
+# 对应参数pt-online-schema-change中的参数--max-load中的thread_connected部分。默认值：1000
+osc_max_thread_connected = 1000
+
+# 对应参数pt-online-schema-change中的参数--critical-load中的thread_running部分。默认值：80
+osc_critical_thread_running = 80
+
+# 对应参数pt-online-schema-change中的参数--critical-load中的thread_connected部分。默认值：1000
+osc_critical_thread_connected = 1000
+
+# 对应参数pt-online-schema-change中的参数--chunk-time。默认值：1
+osc_chunk_time = 1.0
+
+# 对应参数pt-online-schema-change中的参数--chunk-size-limit。默认值：4
+osc_chunk_size_limit = 4
+
+# 对应参数pt-online-schema-change中的参数--chunk-size。默认值：1000
+osc_chunk_size = 1000
+
+# 对应参数pt-online-schema-change中的参数--check-interval，意义是Sleep time between checks for --max-lag。默认值：5
+osc_check_interval = 5
+
+osc_bin_dir = "/usr/local/bin"
+
+
+[ghost]
+
+ghost_on = false
+ghost_allow_on_master = true
+ghost_assume_rbr = true
+ghost_chunk_size = 1000
+ghost_concurrent_rowcount = true
+ghost_cut_over = "atomic"
+ghost_cut_over_lock_timeout_seconds = 3
+ghost_default_retries = 60
+ghost_heartbeat_interval_millis = 500
+ghost_max_lag_millis = 1500
+ghost_approve_renamed_columns = true
+ghost_exponential_backoff_max_interval = 64
+ghost_dml_batch_size = 10
+ghost_ok_to_drop_table = true
+ghost_skip_foreign_key_checks = true
+
+[inc_level]
+er_alter_table_once = 1
+er_auto_incr_id_warning = 1
+er_autoinc_unsigned = 1
+er_blob_cant_have_default = 1
+er_cant_change_column = 1
+er_cant_change_column_position = 1
+er_cant_set_charset = 1
+er_cant_set_collation = 1
+er_cant_set_engine = 1
+er_change_column_type = 1
+er_change_too_much_rows = 1
+er_char_to_varchar_len = 1
+er_charset_on_column = 1
+er_column_have_no_comment = 1
+er_datetime_default = 1
+er_foreign_key = 2
+er_ident_use_keyword = 1
+er_implicit_type_conversion = 1
+er_inc_init_err = 1
+er_index_name_idx_prefix = 1
+er_index_name_uniq_prefix = 1
+er_insert_too_much_rows = 1
+er_invalid_data_type = 1
+er_invalid_ident = 1
+er_join_no_on_condition = 1
+er_json_type_support = 2
+er_must_have_columns = 1
+er_no_where_condition = 1
+er_not_allowed_nullable = 1
+er_ordery_by_rand = 1
+er_partition_not_allowed = 1
+er_pk_cols_not_int = 1
+er_pk_too_many_parts = 1
+er_select_only_star = 1
+er_set_data_type_int_bigint = 2
+er_table_charset_must_null = 1
+er_table_charset_must_utf8 = 1
+er_table_must_have_comment = 1
+er_table_must_have_pk = 1
+er_text_not_nullable_error = 1
+er_timestamp_default = 1
+er_too_many_key_parts = 1
+er_too_many_keys = 1
+er_too_much_auto_datetime_cols = 2
+er_too_much_auto_timestamp_cols = 2
+er_udpate_too_much_rows = 1
+er_use_enum = 1
+er_use_text_or_blob = 2
+er_with_default_add_column = 1
+er_with_insert_field = 1
+er_with_limit_condition = 1
+er_with_orderby_condition = 1
+er_wrong_and_expr = 1

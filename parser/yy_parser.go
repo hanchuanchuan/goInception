@@ -14,6 +14,7 @@
 package parser
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"strconv"
@@ -27,16 +28,27 @@ import (
 	"github.com/pingcap/errors"
 )
 
-const (
-	codeErrParse  = terror.ErrCode(mysql.ErrParse)
-	codeErrSyntax = terror.ErrCode(mysql.ErrSyntax)
-)
-
 var (
 	// ErrSyntax returns for sql syntax error.
-	ErrSyntax = terror.ClassParser.New(codeErrSyntax, mysql.MySQLErrName[mysql.ErrSyntax])
+	ErrSyntax = terror.ClassParser.New(mysql.ErrSyntax, mysql.MySQLErrName[mysql.ErrSyntax])
 	// ErrParse returns for sql parse error.
-	ErrParse = terror.ClassParser.New(codeErrParse, mysql.MySQLErrName[mysql.ErrParse])
+	ErrParse = terror.ClassParser.New(mysql.ErrParse, mysql.MySQLErrName[mysql.ErrParse])
+	// ErrUnknownCharacterSet returns for no character set found error.
+	ErrUnknownCharacterSet = terror.ClassParser.New(mysql.ErrUnknownCharacterSet, mysql.MySQLErrName[mysql.ErrUnknownCharacterSet])
+	// ErrInvalidYearColumnLength returns for illegal column length for year type.
+	ErrInvalidYearColumnLength = terror.ClassParser.New(mysql.ErrInvalidYearColumnLength, mysql.MySQLErrName[mysql.ErrInvalidYearColumnLength])
+	// ErrWrongArguments returns for illegal argument.
+	ErrWrongArguments = terror.ClassParser.New(mysql.ErrWrongArguments, mysql.MySQLErrName[mysql.ErrWrongArguments])
+	// ErrWrongFieldTerminators returns for illegal field terminators.
+	ErrWrongFieldTerminators = terror.ClassParser.New(mysql.ErrWrongFieldTerminators, mysql.MySQLErrName[mysql.ErrWrongFieldTerminators])
+	// ErrTooBigDisplayWidth returns for data display width exceed limit .
+	ErrTooBigDisplayWidth = terror.ClassParser.New(mysql.ErrTooBigDisplaywidth, mysql.MySQLErrName[mysql.ErrTooBigDisplaywidth])
+	// ErrTooBigPrecision returns for data precision exceed limit.
+	ErrTooBigPrecision = terror.ClassParser.New(mysql.ErrTooBigPrecision, mysql.MySQLErrName[mysql.ErrTooBigPrecision])
+	// ErrUnknownAlterLock returns for no alter lock type found error.
+	ErrUnknownAlterLock = terror.ClassParser.New(mysql.ErrUnknownAlterLock, mysql.MySQLErrName[mysql.ErrUnknownAlterLock])
+	// ErrUnknownAlterAlgorithm returns for no alter algorithm found error.
+	ErrUnknownAlterAlgorithm = terror.ClassParser.New(mysql.ErrUnknownAlterAlgorithm, mysql.MySQLErrName[mysql.ErrUnknownAlterAlgorithm])
 	// SpecFieldPattern special result field pattern
 	SpecFieldPattern = regexp.MustCompile(`(\/\*!(M?[0-9]{5,6})?|\*\/)`)
 	specCodePattern  = regexp.MustCompile(`\/\*!(M?[0-9]{5,6})?([^*]|\*+[^*/])*\*+\/`)
@@ -46,8 +58,16 @@ var (
 
 func init() {
 	parserMySQLErrCodes := map[terror.ErrCode]uint16{
-		codeErrSyntax: mysql.ErrSyntax,
-		codeErrParse:  mysql.ErrParse,
+		mysql.ErrSyntax:                  mysql.ErrSyntax,
+		mysql.ErrParse:                   mysql.ErrParse,
+		mysql.ErrUnknownCharacterSet:     mysql.ErrUnknownCharacterSet,
+		mysql.ErrInvalidYearColumnLength: mysql.ErrInvalidYearColumnLength,
+		mysql.ErrWrongArguments:          mysql.ErrWrongArguments,
+		mysql.ErrWrongFieldTerminators:   mysql.ErrWrongFieldTerminators,
+		mysql.ErrTooBigDisplaywidth:      mysql.ErrTooBigDisplaywidth,
+		mysql.ErrUnknownAlterLock:        mysql.ErrUnknownAlterLock,
+		mysql.ErrUnknownAlterAlgorithm:   mysql.ErrUnknownAlterAlgorithm,
+		mysql.ErrTooBigPrecision:         mysql.ErrTooBigPrecision,
 	}
 	terror.ErrClassToMySQLCodes[terror.ClassParser] = parserMySQLErrCodes
 }
@@ -85,7 +105,7 @@ func New() *Parser {
 
 // Parse parses a query string to raw ast.StmtNode.
 // If charset or collation is "", default charset and collation will be used.
-func (parser *Parser) Parse(sql, charset, collation string) ([]ast.StmtNode, error) {
+func (parser *Parser) Parse(sql, charset, collation string) (stmt []ast.StmtNode, warns []error, err error) {
 	if charset == "" {
 		charset = mysql.DefaultCharset
 	}
@@ -102,19 +122,33 @@ func (parser *Parser) Parse(sql, charset, collation string) ([]ast.StmtNode, err
 	l = &parser.lexer
 	yyParse(l, parser)
 
-	if len(l.Errors()) != 0 {
-		return nil, errors.Trace(l.Errors()[0])
+	warns, errs := l.Errors()
+	if len(warns) > 0 {
+		warns = append([]error(nil), warns...)
+	} else {
+		warns = nil
+	}
+	if len(errs) != 0 {
+		return nil, warns, errors.Trace(errs[0])
 	}
 	for _, stmt := range parser.result {
 		ast.SetFlag(stmt)
 	}
-	return parser.result, nil
+	return parser.result, warns, nil
+}
+
+func (parser *Parser) lastErrorAsWarn() {
+	if len(parser.lexer.errs) == 0 {
+		return
+	}
+	parser.lexer.warns = append(parser.lexer.warns, parser.lexer.errs[len(parser.lexer.errs)-1])
+	parser.lexer.errs = parser.lexer.errs[:len(parser.lexer.errs)-1]
 }
 
 // ParseOneStmt parses a query and returns an ast.StmtNode.
 // The query must have one statement, otherwise ErrSyntax is returned.
 func (parser *Parser) ParseOneStmt(sql, charset, collation string) (ast.StmtNode, error) {
-	stmts, err := parser.Parse(sql, charset, collation)
+	stmts, _, err := parser.Parse(sql, charset, collation)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -130,12 +164,17 @@ func (parser *Parser) SetSQLMode(mode mysql.SQLMode) {
 	parser.lexer.SetSQLMode(mode)
 }
 
+// EnableWindowFunc controls whether the parser to parse syntax related with window function.
+func (parser *Parser) EnableWindowFunc(val bool) {
+	parser.lexer.EnableWindowFunc(val)
+}
+
 // ParseErrorWith returns "You have a syntax error near..." error message compatible with mysql.
 func ParseErrorWith(errstr string, lineno int) error {
 	if len(errstr) > mysql.ErrTextLength {
 		errstr = errstr[:mysql.ErrTextLength]
 	}
-	return ErrParse.GenWithStackByArgs(mysql.MySQLErrName[mysql.ErrSyntax], errstr, lineno)
+	return fmt.Errorf("near '%-.80s' at line %d", errstr, lineno)
 }
 
 // The select statement is not at the end of the whole statement, if the last
@@ -175,12 +214,12 @@ func toInt(l yyLexer, lval *yySymType, str string) int {
 			// get value 99999999999999999999999999999999999999999999999999999999999999999
 			return toDecimal(l, lval, str)
 		}
-		l.Errorf("integer literal: %v", err)
+		l.AppendError(l.Errorf("integer literal: %v", err))
 		return int(unicode.ReplacementChar)
 	}
 
 	switch {
-	case n < math.MaxInt64:
+	case n <= math.MaxInt64:
 		lval.item = int64(n)
 	default:
 		lval.item = n
