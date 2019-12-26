@@ -23,9 +23,12 @@ import (
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/parser"
+	"github.com/hanchuanchuan/goInception/server"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
 	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
@@ -34,9 +37,6 @@ import (
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/parser"
 )
 
 var _ = Suite(&testCommon{})
@@ -88,12 +88,17 @@ func (s *testCommon) initSetUp(c *C) {
 	s.store = store
 	session.SetSchemaLease(0)
 	session.SetStatsLease(0)
+
 	s.dom, err = session.BootstrapSession(s.store)
 	c.Assert(err, IsNil)
 
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
+
+	server := &server.Server{}
+	server.InitOscProcessList()
+	s.tk.Se.SetSessionManager(server)
 
 	cfg := config.GetGlobalConfig()
 	_, localFile, _, _ := runtime.Caller(0)

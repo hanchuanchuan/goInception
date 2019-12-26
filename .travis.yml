@@ -68,6 +68,10 @@ before_install:
   - ps -ef|grep mysql
 
 script:
+  - sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
+  - sudo chmod +x /usr/local/bin/pt-online-schema-change
+  - sudo apt-get install -y libdbi-perl libdbd-mysql-perl
+
   - rm -f go.sum
   # - docker ps
   - travis_wait 30 make dev upload-coverage
