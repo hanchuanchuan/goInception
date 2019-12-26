@@ -4199,7 +4199,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					// 	buf.WriteString(" AUTO_INCREMENT")
 					// }
 					if foundField.Default != nil {
-						if *foundField.Default == ast.CurrentTimestamp {
+						if strings.EqualFold(*foundField.Default, ast.CurrentTimestamp) {
 							buf.WriteString(" DEFAULT ")
 							buf.WriteString(strings.ToUpper(ast.CurrentTimestamp))
 						} else {
