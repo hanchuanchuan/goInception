@@ -3385,8 +3385,7 @@ IndexOption:
 	"KEY_BLOCK_SIZE" EqOpt LengthNum
 	{
 		$$ = &ast.IndexOption{
-			// TODO bug should be fix here!
-			// KeyBlockSize: $1.(uint64),
+			KeyBlockSize: $3.(uint64),
 		}
 	}
 |	IndexType
