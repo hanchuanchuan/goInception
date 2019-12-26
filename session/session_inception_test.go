@@ -207,6 +207,12 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
 
+	// 主键的默认值为函数
+	config.GetGlobalConfig().Inc.CheckPrimaryKey = true
+	sql = "create table t1(c1 datetime(6) not null default current_timestamp(6) primary key);"
+	s.testErrorCode(c, sql)
+	config.GetGlobalConfig().Inc.CheckPrimaryKey = false
+
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
 	config.GetGlobalConfig().Inc.CheckIdentifier = true
