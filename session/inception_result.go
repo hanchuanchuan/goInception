@@ -23,6 +23,7 @@ import (
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/types/json"
 	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -79,6 +80,7 @@ type Record struct {
 	DBName    string
 	TableName string
 	TableInfo *TableInfo
+
 	// ddl回滚
 	DDLRollback string
 	OPID        string
@@ -87,6 +89,11 @@ type Record struct {
 
 	// 是否开启OSC
 	useOsc bool
+
+	// update多表时,记录多余的表
+	// update多表时,默认set第一列的表为主表,其余表才会记录到该处
+	// 仅在发现多表操作时,初始化该参数
+	MultiTables map[string]*TableInfo
 }
 
 type recordSet struct {
@@ -165,7 +172,7 @@ type MyRecordSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 
 	records  []*Record
 	MaxLevel uint8
@@ -289,7 +296,7 @@ func (s *MyRecordSets) setFields(r *Record) {
 	s.rc.count++
 }
 
-func (s *MyRecordSets) Rows() []ast.RecordSet {
+func (s *MyRecordSets) Rows() []sqlexec.RecordSet {
 
 	s.rc.count = 0
 	s.rc.data = make([][]types.Datum, len(s.records))
@@ -300,7 +307,7 @@ func (s *MyRecordSets) Rows() []ast.RecordSet {
 
 	s.records = nil
 
-	return []ast.RecordSet{s.rc}
+	return []sqlexec.RecordSet{s.rc}
 }
 
 func (s *MyRecordSets) All() []*Record {
@@ -320,7 +327,7 @@ type VariableSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 }
 
 func NewVariableSets(count int) *VariableSets {
@@ -353,15 +360,15 @@ func (s *VariableSets) Append(name string, value string) {
 	s.rc.count++
 }
 
-func (s *VariableSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *VariableSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }
 
 type ProcessListSets struct {
 	count   int
 	samples []types.Datum
 	rc      *recordSet
-	pk      ast.RecordSet
+	pk      sqlexec.RecordSet
 }
 
 func NewProcessListSets(count int) *ProcessListSets {
@@ -447,8 +454,8 @@ func (s *ProcessListSets) appendRow(fields []interface{}) {
 	s.rc.count++
 }
 
-func (s *ProcessListSets) Rows() []ast.RecordSet {
-	return []ast.RecordSet{s.rc}
+func (s *ProcessListSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }
 
 func NewOscProcessListSets(count int, hideCommand bool) *ProcessListSets {
@@ -481,4 +488,164 @@ func NewOscProcessListSets(count int, hideCommand bool) *ProcessListSets {
 	t.rc = rc
 
 	return t
+}
+
+type PrintSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      sqlexec.RecordSet
+}
+
+func NewPrintSets() *PrintSets {
+	t := &PrintSets{}
+
+	rc := &recordSet{
+		// data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 5)
+
+	rc.CreateFiled("id", mysql.TypeLong)
+	rc.CreateFiled("statement", mysql.TypeString)
+	rc.CreateFiled("errlevel", mysql.TypeLong)
+	rc.CreateFiled("query_tree", mysql.TypeString)
+	rc.CreateFiled("errmsg", mysql.TypeString)
+	t.rc = rc
+
+	return t
+}
+
+func (s *PrintSets) Append(errLevel int64, sql, tree, errmsg string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetInt64(int64(s.rc.count + 1))
+	row[1].SetString(sql)
+	row[2].SetInt64(errLevel)
+	row[3].SetString(tree)
+	if errmsg == "" {
+		row[4].SetNull()
+	} else {
+		row[4].SetString(errmsg)
+	}
+
+	s.rc.data = append(s.rc.data, row)
+	s.rc.count++
+}
+
+func (s *PrintSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
+}
+
+type SplitSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      sqlexec.RecordSet
+
+	// 分组id,每当变化一次分组时,自动加1.默认值为1
+	id int64
+
+	sqlBuf *bytes.Buffer
+
+	ddlflag   int64
+	tableList map[string]bool
+}
+
+func NewSplitSets() *SplitSets {
+	t := &SplitSets{}
+
+	rc := &recordSet{
+		// data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 4)
+
+	rc.CreateFiled("id", mysql.TypeLong)
+	rc.CreateFiled("sql_statement", mysql.TypeString)
+	rc.CreateFiled("ddlflag", mysql.TypeLong)
+	rc.CreateFiled("error_message", mysql.TypeString)
+	t.rc = rc
+
+	return t
+}
+
+func (s *SplitSets) Append(sql string, errmsg string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetInt64(s.id)
+	row[1].SetString(sql)
+	row[2].SetInt64(s.ddlflag)
+	if errmsg == "" {
+		row[3].SetNull()
+	} else {
+		row[3].SetString(errmsg)
+	}
+
+	s.rc.data = append(s.rc.data, row)
+	s.rc.count++
+}
+
+// id累加
+func (s *SplitSets) Increment() {
+	s.id += 1
+}
+
+// CurrentId 当前ID
+func (s *SplitSets) CurrentId() int64 {
+	return s.id
+}
+
+func (s *SplitSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
+}
+
+type LevelSets struct {
+	count   int
+	samples []types.Datum
+	rc      *recordSet
+	pk      sqlexec.RecordSet
+}
+
+func NewLevelSets(count int) *LevelSets {
+	t := &LevelSets{}
+
+	rc := &recordSet{
+		data:       make([][]types.Datum, 0, count),
+		count:      0,
+		cursor:     0,
+		fieldCount: 0,
+	}
+
+	rc.fields = make([]*ast.ResultField, 3)
+
+	rc.CreateFiled("Name", mysql.TypeString)
+	rc.CreateFiled("Value", mysql.TypeLong)
+	rc.CreateFiled("Desc", mysql.TypeString)
+
+	t.rc = rc
+
+	return t
+}
+
+func (s *LevelSets) Append(name string, value int64, desc string) {
+	row := make([]types.Datum, s.rc.fieldCount)
+
+	row[0].SetString(name)
+	row[1].SetInt64(value)
+	row[2].SetString(desc)
+
+	s.rc.data = append(s.rc.data, row)
+	// s.rc.data[s.rc.count] = row
+	s.rc.count++
+}
+
+func (s *LevelSets) Rows() []sqlexec.RecordSet {
+	return []sqlexec.RecordSet{s.rc}
 }

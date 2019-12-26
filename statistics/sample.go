@@ -22,6 +22,7 @@ import (
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
 	"golang.org/x/net/context"
@@ -126,7 +127,7 @@ func (c *SampleCollector) collect(sc *stmtctx.StatementContext, d types.Datum) e
 // Also, if primary key is handle, it will directly build histogram for it.
 type SampleBuilder struct {
 	Sc              *stmtctx.StatementContext
-	RecordSet       ast.RecordSet
+	RecordSet       sqlexec.RecordSet
 	ColLen          int // ColLen is the number of columns need to be sampled.
 	PkBuilder       *SortedBuilder
 	MaxBucketSize   int64

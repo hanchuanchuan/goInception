@@ -1,28 +1,22 @@
-# Following the checklist saves the reviewers' time and gets your PR reviewed faster.
+# 按照清单以便于PR快速审核通过
 
-# Self Review
-Have you reviewed every line of your changes by yourself?
+# 单一目的
+确保PR只做一件事，没有别的。
 
-# Test
-Have you added enough test cases to cover the new feature or bug fix?
-Also, add comments to describe your test cases.
+# 自查
+是否查看过您更改的每一行？
 
-# Naming
-Do function names keep consistent with its behavior?
-Is it easy to infer the function's behavior by its name?
+# 测试
+您是否添加了足够的测试用例来涵盖新功能或错误修复？
+*请添加注释来描述您的测试用例*
 
-# Comment
-Is there any code that confuses the reviewer?
-Add comments on them! You'll be asked to do so anyway.
-Make sure there is no syntax or spelling error in your comments.
-Some online syntax checking tools like Grammarly may be helpful.
+# 命名
+函数名称是否与其行为保持一致？
+通过名称推断函数的行为是否容易？
 
-# Refactor
-Is there any way to refactor the code to make it more readable?
-If the refactoring touches a lot of existing code, send another PR to do it.
+# 重构
+有没有办法重构代码，使其更具可读性？
+如果重构涉及大量现有代码，请发送另一个PR来执行此操作。
 
-# Single Purpose
-Make sure the PR does only one thing and nothing else.
-
-# Diff Size
-Make sure the diff size is no more than 500, split it into small PRs if it is too large.
+# 差异大小
+确保差异大小不超过500，如果太大则将其拆分为小PR。

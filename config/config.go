@@ -67,7 +67,6 @@ type Config struct {
 	Security            Security          `toml:"security" json:"security"`
 	Status              Status            `toml:"status" json:"status"`
 	Performance         Performance       `toml:"performance" json:"performance"`
-	XProtocol           XProtocol         `toml:"xprotocol" json:"xprotocol"`
 	PreparedPlanCache   PreparedPlanCache `toml:"prepared-plan-cache" json:"prepared-plan-cache"`
 	OpenTracing         OpenTracing       `toml:"opentracing" json:"opentracing"`
 	ProxyProtocol       ProxyProtocol     `toml:"proxy-protocol" json:"proxy-protocol"`
@@ -76,7 +75,11 @@ type Config struct {
 	Inc                 Inc               `toml:"inc" json:"inc"`
 	Osc                 Osc               `toml:"osc" json:"osc"`
 	Ghost               Ghost             `toml:"ghost" json:"ghost"`
+	IncLevel            IncLevel          `toml:"inc_level" json:"inc_level"`
 	CompatibleKillQuery bool              `toml:"compatible-kill-query" json:"compatible-kill-query"`
+
+	// 是否跳过用户权限校验
+	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
 }
 
 // Log is the log section of config.
@@ -98,7 +101,7 @@ type Log struct {
 
 // Security is the security section of the config.
 type Security struct {
-	SkipGrantTable bool   `toml:"skip-grant-table" json:"skip-grant-table"`
+	SkipGrantTable bool   `toml:"skip_grant_table" json:"skip_grant_table"`
 	SSLCA          string `toml:"ssl-ca" json:"ssl-ca"`
 	SSLCert        string `toml:"ssl-cert" json:"ssl-cert"`
 	SSLKey         string `toml:"ssl-key" json:"ssl-key"`
@@ -144,10 +147,8 @@ func (s *Security) ToTLSConfig() (*tls.Config, error) {
 
 // Status is the status section of the config.
 type Status struct {
-	ReportStatus    bool   `toml:"report-status" json:"report-status"`
-	StatusPort      uint   `toml:"status-port" json:"status-port"`
-	MetricsAddr     string `toml:"metrics-addr" json:"metrics-addr"`
-	MetricsInterval uint   `toml:"metrics-interval" json:"metrics-interval"`
+	ReportStatus bool `toml:"report-status" json:"report-status"`
+	StatusPort   uint `toml:"status-port" json:"status-port"`
 }
 
 // Performance is the performance section of the config.
@@ -162,14 +163,6 @@ type Performance struct {
 	QueryFeedbackLimit  uint    `toml:"query-feedback-limit" json:"query-feedback-limit"`
 	PseudoEstimateRatio float64 `toml:"pseudo-estimate-ratio" json:"pseudo-estimate-ratio"`
 	ForcePriority       string  `toml:"force-priority" json:"force-priority"`
-}
-
-// XProtocol is the XProtocol section of the config.
-type XProtocol struct {
-	XServer bool   `toml:"xserver" json:"xserver"`
-	XHost   string `toml:"xhost" json:"xhost"`
-	XPort   uint   `toml:"xport" json:"xport"`
-	XSocket string `toml:"xsocket" json:"xsocket"`
 }
 
 // PlanCache is the PlanCache section of the config.
@@ -254,28 +247,6 @@ type Binlog struct {
 
 // Inc is the inception section of the config.
 type Inc struct {
-
-	// character-set-server = utf8
-	// inception_check_autoincrement_datatype = 1
-	// inception_check_autoincrement_init_value = 1
-	// inception_check_autoincrement_name = 1
-	// inception_check_column_comment = 'OFF'
-	// inception_check_column_default_value = 0
-	// inception_check_dml_limit = 1
-	// inception_check_dml_orderby = 1
-	// inception_check_dml_where = 'OFF'
-	// inception_check_identifier = 1
-	// inception_check_index_prefix = 0
-	// inception_check_insert_field = 'OFF'
-	// inception_check_primary_key = 'OFF'
-	// inception_check_table_comment = 'OFF'
-	// inception_check_timestamp_default = 0
-	// inception_enable_autoincrement_unsigned = 1
-	// inception_enable_blob_type = 0
-	// inception_enable_nullable = 'ON'
-	// inception_enable_column_charset = 0
-	// inception_support_charset = utf8mb4
-
 	BackupHost     string `toml:"backup_host" json:"backup_host"` // 远程备份库信息
 	BackupPassword string `toml:"backup_password" json:"backup_password"`
 	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
@@ -286,42 +257,104 @@ type Inc struct {
 	CheckAutoIncrementName      bool `toml:"check_autoincrement_name" json:"check_autoincrement_name"`
 	CheckColumnComment          bool `toml:"check_column_comment" json:"check_column_comment"`
 	CheckColumnDefaultValue     bool `toml:"check_column_default_value" json:"check_column_default_value"`
+	// 检查列顺序变更 #40
+	CheckColumnPositionChange bool `toml:"check_column_position_change" json:"check_column_position_change"`
+	// 检查列类型变更(允许长度变更,类型变更时警告)
+	CheckColumnTypeChange       bool `toml:"check_column_type_change" json:"check_column_type_change"`
 	CheckDMLLimit               bool `toml:"check_dml_limit" json:"check_dml_limit"`
 	CheckDMLOrderBy             bool `toml:"check_dml_orderby" json:"check_dml_orderby"`
 	CheckDMLWhere               bool `toml:"check_dml_where" json:"check_dml_where"`
 	CheckIdentifier             bool `toml:"check_identifier" json:"check_identifier"`
+	CheckImplicitTypeConversion bool `toml:"check_implicit_type_conversion"` // 检查where条件中的隐式类型转换
 	CheckIndexPrefix            bool `toml:"check_index_prefix" json:"check_index_prefix"`
 	CheckInsertField            bool `toml:"check_insert_field" json:"check_insert_field"`
 	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
+	CheckTimestampCount         bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
 
-	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
-	EnableBlobType              bool `toml:"enable_blob_type" json:"enable_blob_type"`
-	EnableColumnCharset         bool `toml:"enable_column_charset" json:"enable_column_charset"`
-	EnableDropDatabase          bool `toml:"enable_drop_database" json:"enable_drop_database"`
-	EnableDropTable             bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
-	EnableEnumSetBit            bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
-	EnableForeignKey            bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
-	EnableIdentiferKeyword      bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
-	EnableNotInnodb             bool `toml:"enable_not_innodb" json:"enable_not_innodb"`
-	EnableNullable              bool `toml:"enable_nullable" json:"enable_nullable"` // 允许空列
-	EnableOrderByRand           bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
-	EnablePartitionTable        bool `toml:"enable_partition_table" json:"enable_partition_table"`
-	EnablePKColumnsOnlyInt      bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
-	EnableSelectStar            bool `toml:"enable_select_star" json:"enable_select_star"`
+	EnableTimeStampType  bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
+	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
+	CheckDatetimeDefault bool `toml:"check_datetime_default" json:"check_datetime_default"`
+	CheckDatetimeCount   bool `toml:"check_datetime_count" json:"check_datetime_count"`
+
+	// 将 float/double 转成 decimal, 默认为 false
+	CheckFloatDouble bool `toml:"check_float_double" json:"check_float_double"`
+
+	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
+
+	// 连接服务器的默认字符集,默认值为utf8mb4
+	DefaultCharset              string `toml:"default_charset" json:"default_charset"`
+	EnableAutoIncrementUnsigned bool   `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
+	// 允许blob,text,json列设置为NOT NULL
+	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`
+	EnableBlobType      bool `toml:"enable_blob_type" json:"enable_blob_type"`
+	EnableChangeColumn  bool `toml:"enable_change_column" json:"enable_change_column"` // 允许change column操作
+	EnableColumnCharset bool `toml:"enable_column_charset" json:"enable_column_charset"`
+	EnableDropDatabase  bool `toml:"enable_drop_database" json:"enable_drop_database"`
+	EnableDropTable     bool `toml:"enable_drop_table" json:"enable_drop_table"` // 允许删除表
+	EnableEnumSetBit    bool `toml:"enable_enum_set_bit" json:"enable_enum_set_bit"`
+
+	// DML指纹功能,开启后,在审核时,类似DML将直接复用审核结果,可大幅优化审核效率
+	EnableFingerprint      bool `toml:"enable_fingerprint" json:"enable_fingerprint"`
+	EnableForeignKey       bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
+	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
+	EnableJsonType         bool `toml:"enable_json_type" json:"enable_json_type"`
+	// 是否启用自定义审核级别设置
+	// EnableLevel bool `toml:"enable_level" json:"enable_level"`
+	// 是否启用最小化回滚SQL设置,当开启时,update语句中未变更的值不再记录到回滚语句中
+	EnableMinimalRollback bool `toml:"enable_minimal_rollback" json:"enable_minimal_rollback"`
+	// 是否允许指定存储引擎
+	EnableSetEngine        bool `toml:"enable_set_engine" json:"enable_set_engine"`
+	EnableNullable         bool `toml:"enable_nullable" json:"enable_nullable"`               // 允许空列
+	EnableNullIndexName    bool `toml:"enable_null_index_name" json:"enable_null_index_name"` //是否允许不指定索引名
+	EnableOrderByRand      bool `toml:"enable_orderby_rand" json:"enable_orderby_rand"`
+	EnablePartitionTable   bool `toml:"enable_partition_table" json:"enable_partition_table"`
+	EnablePKColumnsOnlyInt bool `toml:"enable_pk_columns_only_int" json:"enable_pk_columns_only_int"`
+	EnableSelectStar       bool `toml:"enable_select_star" json:"enable_select_star"`
 
 	// 是否允许设置字符集和排序规则
-	EnableSetCharset bool `toml:"enable_set_charset" json:"enable_set_charset"`
+	EnableSetCharset   bool `toml:"enable_set_charset" json:"enable_set_charset"`
+	EnableSetCollation bool `toml:"enable_set_collation" json:"enable_set_collation"`
+	// 开启sql统计
+	EnableSqlStatistic bool `toml:"enable_sql_statistic" json:"enable_sql_statistic"`
 
-	Lang          string `toml:"lang" json:"lang"`
-	MaxCharLength uint   `toml:"max_char_length" json:"max_char_length"`
-	MaxKeys       uint   `toml:"max_keys" json:"max_keys"`
-	MaxKeyParts   uint   `toml:"max_key_parts" json:"max_key_parts"`
-	MaxUpdateRows uint   `toml:"max_update_rows" json:"max_update_rows"`
+	// explain判断受影响行数时使用的规则, 默认值"first"
+	// 可选值: "first", "max"
+	// 		"first": 	使用第一行的explain结果作为受影响行数
+	// 		"max": 		使用explain结果中的最大值作为受影响行数
+	ExplainRule string `toml:"explain_rule" json:"explain_rule"`
+
+	// 全量日志
+	GeneralLog bool `toml:"general_log" json:"general_log"`
+	// 使用十六进制表示法转储二进制列
+	// 受影响的数据类型为BINARY，VARBINARY，BLOB类型
+	HexBlob bool   `toml:"hex_blob" json:"hex_blob"`
+	Lang    string `toml:"lang" json:"lang"`
+	// 连接服务器允许的最大包大小,以字节为单位 默认值为4194304(即4MB)
+	MaxAllowedPacket uint `toml:"max_allowed_packet" json:"max_allowed_packet"`
+	MaxCharLength    uint `toml:"max_char_length" json:"max_char_length"`
+
+	// DDL操作最大允许的受影响行数. 默认值0,即不限制
+	MaxDDLAffectRows uint `toml:"max_ddl_affect_rows" json:"max_ddl_affect_rows"`
+
+	// 一次最多写入的行数, 仅判断insert values语法
+	MaxInsertRows uint `toml:"max_insert_rows" json:"max_insert_rows"`
+
+	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
+	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
+	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
 
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
+
+	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
+	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
+
+	// 是否跳过用户权限校验
+	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
+	// 要跳过的sql语句, 多个时以分号分隔
+	SkipSqls string `toml:"skip_sqls" json:"skip_sqls"`
 
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
@@ -332,7 +365,14 @@ type Inc struct {
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
 
+	// 支持的排序规则
+	SupportCollation string `toml:"support_collation" json:"support_collation"`
 	// Version *string
+
+	// 支持的存储引擎,多个时以分号分隔
+	SupportEngine string `toml:"support_engine" json:"support_engine"`
+	// 远端数据库等待超时时间，单位:秒
+	WaitTimeout int `toml:"wait_timeout" json:"wait_timeout"`
 }
 
 // Osc online schema change 工具参数配置
@@ -372,6 +412,8 @@ type Osc struct {
 
 	// 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
 	OscCheckReplicationFilters bool `toml:"osc_check_replication_filters" json:"osc_check_replication_filters"`
+	// 是否检查唯一索引,默认检查,如果是,则禁止
+	OscCheckUniqueKeyChange bool `toml:"osc_check_unique_key_change" json:"osc_check_unique_key_change"`
 
 	// 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
 	OscDropOldTable bool `toml:"osc_drop_old_table" json:"osc_drop_old_table"`
@@ -492,7 +534,7 @@ type Ghost struct {
 	// e.g:
 	// -max-load Threads_connected=20,Connections=1500
 	// 指的是当MySQL中的状态值Threads_connected>20,Connections>1500的时候，gh-ost将采取节流(throttle)措施。
-	GhostMaxLoad string `toml:"ghost_max_load"`
+	// GhostMaxLoad string `toml:"ghost_max_load"`
 
 	GhostNiceRatio float64 `toml:"ghost_nice_ratio"`
 	// gh-ost的数据迁移(migrate)运行在从库上，而不是主库上。
@@ -541,6 +583,62 @@ type Ghost struct {
 	GhostReplicationLagQuery string `toml:"ghost_replication_lag_query"`
 }
 
+type IncLevel struct {
+	ER_ALTER_TABLE_ONCE             int8 `toml:"er_alter_table_once"`
+	ER_AUTO_INCR_ID_WARNING         int8 `toml:"er_auto_incr_id_warning"`
+	ER_AUTOINC_UNSIGNED             int8 `toml:"er_autoinc_unsigned"`
+	ER_BLOB_CANT_HAVE_DEFAULT       int8 `toml:"er_blob_cant_have_default"`
+	ErCantChangeColumn              int8 `toml:"er_cant_change_column"`
+	ER_CANT_SET_CHARSET             int8 `toml:"er_cant_set_charset"`
+	ER_CANT_SET_COLLATION           int8 `toml:"er_cant_set_collation"`
+	ER_CANT_SET_ENGINE              int8 `toml:"er_cant_set_engine"`
+	ER_CHANGE_COLUMN_TYPE           int8 `toml:"er_change_column_type"`
+	ER_CHANGE_TOO_MUCH_ROWS         int8 `toml:"er_change_too_much_rows"`
+	ER_CHAR_TO_VARCHAR_LEN          int8 `toml:"er_char_to_varchar_len"`
+	ER_CHARSET_ON_COLUMN            int8 `toml:"er_charset_on_column"`
+	ER_COLUMN_HAVE_NO_COMMENT       int8 `toml:"er_column_have_no_comment"`
+	ER_DATETIME_DEFAULT             int8 `toml:"er_datetime_default"`
+	ER_FOREIGN_KEY                  int8 `toml:"er_foreign_key"`
+	ER_IDENT_USE_KEYWORD            int8 `toml:"er_ident_use_keyword"`
+	ER_INC_INIT_ERR                 int8 `toml:"er_inc_init_err"`
+	ER_INDEX_NAME_IDX_PREFIX        int8 `toml:"er_index_name_idx_prefix"`
+	ER_INDEX_NAME_UNIQ_PREFIX       int8 `toml:"er_index_name_uniq_prefix"`
+	ER_INSERT_TOO_MUCH_ROWS         int8 `toml:"er_insert_too_much_rows"`
+	ER_INVALID_DATA_TYPE            int8 `toml:"er_invalid_data_type"`
+	ER_INVALID_IDENT                int8 `toml:"er_invalid_ident"`
+	ER_MUST_HAVE_COLUMNS            int8 `toml:"er_must_have_columns"`
+	ER_NO_WHERE_CONDITION           int8 `toml:"er_no_where_condition"`
+	ER_NOT_ALLOWED_NULLABLE         int8 `toml:"er_not_allowed_nullable"`
+	ER_ORDERY_BY_RAND               int8 `toml:"er_ordery_by_rand"`
+	ER_PARTITION_NOT_ALLOWED        int8 `toml:"er_partition_not_allowed"`
+	ER_PK_COLS_NOT_INT              int8 `toml:"er_pk_cols_not_int"`
+	ER_PK_TOO_MANY_PARTS            int8 `toml:"er_pk_too_many_parts"`
+	ER_SELECT_ONLY_STAR             int8 `toml:"er_select_only_star"`
+	ER_SET_DATA_TYPE_INT_BIGINT     int8 `toml:"er_set_data_type_int_bigint"`
+	ER_TABLE_CHARSET_MUST_NULL      int8 `toml:"er_table_charset_must_null"`
+	ER_TABLE_CHARSET_MUST_UTF8      int8 `toml:"er_table_charset_must_utf8"`
+	ER_TABLE_MUST_HAVE_COMMENT      int8 `toml:"er_table_must_have_comment"`
+	ER_TABLE_MUST_HAVE_PK           int8 `toml:"er_table_must_have_pk"`
+	ER_TEXT_NOT_NULLABLE_ERROR      int8 `toml:"er_text_not_nullable_error"`
+	ER_TIMESTAMP_DEFAULT            int8 `toml:"er_timestamp_default"`
+	ER_TOO_MANY_KEY_PARTS           int8 `toml:"er_too_many_key_parts"`
+	ER_TOO_MANY_KEYS                int8 `toml:"er_too_many_keys"`
+	ER_TOO_MUCH_AUTO_DATETIME_COLS  int8 `toml:"er_too_much_auto_datetime_cols"`
+	ER_TOO_MUCH_AUTO_TIMESTAMP_COLS int8 `toml:"er_too_much_auto_timestamp_cols"`
+	ER_UDPATE_TOO_MUCH_ROWS         int8 `toml:"er_udpate_too_much_rows"`
+	ER_USE_ENUM                     int8 `toml:"er_use_enum"`
+	ER_USE_TEXT_OR_BLOB             int8 `toml:"er_use_text_or_blob"`
+	ER_WITH_DEFAULT_ADD_COLUMN      int8 `toml:"er_with_default_add_column"`
+	ER_WITH_INSERT_FIELD            int8 `toml:"er_with_insert_field"`
+	ER_WITH_LIMIT_CONDITION         int8 `toml:"er_with_limit_condition"`
+	ER_WITH_ORDERBY_CONDITION       int8 `toml:"er_with_orderby_condition"`
+	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
+	ErCantChangeColumnPosition      int8 `toml:"er_cant_change_column_position"`
+	ErJsonTypeSupport               int8 `toml:"er_json_type_support"`
+	ErrJoinNoOnCondition            int8 `toml:"er_join_no_on_condition"`
+	ErrImplicitTypeConversion       int8 `toml:"er_implicit_type_conversion"`
+}
+
 var defaultConf = Config{
 	Host:             "0.0.0.0",
 	AdvertiseAddress: "",
@@ -573,9 +671,8 @@ var defaultConf = Config{
 		QueryLogMaxLen:     2048,
 	},
 	Status: Status{
-		ReportStatus:    false,
-		StatusPort:      10080,
-		MetricsInterval: 15,
+		ReportStatus: false,
+		StatusPort:   10080,
 	},
 	Performance: Performance{
 		TCPKeepAlive: false,
@@ -590,10 +687,6 @@ var defaultConf = Config{
 		QueryFeedbackLimit:  0,
 		PseudoEstimateRatio: 0.8,
 		ForcePriority:       "NO_PRIORITY",
-	},
-	XProtocol: XProtocol{
-		XHost: "",
-		XPort: 0,
 	},
 	ProxyProtocol: ProxyProtocol{
 		Networks:      "",
@@ -621,17 +714,36 @@ var defaultConf = Config{
 		WriteTimeout: "15s",
 	},
 	// 默认跳过权限校验 2019-1-26
+	// 为配置方便,在config节点也添加相同参数
+	SkipGrantTable: true,
 	Security: Security{
 		SkipGrantTable: true,
 	},
 	Inc: Inc{
-		EnableNullable:     true,
-		EnableDropTable:    false,
-		CheckTableComment:  false,
-		CheckColumnComment: false,
-		SqlSafeUpdates:     -1,
-		SupportCharset:     "utf8,utf8mb4",
-		Lang:               "en-US",
+		EnableZeroDate:        true,
+		EnableNullable:        true,
+		EnableDropTable:       false,
+		EnableSetEngine:       true,
+		CheckTableComment:     false,
+		CheckColumnComment:    false,
+		EnableChangeColumn:    true,
+		CheckTimestampCount:   true,
+		EnableTimeStampType:   true,
+		CheckFloatDouble:      false,
+		CheckIdentifierUpper:  false,
+		SqlSafeUpdates:        -1,
+		SupportCharset:        "utf8,utf8mb4",
+		SupportEngine:         "innodb",
+		Lang:                  "en-US",
+		CheckColumnTypeChange: true,
+
+		// 连接服务器选项
+		DefaultCharset:   "utf8mb4",
+		MaxAllowedPacket: 4194304,
+		ExplainRule:      "first",
+
+		// 为配置方便,在config节点也添加相同参数
+		SkipGrantTable: true,
 		// Version:            &mysql.TiDBReleaseVersion,
 	},
 	Osc: Osc{
@@ -644,6 +756,7 @@ var defaultConf = Config{
 		OscMaxLag:                  3,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
+		OscCheckUniqueKeyChange:    true,
 		OscDropOldTable:            true,
 		OscDropNewTable:            true,
 		OscMaxThreadRunning:        80,
@@ -672,6 +785,61 @@ var defaultConf = Config{
 		GhostDmlBatchSize:                  10,
 		GhostOkToDropTable:                 true,
 		GhostSkipForeignKeyChecks:          true,
+	},
+	IncLevel: IncLevel{
+		ER_ALTER_TABLE_ONCE:             1,
+		ER_AUTO_INCR_ID_WARNING:         1,
+		ER_AUTOINC_UNSIGNED:             1,
+		ER_BLOB_CANT_HAVE_DEFAULT:       1,
+		ErCantChangeColumn:              1,
+		ER_CANT_SET_CHARSET:             1,
+		ER_CANT_SET_COLLATION:           1,
+		ER_CANT_SET_ENGINE:              1,
+		ER_CHANGE_COLUMN_TYPE:           1,
+		ER_CHANGE_TOO_MUCH_ROWS:         1,
+		ER_CHAR_TO_VARCHAR_LEN:          1,
+		ER_CHARSET_ON_COLUMN:            1,
+		ER_COLUMN_HAVE_NO_COMMENT:       1,
+		ER_DATETIME_DEFAULT:             1,
+		ER_FOREIGN_KEY:                  2,
+		ER_IDENT_USE_KEYWORD:            1,
+		ER_INC_INIT_ERR:                 1,
+		ER_INDEX_NAME_IDX_PREFIX:        1,
+		ER_INDEX_NAME_UNIQ_PREFIX:       1,
+		ER_INSERT_TOO_MUCH_ROWS:         1,
+		ER_INVALID_DATA_TYPE:            1,
+		ER_INVALID_IDENT:                1,
+		ER_MUST_HAVE_COLUMNS:            1,
+		ER_NO_WHERE_CONDITION:           1,
+		ErrJoinNoOnCondition:            1,
+		ER_NOT_ALLOWED_NULLABLE:         1,
+		ER_ORDERY_BY_RAND:               1,
+		ER_PARTITION_NOT_ALLOWED:        1,
+		ER_PK_COLS_NOT_INT:              1,
+		ER_PK_TOO_MANY_PARTS:            1,
+		ER_SELECT_ONLY_STAR:             1,
+		ER_SET_DATA_TYPE_INT_BIGINT:     2,
+		ER_TABLE_CHARSET_MUST_NULL:      1,
+		ER_TABLE_CHARSET_MUST_UTF8:      1,
+		ER_TABLE_MUST_HAVE_COMMENT:      1,
+		ER_TABLE_MUST_HAVE_PK:           1,
+		ER_TEXT_NOT_NULLABLE_ERROR:      1,
+		ER_TIMESTAMP_DEFAULT:            1,
+		ER_TOO_MANY_KEY_PARTS:           1,
+		ER_TOO_MANY_KEYS:                1,
+		ER_TOO_MUCH_AUTO_DATETIME_COLS:  2,
+		ER_TOO_MUCH_AUTO_TIMESTAMP_COLS: 2,
+		ER_UDPATE_TOO_MUCH_ROWS:         1,
+		ER_USE_ENUM:                     1,
+		ER_USE_TEXT_OR_BLOB:             2,
+		ER_WITH_DEFAULT_ADD_COLUMN:      1,
+		ER_WITH_INSERT_FIELD:            1,
+		ER_WITH_LIMIT_CONDITION:         1,
+		ER_WITH_ORDERBY_CONDITION:       1,
+		ErrWrongAndExpr:                 1,
+		ErCantChangeColumnPosition:      1,
+		ErJsonTypeSupport:               2,
+		ErrImplicitTypeConversion:       1,
 	},
 }
 

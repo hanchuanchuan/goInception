@@ -28,7 +28,6 @@ import (
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/meta"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/owner"
@@ -260,9 +259,6 @@ type ddlCtx struct {
 func (dc *ddlCtx) isOwner() bool {
 	isOwner := dc.ownerManager.IsOwner()
 	log.Debugf("[ddl] it's the DDL owner %v, self ID %s", isOwner, dc.uuid)
-	if isOwner {
-		metrics.DDLCounter.WithLabelValues(metrics.IsDDLOwner).Inc()
-	}
 	return isOwner
 }
 
@@ -339,7 +335,6 @@ func newDDL(ctx context.Context, etcdCli *clientv3.Client, store kv.Storage,
 	d.start(ctx, ctxPool)
 	variable.RegisterStatistics(d)
 
-	metrics.DDLCounter.WithLabelValues(metrics.CreateDDLInstance).Inc()
 	return d
 }
 
@@ -376,10 +371,8 @@ func (d *ddl) start(ctx context.Context, ctxPool *pools.ResourcePool) {
 				func(r interface{}) {
 					if r != nil {
 						log.Errorf("[ddl-%s] ddl %s meet panic", w, d.uuid)
-						metrics.PanicCounter.WithLabelValues(metrics.LabelDDL).Inc()
 					}
 				})
-			metrics.DDLCounter.WithLabelValues(fmt.Sprintf("%s_%s", metrics.CreateDDL, worker.String())).Inc()
 
 			// When the start function is called, we will send a fake job to let worker
 			// checks owner firstly and try to find whether a job exists and run.
@@ -433,6 +426,23 @@ func (d *ddl) genGlobalID() (int64, error) {
 	})
 
 	return globalID, errors.Trace(err)
+}
+
+func (d *ddl) genGlobalIDs(count int) ([]int64, error) {
+	ret := make([]int64, count)
+	err := kv.RunInNewTxn(d.store, true, func(txn kv.Transaction) error {
+		var err error
+		m := meta.NewMeta(txn)
+		for i := 0; i < count; i++ {
+			ret[i], err = m.GenGlobalID()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return ret, err
 }
 
 // SchemaSyncer implements DDL.SchemaSyncer interface.
@@ -499,12 +509,8 @@ func (d *ddl) doDDLJob(ctx sessionctx.Context, job *model.Job) error {
 	// For every state changes, we will wait as lease 2 * lease time, so here the ticker check is 10 * lease.
 	// But we use etcd to speed up, normally it takes less than 0.5s now, so we use 0.5s or 1s or 3s as the max value.
 	ticker := time.NewTicker(chooseLeaseTime(10*d.lease, checkJobMaxInterval(job)))
-	startTime := time.Now()
-	metrics.JobsGauge.WithLabelValues(job.Type.String()).Inc()
 	defer func() {
 		ticker.Stop()
-		metrics.JobsGauge.WithLabelValues(job.Type.String()).Dec()
-		metrics.HandleJobHistogram.WithLabelValues(job.Type.String(), metrics.RetLabel(err)).Observe(time.Since(startTime).Seconds())
 	}()
 	for {
 		select {

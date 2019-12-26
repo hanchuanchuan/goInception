@@ -28,7 +28,6 @@ import (
 	"github.com/hanchuanchuan/goInception/store/tikv"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -42,31 +41,6 @@ var (
 	sslCA     = flag.String("cacert", "", "path of file that contains list of trusted SSL CAs.")
 	sslCert   = flag.String("cert", "", "path of file that contains X509 certificate in PEM format.")
 	sslKey    = flag.String("key", "", "path of file that contains X509 key in PEM format.")
-
-	txnCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "tikv",
-			Subsystem: "txn",
-			Name:      "total",
-			Help:      "Counter of txns.",
-		}, []string{"type"})
-
-	txnRolledbackCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "tikv",
-			Subsystem: "txn",
-			Name:      "failed_total",
-			Help:      "Counter of rolled back txns.",
-		}, []string{"type"})
-
-	txnDurations = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Namespace: "tikv",
-			Subsystem: "txn",
-			Name:      "durations_histogram_seconds",
-			Help:      "Txn latency distributions.",
-			Buckets:   prometheus.ExponentialBuckets(0.0005, 2, 13),
-		}, []string{"type"})
 )
 
 // Init initializes information.
@@ -75,11 +49,6 @@ func Init() {
 	var err error
 	store, err = driver.Open(fmt.Sprintf("tikv://%s?cluster=1", *pdAddr))
 	terror.MustNil(err)
-
-	prometheus.MustRegister(txnCounter)
-	prometheus.MustRegister(txnRolledbackCounter)
-	prometheus.MustRegister(txnDurations)
-	http.Handle("/metrics", prometheus.Handler())
 
 	go func() {
 		err1 := http.ListenAndServe(":9191", nil)
@@ -96,8 +65,6 @@ func batchRW(value []byte) {
 		go func(i int) {
 			defer wg.Done()
 			for j := 0; j < base; j++ {
-				txnCounter.WithLabelValues("txn").Inc()
-				start := time.Now()
 				k := base*i + j
 				txn, err := store.Begin()
 				if err != nil {
@@ -108,11 +75,8 @@ func batchRW(value []byte) {
 				terror.Log(errors.Trace(err))
 				err = txn.Commit(context.Background())
 				if err != nil {
-					txnRolledbackCounter.WithLabelValues("txn").Inc()
 					terror.Call(txn.Rollback)
 				}
-
-				txnDurations.WithLabelValues("txn").Observe(time.Since(start).Seconds())
 			}
 		}(i)
 	}

@@ -16,7 +16,6 @@ package tikv
 
 import (
 	"io"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,7 +24,6 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
@@ -239,13 +237,6 @@ func (c *rpcClient) closeConns() {
 
 // SendRequest sends a Request to server and receives Response.
 func (c *rpcClient) SendRequest(ctx context.Context, addr string, req *tikvrpc.Request, timeout time.Duration) (*tikvrpc.Response, error) {
-	start := time.Now()
-	reqType := req.Type.String()
-	storeID := strconv.FormatUint(req.Context.GetPeer().GetStoreId(), 10)
-	defer func() {
-		metrics.TiKVSendReqHistogram.WithLabelValues(reqType, storeID).Observe(time.Since(start).Seconds())
-	}()
-
 	connArray, err := c.getConnArray(addr)
 	if err != nil {
 		return nil, errors.Trace(err)

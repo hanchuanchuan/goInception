@@ -21,19 +21,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/meta"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/owner"
@@ -53,12 +46,20 @@ import (
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/hanchuanchuan/goInception/util/kvcache"
+	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/timeutil"
 	"github.com/ngaut/pools"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
 	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
+	"net"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/jinzhu/gorm"
 )
@@ -66,18 +67,18 @@ import (
 // Session context
 type Session interface {
 	sessionctx.Context
-	Status() uint16                                              // Flag of current status, such as autocommit.
-	LastInsertID() uint64                                        // LastInsertID is the last inserted auto_increment ID.
-	AffectedRows() uint64                                        // Affected rows by latest executed stmt.
-	Execute(context.Context, string) ([]ast.RecordSet, error)    // Execute a sql statement.
-	ExecuteInc(context.Context, string) ([]ast.RecordSet, error) // Execute a sql statement.
-	String() string                                              // String is used to debug.
+	Status() uint16                                                  // Flag of current status, such as autocommit.
+	LastInsertID() uint64                                            // LastInsertID is the last inserted auto_increment ID.
+	AffectedRows() uint64                                            // Affected rows by latest executed stmt.
+	Execute(context.Context, string) ([]sqlexec.RecordSet, error)    // Execute a sql statement.
+	ExecuteInc(context.Context, string) ([]sqlexec.RecordSet, error) // Execute a sql statement.
+	String() string                                                  // String is used to debug.
 	CommitTxn(context.Context) error
 	RollbackTxn(context.Context) error
 	// PrepareStmt executes prepare statement in binary protocol.
 	PrepareStmt(sql string) (stmtID uint32, paramCount int, fields []*ast.ResultField, err error)
 	// ExecutePreparedStmt executes a prepared statement.
-	ExecutePreparedStmt(ctx context.Context, stmtID uint32, param ...interface{}) (ast.RecordSet, error)
+	ExecutePreparedStmt(ctx context.Context, stmtID uint32, param ...interface{}) (sqlexec.RecordSet, error)
 	DropPreparedStmt(stmtID uint32) error
 	SetClientCapability(uint32) // Set client capability flags.
 	SetConnectionID(uint64)
@@ -169,7 +170,7 @@ type session struct {
 	myRecord *Record
 
 	tableCacheList map[string]*TableInfo
-	dbCacheList    map[string]bool
+	dbCacheList    map[string]*DBInfo
 
 	// 备份库
 	backupDBCacheList map[string]bool
@@ -182,6 +183,10 @@ type session struct {
 
 	// 异步备份的通道
 	ch chan *ChanData
+
+	// 批量写入表$_$Inception_backup_information$_$
+	chBackupRecord chan *chanBackup
+
 	// 批量insert
 	insertBuffer []interface{}
 
@@ -200,8 +205,40 @@ type session struct {
 	// 数据库版本号
 	DBVersion int
 
+	// 远程数据库线程ID,在启用备份功能时,用以记录线程ID来解析binlog
+	threadID uint32
+
+	sqlFingerprint map[string]*Record
 	// // osc进程解析通道
 	// chanOsc chan *ChanOscData
+
+	// 当前阶段 [Check,Execute,Backup]
+	stage byte
+
+	// 打印语法树
+	printSets *PrintSets
+
+	// 时间戳类型是否需要明确指定默认值
+	explicitDefaultsForTimestamp bool
+
+	// 判断kill操作在哪个阶段,如果是在执行阶段时,则不停止备份
+	killExecute bool
+
+	// 统计信息
+	statistics *statisticsInfo
+
+	// DDL和DML分隔结果
+	splitSets *SplitSets
+
+	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
+	incLevel map[string]uint8
+
+	alterRollbackBuffer []string
+
+	// 目标数据库的innodb_large_prefix设置
+	innodbLargePrefix bool
+	// 目标数据库的lower-case-table-names设置, 默认值为1,即不区分大小写
+	LowerCaseTableNames int
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.
@@ -294,16 +331,13 @@ func (s *session) StoreQueryFeedback(feedback interface{}) {
 		do, err := GetDomain(s.store)
 		if err != nil {
 			log.Debug("domain not found: ", err)
-			metrics.StoreQueryFeedbackCounter.WithLabelValues(metrics.LblError).Inc()
 			return
 		}
 		err = s.statsCollector.StoreQueryFeedback(feedback, do.StatsHandle())
 		if err != nil {
 			log.Debug("store query feedback error: ", err)
-			metrics.StoreQueryFeedbackCounter.WithLabelValues(metrics.LblError).Inc()
 			return
 		}
-		metrics.StoreQueryFeedbackCounter.WithLabelValues(metrics.LblOK).Inc()
 	}
 }
 
@@ -417,10 +451,6 @@ func (s *session) doCommitWithRetry(ctx context.Context) error {
 			err = s.retry(ctx, uint(maxRetryCount))
 		}
 	}
-	counter := s.sessionVars.TxnCtx.StatementCount
-	duration := time.Since(s.GetSessionVars().TxnCtx.CreateTime).Seconds()
-	metrics.StatementPerTransaction.WithLabelValues(metrics.RetLabel(err)).Observe(float64(counter))
-	metrics.TransactionDuration.WithLabelValues(metrics.RetLabel(err)).Observe(float64(duration))
 	s.cleanRetryInfo()
 
 	if isoLevelOneShot := &s.sessionVars.TxnIsolationLevelOneShot; isoLevelOneShot.State != 0 {
@@ -448,11 +478,6 @@ func (s *session) doCommitWithRetry(ctx context.Context) error {
 
 func (s *session) CommitTxn(ctx context.Context) error {
 	err := s.doCommitWithRetry(ctx)
-	label := metrics.LblOK
-	if err != nil {
-		label = metrics.LblError
-	}
-	metrics.TransactionCounter.WithLabelValues(label).Inc()
 	return errors.Trace(err)
 }
 
@@ -460,7 +485,6 @@ func (s *session) RollbackTxn(ctx context.Context) error {
 	var err error
 	if s.txn.Valid() {
 		terror.Log(s.txn.Rollback())
-		metrics.TransactionCounter.WithLabelValues(metrics.LblRollback).Inc()
 	}
 	s.cleanRetryInfo()
 	s.txn.changeToInvalid()
@@ -523,7 +547,6 @@ func (s *session) retry(ctx context.Context, maxCnt uint) error {
 		s.sessionVars.RetryInfo.Retrying = false
 		s.txn.changeToInvalid()
 		// retryCnt only increments on retryable error, so +1 here.
-		metrics.SessionRetry.Observe(float64(retryCnt + 1))
 		s.sessionVars.SetStatusFlag(mysql.ServerStatusInTrans, false)
 	}()
 
@@ -571,13 +594,11 @@ func (s *session) retry(ctx context.Context, maxCnt uint) error {
 		}
 		if !s.isRetryableError(err) {
 			log.Warnf("con:%d session:%v, err:%v in retry", connID, s, err)
-			metrics.SessionRetryErrorCounter.WithLabelValues(metrics.LblUnretryable)
 			return errors.Trace(err)
 		}
 		retryCnt++
 		if retryCnt >= maxCnt {
 			log.Warnf("con:%d Retry reached max count %d", connID, retryCnt)
-			metrics.SessionRetryErrorCounter.WithLabelValues(metrics.LblReachMax)
 			return errors.Trace(err)
 		}
 		log.Warnf("con:%d retryable error: %v, txn: %v", connID, err, s.txn)
@@ -609,16 +630,57 @@ func (s *session) ExecRestrictedSQL(sctx sessionctx.Context, sql string) ([]chun
 	// Use special session to execute the sql.
 	tmp, err := s.sysSessionPool().Get()
 	if err != nil {
-		return nil, nil, errors.Trace(err)
+		return nil, nil, err
 	}
 	se := tmp.(*session)
 	defer s.sysSessionPool().Put(tmp)
-	metrics.SessionRestrictedSQLCounter.Inc()
 
-	startTime := time.Now()
+	return execRestrictedSQL(ctx, se, sql)
+}
+
+// ExecRestrictedSQLWithSnapshot implements RestrictedSQLExecutor interface.
+// This is used for executing some restricted sql statements with snapshot.
+// If current session sets the snapshot timestamp, then execute with this snapshot timestamp.
+// Otherwise, execute with the current transaction start timestamp if the transaction is valid.
+func (s *session) ExecRestrictedSQLWithSnapshot(sctx sessionctx.Context, sql string) ([]chunk.Row, []*ast.ResultField, error) {
+	ctx := context.TODO()
+
+	// Use special session to execute the sql.
+	tmp, err := s.sysSessionPool().Get()
+	if err != nil {
+		return nil, nil, err
+	}
+	se := tmp.(*session)
+	defer s.sysSessionPool().Put(tmp)
+	var snapshot uint64
+	txn := s.Txn()
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
+	if txn.Valid() {
+		snapshot = s.txn.StartTS()
+	}
+	if s.sessionVars.SnapshotTS != 0 {
+		snapshot = s.sessionVars.SnapshotTS
+	}
+	// Set snapshot.
+	if snapshot != 0 {
+		if err := se.sessionVars.SetSystemVar(variable.TiDBSnapshot, strconv.FormatUint(snapshot, 10)); err != nil {
+			return nil, nil, err
+		}
+		defer func() {
+			if err := se.sessionVars.SetSystemVar(variable.TiDBSnapshot, ""); err != nil {
+				log.Error("set tidbSnapshot error", zap.Error(err))
+			}
+		}()
+	}
+	return execRestrictedSQL(ctx, se, sql)
+}
+
+func execRestrictedSQL(ctx context.Context, se *session, sql string) ([]chunk.Row, []*ast.ResultField, error) {
 	recordSets, err := se.Execute(ctx, sql)
 	if err != nil {
-		return nil, nil, errors.Trace(err)
+		return nil, nil, err
 	}
 
 	var (
@@ -629,10 +691,10 @@ func (s *session) ExecRestrictedSQL(sctx sessionctx.Context, sql string) ([]chun
 	for i, rs := range recordSets {
 		tmp, err := drainRecordSet(ctx, se, rs)
 		if err != nil {
-			return nil, nil, errors.Trace(err)
+			return nil, nil, err
 		}
 		if err = rs.Close(); err != nil {
-			return nil, nil, errors.Trace(err)
+			return nil, nil, err
 		}
 
 		if i == 0 {
@@ -640,10 +702,8 @@ func (s *session) ExecRestrictedSQL(sctx sessionctx.Context, sql string) ([]chun
 			fields = rs.Fields()
 		}
 	}
-	metrics.QueryDurationHistogram.WithLabelValues(metrics.LblInternal).Observe(time.Since(startTime).Seconds())
 	return rows, fields, nil
 }
-
 func createSessionFunc(store kv.Storage) pools.Factory {
 	return func() (pools.Resource, error) {
 		se, err := createSession(store)
@@ -676,7 +736,7 @@ func createSessionWithDomainFunc(store kv.Storage) func(*domain.Domain) (pools.R
 	}
 }
 
-func drainRecordSet(ctx context.Context, se *session, rs ast.RecordSet) ([]chunk.Row, error) {
+func drainRecordSet(ctx context.Context, se *session, rs sqlexec.RecordSet) ([]chunk.Row, error) {
 	var rows []chunk.Row
 	chk := rs.NewChunk()
 	for {
@@ -772,7 +832,8 @@ func (s *session) SetGlobalSysVar(name, value string) error {
 
 func (s *session) ParseSQL(ctx context.Context, sql, charset, collation string) ([]ast.StmtNode, error) {
 	s.parser.SetSQLMode(s.sessionVars.SQLMode)
-	return s.parser.Parse(sql, charset, collation)
+	stmts, _, err := s.parser.Parse(sql, charset, collation)
+	return stmts, err
 }
 
 func (s *session) SetProcessInfo(sql string, t time.Time, command byte) {
@@ -805,7 +866,7 @@ func (s *session) SetMyProcessInfo(sql string, t time.Time, percent float64) {
 	}
 }
 
-func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode ast.StmtNode, stmt ast.Statement, recordSets []ast.RecordSet) ([]ast.RecordSet, error) {
+func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode ast.StmtNode, stmt ast.Statement, recordSets []sqlexec.RecordSet) ([]sqlexec.RecordSet, error) {
 	s.SetValue(sessionctx.QueryString, stmt.OriginText())
 	if _, ok := stmtNode.(ast.DDLNode); ok {
 		s.SetValue(sessionctx.LastExecuteDDL, true)
@@ -817,7 +878,6 @@ func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode 
 		logStmt(stmtNode, s.sessionVars)
 	}
 
-	startTime := time.Now()
 	recordSet, err := runStmt(ctx, s, stmt)
 	if err != nil {
 		if !kv.ErrKeyExists.Equal(err) && s.Value(sessionctx.Initing) == nil {
@@ -826,11 +886,6 @@ func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode 
 		}
 		return nil, errors.Trace(err)
 	}
-	label := metrics.LblGeneral
-	if s.sessionVars.InRestrictedSQL {
-		label = metrics.LblInternal
-	}
-	metrics.SessionExecuteRunDuration.WithLabelValues(label).Observe(time.Since(startTime).Seconds())
 
 	if recordSet != nil {
 		recordSets = append(recordSets, recordSet)
@@ -838,7 +893,7 @@ func (s *session) executeStatement(ctx context.Context, connID uint64, stmtNode 
 	return recordSets, nil
 }
 
-func (s *session) Execute(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
+func (s *session) Execute(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 	if recordSets, err = s.execute(ctx, sql); err != nil {
 		err = errors.Trace(err)
 		s.sessionVars.StmtCtx.AppendError(err)
@@ -846,7 +901,7 @@ func (s *session) Execute(ctx context.Context, sql string) (recordSets []ast.Rec
 	return
 }
 
-func (s *session) execute(ctx context.Context, sql string) (recordSets []ast.RecordSet, err error) {
+func (s *session) execute(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 	s.PrepareTxnCtx(ctx)
 	connID := s.sessionVars.ConnectionID
 	err = s.loadCommonGlobalVariablesIfNeeded()
@@ -857,25 +912,18 @@ func (s *session) execute(ctx context.Context, sql string) (recordSets []ast.Rec
 	charsetInfo, collation := s.sessionVars.GetCharsetInfo()
 
 	// Step1: Compile query string to abstract syntax trees(ASTs).
-	startTS := time.Now()
 	stmtNodes, err := s.ParseSQL(ctx, sql, charsetInfo, collation)
 	if err != nil {
 		s.rollbackOnError(ctx)
 		log.Warnf("con:%d parse error:\n%v\n%s", connID, err, sql)
 		return nil, errors.Trace(err)
 	}
-	label := metrics.LblGeneral
-	if s.sessionVars.InRestrictedSQL {
-		label = metrics.LblInternal
-	}
-	metrics.SessionExecuteParseDuration.WithLabelValues(label).Observe(time.Since(startTS).Seconds())
 
 	compiler := executor.Compiler{Ctx: s}
 	for _, stmtNode := range stmtNodes {
 		s.PrepareTxnCtx(ctx)
 
 		// Step2: Transform abstract syntax tree to a physical plan(stored in executor.ExecStmt).
-		startTS = time.Now()
 		// Some executions are done in compile stage, so we reset them before compile.
 		if err := executor.ResetContextOfStmt(s, stmtNode); err != nil {
 			return nil, errors.Trace(err)
@@ -888,7 +936,6 @@ func (s *session) execute(ctx context.Context, sql string) (recordSets []ast.Rec
 			}
 			return nil, errors.Trace(err)
 		}
-		metrics.SessionExecuteCompileDuration.WithLabelValues(label).Observe(time.Since(startTS).Seconds())
 
 		// Step3: Execute the physical plan.
 		if recordSets, err = s.executeStatement(ctx, connID, stmtNode, stmt, recordSets); err != nil {
@@ -991,7 +1038,7 @@ func checkArgs(args ...interface{}) error {
 }
 
 // ExecutePreparedStmt executes a prepared statement.
-func (s *session) ExecutePreparedStmt(ctx context.Context, stmtID uint32, args ...interface{}) (ast.RecordSet, error) {
+func (s *session) ExecutePreparedStmt(ctx context.Context, stmtID uint32, args ...interface{}) (sqlexec.RecordSet, error) {
 	err := checkArgs(args...)
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -1274,6 +1321,7 @@ func createSession(store kv.Storage) (*session, error) {
 		sessionVars:     variable.NewSessionVars(),
 		ddlOwnerChecker: dom.DDL().OwnerManager(),
 
+		LowerCaseTableNames: 1,
 		// haveBegin:  false,
 		// haveCommit: false,
 
@@ -1537,14 +1585,11 @@ func logStmt(node ast.StmtNode, vars *variable.SessionVars) {
 }
 
 func logQuery(query string, vars *variable.SessionVars) {
-	// log.Info(atomic.LoadUint32(&variable.ProcessGeneralLog))
-	// log.Info(vars.InRestrictedSQL)
-	// if atomic.LoadUint32(&variable.ProcessGeneralLog) != 0 && !vars.InRestrictedSQL {
-	// if !vars.InRestrictedSQL {
-	// 	query = executor.QueryReplacer.Replace(query)
-	// 	// log.Infof("[GENERAL_LOG] con:%d user:%s schema_ver:%d start_ts:%d sql:%s%s",
-	// 	// 	vars.ConnectionID, vars.User, vars.TxnCtx.SchemaVersion, vars.TxnCtx.StartTS, query, vars.GetExecuteArgumentsInfo())
-	// 	log.Infof("[GENERAL_LOG] con:%d user:%s sql:%s%s",
-	// 		vars.ConnectionID, vars.User, query, vars.GetExecuteArgumentsInfo())
-	// }
+	if atomic.LoadUint32(&variable.ProcessGeneralLog) != 0 && !vars.InRestrictedSQL {
+		query = executor.QueryReplacer.Replace(query)
+		// log.Infof("[GENERAL_LOG] con:%d user:%s schema_ver:%d start_ts:%d sql:%s%s",
+		// 	vars.ConnectionID, vars.User, vars.TxnCtx.SchemaVersion, vars.TxnCtx.StartTS, query, vars.GetExecuteArgumentsInfo())
+		log.Infof("[GENERAL_LOG] con:%d user:%s sql:%s%s",
+			vars.ConnectionID, vars.User, query, vars.GetExecuteArgumentsInfo())
+	}
 }

@@ -15,7 +15,6 @@ package distsql
 
 import (
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/statistics"
 	"github.com/hanchuanchuan/goInception/terror"
@@ -143,9 +142,5 @@ func (r *streamResult) NextRaw(ctx context.Context) ([]byte, error) {
 }
 
 func (r *streamResult) Close() error {
-	if r.feedback.Actual() > 0 {
-		metrics.DistSQLScanKeysHistogram.Observe(float64(r.feedback.Actual()))
-	}
-	metrics.DistSQLPartialCountHistogram.Observe(float64(r.partialCount))
 	return nil
 }

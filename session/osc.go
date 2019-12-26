@@ -15,11 +15,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build !windows,!nacl,!plan9
+
 package session
 
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -27,19 +31,26 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	// "github.com/hanchuanchuan/goInception/ast"
 	// "github.com/hanchuanchuan/goInception/server"
+	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
+
 	// "github.com/pingcap/errors"
 
 	"github.com/github/gh-ost/go/base"
 	"github.com/github/gh-ost/go/logic"
 	ghostlog "github.com/outbrain/golib/log"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	oscConnID uint32
 )
 
 type ChanOscData struct {
@@ -96,7 +107,7 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf := bytes.NewBufferString("pt-online-schema-change")
 
 	buf.WriteString(" --alter \"")
-	buf.WriteString(s.getAlterTablePostPart(r.Sql))
+	buf.WriteString(s.getAlterTablePostPart(r.Sql, true))
 
 	if s.hasError() {
 		return
@@ -141,6 +152,10 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 		buf.WriteString(" --no-check-replication-filters ")
 	}
 
+	if !s.Osc.OscCheckUniqueKeyChange {
+		buf.WriteString(" --no-check-unique-key-change ")
+	}
+
 	if !s.Osc.OscCheckAlter {
 		buf.WriteString(" --no-check-alter ")
 	}
@@ -164,23 +179,24 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString(" --progress ")
 	buf.WriteString("percentage,1 ")
 
-	buf.WriteString(" --user=")
+	buf.WriteString(" --user=\"")
 	buf.WriteString(s.opt.user)
-	buf.WriteString(" --password=")
-	buf.WriteString(s.opt.password)
-	buf.WriteString(" --host=")
+	buf.WriteString("\" --password='")
+	buf.WriteString(strings.Replace(s.opt.password, "'", "'\"'\"'", -1))
+	buf.WriteString("' --host=")
 	buf.WriteString(s.opt.host)
 	buf.WriteString(" --port=")
 	buf.WriteString(strconv.Itoa(s.opt.port))
 
 	buf.WriteString(" D=")
 	buf.WriteString(r.TableInfo.Schema)
-	buf.WriteString(",t=")
+	buf.WriteString(",t='")
 	buf.WriteString(r.TableInfo.Name)
+	buf.WriteString("'")
 
 	str := buf.String()
 
-	s.execCommand(r, "bash", []string{"-c", str})
+	s.execCommand(r, "sh", []string{"-c", str})
 
 }
 
@@ -189,7 +205,15 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.InspectorConnectionConfig.Key.Hostname, "host", "127.0.0.1", "MySQL hostname (preferably a replica, not the master)")
 	migrationContext.InspectorConnectionConfig.Key.Hostname = s.opt.host
 	// flag.StringVar(&migrationContext.AssumeMasterHostname, "assume-master-host", "", "(optional) explicitly tell gh-ost the identity of the master. Format: some.host.com[:port] This is useful in master-master setups where you wish to pick an explicit master, or in a tungsten-replicator where gh-ost is unable to determine the master")
-	migrationContext.AssumeMasterHostname = s.Ghost.GhostAssumeMasterHost
+
+	// RDS数据库需要做特殊处理
+	if s.Ghost.GhostAliyunRds && s.Ghost.GhostAssumeMasterHost == "" {
+		migrationContext.AssumeMasterHostname = fmt.Sprintf("%s:%d", s.opt.host, s.opt.port)
+	} else {
+		migrationContext.AssumeMasterHostname = s.Ghost.GhostAssumeMasterHost
+	}
+
+	log.Debug("assume_master_host: ", migrationContext.AssumeMasterHostname)
 	// flag.IntVar(&migrationContext.InspectorConnectionConfig.Key.Port, "port", 3306, "MySQL port (preferably a replica, not the master)")
 	migrationContext.InspectorConnectionConfig.Key.Port = s.opt.port
 	// flag.StringVar(&migrationContext.CliUser, "user", "", "MySQL user")
@@ -210,7 +234,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.DatabaseName, "database", "", "database name (mandatory)")
 	migrationContext.OriginalTableName = r.TableInfo.Name
 
-	migrationContext.AlterStatement = s.getAlterTablePostPart(r.Sql)
+	migrationContext.AlterStatement = s.getAlterTablePostPart(r.Sql, false)
 
 	// flag.StringVar(&migrationContext.OriginalTableName, "table", "", "table name (mandatory)")
 	// flag.StringVar(&migrationContext.AlterStatement, "alter", "", "alter statement (mandatory)")
@@ -249,9 +273,9 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 	migrationContext.OkToDropTable = s.Ghost.GhostOkToDropTable
 	// flag.BoolVar(&migrationContext.OkToDropTable, "ok-to-drop-table", false, "Shall the tool drop the old table at end of operation. DROPping tables can be a long locking operation, which is why I'm not doing it by default. I'm an online tool, yes?")
-	migrationContext.InitiallyDropOldTable = false
+	migrationContext.InitiallyDropOldTable = s.Ghost.GhostInitiallyDropOldTable
 	// flag.BoolVar(&migrationContext.InitiallyDropOldTable, "initially-drop-old-table", false, "Drop a possibly existing OLD table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
-	migrationContext.InitiallyDropGhostTable = false
+	migrationContext.InitiallyDropGhostTable = s.Ghost.GhostInitiallyDropGhostTable
 	// flag.BoolVar(&migrationContext.InitiallyDropGhostTable, "initially-drop-ghost-table", false, "Drop a possibly existing Ghost table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
 	migrationContext.TimestampOldTable = false
 	// flag.BoolVar(&migrationContext.TimestampOldTable, "timestamp-old-table", false, "Use a timestamp in old table name. This makes old table names unique and non conflicting cross migrations")
@@ -310,7 +334,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.StringVar(&migrationContext.HooksHintOwner, "hooks-hint-owner", "", "arbitrary name of owner to be injected to hooks via GH_OST_HOOKS_HINT_OWNER, for your convenience")
 	// flag.StringVar(&migrationContext.HooksHintToken, "hooks-hint-token", "", "arbitrary token to be injected to hooks via GH_OST_HOOKS_HINT_TOKEN, for your convenience")
 
-	migrationContext.ReplicaServerId = 99999
+	migrationContext.ReplicaServerId = 2000100000 + uint(s.sessionVars.ConnectionID%10000)
 	// flag.UintVar(&migrationContext.ReplicaServerId, "replica-server-id", 99999, "server id used by gh-ost process. Default: 99999")
 	// maxLoad := s.Ghost.GhostMaxLoad
 	// maxLoad := flag.String("max-load", "", "Comma delimited status-name=threshold. e.g: 'Threads_running=100,Threads_connected=500'. When status exceeds threshold, app throttles writes")
@@ -435,7 +459,25 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		s.AppendErrorMessage(err.Error())
 	}
 	if migrationContext.ServeSocketFile == "" {
-		migrationContext.ServeSocketFile = fmt.Sprintf("/tmp/gh-ost.%s.%s.sock", migrationContext.DatabaseName, migrationContext.OriginalTableName)
+		// unix socket file max 104 characters (or 107)
+		socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.host, s.opt.port,
+			migrationContext.DatabaseName, migrationContext.OriginalTableName)
+		if len(socketFile) > 100 {
+			// 字符串过长时转换为hash值
+			host := truncateString(s.opt.host, 30)
+			dbName := truncateString(migrationContext.DatabaseName, 30)
+			tableName := truncateString(migrationContext.OriginalTableName, 30)
+
+			socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", host, s.opt.port,
+				dbName, tableName)
+
+			if len(socketFile) > 100 {
+				socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s.sock", host, s.opt.port,
+					dbName, tableName)
+			}
+
+		}
+		migrationContext.ServeSocketFile = socketFile
 	}
 
 	migrationContext.SetHeartbeatIntervalMilliseconds(heartbeatIntervalMillis)
@@ -465,6 +507,8 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 
 	p := &util.OscProcessInfo{
+		ID:         uint64(atomic.AddUint32(&oscConnID, 1)),
+		ConnID:     s.sessionVars.ConnectionID,
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
 		Command:    r.Sql,
@@ -476,11 +520,11 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 	s.sessionManager.AddOscProcess(p)
 
-	defer func() {
-		// 执行完成或中止后清理osc进程信息
-		pl := s.sessionManager.ShowOscProcessList()
-		delete(pl, p.Sqlsha1)
-	}()
+	// defer func() {
+	// 	// 执行完成或中止后清理osc进程信息
+	// 	pl := s.sessionManager.ShowOscProcessList()
+	// 	delete(pl, p.Sqlsha1)
+	// }()
 
 	done := false
 	buf := bytes.NewBufferString("")
@@ -518,12 +562,20 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		}
 	}
 
+	// log.Debugf("%#v", migrationContext)
+
 	migrator.Log = bytes.NewBufferString("")
 
 	go f(bufio.NewReader(migrator.Log))
 
-	// ghostlog.SetLevel(ghostlog.INFO)
-	ghostlog.SetLevel(ghostlog.ERROR)
+	if config.GetGlobalConfig().Log.Level == "debug" ||
+		config.GetGlobalConfig().Log.Level == "info" {
+		ghostlog.SetLevel(ghostlog.INFO)
+	} else {
+		ghostlog.SetLevel(ghostlog.ERROR)
+	}
+
+	// ghostlog.SetLevel(ghostlog.DEBUG)
 
 	if err := migrator.Migrate(); err != nil {
 		log.Error(err)
@@ -550,15 +602,19 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	//函数返回一个*Cmd，用于使用给出的参数执行name指定的程序
 	cmd := exec.Command(commandName, params...)
 
+	// log.Infof("%s %s", commandName, params)
+
 	//StdoutPipe方法返回一个在命令Start后与命令标准输出关联的管道。Wait方法获知命令结束后会关闭这个管道，一般不需要显式的关闭该管道。
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Error(err)
 		return false
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Error(err)
 		return false
 	}
 
@@ -569,10 +625,13 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	// 运行命令
 	if err := cmd.Start(); err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Error(err)
 		return false
 	}
 
 	p := &util.OscProcessInfo{
+		ID:         uint64(atomic.AddUint32(&oscConnID, 1)),
+		ConnID:     s.sessionVars.ConnectionID,
 		Schema:     r.TableInfo.Schema,
 		Table:      r.TableInfo.Name,
 		Command:    r.Sql,
@@ -583,9 +642,11 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	}
 	s.sessionManager.AddOscProcess(p)
 
+	var wg sync.WaitGroup
+	wg.Add(2)
+
 	// 消息
 	reader := bufio.NewReader(stdout)
-
 	// 进度
 	reader2 := bufio.NewReader(stderr)
 
@@ -596,6 +657,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		for {
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
+				wg.Done()
 				break
 			}
 			buf.WriteString(line)
@@ -615,12 +677,18 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	go f(reader)
 	go f(reader2)
 
+	wg.Wait()
+
 	//阻塞直到该命令执行完成，该命令必须是被Start方法开始执行的
 	err = cmd.Wait()
 	if err != nil {
 		s.AppendErrorMessage(err.Error())
+		log.Errorf("%s %s", commandName, params)
+		log.Error(err)
 	}
 	if p.Percent < 100 || s.hasError() {
+		s.recordSets.MaxLevel = 2
+		r.ErrLevel = 2
 		r.StageStatus = StatusExecFail
 	} else {
 		r.StageStatus = StatusExecOK
@@ -633,8 +701,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	}
 
 	// 执行完成或中止后清理osc进程信息
-	pl := s.sessionManager.ShowOscProcessList()
-	delete(pl, p.Sqlsha1)
+	// pl := s.sessionManager.ShowOscProcessList()
+	// delete(pl, p.Sqlsha1)
 
 	return true
 }
@@ -684,7 +752,7 @@ func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
 
 }
 
-func (s *session) getAlterTablePostPart(sql string) string {
+func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 
 	var buf []string
 	for _, line := range strings.Split(sql, "\n") {
@@ -701,14 +769,71 @@ func (s *session) getAlterTablePostPart(sql string) string {
 		return sql
 	}
 
-	sql = string(sql[index:])
-	parts := strings.SplitN(sql, " ", 4)
-	if len(parts) != 4 {
+	sql = sql[index:]
+
+	parts := strings.Fields(sql)
+	if len(parts) < 4 {
 		s.AppendErrorMessage("无效alter语句!")
 		return sql
 	}
 
-	sql = parts[3]
+	supportOper := []string{
+		"add",
+		"algorithm",
+		"alter",
+		"auto_increment",
+		"avg_row_length",
+		"change",
+		"character",
+		"checksum",
+		"comment",
+		"convert",
+		"collate",
+		"default",
+		"disable",
+		"discard",
+		"drop",
+		"enable",
+		"engine",
+		"force",
+		"import",
+		"modify",
+		"rename", // rename index
+	}
+
+	support := false
+	for _, p := range supportOper {
+		// if strings.ToLower(parts[3]) == p {
+		if strings.HasPrefix(strings.ToLower(parts[3]), p) {
+			support = true
+			break
+		}
+	}
+	if !support {
+		s.AppendErrorMessage(fmt.Sprintf("不支持的osc操作!(%s)", sql))
+		return sql
+	}
+
+	sql = strings.Join(parts[3:], " ")
+
+	sql = strings.Replace(sql, "\"", "\\\"", -1)
+
+	// gh-ost不需要处理`,pt-osc需要处理
+	if isPtOSC {
+		sql = strings.Replace(sql, "`", "\\`", -1)
+	}
 
 	return sql
+}
+
+// truncateString: 根据指定长度做字符串截断,长度溢出时转换为hash值以避免重复
+func truncateString(str string, length int) string {
+	if len(str) <= length {
+		return str
+	}
+	v := md5.Sum([]byte(str))
+	if length < 32 {
+		return hex.EncodeToString(v[:])[:length]
+	}
+	return hex.EncodeToString(v[:])
 }

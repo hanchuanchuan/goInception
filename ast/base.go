@@ -77,6 +77,9 @@ func (en *exprNode) GetDatum() *types.Datum {
 	return &en.Datum
 }
 
+// TexprNode is exported for parser driver.
+type TexprNode = exprNode
+
 // SetType implements ExprNode interface.
 func (en *exprNode) SetType(tp *types.FieldType) {
 	en.Type = *tp

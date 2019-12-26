@@ -25,7 +25,6 @@ import (
 
 	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/goInception/util/execdetails"
 	"github.com/pingcap/errors"
@@ -271,7 +270,6 @@ func buildCopTasks(bo *Backoffer, cache *RegionCache, ranges *copRanges, desc bo
 	if elapsed := time.Since(start); elapsed > time.Millisecond*500 {
 		log.Warnf("buildCopTasks takes too much time (%v), range len %v, task len %v", elapsed, rangesLen, len(tasks))
 	}
-	metrics.TiKVTxnRegionsNumHistogram.WithLabelValues("coprocessor").Observe(float64(len(tasks)))
 	return tasks, nil
 }
 
@@ -422,9 +420,7 @@ func (worker *copIteratorWorker) run(ctx context.Context) {
 
 		bo := NewBackoffer(ctx, copNextMaxBackoff).WithVars(worker.vars)
 		worker.handleTask(bo, task, respCh)
-		if bo.totalSleep > 0 {
-			metrics.TiKVBackoffHistogram.Observe(float64(bo.totalSleep) / 1000)
-		}
+
 		close(task.respChan)
 		select {
 		case <-worker.finishCh:
@@ -613,7 +609,6 @@ func (worker *copIteratorWorker) handleTaskOnce(bo *Backoffer, task *copTask, ch
 	if costTime > minLogCopTaskTime {
 		worker.logTimeCopTask(costTime, task, bo, resp)
 	}
-	metrics.TiKVCoprocessorHistogram.Observe(costTime.Seconds())
 
 	if task.cmdType == tikvrpc.CmdCopStream {
 		return worker.handleCopStreamResult(bo, resp.CopStream, task, ch)

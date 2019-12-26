@@ -125,6 +125,7 @@ import (
 	from			"FROM"
 	fulltext		"FULLTEXT"
 	generated		"GENERATED"
+	geometryType "GEOMETRY"
 	grant			"GRANT"
 	group			"GROUP"
 	having			"HAVING"
@@ -158,6 +159,7 @@ import (
 	like			"LIKE"
 	limit			"LIMIT"
 	lines 			"LINES"
+	linear			"LINEAR"
 	load			"LOAD"
 	localTime		"LOCALTIME"
 	localTs			"LOCALTIMESTAMP"
@@ -206,6 +208,7 @@ import (
 	show			"SHOW"
 	get				"GET"
 	smallIntType		"SMALLINT"
+	spatial			"SPATIAL"
 	sql			"SQL"
 	sqlCalcFoundRows	"SQL_CALC_FOUND_ROWS"
 	starting		"STARTING"
@@ -290,6 +293,7 @@ import (
 	compression	"COMPRESSION"
 	connection 	"CONNECTION"
 	consistent	"CONSISTENT"
+	current		"CURRENT"
 	day		"DAY"
 	data 		"DATA"
 	dateType	"DATE"
@@ -297,6 +301,7 @@ import (
 	deallocate	"DEALLOCATE"
 	definer		"DEFINER"
 	delayKeyWrite	"DELAY_KEY_WRITE"
+	directory	"DIRECTORY"
 	disable		"DISABLE"
 	do		"DO"
 	duplicate	"DUPLICATE"
@@ -320,16 +325,19 @@ import (
 	function	"FUNCTION"
 	grants		"GRANTS"
 	hash		"HASH"
+	history		"HISTORY"
 	hour		"HOUR"
 	identified	"IDENTIFIED"
 	isolation	"ISOLATION"
 	indexes		"INDEXES"
+	invisible	"INVISIBLE"
 	invoker		"INVOKER"
 	jsonType	"JSON"
 	keyBlockSize	"KEY_BLOCK_SIZE"
 	local		"LOCAL"
 	less		"LESS"
 	level		"LEVEL"
+	list		"LIST"
 	master		"MASTER"
 	microsecond	"MICROSECOND"
 	minute		"MINUTE"
@@ -346,6 +354,7 @@ import (
 	names		"NAMES"
 	national	"NATIONAL"
 	no		"NO"
+	nodegroup	"NODEGROUP"
 	none		"NONE"
 	offset		"OFFSET"
 	only		"ONLY"
@@ -373,6 +382,7 @@ import (
 	row 		"ROW"
 	rowCount	"ROW_COUNT"
 	rowFormat	"ROW_FORMAT"
+	rtree		"RTREE"
 	second		"SECOND"
 	security	"SECURITY"
 	separator 	"SEPARATOR"
@@ -389,6 +399,7 @@ import (
 	start		"START"
 	statsPersistent	"STATS_PERSISTENT"
 	status		"STATUS"
+	systemTime	"SYSTEM_TIME"
 	subpartition	"SUBPARTITION"
 	subpartitions	"SUBPARTITIONS"
 	super		"SUPER"
@@ -406,13 +417,16 @@ import (
 	transaction	"TRANSACTION"
 	triggers	"TRIGGERS"
 	truncate	"TRUNCATE"
+	tp             	"TYPE"
 	uncommitted	"UNCOMMITTED"
 	unknown 	"UNKNOWN"
 	user		"USER"
 	undefined	"UNDEFINED"
 	value		"VALUE"
 	variables	"VARIABLES"
+	levels 		"LEVELS"
 	view		"VIEW"
+	visible		"VISIBLE"
 	warnings	"WARNINGS"
 	identSQLErrors	"ERRORS"
 	week		"WEEK"
@@ -433,6 +447,7 @@ import (
 	getFormat		"GET_FORMAT"
 	groupConcat		"GROUP_CONCAT"
 	inplace 		"INPLACE"
+	instant			"INSTANT"
 	internal		"INTERNAL"
 	min			"MIN"
 	max			"MAX"
@@ -599,6 +614,7 @@ import (
 
 %type   <item>
 	AdminShowSlow			"Admin Show Slow statement"
+	AlgorithmClause			"Alter table algorithm"
 	AlterTableOptionListOpt		"alter table option list opt"
 	AlterTableSpec			"Alter table specification"
 	AlterTableSpecList		"Alter table specification list"
@@ -611,6 +627,7 @@ import (
 	OptionalBraces			"optional braces"
 	CastType			"Cast function target type"
 	CharsetName			"Character set name"
+	CollationName			"Collation name"
 	ColumnDef			"table column definition"
 	ColumnDefList			"table column definition list"
 	ColumnName			"column name"
@@ -628,7 +645,6 @@ import (
 	Constraint			"table constraint"
 	ConstraintElem			"table constraint element"
 	ConstraintKeywordOpt		"Constraint Keyword or empty"
-	CreateIndexStmtUnique		"CREATE INDEX optional UNIQUE clause"
 	CreateTableOptionListOpt	"create table option list opt"
 	CreateTableSelectOpt	        "Select/Union statement in CREATE TABLE ... SELECT"
 	DatabaseOption			"CREATE Database specification"
@@ -673,12 +689,17 @@ import (
 	IndexHintListOpt		"index hint list opt"
 	IndexHintScope			"index hint scope"
 	IndexHintType			"index hint type"
+	IndexInvisible			"index visible/invisible"
+	IndexKeyTypeOpt			"index key type"
+	IndexLockAndAlgorithmOpt	"index lock and algorithm"
 	IndexName			"index name"
+	IndexNameAndTypeOpt		"index name and index type"
 	IndexNameList			"index name list"
 	IndexOption			"Index Option"
 	IndexOptionList			"Index Option List or empty"
 	IndexType			"index type"
-	IndexTypeOpt			"Optional index type"
+	IndexTypeName			"index type name"
+	IndexTypeOpt			"optional index type"
 	InsertValues			"Rest part of INSERT/REPLACE INTO statement"
 	JoinTable 			"join table"
 	JoinType			"join type"
@@ -708,11 +729,13 @@ import (
 	PartitionDefinition		"Partition definition"
 	PartitionDefinitionList 	"Partition definition list"
 	PartitionDefinitionListOpt	"Partition definition list option"
+	PartitionKeyAlgorithmOpt	"ALGORITHM = n option for KEY partition"
+	PartitionMethod			"Partition method"
 	PartitionOpt			"Partition option"
 	PartitionNameList		"Partition name list"
+	PartitionNameListOpt    "table partition names list optional"
 	PartitionNumOpt			"PARTITION NUM option"
 	PartDefValuesOpt		"VALUES {LESS THAN {(expr | value_list) | MAXVALUE} | IN {value_list}"
-	PartDefOptionsOpt		"PartDefOptionList option"
 	PartDefOptionList		"PartDefOption list"
 	PartDefOption			"COMMENT [=] xxx | TABLESPACE [=] tablespace_name | ENGINE [=] xxx"
 	PasswordOpt			"Password option"
@@ -750,6 +773,10 @@ import (
 	StatsPersistentVal		"stats_persistent value"
 	StringName			"string literal or identifier"
 	StringList 			"string list"
+	SubPartDefinition		"SubPartition definition"
+	SubPartDefinitionList		"SubPartition definition list"
+	SubPartDefinitionListOpt	"SubPartition definition list optional"
+	SubPartitionMethod		"SubPartition method"
 	SubPartitionOpt			"SubPartition option"
 	SubPartitionNumOpt		"SubPartition NUM option"
 	Symbol				"Constraint Symbol"
@@ -870,6 +897,7 @@ import (
 	LockType		"Table locks type"
 	logAnd			"logical and operator"
 	logOr			"logical or operator"
+	LinearOpt		"linear or empty"
 	FieldsOrColumns 	"Fields or columns"
 	GetFormatSelector	"{DATE|DATETIME|TIME|TIMESTAMP}"
 
@@ -1150,26 +1178,49 @@ AlterTableSpec:
 AlterAlgorithm:
 	"DEFAULT" | "INPLACE" | "COPY"
 
-LockClauseOpt:
-	{}
-| 	LockClause {}
+
+AlgorithmClause:
+	"ALGORITHM" EqOpt "DEFAULT"
+	{
+		$$ = ast.AlgorithmTypeDefault
+	}
+| 	"ALGORITHM" EqOpt "COPY"
+	{
+		$$ = ast.AlgorithmTypeCopy
+	}
+| 	"ALGORITHM" EqOpt "INPLACE"
+	{
+		$$ = ast.AlgorithmTypeInplace
+	}
+|	"ALGORITHM" EqOpt "INSTANT"
+	{
+		$$ = ast.AlgorithmTypeInstant
+	}
+|	"ALGORITHM" EqOpt identifier
+	{
+		yylex.AppendError(ErrUnknownAlterAlgorithm.GenWithStackByArgs($1))
+		return 1
+	}
 
 LockClause:
-	"LOCK" eq "NONE"
-	{
-		$$ = ast.LockTypeNone
-	}
-|	"LOCK" eq "DEFAULT"
+	"LOCK" EqOpt "DEFAULT"
 	{
 		$$ = ast.LockTypeDefault
 	}
-|	"LOCK" eq "SHARED"
+|	"LOCK" EqOpt Identifier
 	{
-		$$ = ast.LockTypeShared
-	}
-|	"LOCK" eq "EXCLUSIVE"
-	{
-		$$ = ast.LockTypeExclusive
+		id := strings.ToUpper($3)
+
+		if id == "NONE" {
+			$$ = ast.LockTypeNone
+		} else if id == "SHARED" {
+			$$ = ast.LockTypeShared
+		} else if id == "EXCLUSIVE" {
+			$$ = ast.LockTypeExclusive
+		} else {
+			yylex.AppendError(ErrUnknownAlterLock.GenWithStackByArgs($3))
+			return 1
+		}
 	}
 
 KeyOrIndex: "KEY" | "INDEX"
@@ -1539,6 +1590,14 @@ InceptionStmt:
  			IsInception: true,
  		}
  	}
+|	"INCEPTION" "GET" OptFull "PROCESSLIST"
+ 	{
+ 		$$ = &ast.ShowStmt{
+ 			Tp: ast.ShowProcessList,
+ 			Full:	$3.(bool),
+ 			IsInception: true,
+ 		}
+ 	}
 |	"INCEPTION" "SHOW" "STATS_META" ShowLikeOrWhereOpt
 	{
 		stmt := &ast.ShowStmt{
@@ -1616,6 +1675,14 @@ InceptionStmt:
 |	"INCEPTION" "SET" VariableAssignmentList
 	{
 		$$ = &ast.InceptionSetStmt{Variables: $3.([]*ast.VariableAssignment)}
+	}
+|	"INCEPTION" "SET" "LEVEL" VariableAssignmentList
+	{
+		vars := $4.([]*ast.VariableAssignment)
+		for _, v := range vars {
+			v.IsLevel = true
+		}
+		$$ = &ast.InceptionSetStmt{Variables: vars}
 	}
 
 InceptionStartStmt:
@@ -1701,6 +1768,10 @@ ColumnOption:
 			Refer: $1.(*ast.ReferenceDef),
 		}
 	}
+|	"COLLATE" CollationName
+	{
+		$$ = &ast.ColumnOption{Tp: ast.ColumnOptionCollate, StrValue: $2.(string)}
+	}
 
 GeneratedAlways: | "GENERATED" "ALWAYS"
 
@@ -1737,24 +1808,24 @@ ColumnOptionListOpt:
 	}
 
 ConstraintElem:
-	"PRIMARY" "KEY" IndexName IndexTypeOpt '(' IndexColNameList ')' IndexOptionList
+	"PRIMARY" "KEY" IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp: ast.ConstraintPrimaryKey,
-			Keys: $6.([]*ast.IndexColName),
+			Keys: $5.([]*ast.IndexColName),
 		}
-		if $8 != nil {
-			c.Option = $8.(*ast.IndexOption)
+		if $7 != nil {
+			c.Option = $7.(*ast.IndexOption)
 		}
-		if $4 != nil {
+		if indexType := $3.([]interface{})[1]; indexType != nil {
 			if c.Option == nil {
 				c.Option = &ast.IndexOption{}
 			}
-			c.Option.Tp = $4.(model.IndexType)
+			c.Option.Tp = indexType.(model.IndexType)
 		}
 		$$ = c
 	}
-|	"FULLTEXT" KeyOrIndex IndexName '(' IndexColNameList ')' IndexOptionList
+|	"FULLTEXT" KeyOrIndexOpt IndexName '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:	ast.ConstraintFulltext,
@@ -1766,49 +1837,63 @@ ConstraintElem:
 		}
 		$$ = c
 	}
-|	KeyOrIndex IndexName IndexTypeOpt '(' IndexColNameList ')' IndexOptionList
+|	"SPATIAL" KeyOrIndexOpt IndexName '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
-			Tp:	ast.ConstraintIndex,
+			Tp:	ast.	ConstraintSpatial,
 			Keys:	$5.([]*ast.IndexColName),
-			Name:	$2.(string),
+			Name:	$3.(string),
 		}
 		if $7 != nil {
 			c.Option = $7.(*ast.IndexOption)
 		}
-		if $3 != nil {
+		$$ = c
+	}
+|	KeyOrIndex IfNotExists IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
+	{
+		c := &ast.Constraint{
+			IfNotExists:	$2.(bool),
+			Tp:		ast.ConstraintIndex,
+			Keys:		$5.([]*ast.IndexColName),
+		}
+		if $7 != nil {
+			c.Option = $7.(*ast.IndexOption)
+		}
+		c.Name = $3.([]interface{})[0].(string)
+		if indexType := $3.([]interface{})[1]; indexType != nil {
 			if c.Option == nil {
 				c.Option = &ast.IndexOption{}
 			}
-			c.Option.Tp = $3.(model.IndexType)
+			c.Option.Tp = indexType.(model.IndexType)
 		}
 		$$ = c
 	}
-|	"UNIQUE" KeyOrIndexOpt IndexName IndexTypeOpt '(' IndexColNameList ')' IndexOptionList
+|	"UNIQUE" KeyOrIndexOpt IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:	ast.ConstraintUniq,
-			Keys:	$6.([]*ast.IndexColName),
-			Name:	$3.(string),
+			Keys:	$5.([]*ast.IndexColName),
 		}
-		if $8 != nil {
-			c.Option = $8.(*ast.IndexOption)
+		if $7 != nil {
+			c.Option = $7.(*ast.IndexOption)
 		}
-		if $4 != nil {
+		c.Name = $3.([]interface{})[0].(string)
+		if indexType := $3.([]interface{})[1]; indexType != nil {
 			if c.Option == nil {
 				c.Option = &ast.IndexOption{}
 			}
-			c.Option.Tp = $4.(model.IndexType)
+			c.Option.Tp = indexType.(model.IndexType)
 		}
 		$$ = c
 	}
-|	"FOREIGN" "KEY" IndexName '(' IndexColNameList ')' ReferDef
+|	"FOREIGN" "KEY" IfNotExists IndexName '(' IndexColNameList ')' ReferDef
 	{
 		$$ = &ast.Constraint{
-			Tp:	ast.ConstraintForeignKey,
-			Keys:	$5.([]*ast.IndexColName),
-			Name:	$3.(string),
-			Refer:	$7.(*ast.ReferenceDef),
+			IfNotExists:	$3.(bool),
+			Tp:		ast.ConstraintForeignKey,
+			Keys:		$6.([]*ast.IndexColName),
+			Name:		$4.(string),
+			Refer:		$8.(*ast.ReferenceDef),
 		}
 	}
 
@@ -1924,40 +2009,69 @@ NumLiteral:
 |	floatLit
 |	decLit
 
-
+/**************************************CreateIndexStmt***************************************
+ * See https://dev.mysql.com/doc/refman/8.0/en/create-index.html
+ *
+ * TYPE type_name is recognized as a synonym for USING type_name. However, USING is the preferred form.
+ *
+ * CREATE [UNIQUE | FULLTEXT | SPATIAL] INDEX index_name
+ *     [index_type]
+ *     ON tbl_name (key_part,...)
+ *     [index_option]
+ *     [algorithm_option | lock_option] ...
+ *
+ * key_part: {col_name [(length)] | (expr)} [ASC | DESC]
+ *
+ * index_option:
+ *     KEY_BLOCK_SIZE [=] value
+ *   | index_type
+ *   | WITH PARSER parser_name
+ *   | COMMENT 'string'
+ *   | {VISIBLE | INVISIBLE}
+ *
+ * index_type:
+ *     USING {BTREE | HASH}
+ *
+ * algorithm_option:
+ *     ALGORITHM [=] {DEFAULT | INPLACE | COPY}
+ *
+ * lock_option:
+ *     LOCK [=] {DEFAULT | NONE | SHARED | EXCLUSIVE}
+ *******************************************************************************************/
 CreateIndexStmt:
-	"CREATE" CreateIndexStmtUnique "INDEX" Identifier IndexTypeOpt "ON" TableName '(' IndexColNameList ')' IndexOptionList LockClauseOpt
+	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists Identifier IndexTypeOpt "ON" TableName '(' IndexColNameList ')' IndexOptionList IndexLockAndAlgorithmOpt
 	{
 		var indexOption *ast.IndexOption
-		if $11 != nil {
-			indexOption = $11.(*ast.IndexOption)
+		if $12 != nil {
+			indexOption = $12.(*ast.IndexOption)
 			if indexOption.Tp == model.IndexTypeInvalid {
-				if $5 != nil {
-					indexOption.Tp = $5.(model.IndexType)
+				if $6 != nil {
+					indexOption.Tp = $6.(model.IndexType)
 				}
 			}
 		} else {
 			indexOption = &ast.IndexOption{}
-			if $5 != nil {
-				indexOption.Tp = $5.(model.IndexType)
+			if $6 != nil {
+				indexOption.Tp = $6.(model.IndexType)
+			}
+		}
+		var indexLockAndAlgorithm *ast.IndexLockAndAlgorithm
+		if $13 != nil {
+			indexLockAndAlgorithm = $13.(*ast.IndexLockAndAlgorithm)
+			if indexLockAndAlgorithm.LockTp == ast.LockTypeDefault && indexLockAndAlgorithm.AlgorithmTp == ast.AlgorithmTypeDefault {
+				indexLockAndAlgorithm = nil
 			}
 		}
 		$$ = &ast.CreateIndexStmt{
-			Unique:        $2.(bool),
-			IndexName:     $4,
-			Table:         $7.(*ast.TableName),
-			IndexColNames: $9.([]*ast.IndexColName),
+			IfNotExists:   $4.(bool),
+			IndexName:     $5,
+			Table:         $8.(*ast.TableName),
+			IndexColNames: $10.([]*ast.IndexColName),
 			IndexOption:   indexOption,
+			KeyType:       $2.(ast.IndexKeyType),
+			Unique: 	    $2.(ast.IndexKeyType) == ast.IndexKeyTypeUnique,
+			LockAlg:       indexLockAndAlgorithm,
 		}
-	}
-
-CreateIndexStmtUnique:
-	{
-		$$ = false
-	}
-|	"UNIQUE"
-	{
-		$$ = true
 	}
 
 IndexColName:
@@ -1977,7 +2091,55 @@ IndexColNameList:
 		$$ = append($1.([]*ast.IndexColName), $3.(*ast.IndexColName))
 	}
 
+IndexLockAndAlgorithmOpt:
+	{
+		$$ = nil
+	}
+|	LockClause
+	{
+		$$ = &ast.IndexLockAndAlgorithm{
+			LockTp:		$1.(ast.LockType),
+			AlgorithmTp:	ast.AlgorithmTypeDefault,
+		}
+	}
+|	AlgorithmClause
+	{
+		$$ = &ast.IndexLockAndAlgorithm{
+			LockTp:		ast.LockTypeDefault,
+			AlgorithmTp:	$1.(ast.AlgorithmType),
+		}
+	}
+|	LockClause AlgorithmClause
+	{
+		$$ = &ast.IndexLockAndAlgorithm{
+			LockTp:		$1.(ast.LockType),
+			AlgorithmTp:	$2.(ast.AlgorithmType),
+		}
+	}
+|	AlgorithmClause LockClause
+	{
+		$$ = &ast.IndexLockAndAlgorithm{
+			LockTp:		$2.(ast.LockType),
+			AlgorithmTp:	$1.(ast.AlgorithmType),
+		}
+	}
 
+IndexKeyTypeOpt:
+	{
+		$$ = ast.IndexKeyTypeNone
+	}
+|	"UNIQUE"
+	{
+		$$ = ast.IndexKeyTypeUnique
+	}
+|	"SPATIAL"
+	{
+		$$ = ast.IndexKeyTypeSpatial
+	}
+|	"FULLTEXT"
+	{
+		$$ = ast.IndexKeyTypeFullText
+	}
 
 /*******************************************************************
  *
@@ -2010,7 +2172,7 @@ DatabaseOption:
 	{
 		$$ = &ast.DatabaseOption{Tp: ast.DatabaseOptionCharset, Value: $4.(string)}
 	}
-|	DefaultKwdOpt "COLLATE" EqOpt StringName
+|	DefaultKwdOpt "COLLATE" EqOpt CollationName
 	{
 		$$ = &ast.DatabaseOption{Tp: ast.DatabaseOptionCollate, Value: $4.(string)}
 	}
@@ -2057,7 +2219,7 @@ CreateTableStmt:
 		if $7 != nil {
 			stmt.Partition = $7.(*ast.PartitionOptions)
 		}
-		stmt.OnDuplicate = $8.(ast.OnDuplicateCreateTableSelectType)
+		stmt.OnDuplicate = $8.(ast.OnDuplicateKeyHandlingType)
 		stmt.Select = $10.(*ast.CreateTableStmt).Select
 		$$ = stmt
 	}
@@ -2078,55 +2240,150 @@ PartitionOpt:
 	{
 		$$ = nil
 	}
-|	"PARTITION" "BY" "KEY" '(' ColumnNameList ')' PartitionNumOpt PartitionDefinitionListOpt
+|	"PARTITION" "BY" PartitionMethod PartitionNumOpt SubPartitionOpt PartitionDefinitionListOpt
 	{
-		$$ = nil
+		method := $3.(*ast.PartitionMethod)
+		method.Num = $4.(uint64)
+		sub, _ := $5.(*ast.PartitionMethod)
+		defs, _ := $6.([]*ast.PartitionDefinition)
+		opt := &ast.PartitionOptions{
+			PartitionMethod: *method,
+			Sub:             sub,
+			Definitions:     defs,
+		}
+		if err := opt.Validate(); err != nil {
+			yylex.AppendError(err)
+			return 1
+		}
+		$$ = opt
 	}
-|	"PARTITION" "BY" "HASH" '(' Expression ')' PartitionNumOpt PartitionDefinitionListOpt
+
+SubPartitionMethod:
+	LinearOpt "KEY" PartitionKeyAlgorithmOpt '(' ColumnNameListOpt ')'
 	{
-		$$ = nil
-	}
-|	"PARTITION" "BY" "RANGE" '(' Expression ')' PartitionNumOpt SubPartitionOpt PartitionDefinitionListOpt
-	{
-		var defs []*ast.PartitionDefinition
-		if $9 != nil {
-			defs = $9.([]*ast.PartitionDefinition)
-		}
-		$$ = &ast.PartitionOptions{
-			Tp:		model.PartitionTypeRange,
-			Expr:		$5.(ast.ExprNode),
-			Definitions:	defs,
+		$$ = &ast.PartitionMethod{
+			Tp:          model.PartitionTypeKey,
+			Linear:      len($1) != 0,
+			ColumnNames: $5.([]*ast.ColumnName),
 		}
 	}
-|	"PARTITION" "BY" "RANGE" "COLUMNS" '(' ColumnNameList ')' PartitionNumOpt PartitionDefinitionListOpt
+|	LinearOpt "HASH" '(' Expression ')'
 	{
-		var defs []*ast.PartitionDefinition
-		if $9 != nil {
-			defs = $9.([]*ast.PartitionDefinition)
+		$$ = &ast.PartitionMethod{
+			Tp:     model.PartitionTypeHash,
+			Linear: len($1) != 0,
+			Expr:   $4.(ast.ExprNode),
 		}
-		$$ = &ast.PartitionOptions{
-			Tp:		model.PartitionTypeRange,
-			ColumnNames:	$6.([]*ast.ColumnName),
-			Definitions:	defs,
+	}
+
+PartitionKeyAlgorithmOpt:
+	/* empty */
+	{}
+|	"ALGORITHM" '=' NUM
+	{}
+
+PartitionMethod:
+	SubPartitionMethod
+	{
+		$$ = $1
+	}
+|	"RANGE" '(' Expression ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:   model.PartitionTypeRange,
+			Expr: $3.(ast.ExprNode),
 		}
+	}
+|	"RANGE" "COLUMNS" '(' ColumnNameList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:          model.PartitionTypeRange,
+			ColumnNames: $4.([]*ast.ColumnName),
+		}
+	}
+|	"LIST" '(' Expression ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:   model.PartitionTypeList,
+			Expr: $3.(ast.ExprNode),
+		}
+	}
+|	"LIST" "COLUMNS" '(' ColumnNameList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:          model.PartitionTypeList,
+			ColumnNames: $4.([]*ast.ColumnName),
+		}
+	}
+|	"SYSTEM_TIME" "INTERVAL" Expression TimeUnit
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:    model.PartitionTypeSystemTime,
+			Expr:  $3.(ast.ExprNode),
+			Unit:  ast.NewValueExpr($4),
+		}
+	}
+|	"SYSTEM_TIME" "LIMIT" LengthNum
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:    model.PartitionTypeSystemTime,
+			Limit: $3.(uint64),
+		}
+	}
+|	"SYSTEM_TIME"
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:    model.PartitionTypeSystemTime,
+		}
+	}
+
+LinearOpt:
+	{
+		$$ = ""
+	}
+| "LINEAR"
+	{
+		$$ = $1
 	}
 
 SubPartitionOpt:
-	{}
-|	"SUBPARTITION" "BY" "HASH" '(' Expression ')' SubPartitionNumOpt
-	{}
-|	"SUBPARTITION" "BY" "KEY" '(' ColumnNameList ')' SubPartitionNumOpt
-	{}
+	{
+		$$ = nil
+	}
+|	"SUBPARTITION" "BY" SubPartitionMethod SubPartitionNumOpt
+	{
+		method := $3.(*ast.PartitionMethod)
+		method.Num = $4.(uint64)
+		$$ = method
+	}
 
 SubPartitionNumOpt:
-	{}
-|	"SUBPARTITIONS" NUM
-	{}
+	{
+		$$ = uint64(0)
+	}
+|	"SUBPARTITIONS" LengthNum
+	{
+		res := $2.(uint64)
+		if res == 0 {
+			yylex.AppendError(ast.ErrNoParts.GenWithStackByArgs("subpartitions"))
+			return 1
+		}
+		$$ = res
+	}
 
 PartitionNumOpt:
-	{}
-|	"PARTITIONS" NUM
-	{}
+	{
+		$$ = uint64(0)
+	}
+|	"PARTITIONS" LengthNum
+	{
+		res := $2.(uint64)
+		if res == 0 {
+			yylex.AppendError(ast.ErrNoParts.GenWithStackByArgs("partitions"))
+			return 1
+		}
+		$$ = res
+	}
 
 PartitionDefinitionListOpt:
 	/* empty */ %prec lowerThanCreateTableSelect
@@ -2149,87 +2406,144 @@ PartitionDefinitionList:
 	}
 
 PartitionDefinition:
-	"PARTITION" Identifier PartDefValuesOpt PartDefOptionsOpt
+	"PARTITION" Identifier PartDefValuesOpt PartDefOptionList SubPartDefinitionListOpt
 	{
-		partDef := &ast.PartitionDefinition{
-			Name: model.NewCIStr($2),
+		$$ = &ast.PartitionDefinition{
+			Name:    model.NewCIStr($2),
+			Clause:  $3.(ast.PartitionDefinitionClause),
+			Options: $4.([]*ast.TableOption),
+			Sub:     $5.([]*ast.SubPartitionDefinition),
 		}
-		switch $3.(type) {
-		case []ast.ExprNode:
-			partDef.LessThan = $3.([]ast.ExprNode)
-		case ast.ExprNode:
-			partDef.LessThan = make([]ast.ExprNode, 1)
-			partDef.LessThan[0] = $3.(ast.ExprNode)
-		}
-
-		if comment, ok := $4.(string); ok {
-			partDef.Comment = comment
-		}
-		$$ = partDef
 	}
 
-PartDefOptionsOpt:
+SubPartDefinitionListOpt:
+	/*empty*/
 	{
-		$$ = nil
+		$$ = make([]*ast.SubPartitionDefinition, 0)
 	}
-|	PartDefOptionList
+|	'(' SubPartDefinitionList ')'
 	{
-		$$ = $1
+		$$ = $2
+	}
+
+SubPartDefinitionList:
+	SubPartDefinition
+	{
+		$$ = []*ast.SubPartitionDefinition{$1.(*ast.SubPartitionDefinition)}
+	}
+|	SubPartDefinitionList ',' SubPartDefinition
+	{
+		list := $1.([]*ast.SubPartitionDefinition)
+		$$ = append(list, $3.(*ast.SubPartitionDefinition))
+	}
+
+SubPartDefinition:
+	"SUBPARTITION" Identifier PartDefOptionList
+	{
+		$$ = &ast.SubPartitionDefinition{
+			Name:    model.NewCIStr($2),
+			Options: $3.([]*ast.TableOption),
+		}
 	}
 
 PartDefOptionList:
-	PartDefOption
+	/*empty*/
 	{
-		$$ = $1
+		$$ = make([]*ast.TableOption, 0)
 	}
 |	PartDefOptionList PartDefOption
 	{
-		if $1 != nil {
-			$$ = $1
-		} else {
-			$$ = $2
-		}
+		list := $1.([]*ast.TableOption)
+		$$ = append(list, $2.(*ast.TableOption))
 	}
 
 PartDefOption:
 	"COMMENT" EqOpt stringLit
 	{
-		$$ = $3
+		$$ = &ast.TableOption{Tp: ast.TableOptionComment, StrValue: $3}
 	}
-|	"ENGINE" EqOpt Identifier
+|	"ENGINE" EqOpt StringName
 	{
-		$$ = nil
+		$$ = &ast.TableOption{Tp: ast.TableOptionEngine, StrValue: $3.(string)}
+	}
+|	"DATA" "DIRECTORY" EqOpt stringLit
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionDataDirectory, StrValue: $4}
+	}
+|	"INDEX" "DIRECTORY" EqOpt stringLit
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionIndexDirectory, StrValue: $4}
+	}
+|	"MAX_ROWS" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionMaxRows, UintValue: $3.(uint64)}
+	}
+|	"MIN_ROWS" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionMinRows, UintValue: $3.(uint64)}
 	}
 |	"TABLESPACE" EqOpt Identifier
 	{
-		$$ =  nil
+		$$ = &ast.TableOption{Tp: ast.TableOptionTablespace, StrValue: $3}
 	}
-
+|	"NODEGROUP" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionNodegroup, UintValue: $3.(uint64)}
+	}
 
 PartDefValuesOpt:
 	{
-		$$ = nil
+		$$ = &ast.PartitionDefinitionClauseNone{}
 	}
 |	"VALUES" "LESS" "THAN" "MAXVALUE"
 	{
-		$$ = &ast.MaxValueExpr{}
+		$$ = &ast.PartitionDefinitionClauseLessThan{
+			Exprs: []ast.ExprNode{&ast.MaxValueExpr{}},
+		}
 	}
 |	"VALUES" "LESS" "THAN" '(' MaxValueOrExpressionList ')'
 	{
-		$$ = $5
+		$$ = &ast.PartitionDefinitionClauseLessThan{
+			Exprs: $5.([]ast.ExprNode),
+		}
+	}
+|	"DEFAULT"
+	{
+		$$ = &ast.PartitionDefinitionClauseIn{}
+	}
+|	"VALUES" "IN" '(' ExpressionList ')'
+	{
+		exprs := $4.([]ast.ExprNode)
+		values := make([][]ast.ExprNode, 0, len(exprs))
+		for _, expr := range exprs {
+			if row, ok := expr.(*ast.RowExpr); ok {
+				values = append(values, row.Values)
+			} else {
+				values = append(values, []ast.ExprNode{expr})
+			}
+		}
+		$$ = &ast.PartitionDefinitionClauseIn{Values: values}
+	}
+|	"HISTORY"
+	{
+		$$ = &ast.PartitionDefinitionClauseHistory{Current: false}
+	}
+|	"CURRENT"
+	{
+		$$ = &ast.PartitionDefinitionClauseHistory{Current: true}
 	}
 
 DuplicateOpt:
 	{
-		$$ = ast.OnDuplicateCreateTableSelectError
+		$$ = ast.OnDuplicateKeyHandlingError
 	}
 |   "IGNORE"
 	{
-		$$ = ast.OnDuplicateCreateTableSelectIgnore
+		$$ = ast.OnDuplicateKeyHandlingIgnore
 	}
 |   "REPLACE"
 	{
-		$$ = ast.OnDuplicateCreateTableSelectReplace
+		$$ = ast.OnDuplicateKeyHandlingReplace
 	}
 
 AsOpt:
@@ -2478,10 +2792,30 @@ DropDatabaseStmt:
 		$$ = &ast.DropDatabaseStmt{IfExists: $3.(bool), Name: $4.(string)}
 	}
 
+/******************************************************************
+ * Drop Index Statement
+ * See https://dev.mysql.com/doc/refman/8.0/en/drop-index.html
+ *
+ *  DROP INDEX index_name ON tbl_name
+ *      [algorithm_option | lock_option] ...
+ *
+ *  algorithm_option:
+ *      ALGORITHM [=] {DEFAULT|INPLACE|COPY}
+ *
+ *  lock_option:
+ *      LOCK [=] {DEFAULT|NONE|SHARED|EXCLUSIVE}
+ ******************************************************************/
 DropIndexStmt:
-	"DROP" "INDEX" IfExists Identifier "ON" TableName
+	"DROP" "INDEX" IfExists Identifier "ON" TableName IndexLockAndAlgorithmOpt
 	{
-		$$ = &ast.DropIndexStmt{IfExists: $3.(bool), IndexName: $4, Table: $6.(*ast.TableName)}
+		var indexLockAndAlgorithm *ast.IndexLockAndAlgorithm
+		if $7 != nil {
+			indexLockAndAlgorithm = $7.(*ast.IndexLockAndAlgorithm)
+			if indexLockAndAlgorithm.LockTp == ast.LockTypeDefault && indexLockAndAlgorithm.AlgorithmTp == ast.AlgorithmTypeDefault {
+				indexLockAndAlgorithm = nil
+			}
+		}
+		$$ = &ast.DropIndexStmt{IfExists: $3.(bool), IndexName: $4, Table: $6.(*ast.TableName), LockAlg: indexLockAndAlgorithm}
 	}
 
 DropTableStmt:
@@ -3051,8 +3385,7 @@ IndexOption:
 	"KEY_BLOCK_SIZE" EqOpt LengthNum
 	{
 		$$ = &ast.IndexOption{
-			// TODO bug should be fix here!
-			// KeyBlockSize: $1.(uint64),
+			KeyBlockSize: $3.(uint64),
 		}
 	}
 |	IndexType
@@ -3067,15 +3400,44 @@ IndexOption:
 			Comment: $2,
 		}
 	}
-
-IndexType:
-	"USING" "BTREE"
+|	IndexInvisible
 	{
-		$$ = model.IndexTypeBtree
+		$$ = &ast.IndexOption {
+			Visibility: $1.(ast.IndexVisibility),
+		}
 	}
-|	"USING" "HASH"
+
+/*
+  See: https://github.com/mysql/mysql-server/blob/8.0/sql/sql_yacc.yy#L7179
+
+  The syntax for defining an index is:
+
+    ... INDEX [index_name] [USING|TYPE] <index_type> ...
+
+  The problem is that whereas USING is a reserved word, TYPE is not. We can
+  still handle it if an index name is supplied, i.e.:
+
+    ... INDEX type TYPE <index_type> ...
+
+  here the index's name is unmbiguously 'type', but for this:
+
+    ... INDEX TYPE <index_type> ...
+
+  it's impossible to know what this actually mean - is 'type' the name or the
+  type? For this reason we accept the TYPE syntax only if a name is supplied.
+*/
+IndexNameAndTypeOpt:
+	IndexName
 	{
-		$$ = model.IndexTypeHash
+		$$ = []interface{}{$1, nil}
+	}
+| 	IndexName "USING" IndexTypeName
+	{
+		$$ = []interface{}{$1, $3}
+	}
+|	Identifier "TYPE" IndexTypeName
+	{
+		$$ = []interface{}{$1, $3}
 	}
 
 IndexTypeOpt:
@@ -3087,25 +3449,58 @@ IndexTypeOpt:
 		$$ = $1
 	}
 
+IndexType:
+	"USING" IndexTypeName
+	{
+		$$ = $2
+	}
+| 	"TYPE" IndexTypeName
+	{
+		$$ = $2
+	}
+
+IndexTypeName:
+	"BTREE"
+ 	{
+ 		$$ = model.IndexTypeBtree
+ 	}
+ |	"HASH"
+ 	{
+ 		$$ = model.IndexTypeHash
+ 	}
+ |	"RTREE"
+ 	{
+ 		$$ = model.IndexTypeRtree
+ 	}
+
+IndexInvisible:
+	"VISIBLE"
+	{
+		$$ = ast.IndexVisibilityVisible
+	}
+|	"INVISIBLE"
+	{
+		$$ = ast.IndexVisibilityInvisible
+	}
 /**********************************Identifier********************************************/
 Identifier:
 identifier | UnReservedKeyword | NotKeywordToken | TiDBKeyword
 
 UnReservedKeyword:
  "ACTION" | "ASCII" | "AUTO_INCREMENT" | "AFTER" | "ALWAYS" | "AVG" | "BEGIN" | "BIT" | "BOOL" | "BOOLEAN" | "BTREE" | "BYTE" | "CLEANUP" | "CHARSET"
-| "COLUMNS" | "COMMIT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "STOP" | "PAUSE" | "RESUME" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
+| "COLUMNS" | "COMMIT" | "CURRENT" |"INCEPTION" | "INCEPTION_MAGIC_START" | "INCEPTION_MAGIC_COMMIT" | "OSC" | "OSC_PERCENT" | "STOP" | "PAUSE" | "RESUME" | "COMPACT" | "COMPRESSED" | "CONSISTENT" | "DATA" | "DATE" %prec lowerThanStringLitToken| "DATETIME" | "DAY" | "DEALLOCATE" | "DO" | "DUPLICATE"
 | "DYNAMIC"| "END" | "ENGINE" | "ENGINES" | "ENUM" | "ERRORS" | "ESCAPE" | "EXECUTE" | "FIELDS" | "FIRST" | "FIXED" | "FLUSH" | "FORMAT" | "FULL" |"GLOBAL"
-| "HASH" | "HOUR" | "LESS" | "LOCAL" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REDUNDANT"
-| "ROLLBACK" | "SESSION" | "SIGNED" | "SNAPSHOT" | "START" | "STATUS" | "SUBPARTITIONS" | "SUBPARTITION" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken
+| "HASH" | "HOUR" | "LESS" | "LIST" | "LOCAL" | "NAMES" | "OFFSET" | "PASSWORD" %prec lowerThanEq | "PREPARE" | "QUICK" | "REDUNDANT"
+| "ROLLBACK" | "SESSION" | "SIGNED" | "SNAPSHOT" | "START" | "STATUS" | "SUBPARTITIONS" | "SUBPARTITION" | "SYSTEM_TIME" | "TABLES" | "TABLESPACE" | "TEXT" | "THAN" | "TIME" %prec lowerThanStringLitToken
 | "TIMESTAMP" %prec lowerThanStringLitToken | "TRACE" | "TRANSACTION" | "TRUNCATE" | "UNKNOWN" | "VALUE" | "WARNINGS" | "YEAR" | "MODE"  | "WEEK"  | "ANY" | "SOME" | "USER" | "IDENTIFIED"
 | "COLLATION" | "COMMENT" | "AVG_ROW_LENGTH" | "CONNECTION" | "CHECKSUM" | "COMPRESSION" | "KEY_BLOCK_SIZE" | "MASTER" | "MAX_ROWS"
 | "MIN_ROWS" | "NATIONAL" | "ROW" | "ROW_FORMAT" | "QUARTER" | "GRANTS" | "TRIGGERS" | "DELAY_KEY_WRITE" | "ISOLATION" | "JSON"
-| "REPEATABLE" | "COMMITTED" | "UNCOMMITTED" | "ONLY" | "SERIALIZABLE" | "LEVEL" | "VARIABLES" | "SQL_CACHE" | "INDEXES" | "PROCESSLIST"
+| "REPEATABLE" | "COMMITTED" | "UNCOMMITTED" | "ONLY" | "SERIALIZABLE" | "LEVEL" | "VARIABLES" | "LEVELS" | "SQL_CACHE" | "INDEXES" | "PROCESSLIST"
 | "SQL_NO_CACHE" | "DISABLE"  | "ENABLE" | "REVERSE" | "PRIVILEGES" | "NO" | "BINLOG" | "FUNCTION" | "VIEW" | "MODIFY" | "EVENTS" | "PARTITIONS"
 | "NONE" | "SUPER" | "EXCLUSIVE" | "STATS_PERSISTENT" | "ROW_COUNT" | "COALESCE" | "MONTH" | "PROCESS" | "PROFILES"
 | "MICROSECOND" | "MINUTE" | "PLUGINS" | "QUERY" | "QUERIES" | "SECOND" | "SEPARATOR" | "SHARE" | "SHARED" | "SLOW" | "MAX_CONNECTIONS_PER_HOUR" | "MAX_QUERIES_PER_HOUR" | "MAX_UPDATES_PER_HOUR"
-| "MAX_USER_CONNECTIONS" | "REPLICATION" | "CLIENT" | "SLAVE" | "RELOAD" | "TEMPORARY" | "ROUTINE" | "EVENT" | "ALGORITHM" | "DEFINER" | "INVOKER" | "MERGE" | "TEMPTABLE" | "UNDEFINED" | "SECURITY" | "CASCADED" | "RECOVER"
-
+| "MAX_USER_CONNECTIONS" | "REPLICATION" | "CLIENT" | "SLAVE" | "RELOAD" | "TEMPORARY" | "ROUTINE" | "EVENT" | "ALGORITHM" | "DEFINER" | "INVOKER" | "MERGE" | "TEMPTABLE" | "UNDEFINED" | "SECURITY" | "CASCADED" | "RECOVER" | "HISTORY" | "DIRECTORY" | "NODEGROUP"
+| "RTREE" | "INVISIBLE" | "VISIBLE" | "TYPE"
 
 
 TiDBKeyword:
@@ -3113,7 +3508,7 @@ TiDBKeyword:
 
 NotKeywordToken:
  "ADDDATE" | "BIT_AND" | "BIT_OR" | "BIT_XOR" | "CAST" | "COPY" | "COUNT" | "CURTIME" | "DATE_ADD" | "DATE_SUB" | "EXTRACT" | "GET_FORMAT" | "GROUP_CONCAT" | "INPLACE" | "INTERNAL"
-|"MIN" | "MAX" | "MAX_EXECUTION_TIME" | "NOW" | "RECENT" | "POSITION" | "SUBDATE" | "SUBSTRING" | "SUM" | "TIMESTAMPADD" | "TIMESTAMPDIFF" | "TOP" | "TRIM"
+| "INSTANT" |"MIN" | "MAX" | "MAX_EXECUTION_TIME" | "NOW" | "RECENT" | "POSITION" | "SUBDATE" | "SUBSTRING" | "SUM" | "TIMESTAMPADD" | "TIMESTAMPDIFF" | "TOP" | "TRIM"
 
 /************************************************************************************
  *
@@ -4290,8 +4685,8 @@ CastType:
 			x.Flag |= mysql.BinaryFlag
 		}
 		if x.Charset == "" {
-			x.Charset = charset.CharsetUTF8
-			x.Collate = charset.CollationUTF8
+			x.Charset = mysql.DefaultCharset
+			x.Collate = mysql.DefaultCollationName
 		}
 		$$ = x
 	}
@@ -4360,8 +4755,8 @@ CastType:
 	{
 		x := types.NewFieldType(mysql.TypeJSON)
 		x.Flag |= mysql.BinaryFlag | (mysql.ParseToJSONFlag)
-		x.Charset = charset.CharsetUTF8
-		x.Collate = charset.CollationUTF8
+		x.Charset = mysql.DefaultCharset
+		x.Collate = mysql.DefaultCollationName
 		$$ = x
 	}
 
@@ -4685,6 +5080,16 @@ TableFactor:
 		$$ = $2
 	}
 
+PartitionNameListOpt:
+    /* empty */
+    {
+        $$ = []model.CIStr{}
+    }
+|    "PARTITION" '(' PartitionNameList ')'
+    {
+        $$ = $3
+    }
+
 TableAsNameOpt:
 	{
 		$$ = model.CIStr{}
@@ -4759,7 +5164,10 @@ IndexNameList:
 	{
 		$$ = append($1.([]model.CIStr), model.NewCIStr($3))
 	}
-
+|	"PRIMARY"
+	{
+		$$ = []model.CIStr{model.NewCIStr($1)}
+	}
 
 IndexHintList:
 	IndexHint
@@ -5344,6 +5752,17 @@ CharsetName:
 		$$ = charset.CharsetBin
 	}
 
+CollationName:
+	StringName
+	{
+		info, err := charset.GetCollationByName($1.(string))
+		if err != nil {
+			yylex.AppendError(err)
+			return 1
+		}
+		$$ = info.Name
+	}
+
 VariableAssignmentList:
 	{
 		$$ = []*ast.VariableAssignment{}
@@ -5786,6 +6205,13 @@ ShowTargetFilterable:
 			GlobalScope: $1.(bool),
 		}
 	}
+|	GlobalScope "LEVELS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowLevels,
+			GlobalScope: $1.(bool),
+		}
+	}
 |	GlobalScope "STATUS"
 	{
 		$$ = &ast.ShowStmt{
@@ -6098,8 +6524,7 @@ TableElementListOpt:
 			Constraints:    constraints,
 		}
 	}
-|
-	'(' TableElementList ')'
+|	'(' TableElementList ')'
 	{
 		tes := $2.([]interface {})
 		var columnDefs []*ast.ColumnDef
@@ -6131,7 +6556,7 @@ TableOption:
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionCharset, StrValue: $4.(string)}
 	}
-|	DefaultKwdOpt "COLLATE" EqOpt StringName
+|	DefaultKwdOpt "COLLATE" EqOpt CollationName
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionCollate, StrValue: $4.(string)}
 	}
@@ -6462,44 +6887,40 @@ BitValueType:
 	}
 
 StringType:
-	NationalOpt "CHAR" FieldLen OptBinary OptCollate
+	NationalOpt "CHAR" FieldLen OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeString)
 		x.Flen = $3.(int)
 		x.Charset = $4.(*ast.OptBinary).Charset
-		x.Collate = $5.(string)
 		if $4.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	NationalOpt "CHAR" OptBinary OptCollate
+|	NationalOpt "CHAR" OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeString)
 		x.Charset = $3.(*ast.OptBinary).Charset
-		x.Collate = $4.(string)
 		if $3.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	"NATIONAL" "CHARACTER" FieldLen OptBinary OptCollate
+|	"NATIONAL" "CHARACTER" FieldLen OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeString)
 		x.Flen = $3.(int)
 		x.Charset = $4.(*ast.OptBinary).Charset
-		x.Collate = $5.(string)
 		if $4.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	Varchar FieldLen OptBinary OptCollate
+|	Varchar FieldLen OptBinary
 	{
 		x := types.NewFieldType(mysql.TypeVarchar)
 		x.Flen = $2.(int)
 		x.Charset = $3.(*ast.OptBinary).Charset
-		x.Collate = $4.(string)
 		if $3.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
@@ -6531,30 +6952,27 @@ StringType:
 		x.Flag |= mysql.BinaryFlag
 		$$ = $1.(*types.FieldType)
 	}
-|	TextType OptBinary OptCollate
+|	TextType OptBinary
 	{
 		x := $1.(*types.FieldType)
 		x.Charset = $2.(*ast.OptBinary).Charset
-		x.Collate = $3.(string)
 		if $2.(*ast.OptBinary).IsBinary {
 			x.Flag |= mysql.BinaryFlag
 		}
 		$$ = x
 	}
-|	"ENUM" '(' StringList ')' OptCharset OptCollate
+|	"ENUM" '(' StringList ')' OptCharset
 	{
 		x := types.NewFieldType(mysql.TypeEnum)
 		x.Elems = $3.([]string)
 		x.Charset = $5.(string)
-		x.Collate = $6.(string)
 		$$ = x
 	}
-|	"SET" '(' StringList ')' OptCharset OptCollate
+|	"SET" '(' StringList ')' OptCharset
 	{
 		x := types.NewFieldType(mysql.TypeSet)
 		x.Elems = $3.([]string)
 		x.Charset = $5.(string)
-		x.Collate = $6.(string)
 		$$ = x
 	}
 |	"JSON"
@@ -6627,7 +7045,11 @@ TextType:
 		x := types.NewFieldType(mysql.TypeMediumBlob)
 		$$ = x
 	}
-
+|	"GEOMETRY"
+	{
+		x := types.NewFieldType(mysql.TypeGeometry)
+		$$ = x
+	}
 
 DateAndTimeType:
 	"DATE"
@@ -6776,12 +7198,13 @@ OptCharset:
 CharsetKw:
 	"CHARACTER" "SET"
 |	"CHARSET"
+| 	"CHAR" "SET"
 
 OptCollate:
 	{
 		$$ = ""
 	}
-|	"COLLATE" StringName
+|	"COLLATE" CollationName
 	{
 		$$ = $2.(string)
 	}

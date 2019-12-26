@@ -20,13 +20,8 @@ import (
 	"testing"
 
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/domain"
-	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/session"
-	"github.com/hanchuanchuan/goInception/store/mockstore"
-	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/goInception/util/testkit"
-	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 
@@ -37,72 +32,26 @@ func TestExec(t *testing.T) {
 }
 
 type testSessionIncExecSuite struct {
-	cluster   *mocktikv.Cluster
-	mvccStore mocktikv.MVCCStore
-	store     kv.Storage
-	dom       *domain.Domain
-	tk        *testkit.TestKit
+	testCommon
 }
 
 func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	}
-
-	testleak.BeforeTest()
-	s.cluster = mocktikv.NewCluster()
-	mocktikv.BootstrapWithSingleStore(s.cluster)
-	s.mvccStore = mocktikv.MustNewMVCCStore()
-	store, err := mockstore.NewMockTikvStore(
-		mockstore.WithCluster(s.cluster),
-		mockstore.WithMVCCStore(s.mvccStore),
-	)
-	c.Assert(err, IsNil)
-	s.store = store
-	session.SetSchemaLease(0)
-	session.SetStatsLease(0)
-	s.dom, err = session.BootstrapSession(s.store)
-	c.Assert(err, IsNil)
+	s.initSetUp(c)
 
 	inc := &config.GetGlobalConfig().Inc
 
-	inc.BackupHost = "127.0.0.1"
-	inc.BackupPort = 20001
-	inc.BackupUser = "inception"
-	inc.BackupPassword = "inception"
-
-	config.GetGlobalConfig().Osc.OscOn = false
-
+	inc.EnableFingerprint = true
+	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
-
-	config.GetGlobalConfig().Inc.Lang = "en-US"
-	session.SetLanguage("en-US")
 }
 
 func (s *testSessionIncExecSuite) TearDownSuite(c *C) {
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	} else {
-		s.dom.Close()
-		s.store.Close()
-		testleak.AfterTest(c)()
-	}
+	s.tearDownSuite(c)
 }
 
 func (s *testSessionIncExecSuite) TearDownTest(c *C) {
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	}
-}
-
-func makeExecSQL(tk *testkit.TestKit, sql string) *testkit.Result {
-	a := `/*--user=test;--password=test;--host=127.0.0.1;--execute=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;
-use test_inc;
-%s;
-inception_magic_commit;`
-	return tk.MustQueryInc(fmt.Sprintf(a, sql))
+	s.tearDownTest(c)
 }
 
 func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) {
@@ -110,7 +59,9 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
 
-	res := makeExecSQL(s.tk, sql)
+	session.CheckAuditSetting(config.GetGlobalConfig())
+
+	res := s.runExec(sql)
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 
 	errCode := 0
@@ -128,10 +79,10 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		for _, e := range errors {
 			errMsgs = append(errMsgs, e.Error())
 		}
-		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"))
+		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", row))
 	}
 
-	c.Assert(row[2], Equals, strconv.Itoa(errCode))
+	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
 	// 无错误时需要校验结果是否标记为已执行
 	if errCode == 0 {
 		if !strings.Contains(row[3].(string), "Execute Successfully") {
@@ -142,61 +93,7 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	}
 }
 
-func (s *testSessionIncExecSuite) TestBegin(c *C) {
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	}
-
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc("drop table if exists t1;create table t1(id int);")
-
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 1)
-
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Must start as begin statement.")
-	}
-}
-
-func (s *testSessionIncExecSuite) TestNoSourceInfo(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc("inception_magic_start;\ncreate table t1(id int);")
-
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 1)
-
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Invalid source infomation.")
-	}
-}
-
-func (s *testSessionIncExecSuite) TestWrongDBName(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;create table t1(id int);inception_magic_commit;`)
-
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 1)
-
-	for _, row := range res.Rows() {
-		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Incorrect database name ''.")
-	}
-}
-
-func (s *testSessionIncExecSuite) TestEnd(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	res := tk.MustQueryInc(`/*--user=test;--password=test;--host=127.0.0.1;--check=1;--backup=0;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;use test_inc;create table t1(id int);`)
-
-	c.Assert(int(tk.Se.AffectedRows()), Equals, 3)
-
-	row := res.Rows()[2]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Must end with commit.")
-}
-
 func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
@@ -207,138 +104,83 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	// 表存在
-	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int);create table t1(id int);")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Table 't1' already exists.")
-
-	// 重复列
-	sql = "create table test_error_code1 (c1 int, c2 int, c2 int)"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_DUP_FIELDNAME, "c2"))
-
-	// 主键
-	config.GetGlobalConfig().Inc.CheckPrimaryKey = true
-	res = makeExecSQL(tk, "drop table t1;create table t1(id int);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set a primary key for table 't1'.")
-	config.GetGlobalConfig().Inc.CheckPrimaryKey = false
-
-	// 数据类型 警告
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 bit);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
-
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 enum('red', 'blue', 'black'));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
-
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 set('red', 'blue', 'black'));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'c1'.")
-
-	// char列建议
-	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeExecSQL(tk, `drop table if exists t1;create table t1(id int,c1 char(200));`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
-
-	// 字符集
-	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20) character set utf8,
-        c2 varchar(20) COLLATE utf8_bin);`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
-		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
-
-	config.GetGlobalConfig().Inc.EnableSetCharset = false
-	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) character set utf8;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
-
-	sql = `drop table if exists t1;create table t1(id int,c1 varchar(20)) COLLATE utf8_bin;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_TABLE_CHARSET_MUST_NULL, "t1"))
-
-	// 关键字
-	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
-	config.GetGlobalConfig().Inc.CheckIdentifier = true
-
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int, TABLES varchar(20),`c1$` varchar(20),c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.\nIdentifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].\nIdentifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
-
-	// 列注释
-	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(20));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
-
-	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	sql = `drop table if exists nullkeytest1;
+	create table nullkeytest1(c1 int, c2 int, c3 int, primary key(c1), key ix_1(c2));`
+	s.testErrorCode(c, sql)
 
 	// 表注释
-	config.GetGlobalConfig().Inc.CheckTableComment = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(20));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Set comments for table 't1'.")
-
 	config.GetGlobalConfig().Inc.CheckTableComment = false
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(20));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("drop table if exists t1;create table t1(c1 varchar(20));")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
 	// 无效默认值
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int default '');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int default '');")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 blob, c2 text);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 blob, c2 text);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.\nType blob/text is used in column 'c2'.")
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 blob not null);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 blob not null);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
 
 	// 检查默认值
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10));")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(10));")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
 
 	// 支持innodb引擎
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	config.GetGlobalConfig().Inc.EnableSetEngine = true
+	config.GetGlobalConfig().Inc.SupportEngine = "innodb"
+	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(10))engine = myisam;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(10))engine = myisam;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Set engine to innodb for table 't1'.")
+	c.Assert(row[4], Equals, "Set engine to one of 'innodb'")
+
+	// 禁止设置存储引擎
+	config.GetGlobalConfig().Inc.EnableSetEngine = false
+	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "1")
+	c.Assert(row[4], Equals, "Cannot set engine 't1'")
+
+	// 允许设置存储引擎
+	config.GetGlobalConfig().Inc.EnableSetEngine = true
+	config.GetGlobalConfig().Inc.SupportEngine = "innodb"
+	res = s.runExec("drop table if exists t1;create table t1(c1 varchar(10))engine = innodb;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
 
 	// 时间戳 timestamp默认值
 	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp default CURRENT_TIMESTAMP);"
 	s.testErrorCode(c, sql,
 		session.NewErrf("Incorrect table definition; there can be only one TIMESTAMP column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause"))
 
-	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	s.testErrorCode(c, sql)
+	if s.DBVersion >= 50600 {
+		sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+		if s.explicitDefaultsForTimestamp || !(strings.Contains(s.sqlMode, "TRADITIONAL") ||
+			(strings.Contains(s.sqlMode, "STRICT_") && strings.Contains(s.sqlMode, "NO_ZERO_DATE"))) {
+			s.testErrorCode(c, sql)
+		} else {
+			s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
+		}
+	}
 
 	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 date default CURRENT_TIMESTAMP);"
 	s.testErrorCode(c, sql,
@@ -388,7 +230,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop table if exists t1;create table t1(a int) character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8mb4"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -397,36 +239,36 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "drop table if exists t1;create table t1(a int) character set laitn1;"
+	sql = "drop table if exists t1;create table t1(a int) character set latin1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 
 	// 外键
 	sql = "drop table if exists t1;create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
+		// session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code"),
 		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
 
 	sql = "drop table if exists t1;create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key fk_1(b, c) references product(id));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_FOREIGN_KEY, "test_error_code"))
 
-	sql = "drop table if exists t1;create table test_error_code_2;"
+	sql = "drop table if exists test_error_code_2;create table test_error_code_2;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
-	sql = "drop table if exists t1;create table test_error_code_2 (unique(c1));"
+	sql = "drop table if exists test_error_code_2;create table test_error_code_2 (unique(c1));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_MUST_HAVE_COLUMNS))
+		session.NewErr(session.ER_MUST_AT_LEAST_ONE_COLUMN))
 
 	sql = "drop table if exists t1;create table test_error_code_2(c1 int, c2 int, c3 int, primary key(c1), primary key(c2));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_MULTIPLE_PRI_KEY))
 
-	fmt.Println("数据库版本: ", s.getDBVersion(c))
+	fmt.Println("数据库版本: ", s.DBVersion)
 
 	indexMaxLength := 767
-	if s.getDBVersion(c) >= 50700 {
+	if s.DBVersion >= 50700 {
 		indexMaxLength = 3072
 	}
 
@@ -434,7 +276,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	sql = "drop table if exists t1;create table t1(pt text ,primary key (pt));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
-		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+		session.NewErr(session.ER_TOO_LONG_KEY, "PRIMARY", indexMaxLength))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	// 索引长度
@@ -487,16 +329,33 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PRIMARY_CANT_HAVE_NULL))
 
-	sql = `drop table if exists t1;create table t1(
+	if s.DBVersion >= 50600 {
+		sql = `drop table if exists t1;create table t1(
 id int auto_increment comment 'test',
 crtTime datetime not null DEFAULT CURRENT_TIMESTAMP comment 'test',
 uptTime datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP comment 'test',
 primary key(id)) comment 'test';`
-	s.testErrorCode(c, sql)
+		s.testErrorCode(c, sql)
+	}
+
+	res = s.runExec("drop table if exists t1;create table t1(c1 int);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+
+	// 测试表名大小写
+	sql = "insert into T1 values(1);"
+	if s.ignoreCase {
+		s.testErrorCode(c, sql)
+	} else {
+		res := s.runExec(sql)
+		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+		c.Assert(row[2], Equals, "2")
+		c.Assert(row[4], Equals, "Table 'test_inc.T1' doesn't exist.")
+	}
+
 }
 
 func (s *testSessionIncExecSuite) TestDropTable(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
@@ -510,13 +369,12 @@ func (s *testSessionIncExecSuite) TestDropTable(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 
-	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int);drop table t1;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("drop table if exists t1;create table t1(id int);drop table t1;")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
@@ -530,48 +388,48 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int;"
 	s.testErrorCode(c, sql)
 
-	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int;alter table t1 add column c1 int;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 int;alter table t1 add column c1 int;")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't1.c1' have existed.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int first;alter table t1 add column c2 int after c1;")
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 int first;alter table t1 add column c2 int after c1;")
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2")
 	}
 
 	// after 不存在的列
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 int after c1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c2 int after c1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't1.c1' not existed.")
 
 	// 数据类型 警告
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 bit;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c2 bit;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 enum('red', 'blue', 'black');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c2 enum('red', 'blue', 'black');")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c2 set('red', 'blue', 'black');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c2 set('red', 'blue', 'black');")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Not supported data type on field: 'c2'.")
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeExecSQL(tk, `drop table if exists t1;create table t1(id int);
+	res = s.runExec(`drop table if exists t1;create table t1(id int);
         alter table t1 add column c1 char(200);
         alter table t1 add column c2 varchar(200);`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
 
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
 	// 字符集
@@ -589,53 +447,53 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
 	config.GetGlobalConfig().Inc.CheckIdentifier = true
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t1 add column `c1$` varchar(20);alter table t1 add column c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-3]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column TABLES varchar(20);alter table t1 add column `c1$` varchar(20);alter table t1 add column c1234567890123456789012345678901234567890123456789012345678901234567890 varchar(20);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-3]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Identifier 'TABLES' is keyword in MySQL.")
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Identifier 'c1$' is invalid, valid options: [a-z|A-Z|0-9|_].")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Identifier name 'c1234567890123456789012345678901234567890123456789012345678901234567890' is too long.")
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(20);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(20);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 
 	// 无效默认值
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int default '';")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 int default '';")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob;alter table t1 add column c2 text;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob;alter table t1 add column c2 text;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
 
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c2'.")
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob not null;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob not null;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
 
 	// 检查默认值
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(10);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 varchar(10);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
@@ -668,33 +526,55 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	sql = "drop table if exists t1;create table t1(c2 int on update current_timestamp);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_ON_UPDATE, "c2"))
+
+	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
+	s.testErrorCode(c, sql)
+
+	if s.DBVersion >= 50600 {
+		// 指定特殊选项
+		sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column c1 int,ALGORITHM=INPLACE, LOCK=NONE;"
+		s.testErrorCode(c, sql)
+	}
+
+	// 特殊字符
+	config.GetGlobalConfig().Inc.CheckIdentifier = false
+	sql = "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';"
+	s.testErrorCode(c, sql)
+
+	// pt-osc
+	config.GetGlobalConfig().Osc.OscOn = true
+	s.testErrorCode(c, sql)
+
+	// gh-ost
+	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Ghost.GhostOn = true
+	s.testErrorCode(c, sql)
+
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '';")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '';")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Invalid default value for column 'id'.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '1';")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '1';")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "0")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
@@ -704,48 +584,48 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 	sql := ""
 
-	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int first;")
+	res := s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int first;")
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2")
 	}
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column id int after c1;")
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column id int after c1;")
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2")
 	}
 
 	// after 不存在的列
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);alter table t1 modify column c1 int after id;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 modify column c1 int after id;")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't1.c1' not existed.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int after id1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int after id1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't1.id1' not existed.")
 
 	// 数据类型 警告
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id bit);alter table t1 modify column id bit;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id bit);alter table t1 modify column id bit;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	res = makeExecSQL(tk, `drop table if exists t1;create table t1(id int,c1 char(10));
+	res = s.runExec(`drop table if exists t1;create table t1(id int,c1 char(10));
         alter table t1 modify column c1 char(200);`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set column 'c1' to VARCHAR type.")
 
@@ -762,40 +642,40 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 varchar(10));alter table t1 modify column c1 varchar(20);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 varchar(10));alter table t1 modify column c1 varchar(20);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 
 	// 无效默认值
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int default '';")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 modify column c1 int default '';")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 varchar(10));alter table t1 modify column c1 blob;alter table t1 modify column c1 text;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-2]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 varchar(10));alter table t1 modify column c1 blob;alter table t1 modify column c1 text;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
 
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Type blob/text is used in column 'c1'.")
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 blob);alter table t1 modify column c1 blob not null;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 blob);alter table t1 modify column c1 blob not null;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "TEXT/BLOB Column 'c1' in table 't1' can't  been not null.")
 
 	// 检查默认值
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 varchar(5));alter table t1 modify column c1 varchar(10);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 varchar(5));alter table t1 modify column c1 varchar(10);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Set Default value for column 'c1' in table 't1'")
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = false
@@ -805,16 +685,15 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "int(11)", "varchar(10)"))
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 char(100));alter table t1 modify column c1 char(20);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
-
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(c1 varchar(100));alter table t1 modify column c1 varchar(10);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "0")
-
-	sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
-	s.testErrorCode(c, sql)
+	if s.DBVersion >= 50600 {
+		sql = "drop table if exists t1;create table t1(id int primary key,t1 timestamp default CURRENT_TIMESTAMP,t2 timestamp ON UPDATE CURRENT_TIMESTAMP);"
+		if s.explicitDefaultsForTimestamp || !(strings.Contains(s.sqlMode, "TRADITIONAL") ||
+			(strings.Contains(s.sqlMode, "STRICT_") && strings.Contains(s.sqlMode, "NO_ZERO_DATE"))) {
+			s.testErrorCode(c, sql)
+		} else {
+			s.testErrorCode(c, sql, session.NewErr(session.ER_INVALID_DEFAULT, "t2"))
+		}
+	}
 
 	// modify column
 	sql = "drop table if exists t1;create table t1(id int primary key,c1 int);alter table t1 modify testx.t1.c1 int"
@@ -827,20 +706,19 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
 	sql := ""
 
-	res := makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c2;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c2;")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't1.c2' not existed.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
 	// // drop column
@@ -854,75 +732,77 @@ func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestInsert(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	sql := ""
 
 	// 表不存在
-	res := makeExecSQL(tk, "insert into t1 values(1,1);")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("insert into t1 values(1,1);")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
 
 	// 列数不匹配
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1,1);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1,1);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column count doesn't match value count at row 1.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1),(2,1);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values(1),(2,1);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column count doesn't match value count at row 2.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int not null);insert into t1(id,c1) select 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int not null);insert into t1(id,c1) select 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column count doesn't match value count at row 1.")
 
 	// 列重复
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id,id) values(1,1);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);insert into t1(id,id) values(1,1);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 'id' specified twice in table 't1'.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id,id) select 1,1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);insert into t1(id,id) select 1,1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 'id' specified twice in table 't1'.")
 
 	// 字段警告
 	config.GetGlobalConfig().Inc.CheckInsertField = true
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
 	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_INSERT_FIELD))
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
 	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values();"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_INSERT_VALUES))
 
 	// 列不允许为空
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int not null);insert into t1(id,c1) values(1,null);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int not null);insert into t1(id,c1) values(1,null);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 'test_inc.t1.c1' cannot be null in 1 row.")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int not null default 1);insert into t1(id,c1) values(1,null);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int not null default 1);insert into t1(id,c1) values(1,null);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 'test_inc.t1.c1' cannot be null in 1 row.")
 
 	// insert select 表不存在
-	res = makeExecSQL(tk, "drop table if exists t1;drop table if exists t2;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t2;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;drop table if exists t2;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t2;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 'test_inc.t2' doesn't exist.")
 
@@ -935,28 +815,28 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 
 	// limit
 	config.GetGlobalConfig().Inc.CheckDMLLimit = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 limit 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 limit 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
 	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 order by rand();")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null from t1 order by rand();")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Order by rand is not allowed in select statement.")
 	// config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "2")
 
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "1")
 
@@ -966,13 +846,13 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestUpdate(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 	sql := ""
 
 	// 表不存在
@@ -988,24 +868,24 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c2"))
 
-	res := makeExecSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+	res := s.runExec(`drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
         create table t2(id int primary key,c1 int,c2 int);
         update t1 inner join t2 on t1.id=t2.id2  set t1.c1=t2.c1 where c11=1;`)
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.id2' not existed.\nColumn 'c11' not existed.")
 
-	res = makeExecSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+	res = s.runExec(`drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
         create table t2(id int primary key,c1 int,c2 int);
         update t1,t2 t3 set t1.c1=t2.c3 where t1.id=t3.id;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.c3' not existed.")
 
-	res = makeExecSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+	res = s.runExec(`drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
         create table t2(id int primary key,c1 int,c2 int);
         update t1,t2 t3 set t1.c1=t2.c3 where t1.id=t3.id;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.c3' not existed.")
 
@@ -1019,58 +899,77 @@ func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 
 	// limit
 	config.GetGlobalConfig().Inc.CheckDMLLimit = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1 limit 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1 limit 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1 order by rand();")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1 order by rand();")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Order by is not allowed in update/delete statement.")
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 受影响行数
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);update t1 set c1 = 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
 
-	res = makeExecSQL(tk, "create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 1 where id = 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
-	c.Assert(row[6], Equals, "1")
+	c.Assert(row[6], Equals, "0", Commentf("%v", res.Rows()))
+
+	res = s.runExec("drop table if exists t1;create table t1(id int primary key,c1 int);insert into t1 values(1,1),(2,2);update t1 set c1 = 10 where id = 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "1", Commentf("%v", res.Rows()))
+
+	// -------------------- 多表update -------------------
+	sql = `drop table if exists table1;drop table if exists table2;
+		create table table1(id1 int primary key,c1 int,c2 int);
+		create table table2(id2 int primary key,c1 int,c2 int,c22 int);
+		insert into table1 values(1,1,1),(2,1,1);
+		insert into table2 values(1,1,1,null),(2,null,null,null);
+		update table1 t1,table2 t2 set t1.c1=10,t2.c22=20 where t1.id1=t2.id2 and t2.c1=1;`
+	res = s.mustRunExec(c, sql)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0")
+	c.Assert(row[6], Equals, "2", Commentf("%v", res.Rows()))
+
 }
 
 func (s *testSessionIncExecSuite) TestDelete(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
+		config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
+	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 	sql := ""
 
 	sql = "drop table if exists t1"
 	s.testErrorCode(c, sql)
 
 	// 表不存在
-	res := makeExecSQL(tk, "delete from t1 where c1 = 1;")
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.runExec("delete from t1 where c1 = 1;")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
 
-	// res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int);delete from t1 where c1 = 1;")
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	// res = s.runExec( "drop table if exists t1;create table t1(id int);delete from t1 where c1 = 1;")
+	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "2")
 	// c.Assert(row[4], Equals, "Column 'c1' not existed.")
 
-	// res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);delete from t1 where c1 = 1 and c2 = 1;")
-	// row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	// res = s.runExec( "drop table if exists t1;create table t1(id int,c1 int);delete from t1 where c1 = 1 and c2 = 1;")
+	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	// c.Assert(row[2], Equals, "2")
 	// c.Assert(row[4], Equals, "Column 't1.c2' not existed.")
 
@@ -1084,49 +983,49 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 
 	// limit
 	config.GetGlobalConfig().Inc.CheckDMLLimit = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1 limit 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1 limit 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Limit is not allowed in update/delete statement.")
 	config.GetGlobalConfig().Inc.CheckDMLLimit = false
 
 	// order by rand()
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = true
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1 order by rand();")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1 order by rand();")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Order by is not allowed in update/delete statement.")
 	config.GetGlobalConfig().Inc.CheckDMLOrderBy = false
 
 	// 表不存在
-	res = makeExecSQL(tk, `drop table if exists t1;
+	res = s.runExec(`drop table if exists t1;
         delete from t1 where id1 =1;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Table 'test_inc.t1' doesn't exist.")
 
-	res = makeExecSQL(tk, `drop table if exists t1;create table t1(id int,c1 int);
+	res = s.runExec(`drop table if exists t1;create table t1(id int,c1 int);
         delete from t1 where id1 =1;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 'id1' not existed.")
 
-	res = makeExecSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+	res = s.runExec(`drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
         create table t2(id int primary key,c1 int,c2 int);
         delete t2 from t1 inner join t2 on t1.id=t2.id2 where c11=1;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Column 't2.id2' not existed.")
 
-	res = makeExecSQL(tk, `drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
+	res = s.runExec(`drop table if exists t1;drop table if exists t2;create table t1(id int primary key,c1 int);
         create table t2(id int primary key,c1 int,c2 int);
         delete t2 from t1 inner join t2 on t1.id=t2.id where t1.c1=1;`)
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 
 	// 受影响行数
-	res = makeExecSQL(tk, "drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1;")
-	row = res.Rows()[int(tk.Se.AffectedRows())-1]
+	res = s.runExec("drop table if exists t1;create table t1(id int,c1 int);delete from t1 where id = 1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
 }
@@ -1184,8 +1083,7 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
 	sql = "drop database if exists test123456;create database test123456 character set utf8;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"),
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8mb4"))
+		session.NewErr(session.ER_CANT_SET_CHARSET, "utf8"))
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
@@ -1194,9 +1092,9 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	sql = "drop database if exists test123456;create database test123456 character set laitn1;"
+	sql = "drop database if exists test123456;create database test123456 character set latin1;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NAMES_MUST_UTF8, "utf8,utf8mb4"))
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 }
 
 func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
@@ -1262,49 +1160,64 @@ func (s *testSessionIncExecSuite) TestAlterTableDropIndex(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestShowVariables(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
-
 	sql := ""
 	sql = "inception show variables;"
-	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
+	s.tk.MustQueryInc(sql)
+	c.Assert(s.tk.Se.AffectedRows(), GreaterEqual, uint64(102))
 
 	sql = "inception get variables;"
-	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
+	s.tk.MustQueryInc(sql)
+	c.Assert(s.tk.Se.AffectedRows(), GreaterEqual, uint64(102))
 
 	sql = "inception show variables like 'backup_password';"
-	res := tk.MustQueryInc(sql)
-	row := res.Rows()[int(tk.Se.AffectedRows())-1]
+	res := s.tk.MustQueryInc(sql)
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	if row[1].(string) != "" {
 		c.Assert(row[1].(string)[:1], Equals, "*")
 	}
 }
 
-func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
+// 无法审核，原因是需要自己做SetSessionManager
+// func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
+// 	sql := ""
+// 	sql = "inception show processlist;"
+// 	tk.MustQueryInc(sql)
+// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, 1)
 
+// 	sql = "inception get processlist;"
+// 	tk.MustQueryInc(sql)
+// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, 1)
+
+// 	sql = "inception show variables like 'backup_password';"
+// 	res := s.tk.MustQueryInc(sql)
+// 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+// 	if row[1].(string) != "" {
+// 		c.Assert(row[1].(string)[:1], Equals, "*")
+// 	}
+// }
+
+func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	sql := ""
 	sql = "inception show variables;"
-	tk.MustQueryInc(sql)
-	c.Assert(tk.Se.AffectedRows(), GreaterEqual, uint64(102))
+	s.tk.MustQueryInc(sql)
+	c.Assert(s.tk.Se.AffectedRows(), GreaterEqual, uint64(102))
 
 	// 不区分session和global.所有会话全都global级别
-	tk.MustExecInc("inception set global max_keys = 20;")
-	tk.MustExecInc("inception set session max_keys = 10;")
-	result := tk.MustQueryInc("inception show variables like 'max_keys';")
+	s.tk.MustExecInc("inception set global max_keys = 20;")
+	s.tk.MustExecInc("inception set session max_keys = 10;")
+	result := s.tk.MustQueryInc("inception show variables like 'max_keys';")
 	result.Check(testkit.Rows("max_keys 10"))
 
-	tk.MustExecInc("inception set ghost_default_retries = 70;")
-	result = tk.MustQueryInc("inception show variables like 'ghost_default_retries';")
+	s.tk.MustExecInc("inception set ghost_default_retries = 70;")
+	result = s.tk.MustQueryInc("inception show variables like 'ghost_default_retries';")
 	result.Check(testkit.Rows("ghost_default_retries 70"))
 
-	tk.MustExecInc("inception set osc_max_thread_running = 100;")
-	result = tk.MustQueryInc("inception show variables like 'osc_max_thread_running';")
+	s.tk.MustExecInc("inception set osc_max_thread_running = 100;")
+	result = s.tk.MustQueryInc("inception show variables like 'osc_max_thread_running';")
 	result.Check(testkit.Rows("osc_max_thread_running 100"))
 
 	// 无效参数
-	res, err := tk.ExecInc("inception set osc_max_thread_running1 = 100;")
+	res, err := s.tk.ExecInc("inception set osc_max_thread_running1 = 100;")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "无效参数")
 	if res != nil {
@@ -1312,7 +1225,7 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	}
 
 	// 无效参数
-	res, err = tk.ExecInc("inception set osc_max_thread_running = 'abc';")
+	res, err = s.tk.ExecInc("inception set osc_max_thread_running = 'abc';")
 	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Equals, "[variable:1232]Incorrect argument type to variable 'osc_max_thread_running'")
 	if res != nil {
@@ -1320,41 +1233,28 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	}
 }
 
-func (s *testSessionIncExecSuite) getDBVersion(c *C) int {
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	}
+func (s *testSessionIncExecSuite) TestAlterTable(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
 
-	if s.tk == nil {
-		s.tk = testkit.NewTestKitWithInit(c, s.store)
-	}
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+	sql := ""
+	// 删除后添加列
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
 
-	sql := "show variables like 'version'"
+	sql = "drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c1,add column c1 varchar(20);"
+	s.testErrorCode(c, sql)
 
-	res := makeExecSQL(s.tk, sql)
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+	// 删除后添加索引
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix;alter table t1 add index ix(c1);"
+	s.testErrorCode(c, sql)
 
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	versionStr := row[5].(string)
+	sql = "drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1 drop index ix,add index ix(c1);"
+	s.testErrorCode(c, sql)
 
-	versionStr = strings.SplitN(versionStr, "|", 2)[1]
-	value := strings.Replace(versionStr, "'", "", -1)
-	value = strings.TrimSpace(value)
-
-	// if strings.Contains(strings.ToLower(value), "mariadb") {
-	// 	return DBTypeMariaDB
-	// }
-
-	versionStr = strings.Split(value, "-")[0]
-	versionSeg := strings.Split(versionStr, ".")
-	if len(versionSeg) == 3 {
-		versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
-		version, err := strconv.Atoi(versionStr)
-		if err != nil {
-			fmt.Println(err)
-		}
-		return version
-	}
-
-	return 50700
 }

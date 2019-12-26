@@ -27,7 +27,6 @@ import (
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/expression/aggregation"
 	"github.com/hanchuanchuan/goInception/infoschema"
-	"github.com/hanchuanchuan/goInception/metrics"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/parser"
@@ -1476,6 +1475,7 @@ func (c *colResolverForOnlyFullGroupBy) Leave(node ast.Node) (ast.Node, bool) {
 }
 
 func (c *colResolverForOnlyFullGroupBy) Check() error {
+	// 非group语句时,如果有聚合函数,则第一个非聚合列报错
 	if c.hasAggFunc && c.firstNonAggCol != nil {
 		return ErrMixOfGroupFuncAndFields.GenWithStackByArgs(c.firstNonAggColIdx+1, c.firstNonAggCol.Name.O)
 	}
@@ -1784,7 +1784,6 @@ func getStatsTable(ctx sessionctx.Context, tblInfo *model.TableInfo, pid int64) 
 		tbl := *statsTbl
 		tbl.Pseudo = true
 		statsTbl = &tbl
-		metrics.PseudoEstimation.Inc()
 	}
 	return statsTbl
 }

@@ -1,12 +1,57 @@
 version: 2
 
+general:
+  branches:
+    ignore:
+      - gh-pages
+
 jobs:
   build:
+    branches:
+      ignore: gh-pages
+
     docker:
-      - image: golang:1.11
-    working_directory: /go/src/github.com/pingcap/tidb
+      - image: circleci/golang:1.12
+      - image: circleci/mysql:5.7
+        command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111
+        environment:
+          - MYSQL_ALLOW_EMPTY_PASSWORD=true
+
+    working_directory: /go/src/github.com/hanchuanchuan/goInception
+
     steps:
+      - run:
+          name: Install mysql-client
+          command: sudo apt install default-mysql-client
       - checkout
+      - run:
+          name: Waiting for MySQL to be ready
+          command: |
+            for i in `seq 1 10`;
+            do
+              nc -z localhost 3306 && echo Success && exit 0
+              echo -n .
+              sleep 1
+            done
+            echo Failed waiting for MySQL && exit 1
+      - run:
+          name: mysql init
+          command: mysql -h 127.0.0.1 -u root -e "select version();create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
+      - run: rm -f go.sum
+      - run: sudo chmod +x cmd/explaintest/run-tests.sh
       - run:
           name: "Build & Test"
           command: make dev
+          no_output_timeout: 1200
+
+      - setup_remote_docker:
+          docker_layer_caching: false
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "$DOCKERHUB_USERNAME"
+              echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+              make docker
+              make docker-push
+            fi
