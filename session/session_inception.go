@@ -7953,14 +7953,30 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			field.Tp.Flag |= mysql.UniqueKeyFlag
 
 		case ast.ColumnOptionDefaultValue:
+			var exprType string
+			var funcName string
 
-			if op.Expr.GetDatum().IsNull() {
+			datum := op.Expr.GetDatum()
+
+			if datum.IsNull() {
+				exprType = reflect.TypeOf(op.Expr).String()
+				if exprType == "*ast.FuncCallExpr" {
+					funcName = op.Expr.(*ast.FuncCallExpr).FnName.L
+				}
+			}
+
+			if datum.IsNull() && !(exprType == "*ast.FuncCallExpr" && funcName == "current_timestamp") {
 				c.Null = "YES"
 				// *c.Default = "NULL"
 				c.Default = nil
 			} else {
 				c.Default = new(string)
-				*c.Default = fmt.Sprint(op.Expr.GetValue())
+
+				if exprType == "*ast.FuncCallExpr" && funcName == "current_timestamp" {
+					*c.Default = funcName
+				} else {
+					*c.Default = fmt.Sprint(op.Expr.GetValue())
+				}
 			}
 		case ast.ColumnOptionAutoIncrement:
 			if strings.ToLower(c.Field) != "id" {
