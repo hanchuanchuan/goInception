@@ -1350,4 +1350,7 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 
 	sql = "alter table t1 add column `c4` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
 	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 add column `c5` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";  -- 测试注释"
+	s.testErrorCode(c, sql)
 }
