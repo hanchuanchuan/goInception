@@ -38,7 +38,7 @@ const maxBadConnRetries = 2
 // createNewConnection 用来创建新的连接
 // 注意: 该方法可能导致driver: bad connection异常
 func (s *session) createNewConnection(dbName string) {
-	addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d",
+	addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&autocommit=1&maxAllowedPacket=%d",
 		s.opt.user, s.opt.password, s.opt.host, s.opt.port,
 		dbName, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
 
