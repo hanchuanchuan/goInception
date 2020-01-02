@@ -2723,7 +2723,7 @@ func (s *session) checkIsReadOnly() bool {
 		}
 	}
 
-	return value == "ON"
+	return value == "ON" || value == "1"
 }
 
 func (s *session) parseOptions(sql string) {
