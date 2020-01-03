@@ -1459,13 +1459,33 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	sql = "create table t1(id int,c1 int);update t1 set c1 = 1;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NO_WHERE_CONDITION))
-	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
-	// where
-	config.GetGlobalConfig().Inc.CheckDMLWhere = true
-	sql = "create table t1(id int,c1 int);create table t2(id int,c1 int);update t1 join t2 set t1.c1 = 1 where t1.id=1;"
+	sql = `create table t1(id int,c1 int);
+	create table t2(id int,c1 int);`
+	s.mustRunExec(c, sql)
+
+	sql = `update t1 join t2 set t1.c1 = 1;`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrJoinNoOnCondition))
+		session.NewErr(session.ErrJoinNoOnCondition),
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
+
+	sql = `update t1,t2 set t1.c1 = 1;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrJoinNoOnCondition),
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
+
+	sql = `update t1 NATURAL join t2  set t1.c1 = 1 ;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
+
+	sql = `create table t1(id int,c1 int);
+		create table t2(id int,c1 int);
+		update t1 join t2 using(id) set t1.c1 = 1 ;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NO_WHERE_CONDITION))
+
+	sql = `update t1,t2 set t1.c1 = 1 where t1.id=1;`
+	s.testErrorCode(c, sql)
 	config.GetGlobalConfig().Inc.CheckDMLWhere = false
 
 	// limit
@@ -1484,7 +1504,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 
 	// 受影响行数
 	s.realRowCount = false
-	res := s.runCheck("create table t1(id int,c1 int);update t1 set c1 = 1;")
+	res := s.runCheck("drop table if exists t1,t2;create table t1(id int,c1 int);update t1 set c1 = 1;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0")
 	c.Assert(row[6], Equals, "0")
