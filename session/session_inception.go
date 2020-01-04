@@ -5592,7 +5592,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			if sel.OrderBy != nil {
 				for _, item := range sel.OrderBy.Items {
 					if f, ok := item.Expr.(*ast.FuncCallExpr); ok {
-						if f.FnName.L == "rand" {
+						if f.FnName.L == ast.Rand {
 							s.AppendErrorNo(ER_ORDERY_BY_RAND)
 						}
 					}

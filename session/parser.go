@@ -237,8 +237,10 @@ func (s *session) Parser(ctx context.Context) {
 	b := replication.NewBinlogSyncer(cfg)
 	defer b.Close()
 
-	startPosition := mysql.Position{record.StartFile, uint32(record.StartPosition)}
-	stopPosition := mysql.Position{record.EndFile, uint32(record.EndPosition)}
+	startPosition := mysql.Position{Name: record.StartFile,
+		Pos: uint32(record.StartPosition)}
+	stopPosition := mysql.Position{Name: record.EndFile,
+		Pos: uint32(record.EndPosition)}
 	s.lastBackupTable = fmt.Sprintf("`%s`.`%s`", record.BackupDBName, record.TableInfo.Name)
 	startTime := time.Now()
 
@@ -269,8 +271,8 @@ func (s *session) Parser(ctx context.Context) {
 
 		if e.Header.EventType == replication.ROTATE_EVENT {
 			if event, ok := e.Event.(*replication.RotateEvent); ok {
-				currentPosition = mysql.Position{string(event.NextLogName),
-					uint32(event.Position)}
+				currentPosition = mysql.Position{Name: string(event.NextLogName),
+					Pos: uint32(event.Position)}
 			}
 		}
 
@@ -353,8 +355,10 @@ func (s *session) Parser(ctx context.Context) {
 
 			next := s.GetNextBackupRecord()
 			if next != nil {
-				startPosition = mysql.Position{next.StartFile, uint32(next.StartPosition)}
-				stopPosition = mysql.Position{next.EndFile, uint32(next.EndPosition)}
+				startPosition = mysql.Position{Name: next.StartFile,
+					Pos: uint32(next.StartPosition)}
+				stopPosition = mysql.Position{Name: next.EndFile,
+					Pos: uint32(next.EndPosition)}
 				startTime = time.Now()
 
 				s.myRecord = next
@@ -372,8 +376,10 @@ func (s *session) Parser(ctx context.Context) {
 				changeRows = 0
 				next := s.GetNextBackupRecord()
 				if next != nil {
-					startPosition = mysql.Position{next.StartFile, uint32(next.StartPosition)}
-					stopPosition = mysql.Position{next.EndFile, uint32(next.EndPosition)}
+					startPosition = mysql.Position{Name: next.StartFile,
+						Pos: uint32(next.StartPosition)}
+					stopPosition = mysql.Position{Name: next.EndFile,
+						Pos: uint32(next.EndPosition)}
 					startTime = time.Now()
 
 					s.myRecord = next
@@ -690,8 +696,6 @@ func processValue(value driver.Value, dataType string) driver.Value {
 		// log.Errorf("%T", v)
 		return value
 	}
-
-	return value
 }
 
 func abs(n int64) int64 {

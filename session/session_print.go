@@ -30,23 +30,23 @@ func (s *session) printCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 	return nil, nil
 
-	switch node := stmtNode.(type) {
-	case *ast.UseStmt:
-		s.checkChangeDB(node, currentSql)
+	// switch node := stmtNode.(type) {
+	// case *ast.UseStmt:
+	// 	s.checkChangeDB(node, currentSql)
 
-	case *ast.InsertStmt:
-		s.printInsert(node, currentSql)
-	case *ast.DeleteStmt:
-		s.checkDelete(node, currentSql)
-	case *ast.UpdateStmt:
-		s.checkUpdate(node, currentSql)
+	// case *ast.InsertStmt:
+	// 	s.printInsert(node, currentSql)
+	// case *ast.DeleteStmt:
+	// 	s.checkDelete(node, currentSql)
+	// case *ast.UpdateStmt:
+	// 	s.checkUpdate(node, currentSql)
 
-	default:
-		log.Infof("无匹配类型:%T\n", stmtNode)
-		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-	}
+	// default:
+	// 	log.Infof("无匹配类型:%T\n", stmtNode)
+	// 	s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+	// }
 
-	return nil, nil
+	// return nil, nil
 }
 
 func (s *session) printInsert(node *ast.InsertStmt, sql string) {

@@ -781,76 +781,76 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 
 	return part
 
-	var buf []string
-	for _, line := range strings.Split(sql, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-- ") || strings.HasPrefix(line, "/*") {
-			continue
-		}
-		buf = append(buf, line)
-	}
-	sql = strings.Join(buf, "\n")
-	index := strings.Index(strings.ToUpper(sql), "ALTER")
-	if index == -1 {
-		s.AppendErrorMessage("无效alter语句!")
-		return sql
-	}
+	// var buf []string
+	// for _, line := range strings.Split(sql, "\n") {
+	// 	line = strings.TrimSpace(line)
+	// 	if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "-- ") || strings.HasPrefix(line, "/*") {
+	// 		continue
+	// 	}
+	// 	buf = append(buf, line)
+	// }
+	// sql = strings.Join(buf, "\n")
+	// index := strings.Index(strings.ToUpper(sql), "ALTER")
+	// if index == -1 {
+	// 	s.AppendErrorMessage("无效alter语句!")
+	// 	return sql
+	// }
 
-	sql = sql[index:]
+	// sql = sql[index:]
 
-	parts := strings.Fields(sql)
-	if len(parts) < 4 {
-		s.AppendErrorMessage("无效alter语句!")
-		return sql
-	}
+	// parts := strings.Fields(sql)
+	// if len(parts) < 4 {
+	// 	s.AppendErrorMessage("无效alter语句!")
+	// 	return sql
+	// }
 
-	supportOper := []string{
-		"add",
-		"algorithm",
-		"alter",
-		"auto_increment",
-		"avg_row_length",
-		"change",
-		"character",
-		"checksum",
-		"comment",
-		"convert",
-		"collate",
-		"default",
-		"disable",
-		"discard",
-		"drop",
-		"enable",
-		"engine",
-		"force",
-		"import",
-		"modify",
-		"rename", // rename index
-	}
+	// supportOper := []string{
+	// 	"add",
+	// 	"algorithm",
+	// 	"alter",
+	// 	"auto_increment",
+	// 	"avg_row_length",
+	// 	"change",
+	// 	"character",
+	// 	"checksum",
+	// 	"comment",
+	// 	"convert",
+	// 	"collate",
+	// 	"default",
+	// 	"disable",
+	// 	"discard",
+	// 	"drop",
+	// 	"enable",
+	// 	"engine",
+	// 	"force",
+	// 	"import",
+	// 	"modify",
+	// 	"rename", // rename index
+	// }
 
-	support := false
-	for _, p := range supportOper {
-		// if strings.ToLower(parts[3]) == p {
-		if strings.HasPrefix(strings.ToLower(parts[3]), p) {
-			support = true
-			break
-		}
-	}
-	if !support {
-		s.AppendErrorMessage(fmt.Sprintf("不支持的osc操作!(%s)", sql))
-		return sql
-	}
+	// support := false
+	// for _, p := range supportOper {
+	// 	// if strings.ToLower(parts[3]) == p {
+	// 	if strings.HasPrefix(strings.ToLower(parts[3]), p) {
+	// 		support = true
+	// 		break
+	// 	}
+	// }
+	// if !support {
+	// 	s.AppendErrorMessage(fmt.Sprintf("不支持的osc操作!(%s)", sql))
+	// 	return sql
+	// }
 
-	sql = strings.Join(parts[3:], " ")
+	// sql = strings.Join(parts[3:], " ")
 
-	sql = strings.Replace(sql, "\"", "\\\"", -1)
+	// sql = strings.Replace(sql, "\"", "\\\"", -1)
 
-	// gh-ost不需要处理`,pt-osc需要处理
-	if isPtOSC {
-		sql = strings.Replace(sql, "`", "\\`", -1)
-	}
+	// // gh-ost不需要处理`,pt-osc需要处理
+	// if isPtOSC {
+	// 	sql = strings.Replace(sql, "`", "\\`", -1)
+	// }
 
-	return sql
+	// return sql
 }
 
 // getAlterPartSql 获取alter子句部分
