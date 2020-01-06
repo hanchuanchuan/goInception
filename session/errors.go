@@ -95,6 +95,7 @@ const (
 	ER_TOO_LONG_INDEX_COMMENT
 	ER_DUP_INDEX
 	ER_TEMP_TABLE_TMP_PREFIX
+	ER_TABLE_PREFIX
 	ER_TABLE_CHARSET_MUST_UTF8
 	ER_TABLE_CHARSET_MUST_NULL
 	ER_TABLE_MUST_HAVE_COMMENT
@@ -263,6 +264,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_TOO_LONG_INDEX_COMMENT:              "Comment for index '%s' is too long (max = %lu).",
 	ER_DUP_INDEX:                           "Duplicate index '%s' defined on the table '%s.%s'.",
 	ER_TEMP_TABLE_TMP_PREFIX:               "Set 'tmp' prefix for temporary table.",
+	ER_TABLE_PREFIX:                        "Need set '%s' prefix for table.",
 	ER_TABLE_CHARSET_MUST_UTF8:             "Set charset to one of '%s' for table '%s'.",
 	ER_TABLE_CHARSET_MUST_NULL:             "Not allowed set charset for table '%s'.",
 	ErrTableCollationNotSupport:            "Not allowed set collation for table '%s'.",
@@ -432,6 +434,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_TOO_LONG_INDEX_COMMENT:              "索引 '%s' 注释过长(max = %lu).",
 	ER_DUP_INDEX:                           "索引 '%s' 定义重复(表'%s.%s').",
 	ER_TEMP_TABLE_TMP_PREFIX:               "临时表需要指定'tmp'前缀",
+	ER_TABLE_PREFIX:                        "表名需要指定'%s'前缀",
 	ER_TABLE_CHARSET_MUST_UTF8:             "允许的字符集为: '%s'(表'%s').",
 	ER_TABLE_CHARSET_MUST_NULL:             "表 '%s' 禁止设置字符集!",
 	ErrTableCollationNotSupport:            "表 '%s' 禁止设置排序规则!",
@@ -468,8 +471,8 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_END_WITH_COMMIT:                     "Must end with commit.",
 	ER_DB_NOT_EXISTED_ERROR:                "选择的数据库 '%s' 不存在.",
 	ER_TABLE_EXISTS_ERROR:                  "表 '%s' 已存在.",
-	ER_INDEX_NAME_IDX_PREFIX:               "索引 '%s' 需要以'idx_'为前缀(表'%s').",
-	ER_INDEX_NAME_UNIQ_PREFIX:              "索引 '%s' 需要以'uniq_'为前缀(表'%s').",
+	ER_INDEX_NAME_IDX_PREFIX:               "索引 '%s' 需要指定'%s'前缀(表'%s').",
+	ER_INDEX_NAME_UNIQ_PREFIX:              "唯一索引 '%s' 需要指定'%s'前缀(表'%s').",
 	ER_AUTOINC_UNSIGNED:                    "自增列建议设置无符号标志unsigned(表'%s').",
 	ER_VARCHAR_TO_TEXT_LEN:                 "列 '%s' 建议设置为text类型.",
 	ER_CHAR_TO_VARCHAR_LEN:                 "列 '%s' 建议设置为varchar类型.",
@@ -559,6 +562,8 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_INC_INIT_ERR,
 		ER_INDEX_NAME_IDX_PREFIX,
 		ER_INDEX_NAME_UNIQ_PREFIX,
+		ER_TEMP_TABLE_TMP_PREFIX,
+		ER_TABLE_PREFIX,
 		ER_INSERT_TOO_MUCH_ROWS,
 		ER_INVALID_DATA_TYPE,
 		ER_INVALID_IDENT,
@@ -614,7 +619,6 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_INVALID_DEFAULT,
 		ER_NOT_SUPPORTED_KEY_TYPE,
 		ER_DUP_INDEX,
-		ER_TEMP_TABLE_TMP_PREFIX,
 		ER_TOO_LONG_KEY,
 		ER_MULTIPLE_PRI_KEY,
 		ER_DUP_KEYNAME,
@@ -816,6 +820,8 @@ func (e ErrorCode) String() string {
 		return "er_dup_index"
 	case ER_TEMP_TABLE_TMP_PREFIX:
 		return "er_temp_table_tmp_prefix"
+	case ER_TABLE_PREFIX:
+		return "er_table_prefix"
 	case ER_TABLE_CHARSET_MUST_UTF8:
 		return "er_table_charset_must_utf8"
 	case ER_TABLE_CHARSET_MUST_NULL:
