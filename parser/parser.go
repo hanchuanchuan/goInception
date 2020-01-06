@@ -30,6 +30,7 @@ package parser
 import __yyfmt__ "fmt"
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/ast"
@@ -12008,7 +12009,8 @@ yynewstate:
 			x := types.NewFieldType(mysql.TypeYear)
 			x.Flen = yyS[yypt-1].item.(int)
 			if x.Flen != types.UnspecifiedLength && x.Flen != 4 {
-				yylex.AppendError(ErrInvalidYearColumnLength.GenWithStackByArgs())
+				// yylex.AppendError(ErrInvalidYearColumnLength.GenWithStackByArgs())
+				yylex.AppendError(fmt.Errorf("Supports only YEAR or YEAR(4) column."))
 				return -1
 			}
 			parser.yyVAL.item = x
