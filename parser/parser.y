@@ -26,6 +26,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -7093,7 +7094,7 @@ DateAndTimeType:
 		x.Flen = $2.(int)
 		if x.Flen != types.UnspecifiedLength && x.Flen != 4 {
 			// yylex.AppendError(ErrInvalidYearColumnLength.GenWithStackByArgs())
-			yylex.AppendError(yylex.Errorf("Supports only YEAR or YEAR(4) column."))
+			yylex.AppendError(fmt.Errorf("Supports only YEAR or YEAR(4) column."))
 			return -1
 		}
 		$$ = x
