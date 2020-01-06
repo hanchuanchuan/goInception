@@ -436,6 +436,16 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 			stmtNodes, err := s.ParseSQL(ctx, s1, charsetInfo, collation)
 
+			if err == nil && len(stmtNodes) == 0 {
+				tmpSQL := strings.TrimSpace(s1)
+				// 未成功解析时，添加异常判断
+				if !strings.HasPrefix(tmpSQL, "#") &&
+					!strings.HasPrefix(tmpSQL, "--") &&
+					!strings.HasPrefix(tmpSQL, "/*") {
+					err = errors.New("解析失败! 可能是解析器bug,请联系作者.")
+				}
+			}
+
 			if err != nil {
 				log.Errorf("con:%d 解析失败! %s", connID, err)
 				log.Error(s1)
