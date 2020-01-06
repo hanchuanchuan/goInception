@@ -334,6 +334,7 @@ er_table_charset_must_null = 1
 er_table_charset_must_utf8 = 1
 er_table_must_have_comment = 1
 er_table_must_have_pk = 1
+er_table_prefix = 1
 er_text_not_nullable_error = 1
 er_timestamp_default = 1
 er_too_many_key_parts = 1
