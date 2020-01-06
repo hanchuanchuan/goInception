@@ -439,7 +439,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 			if err == nil && len(stmtNodes) == 0 {
 				tmpSQL := strings.TrimSpace(s1)
 				// 未成功解析时，添加异常判断
-				if !strings.HasPrefix(tmpSQL, "#") &&
+				if tmpSQL != "" &&
+					!strings.HasPrefix(tmpSQL, "#") &&
 					!strings.HasPrefix(tmpSQL, "--") &&
 					!strings.HasPrefix(tmpSQL, "/*") {
 					err = errors.New("解析失败! 可能是解析器bug,请联系作者.")
