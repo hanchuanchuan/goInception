@@ -54,6 +54,11 @@ check_column_comment = false
 # 审核列类型变更
 check_column_type_change = true
 
+# 表名/索引名前缀
+index_prefix = "idx_"
+uniq_index_prefix = "uniq_"
+table_prefix = ""
+
 # explain判断受影响行数时使用的规则, 默认值"first"
 # 可选值: "first", "max"
 #      "first":    使用第一行的explain结果作为受影响行数
