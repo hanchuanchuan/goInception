@@ -685,14 +685,22 @@ primary key(id)) comment 'test';`
 	sql = "create table test_error_code_3(a text, unique (a(3073)));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
-		session.NewErr(session.ER_INDEX_NAME_UNIQ_PREFIX, "", "test_error_code_3"),
+		session.NewErr(session.ER_INDEX_NAME_UNIQ_PREFIX, "",
+			config.GetGlobalConfig().Inc.UniqIndexPrefix, "test_error_code_3"),
 		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
 
 	sql = "create table test_error_code_3(a text, key (a(3073)));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
-		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "", "test_error_code_3"),
+		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "",
+			config.GetGlobalConfig().Inc.IndexPrefix, "test_error_code_3"),
 		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+
+	config.GetGlobalConfig().Inc.TablePrefix = "t_"
+	sql = "create table t1(id int primary key);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_PREFIX,
+			config.GetGlobalConfig().Inc.TablePrefix))
 
 }
 

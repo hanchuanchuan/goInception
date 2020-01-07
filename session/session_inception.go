@@ -3365,6 +3365,10 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			}
 		} else {
 
+			if !strings.HasPrefix(node.Table.Name.L, s.Inc.TablePrefix) {
+				s.AppendErrorNo(ER_TABLE_PREFIX, s.Inc.TablePrefix)
+			}
+
 			// 校验列是否重复指定
 			checkDup := map[string]bool{}
 			for _, c := range node.Cols {
@@ -4700,8 +4704,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		s.AppendErrorNo(ER_FOREIGN_KEY, table.Name)
 
 	case ast.ConstraintUniq:
-		if !strings.HasPrefix(strings.ToLower(name), "uniq_") {
-			s.AppendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, table.Name)
+		if !strings.HasPrefix(strings.ToLower(name), s.Inc.UniqIndexPrefix) {
+			s.AppendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, s.Inc.UniqIndexPrefix, table.Name)
 		}
 
 	case ast.ConstraintSpatial:
@@ -4710,8 +4714,8 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		}
 
 	default:
-		if !strings.HasPrefix(strings.ToLower(name), "idx_") {
-			s.AppendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name)
+		if !strings.HasPrefix(strings.ToLower(name), s.Inc.IndexPrefix) {
+			s.AppendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, s.Inc.IndexPrefix, table.Name)
 		}
 	}
 
