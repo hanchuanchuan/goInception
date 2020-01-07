@@ -4154,10 +4154,11 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					t := s.cacheTableSnapshot(t)
 
 					t.Fields[foundIndexOld] = *(s.buildNewColumnToCache(t, nc))
+					newField := t.Fields[foundIndexOld]
 
 					if c.Position.Tp == ast.ColumnPositionFirst {
 						tmp := make([]FieldInfo, 0, len(t.Fields))
-						tmp = append(tmp, foundField)
+						tmp = append(tmp, newField)
 						if foundIndexOld > 0 {
 							tmp = append(tmp, t.Fields[:foundIndexOld]...)
 						}
@@ -4186,11 +4187,11 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 							if foundIndex > foundIndexOld {
 								tmp = append(tmp, t.Fields[:foundIndexOld]...)
 								tmp = append(tmp, t.Fields[foundIndexOld+1:foundIndex+1]...)
-								tmp = append(tmp, foundField)
+								tmp = append(tmp, newField)
 								tmp = append(tmp, t.Fields[foundIndex+1:]...)
 							} else {
 								tmp = append(tmp, t.Fields[:foundIndex+1]...)
-								tmp = append(tmp, foundField)
+								tmp = append(tmp, newField)
 								tmp = append(tmp, t.Fields[foundIndex+1:foundIndexOld]...)
 								tmp = append(tmp, t.Fields[foundIndexOld+1:]...)
 							}
@@ -4244,12 +4245,12 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			newFound := false
 			foundIndexOld := -1
 			for i, field := range t.Fields {
-				if strings.EqualFold(field.Field, c.OldColumnName.Name.L) {
+				if strings.EqualFold(field.Field, c.OldColumnName.Name.L) && !field.IsDeleted {
 					oldFound = true
 					foundIndexOld = i
 					foundField = field
 				}
-				if strings.EqualFold(field.Field, nc.Name.Name.L) {
+				if strings.EqualFold(field.Field, nc.Name.Name.L) && !field.IsDeleted {
 					newFound = true
 				}
 			}
@@ -4272,6 +4273,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 				// t.Fields[foundIndexOld].Field = nc.Name.Name.O
 				t.Fields[foundIndexOld] = *(s.buildNewColumnToCache(t, nc))
+				newField := t.Fields[foundIndexOld]
+
 				// 修改列名后标记有新列
 				t.IsNewColumns = true
 
@@ -4282,7 +4285,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 
 					if c.Position.Tp == ast.ColumnPositionFirst {
 						tmp := make([]FieldInfo, 0, len(t.Fields))
-						tmp = append(tmp, foundField)
+						tmp = append(tmp, newField)
 						if foundIndexOld > 0 {
 							tmp = append(tmp, t.Fields[:foundIndexOld]...)
 						}
@@ -4297,6 +4300,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 								break
 							}
 						}
+
 						if foundIndex == -1 {
 							s.AppendErrorNo(ER_COLUMN_NOT_EXISTED,
 								fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
@@ -4311,11 +4315,11 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 							if foundIndex > foundIndexOld {
 								tmp = append(tmp, t.Fields[:foundIndexOld]...)
 								tmp = append(tmp, t.Fields[foundIndexOld+1:foundIndex+1]...)
-								tmp = append(tmp, foundField)
+								tmp = append(tmp, newField)
 								tmp = append(tmp, t.Fields[foundIndex+1:]...)
 							} else {
 								tmp = append(tmp, t.Fields[:foundIndex+1]...)
-								tmp = append(tmp, foundField)
+								tmp = append(tmp, newField)
 								tmp = append(tmp, t.Fields[foundIndex+1:foundIndexOld]...)
 								tmp = append(tmp, t.Fields[foundIndexOld+1:]...)
 							}

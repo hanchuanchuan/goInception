@@ -251,6 +251,38 @@ func (s *testSessionIncBackupSuite) TestAlterTableModifyColumn(c *C) {
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(20);")
 }
 
+func (s *testSessionIncBackupSuite) TestAlterTableChangeColumn(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	var sql string
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableChangeColumn = true
+
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int,c1 int);")
+
+	res := s.mustRunBackup(c, "alter table t1 change column c1 c1 varchar(10);")
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	backup := s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
+
+	sql = `alter table t1 change column c1 c2 varchar(100) not null;
+	alter table t1 add column c3 int,add column c4 int;
+	alter table t1 change column c3 c1 int first;
+	alter table t1 change column c2 c5 int after c1,modify column c4 int after c5;
+	`
+
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[1:],
+		"ALTER TABLE `test_inc`.`t1` CHANGE COLUMN `c2` `c1` varchar(10);",
+		"ALTER TABLE `test_inc`.`t1` DROP COLUMN `c4`,DROP COLUMN `c3`;",
+		"ALTER TABLE `test_inc`.`t1` CHANGE COLUMN `c1` `c3` int(11);",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c4` int(11),CHANGE COLUMN `c5` `c2` varchar(100) NOT NULL;",
+	)
+}
+
 func (s *testSessionIncBackupSuite) TestAlterTableDropColumn(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {

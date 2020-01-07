@@ -1136,12 +1136,29 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 
 	sql = "alter table t1 modify c1 int not null;alter table t1 add primary key(id,c1);"
 	s.testErrorCode(c, sql)
+}
+
+func (s *testSessionIncSuite) TestAlterTableChangeColumn(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+	}()
+	var sql string
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	s.mustCheck(c, "create table t1(id int,c1 int);alter table t1 modify column c1 int first;")
+
+	s.mustCheck(c, "create table t1(id int,c1 int);alter table t1 modify column id int after c1;")
 
 	config.GetGlobalConfig().Inc.EnableChangeColumn = false
 
 	sql = "create table t1(id int primary key,c1 int,c2 int);alter table t1 change column c1 c3 int after id"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErCantChangeColumn, "c1"))
+
+	config.GetGlobalConfig().Inc.EnableChangeColumn = true
+
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
