@@ -44,6 +44,8 @@ var sql string
 
 func TestCommonTest(t *testing.T) {
 	TestingT(t)
+
+	log.SetLevel(log.ErrorLevel)
 }
 
 type testCommon struct {
@@ -74,6 +76,9 @@ func (s *testCommon) initSetUp(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
+
+	log.SetLevel(log.ErrorLevel)
+
 	s.realRowCount = true
 
 	testleak.BeforeTest()
@@ -190,28 +195,37 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) runCheck(sql string) *testkit.Result {
-
-	tk := s.tk
 	session.CheckAuditSetting(config.GetGlobalConfig())
-
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	return tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+}
+
+func (s *testCommon) mustCheck(c *C, sql string) *testkit.Result {
+	// session.CheckAuditSetting(config.GetGlobalConfig())
+	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
+inception_magic_start;
+use test_inc;
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
+	}
+	return res
 }
 
 func (s *testCommon) runExec(sql string) *testkit.Result {
-	tk := s.tk
-	session.CheckAuditSetting(config.GetGlobalConfig())
-
+	// session.CheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	return tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
 }
 
 func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
