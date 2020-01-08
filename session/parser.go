@@ -499,17 +499,18 @@ func (s *session) flush(table string, record *Record) {
 		const rowSQL = "(?,?),"
 		sql := "insert into %s(rollback_statement,opid_time) values%s"
 		values := strings.TrimRight(strings.Repeat(rowSQL, len(s.insertBuffer)/2), ",")
-
-		err := s.backupdb.Exec(fmt.Sprintf(sql, table, values),
+		sql = fmt.Sprintf(sql, table, values)
+		err := s.backupdb.Exec(sql,
 			s.insertBuffer...).Error
 		if err != nil {
+			record.StageStatus = StatusBackupFail
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				record.StageStatus = StatusBackupFail
 				record.AppendErrorMessage(myErr.Message)
-				// log.Error(fmt.Sprintf(sql, table, values))
-				// log.Error(s.insertBuffer)
-				log.Error(myErr)
+			} else {
+				s.AppendErrorMessage(err.Error())
 			}
+			log.Errorf("con:%d %v sql:%s params:%v",
+				s.sessionVars.ConnectionID, err, sql, s.insertBuffer)
 		}
 		s.BackupTotalRows += len(s.insertBuffer) / 2
 		s.SetMyProcessInfo(record.Sql, time.Now(),
