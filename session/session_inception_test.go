@@ -2602,3 +2602,65 @@ func (s *testSessionIncSuite) TestNewRewrite(c *C) {
 		c.Assert(newSql, Equals, row.countSql)
 	}
 }
+
+func (s *testSessionIncSuite) TestGetAlterTablePostPart(c *C) {
+	sqls := []struct {
+		sql      string
+		outPT    string
+		outGhost string
+	}{
+		{
+			"alter table tb_archery add unique index uniq_test_ghost_3 (test_ghost_3);",
+			"ADD UNIQUE \\`uniq_test_ghost_3\\`(\\`test_ghost_3\\`)",
+			"ADD UNIQUE `uniq_test_ghost_3`(`test_ghost_3`)",
+		},
+		{
+			"alter table tb_archery add COLUMN c1 varchar(100) default null comment '!@#$%^&*(){}:<>?,./' after id123;",
+			"ADD COLUMN \\`c1\\` VARCHAR(100) DEFAULT NULL COMMENT '!@#\\$%^&*(){}:<>?,./' AFTER \\`id123\\`",
+			"ADD COLUMN `c1` VARCHAR(100) DEFAULT NULL COMMENT '!@#$%^&*(){}:<>?,./' AFTER `id123`",
+		},
+		{
+			"alter table tb_archery add primary key(id);",
+			"ADD PRIMARY KEY(\\`id\\`)",
+			"ADD PRIMARY KEY(`id`)",
+		},
+		{
+			"alter table tb_archery add unique key uniq_1(c1);",
+			"ADD UNIQUE \\`uniq_1\\`(\\`c1\\`)",
+			"ADD UNIQUE `uniq_1`(`c1`)",
+		},
+		{
+			"alter table tb_archery alter column c1 drop default;",
+			"ALTER COLUMN \\`c1\\` DROP DEFAULT",
+			"ALTER COLUMN `c1` DROP DEFAULT",
+		},
+		{
+			"alter table tb_archery default character set utf8 collate utf8_bin;",
+			"CONVERT TO CHARACTER SET UTF8 COLLATE UTF8_BIN",
+			"CONVERT TO CHARACTER SET UTF8 COLLATE UTF8_BIN",
+		},
+		{
+			"alter table tb_archery collate      = utf8_bin;",
+			"DEFAULT COLLATE = UTF8_BIN",
+			"DEFAULT COLLATE = UTF8_BIN",
+		},
+		{
+			"alter table t1 modify c1 varchar(100) character set utf8 collate utf8_bin;",
+			"MODIFY COLUMN \\`c1\\` VARCHAR(100) CHARACTER SET UTF8 COLLATE utf8_bin",
+			"MODIFY COLUMN `c1` VARCHAR(100) CHARACTER SET UTF8 COLLATE utf8_bin",
+		},
+		{
+			"alter table t1 modify column c1 varchar(100) collate utf8_bin;",
+			"MODIFY COLUMN \\`c1\\` VARCHAR(100) COLLATE utf8_bin",
+			"MODIFY COLUMN `c1` VARCHAR(100) COLLATE utf8_bin",
+		},
+	}
+
+	for _, row := range sqls {
+		out := s.session.GetAlterTablePostPart(row.sql, true)
+		c.Assert(out, Equals, row.outPT, Commentf("%v", row.sql))
+
+		out = s.session.GetAlterTablePostPart(row.sql, false)
+		c.Assert(out, Equals, row.outGhost, Commentf("%v", row.sql))
+	}
+}
