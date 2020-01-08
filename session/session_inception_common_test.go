@@ -36,6 +36,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/testleak"
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
+	repllog "github.com/siddontang/go-log/log"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -44,8 +45,6 @@ var sql string
 
 func TestCommonTest(t *testing.T) {
 	TestingT(t)
-
-	log.SetLevel(log.ErrorLevel)
 }
 
 type testCommon struct {
@@ -78,6 +77,7 @@ func (s *testCommon) initSetUp(c *C) {
 	}
 
 	log.SetLevel(log.ErrorLevel)
+	repllog.SetLevel(repllog.LevelFatal)
 
 	s.realRowCount = true
 
