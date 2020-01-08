@@ -56,6 +56,10 @@ type testCommon struct {
 	db        *gorm.DB
 	dbAddr    string
 
+	// 执行结果集
+	// res *testkit.Result
+	rows [][]interface{}
+
 	DBVersion         int
 	sqlMode           string
 	innodbLargePrefix bool
@@ -70,6 +74,8 @@ type testCommon struct {
 	parser            *parser.Parser
 
 	session session.Session
+
+	defaultInc config.Inc
 }
 
 func (s *testCommon) initSetUp(c *C) {
@@ -219,6 +225,7 @@ inception_magic_commit;`
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
+	s.rows = res.Rows()
 	return res
 }
 
@@ -229,7 +236,9 @@ inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	s.rows = res.Rows()
+	return res
 }
 
 func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
@@ -246,6 +255,7 @@ inception_magic_commit;`
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
 
+	s.rows = res.Rows()
 	return res
 }
 
@@ -255,7 +265,9 @@ inception_magic_start;
 use test_inc;
 %s;
 inception_magic_commit;`
-	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	s.rows = res.Rows()
+	return res
 }
 
 func (s *testCommon) mustRunBackup(c *C, sql string) *testkit.Result {
@@ -271,6 +283,7 @@ inception_magic_commit;`
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
 
+	s.rows = res.Rows()
 	return res
 }
 
@@ -287,6 +300,7 @@ inception_magic_commit;`
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
 
+	s.rows = res.Rows()
 	return res
 }
 
@@ -298,6 +312,7 @@ use test_inc;
 inception_magic_commit;`
 	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, batch, sql))
 
+	s.rows = res.Rows()
 	return res
 }
 
@@ -314,6 +329,7 @@ inception_magic_commit;`
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
 
+	s.rows = res.Rows()
 	return res
 }
 
@@ -758,4 +774,9 @@ func (s *testCommon) parserStmt(sql string) ast.StmtNode {
 		return stmtNode
 	}
 	return nil
+}
+
+func (s *testCommon) reset() {
+	config.GetGlobalConfig().Inc = s.defaultInc
+	log.SetLevel(log.ErrorLevel)
 }

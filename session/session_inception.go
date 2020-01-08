@@ -1207,7 +1207,7 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 	sql := buf.String()
 
 	if err := s.backupdb.Exec(sql).Error; err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sql)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
 		} else {
@@ -3969,11 +3969,11 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 
 	for _, nc := range c.NewColumns {
 		found := false
-		var foundField FieldInfo
-		for _, field := range t.Fields {
+		var foundField *FieldInfo
+		for i, field := range t.Fields {
 			if strings.EqualFold(field.Field, nc.Name.Name.O) {
 				found = true
-				foundField = field
+				foundField = &t.Fields[i]
 				break
 			}
 		}
@@ -3999,7 +3999,6 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 				// "SET" "DEFAULT" SignedLiteral
 				for _, op := range nc.Options {
 					defaultValue := fmt.Sprint(op.Expr.GetValue())
-
 					if len(defaultValue) == 0 {
 						switch strings.Split(foundField.Type, "(")[0] {
 						case "bit", "smallint", "mediumint", "int",

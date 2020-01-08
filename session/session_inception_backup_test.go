@@ -19,7 +19,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
+	log "github.com/sirupsen/logrus"
 )
 
 var _ = Suite(&testSessionIncBackupSuite{})
@@ -36,7 +38,7 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 
 	s.initSetUp(c)
 
-	inc := &config.GetGlobalConfig().Inc
+	inc := config.GetGlobalConfig().Inc
 
 	config.GetGlobalConfig().Osc.OscOn = false
 	config.GetGlobalConfig().Ghost.GhostOn = false
@@ -46,6 +48,8 @@ func (s *testSessionIncBackupSuite) SetUpSuite(c *C) {
 	inc.EnableDropTable = true
 	inc.EnableBlobType = true
 	inc.EnableJsonType = true
+
+	s.defaultInc = inc
 }
 
 func (s *testSessionIncBackupSuite) TearDownSuite(c *C) {
@@ -53,15 +57,11 @@ func (s *testSessionIncBackupSuite) TearDownSuite(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TearDownTest(c *C) {
-	s.tearDownTest(c)
+	s.reset()
+	// s.tearDownTest(c)
 }
 
 func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	res := s.mustRunBackup(c, "drop table if exists t1;create table t1(id int);")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
@@ -69,11 +69,6 @@ func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	res := s.mustRunBackup(c, "drop table if exists t1;create table t1(id int);")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -99,7 +94,8 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	} else {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
 	}
-	s.mustRunBackup(c, "create table t1(id int not null default 0);")
+
+	s.mustRunExec(c, "create table t1(id int not null default 0);")
 	res = s.mustRunBackup(c, "drop table t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
@@ -111,151 +107,105 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.CheckIdentifier = false // 特殊字符
 
-	res := s.mustRunBackup(c, "drop table if exists t1;create table t1(id int);")
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int);")
+	var (
+		sql    string
+		res    *testkit.Result
+		row    []interface{}
+		backup string
+	)
 
-	res = s.mustRunBackup(c, "alter table t1 add column c1 int;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
+	sql = `alter table t1 add column c1 int;
+	alter table t1 add column c2 bit first;
+	alter table t1 add column (c3 int,c4 varchar(20));
+	`
 
-	res = s.mustRunBackup(c, "alter table t1 add column c2 bit first;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c2`;")
-
-	res = s.mustRunBackup(c, "alter table t1 add column (c3 int,c4 varchar(20));")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c4`,DROP COLUMN `c3`;")
+	res = s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[1:],
+		"ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;",
+		"ALTER TABLE `test_inc`.`t1` DROP COLUMN `c2`;",
+		"ALTER TABLE `test_inc`.`t1` DROP COLUMN `c4`,DROP COLUMN `c3`;",
+	)
 
 	// 特殊字符
-	config.GetGlobalConfig().Inc.CheckIdentifier = false
-	res = s.mustRunBackup(c, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t3!@#$^&*()", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;", Commentf("%v", res.Rows()))
+	s.mustRunExec(c, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);")
+
+	sqls := []string{
+		"alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';",
+	}
+
+	res = s.mustRunBackup(c, strings.Join(sqls, "\n"))
+	s.assertRows(c, res.Rows()[1:],
+		"ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;",
+	)
 
 	// pt-osc
 	config.GetGlobalConfig().Osc.OscOn = true
-	res = s.mustRunBackup(c, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';")
+	res = s.mustRunBackup(c, "alter table `t3!@#$^&*()` add column `c3!@#$^&*()3` int comment '123';")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t3!@#$^&*()", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()3`;", Commentf("%v", res.Rows()))
 
 	// gh-ost
 	config.GetGlobalConfig().Osc.OscOn = false
 	config.GetGlobalConfig().Ghost.GhostOn = true
-	res = s.mustRunBackup(c, "drop table if exists `t3!@#$^&*()`;create table `t3!@#$^&*()`(id int primary key);alter table `t3!@#$^&*()` add column `c3!@#$^&*()2` int comment '123';")
+	res = s.mustRunBackup(c, "alter table `t3!@#$^&*()` add column `c3!@#$^&*()4` int comment '123';")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t3!@#$^&*()", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()2`;", Commentf("%v", res.Rows()))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t3!@#$^&*()` DROP COLUMN `c3!@#$^&*()4`;", Commentf("%v", res.Rows()))
 
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableAlterColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
-	// res := s.mustRunBackup(c,tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '';")
-	// row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "2")
-	// c.Assert(row[4], Equals, "Invalid default value for column 'id'.")
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int,c1 int);")
 
-	// res = s.mustRunBackup(c,tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '1';")
-	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-
-	// res = s.mustRunBackup(c,tk, "drop table if exists t1;create table t1(id int);alter table t1 alter column id drop default ;alter table t1 alter column id set default '1';")
-	// row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
-	// c.Assert(row[2], Equals, "0")
-	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-
-	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);")
-	res := s.mustRunBackup(c, "alter table t1 alter column c1 set default '1';")
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` DROP DEFAULT;", Commentf("%v", res.Rows()))
-
-	res = s.mustRunBackup(c, "alter table t1 alter column c1 drop default;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` SET DEFAULT '1';")
+	sql := strings.Join([]string{
+		"alter table t1 alter column c1 set default '1';",
+		"alter table t1 alter column c1 drop default;",
+	}, "\n")
+	s.mustRunBackup(c, sql)
+	s.assertRows(c, s.rows[1:],
+		"ALTER TABLE `test_inc`.`t1` DROP DEFAULT;",
+		"ALTER TABLE `test_inc`.`t1` SET DEFAULT '1';",
+	)
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableModifyColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
-	res := s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);")
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
+	var sql string
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int,c1 int);")
 
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 varchar(10);")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 varchar(100) not null;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(10);")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 int null;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(100) NOT NULL;")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 int first;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 varchar(200) not null comment '测试列';")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 int;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(200) NOT NULL COMMENT '测试列';")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 varchar(20) character set utf8;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);")
-
-	res = s.mustRunBackup(c, "alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(20);")
+	sql = strings.Join([]string{
+		"alter table t1 modify column c1 varchar(10);",
+		"alter table t1 modify column c1 varchar(100) not null;",
+		"alter table t1 modify column c1 int null;",
+		"alter table t1 modify column c1 int first;",
+		"alter table t1 modify column c1 varchar(200) not null comment '测试列';",
+		"alter table t1 modify column c1 int;",
+		"alter table t1 modify column c1 varchar(20) character set utf8;",
+		"alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;",
+	}, "\n")
+	s.mustRunBackup(c, sql)
+	s.assertRows(c, s.rows[1:],
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(10);",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(100) NOT NULL;",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(200) NOT NULL COMMENT '测试列';",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` int(11);",
+		"ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c1` varchar(20);",
+	)
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableChangeColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 	var sql string
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
@@ -284,34 +234,26 @@ func (s *testSessionIncBackupSuite) TestAlterTableChangeColumn(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableDropColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
+	var sql string
+	sql = `drop table if exists t1;
+	create table t1(id int primary key,
+		c1 int,
+		c2 int(11) not null default 0 comment '测试列');`
+	s.mustRunExec(c, sql)
 
-	res := s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);")
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", res.Rows()))
+	sql = strings.Join([]string{
+		"ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;",
+		"ALTER TABLE `test_inc`.`t1` DROP COLUMN `c2`;",
+	}, "\n")
 
-	res = s.mustRunBackup(c, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11);")
-
-	s.mustRunBackup(c, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11) not null default 0 comment '测试列';")
-	res = s.mustRunBackup(c, "ALTER TABLE `test_inc`.`t1` DROP COLUMN `c1`;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11) NOT NULL DEFAULT '0' COMMENT '测试列';")
+	res := s.mustRunBackup(c, sql)
+	s.assertRows(c, res.Rows()[1:],
+		"ALTER TABLE `test_inc`.`t1` ADD COLUMN `c1` int(11);",
+		"ALTER TABLE `test_inc`.`t1` ADD COLUMN `c2` int(11) NOT NULL DEFAULT '0' COMMENT '测试列';",
+	)
 }
 
 func (s *testSessionIncBackupSuite) TestInsert(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 
 	res := s.mustRunBackup(c, "drop table if exists t1;create table t1(id int);")
@@ -338,7 +280,7 @@ func (s *testSessionIncBackupSuite) TestInsert(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1;", Commentf("%v", res.Rows()))
 
-	res = s.mustRunBackup(c, `drop table if exists t1;
+	s.mustRunExec(c, `drop table if exists t1;
 		create table t1(id int,
 			c1 tinyint unsigned,
 			c2 smallint unsigned,
@@ -350,50 +292,49 @@ func (s *testSessionIncBackupSuite) TestInsert(c *C) {
 			c8 float unsigned,
 			c9 double unsigned
 		);`)
-	res = s.mustRunBackup(c, `insert into t1 values(1,128,32768,8388608,2147483648,9223372036854775808,
-		9999999999,99.99,3.402823466e+38,1.7976931348623157e+308);`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1 AND `c1`=128 AND `c2`=32768 AND "+
-		"`c3`=8388608 AND `c4`=2147483648 AND `c5`=9223372036854775808 AND "+
-		"`c6`=9999999999 AND `c7`=99.99 AND `c8`=3.4028235e+38 AND `c9`=1.7976931348623157e+308;", Commentf("%v", res.Rows()))
 
-	res = s.mustRunBackup(c, `update t1 set c1 = 129,
-		c2 = 32769,
-		c3 = 8388609,
-		c4 = 2147483649,
-		c5 = 9223372036854775809,
-		c6 = 9999999990,
-		c7 = 88.88,
-		c8 = 3e+38,
-		c9 = 1e+308
-		where id = 1;`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `id`=1, `c1`=128, `c2`=32768, "+
-		"`c3`=8388608, `c4`=2147483648, `c5`=9223372036854775808, `c6`=9999999999, "+
-		"`c7`=99.99, `c8`=3.4028235e+38, `c9`=1.7976931348623157e+308 "+
-		"WHERE `id`=1 AND `c1`=129 AND `c2`=32769 AND `c3`=8388609 AND "+
-		"`c4`=2147483649 AND `c5`=9223372036854775809 AND `c6`=9999999990 "+
-		"AND `c7`=88.88 AND `c8`=3e+38 AND `c9`=1e+308;", Commentf("%v", res.Rows()))
+	sql := strings.Join([]string{
+		`insert into t1 values(1,128,32768,8388608,2147483648,9223372036854775808,
+		9999999999,99.99,3.402823466e+38,1.7976931348623157e+308);`,
+		`UPDATE t1
+			SET c1 = 129,
+			    c2 = 32769,
+			    c3 = 8388609,
+			    c4 = 2147483649,
+			    c5 = 9223372036854775809,
+			    c6 = 9999999990,
+			    c7 = 88.88, c8 = 3e+38,
+			                      c9 = 1e+308
+			WHERE id = 1;`,
+		`delete from t1 where id = 1;`,
+	}, "\n")
+	s.mustRunBackup(c, sql)
+	s.assertRows(c, s.rows[1:],
+		"DELETE FROM `test_inc`.`t1` WHERE `id`=1 AND `c1`=128 AND `c2`=32768 AND "+
+			"`c3`=8388608 AND `c4`=2147483648 AND `c5`=9223372036854775808 AND "+
+			"`c6`=9999999999 AND `c7`=99.99 AND `c8`=3.4028235e+38 AND `c9`=1.7976931348623157e+308;",
+		"UPDATE `test_inc`.`t1` SET `id`=1, `c1`=128, `c2`=32768, "+
+			"`c3`=8388608, `c4`=2147483648, `c5`=9223372036854775808, `c6`=9999999999, "+
+			"`c7`=99.99, `c8`=3.4028235e+38, `c9`=1.7976931348623157e+308 "+
+			"WHERE `id`=1 AND `c1`=129 AND `c2`=32769 AND `c3`=8388609 AND "+
+			"`c4`=2147483649 AND `c5`=9223372036854775809 AND `c6`=9999999990 "+
+			"AND `c7`=88.88 AND `c8`=3e+38 AND `c9`=1e+308;",
+		"INSERT INTO `test_inc`.`t1`(`id`,`c1`,`c2`,`c3`,`c4`,`c5`,`c6`,`c7`,`c8`,`c9`)"+
+			" VALUES(1,129,32769,8388609,2147483649,9223372036854775809,9999999990,88.88,3e+38,1e+308);",
+	)
 
-	res = s.mustRunBackup(c, `delete from t1 where id = 1;`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`,`c2`,`c3`,`c4`,`c5`,`c6`,`c7`,`c8`,`c9`)"+
-		" VALUES(1,129,32769,8388609,2147483649,9223372036854775809,9999999990,88.88,3e+38,1e+308);", Commentf("%v", res.Rows()))
-
-	res = s.mustRunBackup(c, `drop table if exists t1;
+	s.mustRunExec(c, `drop table if exists t1;
 		create table t1(c1 bigint unsigned);`)
-	res = s.mustRunBackup(c, `insert into t1 values(9223372036854775808);`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `c1`=9223372036854775808;", Commentf("%v", res.Rows()))
 
-	res = s.mustRunBackup(c, `insert into t1 values(18446744073709551615);`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `c1`=18446744073709551615;", Commentf("%v", res.Rows()))
+	sql = strings.Join([]string{
+		"insert into t1 values(9223372036854775808);",
+		"insert into t1 values(18446744073709551615);",
+	}, "\n")
+	s.mustRunBackup(c, sql)
+	s.assertRows(c, s.rows[1:],
+		"DELETE FROM `test_inc`.`t1` WHERE `c1`=9223372036854775808;",
+		"DELETE FROM `test_inc`.`t1` WHERE `c1`=18446744073709551615;",
+	)
 
 	res = s.mustRunBackup(c, `drop table if exists t1;
 create table t1(id int primary key,c1 varchar(100))default character set utf8mb4;
@@ -401,29 +342,9 @@ insert into t1(id,c1)values(1,'😁😄🙂👩');`)
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "DELETE FROM `test_inc`.`t1` WHERE `id`=1;", Commentf("%v", res.Rows()))
-
-	// // 受影响行数
-	// res = s.mustRunBackup(c,tk, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
-	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-	// c.Assert(row[6], Equals, "2")
-
-	// res = s.mustRunBackup(c,tk, "drop table if exists t1;create table t1(id int,c1 int );insert into t1(id,c1) select 1,null;")
-	// row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	// c.Assert(row[2], Equals, "0")
-	// c.Assert(row[6], Equals, "1")
-
-	// sql = "drop table if exists t1;create table t1(c1 char(100) not null);insert into t1(c1) values(null);"
-	// s.testErrorCode(c, sql,
-	// 	session.NewErr(session.ER_BAD_NULL_ERROR, "test_inc.t1.c1", 1))
 }
 
 func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 
 	res := s.mustRunBackup(c, "update t1 set c1=10 where id = 1;")
@@ -556,11 +477,6 @@ func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestMinimalUpdate(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableMinimalRollback = true
 
 	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
@@ -632,11 +548,6 @@ func (s *testSessionIncBackupSuite) TestMinimalUpdate(c *C) {
 		}, "\n"), Commentf("%v", res.Rows()))
 }
 func (s *testSessionIncBackupSuite) TestDelete(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
 
 	res := s.mustRunBackup(c, "delete from t1 where id <= 2;")
@@ -673,14 +584,6 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'\x01\x02\x03');", Commentf("%v", res.Rows()))
 
-	// 二进制在解析时会误存为string,此时会报错
-	s.runBackup(`drop table if exists t1;
-		create table t1(id int primary key,c1 varbinary(100));
-		insert into t1 values(1,X'71E6D5A383BB447C');`)
-	res = s.runBackup("delete from t1;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2", Commentf("%v", row))
-
 	// 开启二进制自动转换为十六进制字符串
 	config.GetGlobalConfig().Inc.HexBlob = true
 	s.mustRunBackup(c, `drop table if exists t1;
@@ -696,6 +599,7 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,X'71e6d5a383bb447c');", Commentf("%v", res.Rows()))
+	config.GetGlobalConfig().Inc.HexBlob = false
 
 	// ------------- json类型 ----------------
 	if s.DBVersion >= 50708 {
@@ -861,14 +765,17 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 		"INSERT INTO `test_inc`.`t1`(`id`,`v4_2`,`v5_0`,`v7_3`,`v10_2`,`v10_3`,`v13_2`,`v15_14`,`v20_10`,`v30_5`,`v30_20`,`v30_25`,`prec`,`scale`) VALUES(16,-99.99,-3699,-3699.01,-3699.01,-3699.01,-3699.01,-9.99999999999999,-3699.01,-3699.01,-3699.01,-3699.01,13,2);\n"+
 		"INSERT INTO `test_inc`.`t1`(`id`,`v4_2`,`v5_0`,`v7_3`,`v10_2`,`v10_3`,`v13_2`,`v15_14`,`v20_10`,`v30_5`,`v30_20`,`v30_25`,`prec`,`scale`) VALUES(17,-99.99,-1948,-1948.14,-1948.14,-1948.14,-1948.14,-9.99999999999999,-1948.14,-1948.14,-1948.14,-1948.14,13,2);", Commentf("%v", res.Rows()))
 
+	log.SetLevel(log.FatalLevel)
+	// 二进制在解析时会误存为string,此时会报错
+	s.runBackup(`drop table if exists t1;
+		create table t1(id int primary key,c1 varbinary(100));
+		insert into t1 values(1,X'71E6D5A383BB447C');`)
+	res = s.runBackup("delete from t1;")
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "2", Commentf("%v", row))
 }
 
 func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableDropDatabase = true
 
 	s.mustRunBackup(c, "drop database if exists test123456;")
@@ -881,11 +788,6 @@ func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	s.mustRunBackup(c, "drop table if exists t1;drop table if exists t2;create table t1(id int primary key);")
 	res := s.mustRunBackup(c, "rename table t1 to t2;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -900,11 +802,6 @@ func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableCreateIndex(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);")
 	res := s.mustRunBackup(c, "alter table t1 add index idx (c1);")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -920,13 +817,9 @@ func (s *testSessionIncBackupSuite) TestAlterTableCreateIndex(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableDropIndex(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 	sql := ""
 
-	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);")
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int,c1 int);alter table t1 add index idx (c1);")
 	res := s.mustRunBackup(c, "alter table t1 drop index idx;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
@@ -979,11 +872,6 @@ func (s *testSessionIncBackupSuite) TestAlterTableDropIndex(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 	config.GetGlobalConfig().Inc.EnableDropTable = true
@@ -1081,11 +969,6 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestStatistics(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableSqlStatistic = true
 
 	sql := ""
