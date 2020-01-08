@@ -761,16 +761,17 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 	}
 
 	// 解析后的语句长度不能小于解析前!
-	sqlParts := strings.Fields(sql)
-	if len(sqlParts) >= 4 {
-		newSql := strings.Join(sqlParts[3:], " ")
-		if len(part) < len(newSql) {
-			log.Errorf("origin sql: %s", sql)
-			log.Errorf("parsed after: %s", part)
-			s.AppendErrorMessage("alter子句解析失败,请联系作者或自行调整!")
-			return ""
-		}
-	}
+	// sqlParts := strings.Fields(sql)
+	// if len(sqlParts) >= 4 {
+	// 	newSql := strings.Join(sqlParts[3:], " ")
+	// 	if len(part) < len(newSql) &&
+	// 		!strings.Contains(part, "UNIQUE") {
+	// 		log.Errorf("origin sql: %s", sql)
+	// 		log.Errorf("parsed after: %s", part)
+	// 		s.AppendErrorMessage("alter子句解析失败,请联系作者或自行调整!")
+	// 		return ""
+	// 	}
+	// }
 
 	// gh-ost不需要处理`,pt-osc需要处理
 	if isPtOSC {

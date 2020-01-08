@@ -68,6 +68,8 @@ type testCommon struct {
 
 	remoteBackupTable string
 	parser            *parser.Parser
+
+	session session.Session
 }
 
 func (s *testCommon) initSetUp(c *C) {
@@ -104,6 +106,8 @@ func (s *testCommon) initSetUp(c *C) {
 	server := &server.Server{}
 	server.InitOscProcessList()
 	s.tk.Se.SetSessionManager(server)
+
+	s.session = s.tk.Se
 
 	cfg := config.GetGlobalConfig()
 	_, localFile, _, _ := runtime.Caller(0)

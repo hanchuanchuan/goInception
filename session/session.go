@@ -98,6 +98,9 @@ type Session interface {
 	// HaveBegin() bool
 	// HaveCommit() bool
 	// RecordSets() *MyRecordSets
+
+	// 用以测试
+	GetAlterTablePostPart(sql string, isPtOSC bool) string
 }
 
 var (
@@ -312,6 +315,10 @@ func (s *session) SetCollation(coID int) error {
 	}
 	terror.Log(errors.Trace(s.sessionVars.SetSystemVar(variable.CollationConnection, co)))
 	return nil
+}
+
+func (s *session) GetAlterTablePostPart(sql string, isPtOSC bool) string {
+	return s.getAlterTablePostPart(sql, isPtOSC)
 }
 
 func (s *session) PreparedPlanCache() *kvcache.SimpleLRUCache {
