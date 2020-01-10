@@ -51,6 +51,7 @@ func (s *testSessionIncExecSuite) TearDownSuite(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TearDownTest(c *C) {
+	s.reset()
 	s.tearDownTest(c)
 }
 
@@ -95,10 +96,6 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 }
 
 func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	sql := ""
 
@@ -357,10 +354,6 @@ primary key(id)) comment 'test';`
 }
 
 func (s *testSessionIncExecSuite) TestDropTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.EnableDropTable = false
 	sql := ""
@@ -376,10 +369,6 @@ func (s *testSessionIncExecSuite) TestDropTable(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
@@ -554,10 +543,6 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	res := s.runExec("drop table if exists t1;create table t1(id int);alter table t1 alter column id set default '';")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -576,10 +561,6 @@ func (s *testSessionIncExecSuite) TestAlterTableAlterColumn(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
@@ -707,10 +688,6 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 	sql := ""
 
 	res := s.runExec("drop table if exists t1;create table t1(id int,c1 int);alter table t1 drop column c2;")
@@ -733,10 +710,6 @@ func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestInsert(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
@@ -847,10 +820,6 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestUpdate(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
@@ -1032,17 +1001,16 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
-	config.GetGlobalConfig().Inc.EnableDropDatabase = true
+	inc := &config.GetGlobalConfig().Inc
+	inc.EnableDropDatabase = true
 
 	sql := ""
 
 	sql = "drop database if exists test1111111111111111111;create database if not exists test1111111111111111111;"
 	s.testErrorCode(c, sql)
+
+	dbname := fmt.Sprintf("%s_%d_%s", strings.ReplaceAll(inc.BackupHost, ".", "_"), inc.BackupPort, "test_inc")
+	s.testErrorCode(c, fmt.Sprintf("drop database if exists %s;", dbname))
 
 	// 存在
 	sql = "create database test1111111111111111111;create database test1111111111111111111;"
@@ -1073,6 +1041,9 @@ func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
 	sql = "create database mysql"
 	s.testErrorCode(c, sql,
 		session.NewErrf("数据库'%s'已存在.", "mysql"))
+
+	sql = "drop database if exists test1111111111111111111;"
+	s.mustRunExec(c, sql)
 
 	// 字符集
 	config.GetGlobalConfig().Inc.EnableSetCharset = false
@@ -1121,10 +1092,6 @@ func (s *testSessionIncExecSuite) TestCreateView(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
@@ -1143,11 +1110,6 @@ func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableDropIndex(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 	sql := ""
@@ -1235,10 +1197,6 @@ func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
