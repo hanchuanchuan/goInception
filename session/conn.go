@@ -142,12 +142,17 @@ func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
 func (s *session) initConnection() (err error) {
 	name := s.DBName
 	if name == "" {
-		name = "mysql"
+		name = s.opt.db
 	}
 
 	// 连接断开无效时,自动重试
 	for i := 0; i < maxBadConnRetries; i++ {
-		if err = s.db.Exec(fmt.Sprintf("USE `%s`", name)).Error; err == nil {
+		if name == "" {
+			err = s.db.DB().Ping()
+		} else {
+			err = s.db.Exec(fmt.Sprintf("USE `%s`", name)).Error
+		}
+		if err == nil {
 			// 连接重连时,清除线程ID缓存
 			// s.threadID = 0
 			log.Infof("con:%d 数据库断开重连", s.sessionVars.ConnectionID)

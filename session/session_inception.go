@@ -1113,7 +1113,7 @@ func (s *session) executeCommit(ctx context.Context) {
 		// 如果连接已断开
 		if err := s.backupdb.DB().Ping(); err != nil {
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local&autocommit=1",
+			addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
 				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort,
 				s.Inc.DefaultCharset)
 			db, err := gorm.Open("mysql", addr)
@@ -2784,7 +2784,7 @@ func (s *session) parseOptions(sql string) {
 	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
 
 	// 设置默认值
-	viper.SetDefault("db", "mysql")
+	// viper.SetDefault("db", "mysql")
 
 	s.opt = &sourceOptions{
 		host:           viper.GetString("host"),
@@ -2889,7 +2889,7 @@ func (s *session) parseOptions(sql string) {
 		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 || s.Inc.BackupUser == "" {
 			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
 		} else {
-			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=%s&parseTime=True&loc=Local&autocommit=1",
+			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
 				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort,
 				s.Inc.DefaultCharset)
 			backupdb, err := gorm.Open("mysql", addr)
