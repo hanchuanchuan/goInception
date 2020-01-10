@@ -53,6 +53,7 @@ func (s *testSessionIncSuite) TearDownSuite(c *C) {
 }
 
 func (s *testSessionIncSuite) TearDownTest(c *C) {
+	s.reset()
 	s.tearDownTest(c)
 }
 
@@ -150,11 +151,6 @@ inception_magic_start;use test_inc;create table t1(id int);`, s.getAddr()))
 }
 
 func (s *testSessionIncSuite) TestCreateTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := ""
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
@@ -705,11 +701,6 @@ primary key(id)) comment 'test';`
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableDropTable = false
 	sql := ""
 	sql = "create table t1(id int);drop table t1;"
@@ -733,11 +724,6 @@ func (s *testSessionIncSuite) TestDropTable(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 	config.GetGlobalConfig().Inc.EnableDropTable = true
@@ -913,11 +899,6 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	res := s.runCheck("create table t1(id int);alter table t1 alter column id set default '';")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
@@ -935,11 +916,6 @@ func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
@@ -1139,10 +1115,6 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableChangeColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 	var sql string
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
@@ -1162,10 +1134,6 @@ func (s *testSessionIncSuite) TestAlterTableChangeColumn(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
 	sql := ""
 	sql = "create table t1(id int,c1 int);alter table t1 drop column c2;"
 	s.testErrorCode(c, sql,
@@ -1185,11 +1153,6 @@ func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
 }
 
 func (s *testSessionIncSuite) TestInsert(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
@@ -1402,11 +1365,6 @@ insert into t2 select id from t1;`
 }
 
 func (s *testSessionIncSuite) TestSelect(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableSelectStar = false
 
 	s.mustRunExec(c, "drop table if exists t1;create table t1(id int,c1 integer);")
@@ -1744,11 +1702,6 @@ WHERE tt1.id=1;`
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
@@ -1847,11 +1800,6 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.EnableDropDatabase = false
 	// 不存在
 	sql = "drop database if exists test1111111111111111111;"
@@ -2063,11 +2011,6 @@ func (s *testSessionIncSuite) TestCreateView(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
@@ -2125,11 +2068,6 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 
@@ -2143,11 +2081,6 @@ func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
 	config.GetGlobalConfig().Inc.EnableDropTable = true
@@ -2194,11 +2127,6 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 }
 
 func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := ""
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
@@ -2243,11 +2171,6 @@ func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
 }
 
 func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := ""
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
@@ -2304,11 +2227,6 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 }
 
 func (s *testSessionIncSuite) TestForeignKey(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := ""
 
 	config.GetGlobalConfig().Inc.EnableForeignKey = false
@@ -2348,26 +2266,17 @@ func (s *testSessionIncSuite) TestForeignKey(c *C) {
 
 }
 func (s *testSessionIncSuite) TestZeroDate(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := ""
 
 	config.GetGlobalConfig().Inc.EnableZeroDate = false
-	sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a datetime not null default 0 comment 'a') comment 'test';`
+	sql = `create table t4 (id int unsigned not null auto_increment primary key
+		comment 'primary key', a datetime not null default 0 comment 'a') comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_DEFAULT, "a"))
 	config.GetGlobalConfig().Inc.EnableZeroDate = true
 }
 
 func (s *testSessionIncSuite) TestTimestampType(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := ""
 
 	config.GetGlobalConfig().Inc.EnableTimeStampType = false
@@ -2379,22 +2288,12 @@ func (s *testSessionIncSuite) TestTimestampType(c *C) {
 }
 
 func (s *testSessionIncSuite) TestAlterNoOption(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql := `drop table if exists t1;create table t1(id int,c1 int,key ix(c1));alter table t1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_NOT_SUPPORTED_YET))
 }
 
 func (s *testSessionIncSuite) TestFloatDouble(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckFloatDouble = true
 	sql := `drop table if exists t1;create table t1(id int,c1 float,key ix(c1));`
 	s.testErrorCode(c, sql,
@@ -2407,11 +2306,6 @@ func (s *testSessionIncSuite) TestFloatDouble(c *C) {
 }
 
 func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	config.GetGlobalConfig().Inc.CheckIdentifierUpper = true
 	sql := `drop table if exists hello;create table HELLO(ID int,C1 float, C2 double,key IDX_C1(C1),UNIQUE INDEX uniq_A(C2));`
 	s.testErrorCode(c, sql,
@@ -2422,11 +2316,6 @@ func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
 }
 
 func (s *testSessionIncSuite) TestMaxKeys(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	//er_too_many_keys
 	config.GetGlobalConfig().Inc.MaxKeys = 2
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(name);"
@@ -2459,11 +2348,6 @@ func (s *testSessionIncSuite) TestMaxKeys(c *C) {
 }
 
 func (s *testSessionIncSuite) TestSetStmt(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	sql = "set names abc;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
@@ -2484,11 +2368,6 @@ func (s *testSessionIncSuite) TestSetStmt(c *C) {
 }
 
 func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
-	saved := config.GetGlobalConfig().Inc
-	defer func() {
-		config.GetGlobalConfig().Inc = saved
-	}()
-
 	//er_alter_table_once
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 add age varchar(10);alter table t1 add sex varchar(10);"

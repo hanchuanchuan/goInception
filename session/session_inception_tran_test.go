@@ -250,7 +250,9 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableMinimalRollback = true
 
-	s.mustRunBackupTran(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	s.mustRunBackupTran(c, `drop table if exists t1;
+	create table t1(id int,c1 int);
+	insert into t1 values(1,1),(2,2);`)
 
 	res := s.mustRunBackupTran(c, "update t1 set c1=10 where id = 1;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -324,7 +326,9 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 		config.GetGlobalConfig().Inc = saved
 	}()
 
-	s.mustRunBackupTran(c, "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1),(2,2);")
+	s.mustRunBackupTran(c, `drop table if exists t1;
+	create table t1(id int,c1 int);
+	insert into t1 values(1,1),(2,2);`)
 
 	res := s.mustRunBackupTran(c, "delete from t1 where id <= 2;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]

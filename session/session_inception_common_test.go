@@ -76,6 +76,9 @@ type testCommon struct {
 	session session.Session
 
 	defaultInc config.Inc
+
+	// 测试数据库,默认为test_inc,该参数用以测试未指定数据库情况下的审核
+	useDB string
 }
 
 func (s *testCommon) initSetUp(c *C) {
@@ -88,6 +91,8 @@ func (s *testCommon) initSetUp(c *C) {
 	repllog.SetLevel(repllog.LevelFatal)
 
 	s.realRowCount = true
+
+	s.useDB = "use test_inc;"
 
 	testleak.BeforeTest()
 	s.cluster = mocktikv.NewCluster()
@@ -134,6 +139,8 @@ func (s *testCommon) initSetUp(c *C) {
 	inc.EnableDropTable = true
 
 	session.SetLanguage("en-US")
+
+	s.defaultInc = *inc
 
 	s.remoteBackupTable = "$_$Inception_backup_information$_$"
 	s.parser = parser.New()
@@ -183,7 +190,7 @@ func (s *testCommon) tearDownTest(c *C) {
 
 	exec := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
 	for _, name := range strings.Split(sql.(string), "\n") {
@@ -191,7 +198,7 @@ inception_magic_commit;`
 			continue
 		}
 		n := strings.Replace(name, "'", "", -1)
-		res := s.tk.MustQueryInc(fmt.Sprintf(exec, s.getAddr(), "drop table `"+n+"`"))
+		res := s.tk.MustQueryInc(fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop table `"+n+"`"))
 		// log.Info(res.Rows())
 		c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
 		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
@@ -208,20 +215,20 @@ func (s *testCommon) runCheck(sql string) *testkit.Result {
 	session.CheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 }
 
 func (s *testCommon) mustCheck(c *C, sql string) *testkit.Result {
 	// session.CheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
@@ -233,10 +240,10 @@ func (s *testCommon) runExec(sql string) *testkit.Result {
 	// session.CheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 	s.rows = res.Rows()
 	return res
 }
@@ -246,10 +253,10 @@ func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
 	session.CheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
@@ -262,10 +269,10 @@ inception_magic_commit;`
 func (s *testCommon) runBackup(sql string) *testkit.Result {
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 	s.rows = res.Rows()
 	return res
 }
@@ -273,10 +280,10 @@ inception_magic_commit;`
 func (s *testCommon) mustRunBackup(c *C, sql string) *testkit.Result {
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 
 	// 需要成功执行
 	for _, row := range res.Rows() {
@@ -290,10 +297,10 @@ inception_magic_commit;`
 func (s *testCommon) mustRunBackupTran(c *C, sql string) *testkit.Result {
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;--trans=3;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 
 	// 需要成功执行
 	for _, row := range res.Rows() {
@@ -307,10 +314,10 @@ inception_magic_commit;`
 func (s *testCommon) runTranSQL(sql string, batch int) *testkit.Result {
 	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--trans=%d;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, batch, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, batch, s.useDB, sql))
 
 	s.rows = res.Rows()
 	return res
@@ -319,10 +326,10 @@ inception_magic_commit;`
 func (s *testCommon) mustrunTranSQL(c *C, sql string) *testkit.Result {
 	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--trans=10;*/
 inception_magic_start;
-use test_inc;
+%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 
 	// 需要成功执行
 	for _, row := range res.Rows() {
@@ -415,7 +422,6 @@ func (s *testCommon) mysqlServerVersion() error {
 
 func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...string) error {
 	c.Assert(len(rows), Not(Equals), 0)
-
 	inc := config.GetGlobalConfig().Inc
 	if s.db == nil || s.db.DB().Ping() != nil {
 		addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/mysql?charset=utf8mb4&parseTime=True&loc=Local&maxAllowedPacket=4194304",
@@ -427,7 +433,7 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 			return err
 		}
 		// 禁用日志记录器，不显示任何日志
-		db.LogMode(true)
+		db.LogMode(false)
 		s.db = db
 	}
 
@@ -537,7 +543,7 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 		result = append(result, result1...)
 	}
 
-	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", result))
+	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", rows))
 
 	for i := range result {
 		c.Assert(result[i], Equals, rollbackSqls[i], Commentf("%v", result))

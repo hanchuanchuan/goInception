@@ -14,6 +14,7 @@
 package session_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -717,13 +718,18 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 }
 
 func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
-	config.GetGlobalConfig().Inc.EnableDropDatabase = true
+	inc := &config.GetGlobalConfig().Inc
+	inc.EnableDropDatabase = true
+
+	dbname := fmt.Sprintf("%s_%d_%s", strings.ReplaceAll(inc.BackupHost, ".", "_"), inc.BackupPort, "test_inc")
+	s.mustRunExec(c, fmt.Sprintf("drop database if exists %s;", dbname))
 
 	s.mustRunExec(c, "drop database if exists test123456;")
+
 	s.mustRunBackup(c, "create database test123456;")
-	row := s.rows[int(s.session.AffectedRows())-1]
-	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "", Commentf("%v", s.rows))
+	// row := s.rows[int(s.session.AffectedRows())-1]
+	// backup := s.query("t1", row[7].(string))
+	// c.Assert(backup, Equals, "", Commentf("%v", s.rows))
 
 	s.mustRunExec(c, "drop database if exists test123456;")
 }
@@ -984,4 +990,22 @@ func (s *testSessionIncBackupSuite) TestStatistics(c *C) {
 	for i, v := range statistics {
 		c.Assert(v, Equals, result[i], Commentf("%v", statistics))
 	}
+}
+
+func (s *testSessionIncBackupSuite) TestEmptyUseDB(c *C) {
+	old := s.useDB
+	s.useDB = ""
+	go func() {
+		s.useDB = old
+	}()
+
+	s.mustRunBackup(c, `drop table if exists test_inc.t_no_db;
+	create table test_inc.t_no_db(id int);
+	insert into test_inc.t_no_db values(1);`)
+	s.assertRows(c, s.rows[1:],
+		"DROP TABLE `test_inc`.`t_no_db`;",
+		"DELETE FROM `test_inc`.`t_no_db` WHERE `id`=1;",
+	)
+
+	s.mustRunExec(c, `drop table if exists test_inc.t1;`)
 }
