@@ -92,8 +92,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.5.1 h1:3scN4iuXkNOyP98jF55Lv8a9j1o/Iwv
 github.com/grpc-ecosystem/grpc-gateway v1.5.1/go.mod h1:RSKVYQBd5MCa4OVpNdGskqpgL2+G+NZTnrVHpWWfpdw=
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3 h1:PerDKRFKMglE4GRVZ34aS7pua67+Ht7hIPVVoSSUk2w=
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3/go.mod h1:yesOnuUOFQAhST5vPY4nbZsb/huCgGGXlipJsBn0b3o=
-github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114025315-5842925edb45 h1:JV0oNueFM0TFC1RGikNGx9VS9MphfaDNdCljjejreaI=
-github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114025315-5842925edb45/go.mod h1:kW3eGgxWdgXVgp40/nJzOtEnRYo3zoZo5po+5kYCCxE=
+github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114062350-5912c208aef9 h1:o2rIq9Ww0V1uyX9bsMAynnBBHATSN4Hz7JBMCL40PJ8=
+github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114062350-5912c208aef9/go.mod h1:kW3eGgxWdgXVgp40/nJzOtEnRYo3zoZo5po+5kYCCxE=
 github.com/hanchuanchuan/golib v0.0.0-20200113085747-47643bc243f1 h1:h4yTn7Lu9roQdSZezhf8BwMi3R/KWikL6xV02rmZj6Q=
 github.com/hanchuanchuan/golib v0.0.0-20200113085747-47643bc243f1/go.mod h1:6V4x6V71pCU4o9UfPmemdrU9sEhSF6AmXt+PiFr8x4Q=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
@@ -198,9 +198,10 @@ github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726 h1:xT+JlYxNGqyT+XcU8
 github.com/siddontang/go v0.0.0-20180604090527-bdc77568d726/go.mod h1:3yhqj7WBBfRhbBlzyOC3gUxftwsU0u8gqevxwIHQpMw=
 github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07 h1:oI+RNwuC9jF2g2lP0u0cVEEZrc/AYBCuFdvwrLWM/6Q=
 github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07/go.mod h1:yFdBgwXP24JziuRl2NMUahT7nGLNOKi1SIiFxMttVD4=
+github.com/siddontang/go-mysql v0.0.0-20190303113352-670f74e8daf5 h1:5Nr7spTeY+ziXzqk/9p+GLnvH4rIjp9BX+aRaYDbR44=
 github.com/siddontang/go-mysql v0.0.0-20190303113352-670f74e8daf5/go.mod h1:/b8ZcWjAShCcHp2dWpjb1vTlNyiG03UeHEQr2jteOpI=
-github.com/siddontang/go-mysql v0.0.0-20190711035447-8b9c05ee162e h1:6OzVvZSBLi8n3mPXnoza92/HXsky5cH13N4e6JWtcKA=
-github.com/siddontang/go-mysql v0.0.0-20190711035447-8b9c05ee162e/go.mod h1:Bl4lryU44qtIXEXNbP0k0pD646Nkw/qHn21wfZVGJx4=
+github.com/siddontang/go-mysql v0.0.0-20191207160406-08dd4b57abf8 h1:2qMbfdR+Ki2lml68XrFUR651GLsAnUGitRNq33xtG5w=
+github.com/siddontang/go-mysql v0.0.0-20191207160406-08dd4b57abf8/go.mod h1:+W4RCzesQDI11HvIkaDjS8yM36SpAnGNQ7jmTLn5BnU=
 github.com/sirupsen/logrus v1.2.0 h1:juTguoYk5qI21pwyTXY3B3Y5cOTH3ZUyZCg1v/mihuo=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/soheilhy/cmux v0.1.4 h1:0HKaf1o97UwFjHH9o5XsHUOF+tqmdA7KEzXLpiyaw0E=
