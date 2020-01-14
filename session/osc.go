@@ -35,18 +35,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	// "github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
 
-	"github.com/github/gh-ost/go/base"
-	"github.com/github/gh-ost/go/logic"
-	ghostlog "github.com/outbrain/golib/log"
+	"github.com/hanchuanchuan/gh-ost/go/base"
+	"github.com/hanchuanchuan/gh-ost/go/logic"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/format"
 )
 
 var (
@@ -411,7 +407,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 			log.Error("--test-on-replica-skip-replica-stop requires --test-on-replica to be enabled")
 			s.AppendErrorMessage("--test-on-replica-skip-replica-stop requires --test-on-replica to be enabled")
 		}
-		ghostlog.Warning("--test-on-replica-skip-replica-stop enabled. We will not stop replication before cut-over. Ensure you have a plugin that does this.")
+		log.Warning("--test-on-replica-skip-replica-stop enabled. We will not stop replication before cut-over. Ensure you have a plugin that does this.")
 	}
 	if migrationContext.CliMasterUser != "" && migrationContext.AssumeMasterHostname == "" {
 		log.Error("--master-user requires --assume-master-host")
@@ -430,7 +426,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		s.AppendErrorMessage("--ssl-allow-insecure requires --ssl")
 	}
 	if replicationLagQuery != "" {
-		ghostlog.Warningf("--replication-lag-query is deprecated")
+		log.Warningf("--replication-lag-query is deprecated")
 	}
 
 	switch cutOver {
@@ -568,13 +564,14 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 	go f(bufio.NewReader(migrator.Log))
 
-	if config.GetGlobalConfig().Log.Level == "debug" ||
-		config.GetGlobalConfig().Log.Level == "info" {
-		ghostlog.SetLevel(ghostlog.INFO)
-	} else {
-		ghostlog.SetLevel(ghostlog.ERROR)
-	}
+	// if config.GetGlobalConfig().Log.Level == "debug" ||
+	// 	config.GetGlobalConfig().Log.Level == "info" {
+	// 	ghostlog.SetLevel(ghostlog.INFO)
+	// } else {
+	// 	ghostlog.SetLevel(ghostlog.ERROR)
+	// }
 
+	// ghostlog.SetOutput(log.StandardLogger().Out)
 	// ghostlog.SetLevel(ghostlog.DEBUG)
 
 	if err := migrator.Migrate(); err != nil {
