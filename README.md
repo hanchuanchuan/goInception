@@ -1,6 +1,6 @@
 # goInception
 
-[![Financial Contributors on Open Collective](https://opencollective.com/goInception/all/badge.svg?label=financial+contributors)](https://opencollective.com/goInception) [![travis-ci](https://img.shields.io/travis/hanchuanchuan/goInception.svg)](https://travis-ci.org/hanchuanchuan/goInception)
+[![travis-ci](https://img.shields.io/travis/hanchuanchuan/goInception.svg)](https://travis-ci.org/hanchuanchuan/goInception)
 [![CircleCI Status](https://circleci.com/gh/hanchuanchuan/goInception.svg?style=shield)](https://circleci.com/gh/hanchuanchuan/goInception)
 [![GitHub release](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)](https://github.com/hanchuanchuan/goInception/releases)
 [![codecov](https://codecov.io/gh/hanchuanchuan/goInception/branch/master/graph/badge.svg)](https://codecov.io/gh/hanchuanchuan/goInception)
@@ -36,13 +36,6 @@ go build -o goInception tidb-server/main.go
 ./goInception -config=config/config.toml
 ```
 
-### 贡献
-
-欢迎并非常感谢您的贡献。 有关提交PR的流程请参考 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-[贡献者列表](CONTRIBUTORS.md)
-
-
 #### Docker镜像
 ```
 docker pull hanchuanchuan/goinception
@@ -66,6 +59,10 @@ docker pull hanchuanchuan/goinception
 QQ群 **499262190**
 
 *(通用问题建议提issue以便于记录及帮助他人)*
+
+### 贡献
+
+欢迎并非常感谢您的贡献。 有关提交PR的流程请参考 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 
 ## Contributors
