@@ -6854,12 +6854,12 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 		return
 	}
 
-	var newRecord *Record
-	if s.Inc.EnableFingerprint && sqlId != "" {
-		newRecord = &Record{
-			Buf: new(bytes.Buffer),
-		}
-	}
+	// var newRecord *Record
+	// if s.Inc.EnableFingerprint && sqlId != "" {
+	// 	newRecord = &Record{
+	// 		Buf: new(bytes.Buffer),
+	// 	}
+	// }
 	r := s.myRecord
 
 	var value int
@@ -6872,14 +6872,14 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.AppendErrorMessage(myErr.Message)
-			if newRecord != nil {
-				newRecord.AppendErrorMessage(myErr.Message)
-			}
+			// if newRecord != nil {
+			// 	newRecord.AppendErrorMessage(myErr.Message)
+			// }
 		} else {
 			s.AppendErrorMessage(err.Error())
-			if newRecord != nil {
-				newRecord.AppendErrorMessage(myErr.Message)
-			}
+			// if newRecord != nil {
+			// 	newRecord.AppendErrorMessage(myErr.Message)
+			// }
 		}
 		return
 	} else {
@@ -6892,25 +6892,25 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 	// log.Info(value)
 
 	r.AffectedRows = value
-	if newRecord != nil {
-		newRecord.AffectedRows = r.AffectedRows
-	}
+	// if newRecord != nil {
+	// 	newRecord.AffectedRows = r.AffectedRows
+	// }
 
 	if s.Inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.Inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
 				r.AffectedRows, s.Inc.MaxUpdateRows)
-			if newRecord != nil {
-				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
-					r.AffectedRows, s.Inc.MaxUpdateRows)
-			}
+			// if newRecord != nil {
+			// 	newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+			// 		r.AffectedRows, s.Inc.MaxUpdateRows)
+			// }
 		}
 	}
 
-	if newRecord != nil {
-		s.sqlFingerprint[sqlId] = newRecord
-	}
+	// if newRecord != nil {
+	// 	s.sqlFingerprint[sqlId] = newRecord
+	// }
 }
 
 func (s *session) explainOrAnalyzeSql(sql string) {
