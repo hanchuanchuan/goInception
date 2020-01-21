@@ -218,7 +218,9 @@ inception_magic_start;
 %s
 %s;
 inception_magic_commit;`
-	return s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
+	s.rows = res.Rows()
+	return res
 }
 
 func (s *testCommon) mustCheck(c *C, sql string) *testkit.Result {

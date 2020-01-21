@@ -28,6 +28,14 @@ import (
 
 var _ = Suite(&testSessionIncSuite{})
 
+type SQLError = session.SQLError
+
+// SQLAudit 审核类
+type SQLAudit struct {
+	sql    string
+	errors []*SQLError
+}
+
 func TestAudit(t *testing.T) {
 	TestingT(t)
 }
@@ -35,7 +43,14 @@ func TestAudit(t *testing.T) {
 type testSessionIncSuite struct {
 	testCommon
 
-	rows [][]interface{}
+	audits []SQLAudit
+}
+
+func (s *testSessionIncSuite) add(sql string, errors ...*SQLError) {
+	s.audits = append(s.audits, SQLAudit{
+		sql:    sql,
+		errors: errors,
+	})
 }
 
 func (s *testSessionIncSuite) SetUpSuite(c *C) {
@@ -98,6 +113,84 @@ func (s *testSessionIncSuite) testAffectedRows(c *C, affectedRows ...int) {
 	for i, affectedRow := range affectedRows {
 		row := s.rows[len(s.rows)-(count-i)]
 		c.Assert(row[6], Equals, strconv.Itoa(affectedRow), Commentf("%v", row))
+	}
+}
+
+func (s *testSessionIncSuite) runAudit(c *C) {
+
+	c.Assert(len(s.audits), Not(Equals), 0)
+
+	var sqls []string
+	for _, a := range s.audits {
+		sqls = append(sqls, a.sql)
+	}
+
+	session.CheckAuditSetting(config.GetGlobalConfig())
+	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
+inception_magic_start;
+%s
+%s;
+inception_magic_commit;`
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB,
+		strings.Join(sqls, ";\n"),
+	))
+	s.rows = res.Rows()
+	rows := s.rows
+
+	c.Assert(len(s.audits), Equals, len(rows)-1)
+
+	for index, row := range rows {
+		errors := s.audits[index].errors
+		errCode := 0
+		if len(errors) > 0 {
+			for _, e := range errors {
+				level := session.GetErrorLevel(e.Code)
+				if int(level) > errCode {
+					errCode = int(level)
+				}
+			}
+		}
+
+		if errCode > 0 {
+			errMsgs := []string{}
+			for _, e := range errors {
+				errMsgs = append(errMsgs, e.Error())
+			}
+			c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", rows))
+		}
+		c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
+	}
+
+	s.audits = nil
+}
+
+func (s *testCommon) assertAudit(c *C,
+	rows [][]interface{},
+	allErrors ...[]*SQLError) {
+
+	c.Assert(len(rows), Not(Equals), 0)
+	c.Assert(len(rows), Equals, len(allErrors), Commentf("%v", rows))
+
+	for index, row := range rows {
+		errors := allErrors[index]
+		errCode := 0
+		if len(errors) > 0 {
+			for _, e := range errors {
+				level := session.GetErrorLevel(e.Code)
+				if int(level) > errCode {
+					errCode = int(level)
+				}
+			}
+		}
+
+		if errCode > 0 {
+			errMsgs := []string{}
+			for _, e := range errors {
+				errMsgs = append(errMsgs, e.Error())
+			}
+			c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", rows))
+		}
+		c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
 	}
 }
 
@@ -2348,29 +2441,42 @@ func (s *testSessionIncSuite) TestMaxKeys(c *C) {
 }
 
 func (s *testSessionIncSuite) TestSetStmt(c *C) {
-	sql = "set names abc;"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
 
-	sql = "set names '';"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+	sql = `set names abc;
+		set names '';
+		set names utf8;
+		set names utf8mb4;
+		set autocommit = 1;
+		`
+	s.runCheck(sql)
+	s.assertAudit(c, s.rows[1:],
+		[]*SQLError{
+			session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"),
+		},
+		[]*SQLError{
+			session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"),
+		},
+		nil,
+		nil,
+		[]*SQLError{
+			session.NewErr(session.ER_NOT_SUPPORTED_YET),
+		})
 
-	sql = "set names utf8;"
-	s.testErrorCode(c, sql)
-
-	sql = "set names utf8mb4;"
-	s.testErrorCode(c, sql)
-
-	sql = "set autocommit = 1;"
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_NOT_SUPPORTED_YET))
+	// s.add(`set names abc`, session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+	// s.add(`set names ''`, session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+	// s.add(`set names utf8`)
+	// s.add(`set names utf8mb4`)
+	// s.add(`set autocommit = 1`, session.NewErr(session.ER_NOT_SUPPORTED_YET))
+	// s.runAudit(c)
 }
 
 func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
 	//er_alter_table_once
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
-	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 add age varchar(10);alter table t1 add sex varchar(10);"
+	sql = `drop table if exists t1;
+	create table t1(id int primary key,name varchar(10));
+	alter table t1 add age varchar(10);
+	alter table t1 add sex varchar(10);`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
 
@@ -2385,6 +2491,7 @@ func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 change name name varchar(10);alter table t1 change name name varchar(10);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
+
 }
 
 func (s *testSessionIncSuite) TestNewRewrite(c *C) {
