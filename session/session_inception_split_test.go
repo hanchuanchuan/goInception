@@ -45,8 +45,6 @@ type testSessionSplitSuite struct {
 
 	version int
 	sqlMode string
-
-	rows [][]interface{}
 }
 
 func (s *testSessionSplitSuite) SetUpSuite(c *C) {

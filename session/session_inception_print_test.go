@@ -45,8 +45,6 @@ type testSessionPrintSuite struct {
 
 	version int
 	sqlMode string
-
-	rows [][]interface{}
 }
 
 func (s *testSessionPrintSuite) SetUpSuite(c *C) {
