@@ -16,17 +16,13 @@ package session_test
 import (
 	"fmt"
 	"strconv"
+
 	// "strings"
 	"testing"
 
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/domain"
-	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/session"
-	"github.com/hanchuanchuan/goInception/store/mockstore"
-	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
 	"github.com/hanchuanchuan/goInception/util/testkit"
-	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 
@@ -37,36 +33,12 @@ func TestSplit(t *testing.T) {
 }
 
 type testSessionSplitSuite struct {
-	cluster   *mocktikv.Cluster
-	mvccStore mocktikv.MVCCStore
-	store     kv.Storage
-	dom       *domain.Domain
-	tk        *testkit.TestKit
-
-	version int
-	sqlMode string
+	testCommon
 }
 
 func (s *testSessionSplitSuite) SetUpSuite(c *C) {
 
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	}
-
-	testleak.BeforeTest()
-	s.cluster = mocktikv.NewCluster()
-	mocktikv.BootstrapWithSingleStore(s.cluster)
-	s.mvccStore = mocktikv.MustNewMVCCStore()
-	store, err := mockstore.NewMockTikvStore(
-		mockstore.WithCluster(s.cluster),
-		mockstore.WithMVCCStore(s.mvccStore),
-	)
-	c.Assert(err, IsNil)
-	s.store = store
-	session.SetSchemaLease(0)
-	session.SetStatsLease(0)
-	s.dom, err = session.BootstrapSession(s.store)
-	c.Assert(err, IsNil)
+	s.initSetUp(c)
 
 	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
 	// session.SetLanguage("zh-CN")
@@ -81,13 +53,7 @@ func (s *testSessionSplitSuite) SetUpSuite(c *C) {
 }
 
 func (s *testSessionSplitSuite) TearDownSuite(c *C) {
-	if testing.Short() {
-		c.Skip("skipping test; in TRAVIS mode")
-	} else {
-		s.dom.Close()
-		s.store.Close()
-		testleak.AfterTest(c)()
-	}
+	s.tearDownSuite(c)
 }
 
 func (s *testSessionSplitSuite) makeSQL(sql string) *testkit.Result {
