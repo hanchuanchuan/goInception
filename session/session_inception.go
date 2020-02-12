@@ -474,8 +474,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 			}
 
 			for i, stmtNode := range stmtNodes {
-
-				currentSql := strings.Trim(stmtNode.Text(), " ;\t\r\n")
+				//  是ASCII码160的特殊空格
+				currentSql := strings.Trim(stmtNode.Text(), " ;\t\n\v\f\r ")
 
 				s.myRecord = &Record{
 					Sql:   currentSql,
