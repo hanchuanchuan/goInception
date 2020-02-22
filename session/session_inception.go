@@ -4570,7 +4570,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		switch field.Tp.Tp {
 		case mysql.TypeTiny, mysql.TypeShort, mysql.TypeInt24,
 			mysql.TypeLong, mysql.TypeLonglong,
-			mysql.TypeBit, mysql.TypeYear,
+			mysql.TypeYear,
 			mysql.TypeFloat, mysql.TypeDouble, mysql.TypeNewDecimal:
 			//验证string型默认值的合法性
 			if v, ok := defaultValue.GetValue().(string); ok {
@@ -4608,6 +4608,32 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			if field.Tp.Charset != "binary" {
 				s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
 			}
+		}
+	}
+
+	// 检查bit类型的默认值
+	// 只允许数字0和1,以及二进制写法如 b'1'
+	if hasDefaultValue && field.Tp.Tp == mysql.TypeBit {
+		switch defaultValue.Kind() {
+		case types.KindInt64:
+			if defaultValue.GetInt64() != 0 && defaultValue.GetInt64() != 1 {
+				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
+		case types.KindUint64:
+			if defaultValue.GetUint64() != 0 && defaultValue.GetUint64() != 1 {
+				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
+		case types.KindMysqlBit, types.KindBinaryLiteral:
+			v := defaultValue.GetBinaryLiteral()
+			if len(v) == 0 {
+				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
+		case types.KindString:
+			if defaultValue.GetString() != "" {
+				s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
+		default:
+			s.AppendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 		}
 	}
 

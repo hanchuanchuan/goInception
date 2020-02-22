@@ -39,7 +39,7 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 
 	s.initSetUp(c)
 
-	inc := &config.GetGlobalConfig().Inc
+	inc := &s.defaultInc
 
 	inc.EnableFingerprint = true
 	inc.SqlSafeUpdates = 0
@@ -458,10 +458,20 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 
 	// 无效默认值
-	res = s.runExec("drop table if exists t1;create table t1(id int);alter table t1 add column c1 int default '';")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = true
+	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 add column c1 bit default '0';"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 add column c1 bit default b'0';"
+	// pt-osc
+	config.GetGlobalConfig().Osc.OscOn = true
+	s.mustRunExec(c, sql)
+
+	// gh-ost
+	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Ghost.GhostOn = true
+	s.mustRunExec(c, sql)
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
@@ -588,20 +598,18 @@ func (s *testSessionIncExecSuite) TestAlterTableModifyColumn(c *C) {
 	c.Assert(row[4], Equals, "Column 't1.id1' not existed.")
 
 	// 数据类型 警告
-	res = s.runExec("drop table if exists t1;create table t1(id bit);alter table t1 modify column id bit;")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = false
+	sql = "drop table if exists t1;create table t1(id bit);alter table t1 modify column id bit;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
 
-	res = s.runExec("drop table if exists t1;create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+	sql = "drop table if exists t1;create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
 
 	res = s.runExec("drop table if exists t1;create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not supported data type on field: 'id'.")
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
