@@ -2742,7 +2742,7 @@ func (s *session) parseOptions(sql string) {
 	firsts := regParseOption.FindStringSubmatch(sql)
 	if len(firsts) < 2 {
 		log.Warning(sql)
-		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
+		s.AppendErrorNo(ER_SQL_INVALID_SOURCE, "inception语法格式错误")
 		return
 	}
 
@@ -2843,7 +2843,17 @@ func (s *session) parseOptions(sql string) {
 	// 不再检查密码是否为空
 	if s.opt.host == "" || s.opt.port == 0 || s.opt.user == "" {
 		log.Warningf("%#v", s.opt)
-		s.AppendErrorNo(ER_SQL_INVALID_SOURCE)
+		msg := ""
+		if s.opt.host == "" {
+			msg += "主机名为空,"
+		}
+		if s.opt.port == 0 {
+			msg += "端口为0,"
+		}
+		if s.opt.user == "" {
+			msg += "用户名为空,"
+		}
+		s.AppendErrorNo(ER_SQL_INVALID_SOURCE, strings.TrimRight(msg, ","))
 		return
 	}
 
