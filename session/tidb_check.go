@@ -22,12 +22,14 @@ import (
 	"math"
 	"reflect"
 	"strings"
+
 	// "time"
 
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/planner/core"
+
 	// "github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
@@ -364,6 +366,13 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 
 		if tp.Flen > mysql.MaxDecimalWidth {
 			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, colDef.Name.Name.O, mysql.MaxDecimalWidth))
+		}
+	case mysql.TypeBit:
+		if tp.Flen <= 0 {
+			s.AppendErrorMessage(fmt.Sprintf("Invalid size for column '%s'.", colDef.Name.Name.O))
+		}
+		if tp.Flen > mysql.MaxBitDisplayWidth {
+			s.AppendErrorMessage(fmt.Sprintf("Too big display width for column '%s'.", colDef.Name.Name.O))
 		}
 	default:
 		// TODO: Add more types.

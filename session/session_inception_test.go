@@ -57,7 +57,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 
 	s.initSetUp(c)
 
-	inc := &config.GetGlobalConfig().Inc
+	inc := &s.defaultInc
 	inc.EnableFingerprint = true
 	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
@@ -329,10 +329,21 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	c.Assert(row[2], Equals, "0")
 
 	// 无效默认值
-	res = s.runCheck("create table t1(id int,c1 int default '');")
-	row = res.Rows()[1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = true
+	sql = "create table t1(id int,c1 int default '');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	// sql = "create table t1(id int,c1 bit default '');"
+	// s.testErrorCode(c, sql,
+	// 	session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = "create table t1(id int,c1 bit default '0');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = "create table t1(id int,c1 bit default b'0');"
+	s.testErrorCode(c, sql)
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
@@ -900,6 +911,15 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "2")
 	c.Assert(row[4], Equals, "Invalid default value for column 'c1'.")
+
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 int default '';"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = true
+	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c1 bit default '0';"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
