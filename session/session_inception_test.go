@@ -210,13 +210,26 @@ func (s *testSessionIncSuite) TestBegin(c *C) {
 }
 
 func (s *testSessionIncSuite) TestNoSourceInfo(c *C) {
-	res := s.tk.MustQueryInc("inception_magic_start;\ncreate table t1(id int);")
+	res := s.tk.MustQueryInc(`inception_magic_start;
+	create table t1(id int);`)
 
 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 1)
 
 	for _, row := range res.Rows() {
 		c.Assert(row[2], Equals, "2")
-		c.Assert(row[4], Equals, "Invalid source infomation.")
+		c.Assert(row[4], Equals, "Invalid source infomation(inception语法格式错误).")
+	}
+}
+
+func (s *testSessionIncSuite) TestNoSourceInfo2(c *C) {
+	res := s.tk.MustQueryInc(`/*--check=1;*/
+	inception_magic_start;create table t1(id int)`)
+
+	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 1)
+
+	for _, row := range res.Rows() {
+		c.Assert(row[2], Equals, "2")
+		c.Assert(row[4], Equals, "Invalid source infomation(主机名为空,端口为0,用户名为空).")
 	}
 }
 
