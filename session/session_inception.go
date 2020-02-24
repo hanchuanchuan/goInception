@@ -3429,17 +3429,25 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				switch ct.Tp {
 				case ast.ConstraintPrimaryKey:
 					hasPrimary = len(ct.Keys) > 0
-
 					for _, col := range ct.Keys {
 						for _, field := range node.Cols {
 							if field.Name.Name.L == col.Column.Name.L {
-								// 设置主键标志
+								// 设置主键标志位
 								field.Tp.Flag |= mysql.PriKeyFlag
 								break
 							}
 						}
 					}
-					break
+				case ast.ConstraintUniq, ast.ConstraintUniqIndex, ast.ConstraintUniqKey:
+					for _, col := range ct.Keys {
+						for _, field := range node.Cols {
+							if field.Name.Name.L == col.Column.Name.L {
+								// 设置唯一键标志位
+								field.Tp.Flag |= mysql.UniqueKeyFlag
+								break
+							}
+						}
+					}
 				}
 			}
 
