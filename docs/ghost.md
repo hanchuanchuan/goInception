@@ -116,11 +116,11 @@ ghost_exponential_backoff_max_interval | 64     | int |  Maximum number of secon
 ghost_force_named_cut_over             | false  | bool | When true, the ‘unpostpone|cut-over’ interactive command must name the migrated table。
 ghost_force_table_names                |        | string | table name prefix to be used on the temporary tables
 ghost_gcp                              | false  | bool | google云平台支持
-ghost_heartbeat_interval_millis        | 500    | int | gh-ost心跳频率值，默认为500。
+ghost_heartbeat_interval_millis        | 500    | int | gh-ost心跳频率值，默认为500ms。
 ghost_initially_drop_ghost_table       | false  | bool | gh-ost操作之前，检查并删除已经存在的ghost表。该参数不建议使用，请手动处理原来存在的ghost表。
 ghost_initially_drop_old_table         | false  | bool | gh-ost操作之前，检查并删除已经存在的旧表。该参数不建议使用，请手动处理原来存在的ghost表。
 ghost_initially_drop_socket_file       | false  | bool | gh-ost强制删除已经存在的socket文件。该参数不建议使用，可能会删除一个正在运行的gh-ost程序，导致DDL失败。
-ghost_max_lag_millis                   | 1500   | int | 主从复制最大延迟时间，当主从复制延迟时间超过该值后，gh-ost将采取节流(throttle)措施，默认值：1500s。
+ghost_max_lag_millis                   | 1500   | int | 主从复制最大延迟时间，当主从复制延迟时间超过该值后，gh-ost将采取节流(throttle)措施，默认值：1500ms。
 ghost_nice_ratio                       | 0      | float | 每次chunk时间段的休眠时间，范围[0.0...100.0]。e.g:0：每个chunk时间段不休眠，即一个chunk接着一个chunk执行；1：每row-copy 1毫秒，则另外休眠1毫秒；0.7：每row-copy 10毫秒，则另外休眠7毫秒。
 ghost_ok_to_drop_table                 | true   | bool | gh-ost操作结束后，删除旧表，默认状态是`删除旧表`。
 ghost_postpone_cut_over_flag_file      |        | string | 当这个文件存在的时候，gh-ost的cut-over阶段将会被推迟，直到该文件被删除。
