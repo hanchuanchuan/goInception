@@ -6036,6 +6036,10 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 				return nil, err
 			}
 		default:
+			if prefix == "version" {
+				return nil, errors.New("只读变量")
+			}
+
 			err = s.setVariableValue(reflect.TypeOf(cnf.Inc), reflect.ValueOf(&cnf.Inc).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
