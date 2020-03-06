@@ -1261,22 +1261,28 @@ func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
 	s.mustRunExec(c, sql)
 
 	// 删除后添加列
-	sql = "alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	sql = `# 这是一条注释
+		alter table t1 drop column c1;alter table t1 add column c1 varchar(20);`
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 drop column c1,add column c1 varchar(20);"
+	sql = `/* 这是一条注释 */
+		alter table t1 drop column c1,add column c1 varchar(20);`
 	s.testErrorCode(c, sql)
 
 	sql = "alter table t1 drop column c1,add column c1 varchar(20) comment '123';"
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 add column c2 varchar(20) comment '!@#$%^&*()_+[]{}\\|;:\",.<>/?';"
+	sql = `-- 这是一条注释
+	alter table t1 add column c2 varchar(20) comment '!@#$%^&*()_+[]{}\\|;:",.<>/?';`
 	s.testErrorCode(c, sql)
 
 	sql = "alter table t1 add column c3 varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
 	s.testErrorCode(c, sql)
 
 	sql = "alter table t1 add column `c4` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
+	s.testErrorCode(c, sql)
+
+	sql = "alter table t1 add column `c5` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";  -- 测试注释"
 	s.testErrorCode(c, sql)
 }
 
@@ -1299,16 +1305,19 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 	s.mustRunExec(c, sql)
 
 	// 删除后添加列
-	sql = "alter table t1 drop column c1;alter table t1 add column c1 varchar(20);"
+	sql = `# 这是一条注释
+	alter table t1 drop column c1;alter table t1 add column c1 varchar(20);`
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 drop column c1,add column c1 varchar(20);"
+	sql = `/* 这是一条注释 */
+	alter table t1 drop column c1,add column c1 varchar(20);`
 	s.testErrorCode(c, sql)
 
 	sql = "alter table t1 drop column c1,add column c1 varchar(20) comment '123';"
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 add column c2 varchar(20) comment '!@#$%^&*()_+[]{}\\|;:\",.<>/?';"
+	sql = `-- 这是一条注释
+	alter table t1 add column c2 varchar(20) comment '!@#$%^&*()_+[]{}\\|;:",.<>/?';`
 	s.testErrorCode(c, sql)
 
 	sql = "alter table t1 add column c3 varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";"
