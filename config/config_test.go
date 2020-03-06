@@ -17,8 +17,10 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/hanchuanchuan/goInception/mysql"
 	. "github.com/pingcap/check"
 )
 
@@ -60,6 +62,8 @@ commit-timeout="41s"`)
 
 	configFile = path.Join(path.Dir(localFile), "config.toml.example")
 	c.Assert(conf.Load(configFile), IsNil)
+
+	conf.Inc.Version = strings.TrimRight(mysql.TiDBReleaseVersion, "-dirty")
 
 	// fmt.Println(conf)
 	// fmt.Println(GetGlobalConfig())

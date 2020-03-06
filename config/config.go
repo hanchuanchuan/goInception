@@ -16,11 +16,14 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"strings"
+
 	// "fmt"
 	"io/ioutil"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/pingcap/errors"
 	tracing "github.com/uber/jaeger-client-go/config"
@@ -379,6 +382,9 @@ type Inc struct {
 	SupportEngine string `toml:"support_engine" json:"support_engine"`
 	// 远端数据库等待超时时间，单位:秒
 	WaitTimeout int `toml:"wait_timeout" json:"wait_timeout"`
+
+	// 版本信息
+	Version string `toml:"version" json:"version"`
 }
 
 // Osc online schema change 工具参数配置
@@ -751,7 +757,9 @@ var defaultConf = Config{
 
 		// 为配置方便,在config节点也添加相同参数
 		SkipGrantTable: true,
-		// Version:            &mysql.TiDBReleaseVersion,
+
+		// 默认参数不指定,避免test时失败
+		// Version:            mysql.TiDBReleaseVersion,
 
 		IndexPrefix:     "idx_",  // 默认不检查,由CheckIndexPrefix控制
 		UniqIndexPrefix: "uniq_", // 默认不检查,由CheckIndexPrefix控制
@@ -867,6 +875,8 @@ func NewConfig() *Config {
 // It should store configuration from command line and configuration file.
 // Other parts of the system can read the global configuration use this function.
 func GetGlobalConfig() *Config {
+	// 自动设置版本号
+	globalConf.Inc.Version = strings.TrimRight(mysql.TiDBReleaseVersion, "-dirty")
 	return &globalConf
 }
 
