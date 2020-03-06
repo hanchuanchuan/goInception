@@ -275,9 +275,10 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 	countPrimaryKey := 0
 	for _, colDef := range stmt.Cols {
-		if err := s.checkColumn(colDef); err != nil {
-			s.AppendErrorMessage(err.Error())
-		}
+		// 放在mysqlCheckField函数统一检查(create/alter)
+		// if err := s.checkColumn(colDef); err != nil {
+		// 	s.AppendErrorMessage(err.Error())
+		// }
 		countPrimaryKey += isPrimary(colDef.Options)
 	}
 	for _, constraint := range stmt.Constraints {
@@ -303,11 +304,11 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 	// Check column name.
 	cName := colDef.Name.Name.String()
 	if isIncorrectName(cName) {
-		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, colDef.Name.Name.O)
+		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, cName)
 	}
 
 	// if isInvalidDefaultValue(colDef) {
-	// 	s.AppendErrorNo(ER_INVALID_DEFAULT, colDef.Name.Name.O)
+	// 	s.AppendErrorNo(ER_INVALID_DEFAULT, cName)
 	// }
 
 	// Check column type.
@@ -316,13 +317,13 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		return nil
 	}
 	if tp.Flen > math.MaxUint32 {
-		s.AppendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", colDef.Name.Name.O, math.MaxUint32))
+		s.AppendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", cName, math.MaxUint32))
 	}
 
 	switch tp.Tp {
 	case mysql.TypeString:
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > mysql.MaxFieldCharLength {
-			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", colDef.Name.Name.O, mysql.MaxFieldCharLength))
+			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, mysql.MaxFieldCharLength))
 		}
 	case mysql.TypeVarchar:
 		maxFlen := mysql.MaxFieldVarCharLength
@@ -339,19 +340,19 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		}
 		maxFlen /= desc.Maxlen
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
-			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", colDef.Name.Name.O, maxFlen))
+			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
 		}
 	case mysql.TypeFloat, mysql.TypeDouble:
 		if tp.Decimal > mysql.MaxFloatingTypeScale {
-			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, colDef.Name.Name.O, mysql.MaxFloatingTypeScale))
+			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxFloatingTypeScale))
 		}
 		if tp.Flen > mysql.MaxFloatingTypeWidth {
 
-			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, colDef.Name.Name.O, mysql.MaxFloatingTypeWidth))
+			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxFloatingTypeWidth))
 		}
 	case mysql.TypeSet:
 		if len(tp.Elems) > mysql.MaxTypeSetMembers {
-			s.AppendErrorMessage(fmt.Sprintf("Too many strings for column %s and SET", colDef.Name.Name.O))
+			s.AppendErrorMessage(fmt.Sprintf("Too many strings for column %s and SET", cName))
 		}
 		// Check set elements. See https://dev.mysql.com/doc/refman/5.7/en/set.html .
 		for _, str := range colDef.Tp.Elems {
@@ -361,18 +362,25 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		}
 	case mysql.TypeNewDecimal:
 		if tp.Decimal > mysql.MaxDecimalScale {
-			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, colDef.Name.Name.O, mysql.MaxDecimalScale))
+			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxDecimalScale))
 		}
 
 		if tp.Flen > mysql.MaxDecimalWidth {
-			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, colDef.Name.Name.O, mysql.MaxDecimalWidth))
+			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxDecimalWidth))
 		}
 	case mysql.TypeBit:
 		if tp.Flen <= 0 {
-			s.AppendErrorMessage(fmt.Sprintf("Invalid size for column '%s'.", colDef.Name.Name.O))
+			s.AppendErrorMessage(fmt.Sprintf("Invalid size for column '%s'.", cName))
 		}
 		if tp.Flen > mysql.MaxBitDisplayWidth {
-			s.AppendErrorMessage(fmt.Sprintf("Too big display width for column '%s'.", colDef.Name.Name.O))
+			s.AppendErrorMessage(fmt.Sprintf("Too big display width for column '%s' (max = %d).",
+				cName, mysql.MaxBitDisplayWidth))
+		}
+	case mysql.TypeTiny, mysql.TypeInt24, mysql.TypeLong,
+		mysql.TypeShort, mysql.TypeLonglong:
+		if tp.Flen > mysql.MaxFloatingTypeWidth {
+			s.AppendErrorMessage(fmt.Sprintf("Too big display width for column '%-.192s' (max = %d).",
+				cName, mysql.MaxFloatingTypeWidth))
 		}
 	default:
 		// TODO: Add more types.
