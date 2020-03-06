@@ -853,8 +853,8 @@ func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
 
 // getAlterPartSql 获取alter子句部分
 func (s *session) getAlterPartSql(sql string) (string, bool) {
-	sql = strings.Replace(sql, "\n", " ", -1)
-	sql = strings.Replace(sql, "\r", " ", -1)
+	// sql = strings.Replace(sql, "\n", " ", -1)
+	// sql = strings.Replace(sql, "\r", " ", -1)
 
 	charsetInfo, collation := s.sessionVars.GetCharsetInfo()
 	stmtNodes, _, err := s.parser.Parse(sql, charsetInfo, collation)
@@ -865,7 +865,14 @@ func (s *session) getAlterPartSql(sql string) (string, bool) {
 	var builder strings.Builder
 	var columns []string
 
+	if len(stmtNodes) == 0 {
+		s.AppendErrorMessage(fmt.Sprintf("未正确解析ALTER语句: %s", sql))
+		log.Error(fmt.Sprintf("未正确解析ALTER语句: %s", sql))
+		return "", false
+	}
+
 	for _, stmtNode := range stmtNodes {
+
 		switch node := stmtNode.(type) {
 		case *ast.AlterTableStmt:
 			for _, alter := range node.Specs {
