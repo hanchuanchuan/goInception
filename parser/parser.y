@@ -6779,10 +6779,8 @@ NumericType:
 	{
 		x := types.NewFieldType($1.(byte))
 		x.Flen = $2.(int)
-		if x.Flen == types.UnspecifiedLength || x.Flen == 0 {
+		if x.Flen == types.UnspecifiedLength {
 			x.Flen = 1
-		} else if x.Flen > 64 {
-			yylex.AppendError(ErrTooBigDisplayWidth.GenWithStackByArgs(x.Flen))
 		}
 		$$ = x
 	}

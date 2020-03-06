@@ -2683,3 +2683,36 @@ func (s *testSessionIncSuite) TestGetAlterTablePostPart(c *C) {
 		c.Assert(out, Equals, row.outGhost, Commentf("%v", row.sql))
 	}
 }
+
+// TestDisplayWidth 测试列指定长度参数
+func (s *testSessionIncSuite) TestDisplayWidth(c *C) {
+	sql := ""
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = true
+
+	s.mustRunExec(c, "drop table if exists t1;")
+	// 数据类型 警告
+	sql = `create table t1(c1 bit(100),
+	c2 tinyint(1000),
+	c3 smallint(1000),
+	c4 mediumint(1000),
+	c5 int(1000),
+	c6 bigint(1000) );`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Too big display width for column '%s' (max = 64).", "c1"),
+		session.NewErrf("Too big display width for column '%s' (max = 255).", "c2"),
+		session.NewErrf("Too big display width for column '%s' (max = 255).", "c3"),
+		session.NewErrf("Too big display width for column '%s' (max = 255).", "c4"),
+		session.NewErrf("Too big display width for column '%s' (max = 255).", "c5"),
+		session.NewErrf("Too big display width for column '%s' (max = 255).", "c6"),
+	)
+
+	// 数据类型 警告
+	sql = `create table t1(id int);
+	alter table t1 add column c1 tinyint(1000);
+	`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Too big display width for column '%s' (max = 255).", "c1"))
+
+}

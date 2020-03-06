@@ -4655,9 +4655,10 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		}
 	}
 
-	if isIncorrectName(field.Name.Name.O) {
-		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
-	}
+	// if isIncorrectName(field.Name.Name.O) {
+	// 	s.AppendErrorNo(ER_WRONG_COLUMN_NAME, field.Name.Name)
+	// }
+
 	//text/blob/json 字段禁止设置NOT NULL
 	if (types.IsTypeBlob(field.Tp.Tp) || field.Tp.Tp == mysql.TypeJSON) && notNullFlag {
 		s.AppendErrorNo(ER_TEXT_NOT_NULLABLE_ERROR, field.Name.Name, tableName)
@@ -4687,6 +4688,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
 	}
 
+	s.checkColumn(field)
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
 	//        is_timestamp_type(field->sql_type) && !field->def &&
 	//        (field->flags & NOT_NULL_FLAG) &&

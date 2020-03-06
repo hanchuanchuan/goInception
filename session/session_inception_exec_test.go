@@ -1329,3 +1329,26 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 	sql = "alter table t1 add column `c5` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";  -- 测试注释"
 	s.testErrorCode(c, sql)
 }
+
+// TestDisplayWidth 测试列指定长度参数
+func (s *testSessionIncExecSuite) TestDisplayWidth(c *C) {
+	sql := ""
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = true
+
+	s.mustRunExec(c, "drop table if exists t1;")
+	// 数据类型 警告
+	sql = `create table t1(c1 bit(64),
+	c2 tinyint(255),
+	c3 smallint(255),
+	c4 mediumint(255),
+	c5 int(255),
+	c6 bigint(255) );`
+	s.testErrorCode(c, sql)
+
+	// 数据类型 警告
+	sql = `alter table t1 add column c11 tinyint(255);`
+	s.testErrorCode(c, sql)
+
+}
