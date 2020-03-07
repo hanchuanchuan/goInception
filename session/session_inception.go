@@ -6067,10 +6067,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 				return nil, err
 			}
 
-			// log.Info("osc")
-			// log.Info("object: ", object.OscOn)
-			// log.Info("global: ", cnf.Osc.OscOn)
-			// log.Info("session: ", s.Osc.OscOn)
 		case "ghost":
 			var object *config.Ghost
 			if v.IsGlobal {
@@ -6083,10 +6079,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 				return nil, err
 			}
 
-			// log.Info("gh_osc")
-			// log.Info("object: ", object.GhostOn)
-			// log.Info("global: ", cnf.Ghost.GhostOn)
-			// log.Info("session: ", s.Ghost.GhostOn)
 		default:
 			if prefix == "version" {
 				return nil, errors.New("只读变量")
