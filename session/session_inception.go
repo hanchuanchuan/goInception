@@ -138,7 +138,11 @@ type sourceOptions struct {
 	sslCert string // 客户端公共密钥证书
 	sslKey  string // 客户端私钥文件
 
+	// 事务支持,一次执行多少条
 	tranBatch int
+
+	// // 扩展参数,支持一次性会话设置
+	// extendParams string
 }
 
 // ExplainInfo 执行计划信息
@@ -618,7 +622,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.SetMyProcessInfo(currentSql, time.Now(), float64(i)/float64(lineCount+1))
 
 					// 交互式命令行
-					if !need {
+					if _, ok := stmtNode.(*ast.InceptionSetStmt); !need && !ok {
 						if s.opt != nil {
 							return nil, errors.New("无效操作!不支持本地操作和远程操作混用!")
 						}
@@ -680,7 +684,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 				if s.opt != nil && s.opt.Print {
 					// s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
 				} else {
-					s.recordSets.Append(s.myRecord)
+					// 远程操作时隐藏本地的set命令
+					if _, ok := stmtNode.(*ast.InceptionSetStmt); ok && s.myRecord.ErrLevel == 0 {
+						log.Info(currentSql)
+					} else {
+						s.recordSets.Append(s.myRecord)
+					}
 				}
 			}
 
@@ -889,7 +898,14 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		}
 
 	case *ast.InceptionSetStmt:
-		return s.executeInceptionSet(node, currentSql)
+		if s.haveBegin {
+			_, err := s.executeInceptionSet(node, currentSql)
+			if err != nil {
+				s.AppendErrorMessage(err.Error())
+			}
+		} else {
+			return s.executeInceptionSet(node, currentSql)
+		}
 
 	case *ast.ExplainStmt:
 		s.executeInceptionShow(currentSql)
@@ -5994,6 +6010,15 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			return nil, errors.New("无效参数")
 		}
 
+		if v.IsGlobal && s.haveBegin {
+			return nil, errors.New("全局变量仅支持单独设置")
+		}
+
+		// 非本地模式时,只使用全局设置
+		if !s.haveBegin {
+			v.IsGlobal = true
+		}
+
 		var value *ast.ValueExpr
 
 		switch expr := v.Value.(type) {
@@ -6011,7 +6036,10 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		cnf := config.GetGlobalConfig()
 
 		if v.IsLevel {
-			err := s.setLevelValue(reflect.TypeOf(cnf.IncLevel), reflect.ValueOf(&cnf.IncLevel).Elem(), v.Name, value)
+			if s.haveBegin {
+				return nil, errors.New("暂不支持会话级的自定义审核级别")
+			}
+			err := s.setVariableValue(reflect.TypeOf(cnf.IncLevel), reflect.ValueOf(&cnf.IncLevel).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
@@ -6028,21 +6056,48 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		var err error
 		switch prefix {
 		case "osc":
-			err = s.setVariableValue(reflect.TypeOf(cnf.Osc), reflect.ValueOf(&cnf.Osc).Elem(), v.Name, value)
+			var object *config.Osc
+			if v.IsGlobal {
+				object = &cnf.Osc
+			} else {
+				object = &s.Osc
+			}
+			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
+
+			// log.Info("osc")
+			// log.Info("object: ", object.OscOn)
+			// log.Info("global: ", cnf.Osc.OscOn)
+			// log.Info("session: ", s.Osc.OscOn)
 		case "ghost":
-			err = s.setVariableValue(reflect.TypeOf(cnf.Ghost), reflect.ValueOf(&cnf.Ghost).Elem(), v.Name, value)
+			var object *config.Ghost
+			if v.IsGlobal {
+				object = &cnf.Ghost
+			} else {
+				object = &s.Ghost
+			}
+			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
+
+			// log.Info("gh_osc")
+			// log.Info("object: ", object.GhostOn)
+			// log.Info("global: ", cnf.Ghost.GhostOn)
+			// log.Info("session: ", s.Ghost.GhostOn)
 		default:
 			if prefix == "version" {
 				return nil, errors.New("只读变量")
 			}
-
-			err = s.setVariableValue(reflect.TypeOf(cnf.Inc), reflect.ValueOf(&cnf.Inc).Elem(), v.Name, value)
+			var object *config.Inc
+			if v.IsGlobal {
+				object = &cnf.Inc
+			} else {
+				object = &s.Inc
+			}
+			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
@@ -6059,10 +6114,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 
 func (s *session) setVariableValue(t reflect.Type, values reflect.Value,
 	name string, value *ast.ValueExpr) error {
-
-	// t := reflect.TypeOf(*(obj))
-	// // values := reflect.ValueOf(obj).Elem()
-	// values := reflect.ValueOf(obj).Elem()
 
 	found := false
 	for i := 0; i < values.NumField(); i++ {
