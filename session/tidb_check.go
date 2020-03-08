@@ -64,7 +64,7 @@ func (s *session) checkAutoIncrement(stmt *ast.CreateTableStmt) {
 	for _, colDef := range stmt.Cols {
 		var hasAutoIncrement bool
 		for i, op := range colDef.Options {
-			ok, err := checkAutoIncrementOp(colDef, i)
+			ok, err := s.checkAutoIncrementOp(colDef, i)
 			if err != nil {
 				s.AppendErrorMessage(err.Error())
 				// return
@@ -125,7 +125,7 @@ func isConstraintKeyTp(constraints []*ast.Constraint, colDef *ast.ColumnDef) boo
 	return false
 }
 
-func checkAutoIncrementOp(colDef *ast.ColumnDef, num int) (bool, error) {
+func (s *session) checkAutoIncrementOp(colDef *ast.ColumnDef, num int) (bool, error) {
 	var hasAutoIncrement bool
 
 	if colDef.Options[num].Tp == ast.ColumnOptionAutoIncrement {
@@ -136,7 +136,7 @@ func checkAutoIncrementOp(colDef *ast.ColumnDef, num int) (bool, error) {
 		for _, op := range colDef.Options[num+1:] {
 			if op.Tp == ast.ColumnOptionDefaultValue && !op.Expr.GetDatum().IsNull() {
 				return hasAutoIncrement,
-					errors.Errorf(fmt.Sprintf(GetErrorMessage(ER_INVALID_DEFAULT), colDef.Name.Name.O))
+					errors.Errorf(fmt.Sprintf(s.getErrorMessage(ER_INVALID_DEFAULT), colDef.Name.Name.O))
 			}
 		}
 	}
@@ -147,7 +147,7 @@ func checkAutoIncrementOp(colDef *ast.ColumnDef, num int) (bool, error) {
 		for _, op := range colDef.Options[num+1:] {
 			if op.Tp == ast.ColumnOptionAutoIncrement {
 				return hasAutoIncrement,
-					errors.Errorf(fmt.Sprintf(GetErrorMessage(ER_INVALID_DEFAULT), colDef.Name.Name.O))
+					errors.Errorf(fmt.Sprintf(s.getErrorMessage(ER_INVALID_DEFAULT), colDef.Name.Name.O))
 			}
 		}
 	}

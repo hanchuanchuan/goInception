@@ -138,8 +138,6 @@ func (s *testCommon) initSetUp(c *C) {
 	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
 
-	session.SetLanguage("en-US")
-
 	s.defaultInc = *inc
 
 	s.remoteBackupTable = "$_$Inception_backup_information$_$"

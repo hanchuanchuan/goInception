@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 )
@@ -45,7 +44,6 @@ func (s *testSessionSplitSuite) SetUpSuite(c *C) {
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
-	session.SetLanguage("en-US")
 
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)

@@ -418,7 +418,7 @@ func (s *session) checkFilter(event *replication.RowsEvent,
 
 	if currentThreadID == 0 && s.DBType == DBTypeMariaDB {
 		if record.ErrLevel != 1 {
-			record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+			record.AppendErrorNo(s.Inc.Lang, ErrNotFoundThreadId, s.DBVersion)
 		}
 		return true
 	} else if record.ThreadId != currentThreadID {
@@ -459,7 +459,7 @@ func (s *session) checkUpdateFilter(event *replication.RowsEvent,
 
 	if currentThreadID == 0 && s.DBType == DBTypeMariaDB {
 		if record.ErrLevel != 1 {
-			record.AppendErrorNo(ErrNotFoundThreadId, s.DBVersion)
+			record.AppendErrorNo(s.Inc.Lang, ErrNotFoundThreadId, s.DBVersion)
 		}
 		return true, multiTable
 	} else if record.ThreadId != currentThreadID {

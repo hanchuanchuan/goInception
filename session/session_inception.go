@@ -499,10 +499,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.myRecord.Sql = currentSql
 
 						if s.opt != nil && s.opt.Print {
-							s.printSets.Append(2, currentSql, "", GetErrorMessage(ER_HAVE_BEGIN))
+							s.printSets.Append(2, currentSql, "", s.getErrorMessage(ER_HAVE_BEGIN))
 						} else if s.opt != nil && s.opt.split {
 							s.addNewSplitNode()
-							s.splitSets.Append(currentSql, GetErrorMessage(ER_HAVE_BEGIN))
+							s.splitSets.Append(currentSql, s.getErrorMessage(ER_HAVE_BEGIN))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -6094,10 +6094,10 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 				return nil, err
 			}
 
-			// 错误信息语言设置
-			if prefix == "lang" {
-				SetLanguage(value.GetString())
-			}
+			// // 错误信息语言设置
+			// if prefix == "lang" {
+			// 	SetLanguage(value.GetString())
+			// }
 		}
 	}
 
@@ -6376,7 +6376,7 @@ func splitWhere(where ast.ExprNode) []ast.ExprNode {
 }
 
 // checkColumnName: 检查列是否存在
-func checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err error) {
+func (s *session) checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err error) {
 	colIndex = -1
 	if e, ok := expr.(*ast.ColumnNameExpr); ok {
 		found := false
@@ -6387,19 +6387,19 @@ func checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err er
 			}
 		}
 		if !found {
-			return colIndex, errors.New(fmt.Sprintf(GetErrorMessage(ER_COLUMN_NOT_EXISTED), e.Name.Name.String()))
+			return colIndex, errors.New(fmt.Sprintf(s.getErrorMessage(ER_COLUMN_NOT_EXISTED), e.Name.Name.String()))
 		}
 	}
 	return colIndex, nil
 }
 
 // filterExprNode: 条件筛选
-func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool, error) {
+func (s *session) filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool, error) {
 	switch x := expr.(type) {
 	case *ast.BinaryOperationExpr:
 		switch x.Op {
 		case opcode.EQ:
-			colIndex, err := checkColumnName(x.L, colNames)
+			colIndex, err := s.checkColumnName(x.L, colNames)
 			if err != nil {
 				return false, err
 			}
@@ -6416,7 +6416,7 @@ func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool
 			return false, errors.New("不支持的操作")
 		}
 	case *ast.PatternLikeExpr:
-		colIndex, err := checkColumnName(x.Expr, colNames)
+		colIndex, err := s.checkColumnName(x.Expr, colNames)
 		if err != nil {
 			return false, err
 		}
@@ -6441,9 +6441,9 @@ func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool
 }
 
 // filter: 条件筛选
-func filter(expr []ast.ExprNode, colNames []string, value []string) (bool, error) {
+func (s *session) filter(expr []ast.ExprNode, colNames []string, value []string) (bool, error) {
 	for _, e := range expr {
-		ok, err := filterExprNode(e, colNames, value)
+		ok, err := s.filterExprNode(e, colNames, value)
 		if err != nil {
 			return false, err
 		}
@@ -6480,8 +6480,8 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 		name := code.String()
 		if v, ok := s.incLevel[name]; ok {
 			if len(filters) > 0 {
-				ok, err := filter(filters, names, []string{
-					name, strconv.Itoa(int(v)), GetErrorMessage(code),
+				ok, err := s.filter(filters, names, []string{
+					name, strconv.Itoa(int(v)), s.getErrorMessage(code),
 				})
 				if err != nil {
 					return nil, err
@@ -6490,12 +6490,12 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 					continue
 				}
 			}
-			res.Append(name, int64(v), GetErrorMessage(code))
+			res.Append(name, int64(v), s.getErrorMessage(code))
 
 			// if len(like) == 0 {
 			// 	if len(filters) > 0 {
 			// 		ok, err := filter(filters, names, []string{
-			// 			name, string(v), GetErrorMessage(code),
+			// 			name, string(v), s.getErrorMessage(code),
 			// 		})
 			// 		if err != nil {
 			// 			return nil, err
@@ -6505,13 +6505,13 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 			// 		}
 			// 	}
 
-			// 	res.Append(name, int64(v), GetErrorMessage(code))
+			// 	res.Append(name, int64(v), s.getErrorMessage(code))
 			// } else {
 			// 	match := stringutil.DoMatch(name, patChars, patTypes)
 			// 	if match && !node.Pattern.Not {
 			// 		if len(filters) > 0 {
 			// 			ok, err := filter(filters, names, []string{
-			// 				name, string(v), GetErrorMessage(code),
+			// 				name, string(v), s.getErrorMessage(code),
 			// 			})
 			// 			if err != nil {
 			// 				return nil, err
@@ -6520,11 +6520,11 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 			// 				continue
 			// 			}
 			// 		}
-			// 		res.Append(name, int64(v), GetErrorMessage(code))
+			// 		res.Append(name, int64(v), s.getErrorMessage(code))
 			// 	} else if !match && node.Pattern.Not {
 			// 		if len(filters) > 0 {
 			// 			ok, err := filter(filters, names, []string{
-			// 				name, string(v), GetErrorMessage(code),
+			// 				name, string(v), s.getErrorMessage(code),
 			// 			})
 			// 			if err != nil {
 			// 				return nil, err
@@ -6533,7 +6533,7 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 			// 				continue
 			// 			}
 			// 		}
-			// 		res.Append(name, int64(v), GetErrorMessage(code))
+			// 		res.Append(name, int64(v), s.getErrorMessage(code))
 			// 	}
 			// }
 		}
@@ -6929,7 +6929,7 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
 				r.AffectedRows, s.Inc.MaxUpdateRows)
 			if newRecord != nil {
-				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+				newRecord.AppendErrorNo(s.Inc.Lang, ER_UDPATE_TOO_MUCH_ROWS,
 					r.AffectedRows, s.Inc.MaxUpdateRows)
 			}
 		}
@@ -7703,25 +7703,25 @@ func (r *Record) AppendErrorMessage(msg string) {
 	r.Buf.WriteString("\n")
 }
 
-func (r *Record) AppendErrorNo(number ErrorCode, values ...interface{}) {
+func (r *Record) AppendErrorNo(lang string, number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
 
 	if len(values) == 0 {
-		r.Buf.WriteString(GetErrorMessage(number))
+		r.Buf.WriteString(GetErrorMessage(number, lang))
 	} else {
-		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
 	}
 	r.Buf.WriteString("\n")
 }
 
 // AppendWarning 添加警告. 错误级别指定为警告
-func (r *Record) AppendWarning(number ErrorCode, values ...interface{}) {
+func (r *Record) AppendWarning(lang string, number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
 
 	if len(values) == 0 {
-		r.Buf.WriteString(GetErrorMessage(number))
+		r.Buf.WriteString(GetErrorMessage(number, lang))
 	} else {
-		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
 	}
 	r.Buf.WriteString("\n")
 }
@@ -7744,7 +7744,7 @@ func (s *session) AppendWarning(number ErrorCode, values ...interface{}) {
 	} else if s.stage == StageExec {
 		s.myRecord.Buf.WriteString("Execute: ")
 	}
-	s.myRecord.AppendWarning(number, values...)
+	s.myRecord.AppendWarning(s.Inc.Lang, number, values...)
 	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 }
 
@@ -7772,9 +7772,9 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 			r.Buf.WriteString("Execute: ")
 		}
 		if len(values) == 0 {
-			r.Buf.WriteString(GetErrorMessage(number))
+			r.Buf.WriteString(s.getErrorMessage(number))
 		} else {
-			r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+			r.Buf.WriteString(fmt.Sprintf(s.getErrorMessage(number), values...))
 		}
 		r.Buf.WriteString("\n")
 	}
@@ -8624,4 +8624,9 @@ func (s *session) checkSetStmt(node *ast.SetStmt) {
 // IgnoreCase 判断是否忽略大小写
 func (s *session) IgnoreCase() bool {
 	return s.LowerCaseTableNames > 0
+}
+
+// getErrorMessage 获取审核信息
+func (s *session) getErrorMessage(code ErrorCode) string {
+	return GetErrorMessage(code, s.Inc.Lang)
 }

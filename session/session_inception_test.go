@@ -2784,4 +2784,12 @@ func (s *testSessionIncSuite) TestSetSessionVariables(c *C) {
 	s.testSQLError(c, sql,
 		session.NewErrf("全局变量仅支持单独设置."))
 
+	sql = `inception set lang = 'zh_cn';
+		create table t1(id int primary key);
+		inception set lang = 'en_us';
+		create table t2(id int primary key);`
+	s.testSQLError(c, sql,
+		session.NewErrf("表 't1' 需要设置注释."),
+		session.NewErrf("Set comments for table 't2'."))
+
 }
