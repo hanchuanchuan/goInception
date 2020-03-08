@@ -105,6 +105,43 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 	s.rows = res.Rows()
 }
 
+func (s *testSessionIncSuite) testSQLError(c *C, sql string, errors ...*session.SQLError) {
+	if s.tk == nil {
+		s.tk = testkit.NewTestKitWithInit(c, s.store)
+	}
+
+	res := s.runCheck(sql)
+
+	errCode := 0
+	if len(errors) > 0 {
+		for _, e := range errors {
+			level := session.GetErrorLevel(e.Code)
+			if int(level) > errCode {
+				errCode = int(level)
+			}
+		}
+	}
+
+	allErrors := []string{}
+	for _, row := range res.Rows()[1:] {
+		if v, ok := row[4].(string); ok {
+			allErrors = append(allErrors, strings.TrimSpace(v))
+		}
+	}
+
+	errMsgs := []string{}
+	for _, e := range errors {
+		errMsgs = append(errMsgs, e.Error())
+	}
+
+	c.Assert(len(errMsgs), Equals, len(allErrors), Commentf("%v", res.Rows()))
+
+	for index, err := range allErrors {
+		c.Assert(err, Equals, errMsgs[index], Commentf("%v", res.Rows()))
+	}
+
+}
+
 func (s *testSessionIncSuite) testAffectedRows(c *C, affectedRows ...int) {
 	if len(s.rows) == 0 {
 		return
@@ -2714,5 +2751,45 @@ func (s *testSessionIncSuite) TestDisplayWidth(c *C) {
 	`
 	s.testErrorCode(c, sql,
 		session.NewErrf("Too big display width for column '%s' (max = 255).", "c1"))
+
+}
+
+// TestSetVariables 设置会话级变量进行审核
+func (s *testSessionIncSuite) TestSetSessionVariables(c *C) {
+	sql := ""
+
+	s.mustRunExec(c, "drop table if exists t1;")
+
+	config.GetGlobalConfig().Inc.CheckTableComment = true
+	sql = `create table t1(id int primary key);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_MUST_HAVE_COMMENT, "t1"))
+
+	sql = `inception set check_table_comment = 0;
+	create table t1(id int primary key);`
+	s.testErrorCode(c, sql)
+
+	sql = `inception set check_table_comment = "123";
+	create table t1(id int primary key);`
+
+	s.testSQLError(c, sql,
+		session.NewErrf("[variable:1231]Variable 'check_table_comment' can't be set to the value of '123'."),
+		session.NewErr(session.ER_TABLE_MUST_HAVE_COMMENT, "t1"))
+
+	sql = `inception set level er_table_must_have_comment = 2;`
+	s.testSQLError(c, sql,
+		session.NewErrf("暂不支持会话级的自定义审核级别."))
+
+	sql = `inception set global check_table_comment = 1;`
+	s.testSQLError(c, sql,
+		session.NewErrf("全局变量仅支持单独设置."))
+
+	sql = `inception set lang = 'zh_cn';
+		create table t1(id int primary key);
+		inception set lang = 'en_us';
+		create table t2(id int primary key);`
+	s.testSQLError(c, sql,
+		session.NewErrf("表 't1' 需要设置注释."),
+		session.NewErrf("Set comments for table 't2'."))
 
 }
