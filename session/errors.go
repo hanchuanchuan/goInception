@@ -20,18 +20,16 @@ package session
 import (
 	"fmt"
 	// "strconv"
-	"strings"
 
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/terror"
-	log "github.com/sirupsen/logrus"
 )
 
 //go:generate stringer -type=ErrorCode
 type ErrorCode int
 
-var ErrorsMessage = map[ErrorCode]string{}
+// var ErrorsMessage = map[ErrorCode]string{}
 
 var (
 	ErrWrongValueForVar = terror.ClassVariable.New(mysql.ErrWrongValueForVar,
@@ -667,11 +665,14 @@ func GetErrorLevel(code ErrorCode) uint8 {
 	}
 }
 
-func GetErrorMessage(ErrorCode ErrorCode) string {
-	if v, ok := ErrorsMessage[ErrorCode]; ok {
-		return v
+// GetErrorMessage 获取审核信息,默认为英文
+func GetErrorMessage(code ErrorCode, lang string) string {
+	if lang == "zh_cn" {
+		if v, ok := ErrorsChinese[code]; ok {
+			return v
+		}
 	}
-	if v, ok := ErrorsDefault[ErrorCode]; ok {
+	if v, ok := ErrorsDefault[code]; ok {
 		return v
 	}
 	return "Invalid error code!"
@@ -691,7 +692,7 @@ func (e *SQLError) Error() string {
 // NewErr generates a SQL error, with an error code and default format specifier defined in MySQLErrName.
 func NewErr(errCode ErrorCode, args ...interface{}) *SQLError {
 	e := &SQLError{Code: errCode}
-	e.Message = fmt.Sprintf(GetErrorMessage(errCode), args...)
+	e.Message = fmt.Sprintf(GetErrorMessage(errCode, "en_us"), args...)
 	return e
 }
 
@@ -702,17 +703,17 @@ func NewErrf(format string, args ...interface{}) *SQLError {
 	return e
 }
 
-func SetLanguage(langStr string) {
-	lang := strings.Replace(strings.ToLower(langStr), "-", "_", 1)
-	if lang == "zh_cn" {
-		ErrorsMessage = ErrorsChinese
-	} else {
-		ErrorsMessage = ErrorsDefault
-		if lang != "en_us" {
-			log.Warning("Lang set Error! use default en-US.")
-		}
-	}
-}
+// func SetLanguage(langStr string) {
+// 	lang := strings.Replace(strings.ToLower(langStr), "-", "_", 1)
+// 	if lang == "zh_cn" {
+// 		ErrorsMessage = ErrorsChinese
+// 	} else {
+// 		ErrorsMessage = ErrorsDefault
+// 		if lang != "en_us" {
+// 			log.Warning("Lang set Error! use default en-US.")
+// 		}
+// 	}
+// }
 
 func (e ErrorCode) String() string {
 	switch e {
