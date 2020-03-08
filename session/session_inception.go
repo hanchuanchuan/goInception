@@ -6093,11 +6093,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			if err != nil {
 				return nil, err
 			}
-
-			// // 错误信息语言设置
-			// if prefix == "lang" {
-			// 	SetLanguage(value.GetString())
-			// }
 		}
 	}
 
@@ -6491,57 +6486,13 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 				}
 			}
 			res.Append(name, int64(v), s.getErrorMessage(code))
-
-			// if len(like) == 0 {
-			// 	if len(filters) > 0 {
-			// 		ok, err := filter(filters, names, []string{
-			// 			name, string(v), s.getErrorMessage(code),
-			// 		})
-			// 		if err != nil {
-			// 			return nil, err
-			// 		}
-			// 		if !ok {
-			// 			continue
-			// 		}
-			// 	}
-
-			// 	res.Append(name, int64(v), s.getErrorMessage(code))
-			// } else {
-			// 	match := stringutil.DoMatch(name, patChars, patTypes)
-			// 	if match && !node.Pattern.Not {
-			// 		if len(filters) > 0 {
-			// 			ok, err := filter(filters, names, []string{
-			// 				name, string(v), s.getErrorMessage(code),
-			// 			})
-			// 			if err != nil {
-			// 				return nil, err
-			// 			}
-			// 			if !ok {
-			// 				continue
-			// 			}
-			// 		}
-			// 		res.Append(name, int64(v), s.getErrorMessage(code))
-			// 	} else if !match && node.Pattern.Not {
-			// 		if len(filters) > 0 {
-			// 			ok, err := filter(filters, names, []string{
-			// 				name, string(v), s.getErrorMessage(code),
-			// 			})
-			// 			if err != nil {
-			// 				return nil, err
-			// 			}
-			// 			if !ok {
-			// 				continue
-			// 			}
-			// 		}
-			// 		res.Append(name, int64(v), s.getErrorMessage(code))
-			// 	}
-			// }
 		}
 	}
 
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 	return res.Rows(), nil
 }
+
 func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
@@ -6981,9 +6932,6 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 		}
 	}
 
-	// log.Info(sql)
-	// log.Info(value)
-
 	r.AffectedRows = value
 	// if newRecord != nil {
 	// 	newRecord.AffectedRows = r.AffectedRows
@@ -7228,9 +7176,6 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 				s.checkItem(l.Expr, tableInfoList)
 			}
-
-			// log.Infof("%#v", node.TableRefs)
-			// log.Infof("%#v", node.TableRefs.TableRefs)
 
 			s.checkSelectItem(node.TableRefs.TableRefs, node.Where != nil)
 			// if node.TableRefs.TableRefs.On != nil {

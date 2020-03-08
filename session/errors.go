@@ -29,8 +29,6 @@ import (
 //go:generate stringer -type=ErrorCode
 type ErrorCode int
 
-// var ErrorsMessage = map[ErrorCode]string{}
-
 var (
 	ErrWrongValueForVar = terror.ClassVariable.New(mysql.ErrWrongValueForVar,
 		mysql.MySQLErrName[mysql.ErrWrongValueForVar])
@@ -702,18 +700,6 @@ func NewErrf(format string, args ...interface{}) *SQLError {
 	e.Message = fmt.Sprintf(format, args...)
 	return e
 }
-
-// func SetLanguage(langStr string) {
-// 	lang := strings.Replace(strings.ToLower(langStr), "-", "_", 1)
-// 	if lang == "zh_cn" {
-// 		ErrorsMessage = ErrorsChinese
-// 	} else {
-// 		ErrorsMessage = ErrorsDefault
-// 		if lang != "en_us" {
-// 			log.Warning("Lang set Error! use default en-US.")
-// 		}
-// 	}
-// }
 
 func (e ErrorCode) String() string {
 	switch e {

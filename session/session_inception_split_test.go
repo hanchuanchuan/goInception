@@ -39,8 +39,6 @@ func (s *testSessionSplitSuite) SetUpSuite(c *C) {
 
 	s.initSetUp(c)
 
-	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
-	// session.SetLanguage("zh-CN")
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
