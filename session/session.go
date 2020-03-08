@@ -21,6 +21,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
@@ -54,12 +61,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"net"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/jinzhu/gorm"
 )

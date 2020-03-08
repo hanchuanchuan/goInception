@@ -138,7 +138,11 @@ type sourceOptions struct {
 	sslCert string // 客户端公共密钥证书
 	sslKey  string // 客户端私钥文件
 
+	// 事务支持,一次执行多少条
 	tranBatch int
+
+	// // 扩展参数,支持一次性会话设置
+	// extendParams string
 }
 
 // ExplainInfo 执行计划信息
@@ -495,10 +499,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.myRecord.Sql = currentSql
 
 						if s.opt != nil && s.opt.Print {
-							s.printSets.Append(2, currentSql, "", GetErrorMessage(ER_HAVE_BEGIN))
+							s.printSets.Append(2, currentSql, "", s.getErrorMessage(ER_HAVE_BEGIN))
 						} else if s.opt != nil && s.opt.split {
 							s.addNewSplitNode()
-							s.splitSets.Append(currentSql, GetErrorMessage(ER_HAVE_BEGIN))
+							s.splitSets.Append(currentSql, s.getErrorMessage(ER_HAVE_BEGIN))
 						} else {
 							s.recordSets.Append(s.myRecord)
 						}
@@ -618,7 +622,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.SetMyProcessInfo(currentSql, time.Now(), float64(i)/float64(lineCount+1))
 
 					// 交互式命令行
-					if !need {
+					if _, ok := stmtNode.(*ast.InceptionSetStmt); !need && !ok {
 						if s.opt != nil {
 							return nil, errors.New("无效操作!不支持本地操作和远程操作混用!")
 						}
@@ -680,7 +684,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 				if s.opt != nil && s.opt.Print {
 					// s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
 				} else {
-					s.recordSets.Append(s.myRecord)
+					// 远程操作时隐藏本地的set命令
+					if _, ok := stmtNode.(*ast.InceptionSetStmt); ok && s.myRecord.ErrLevel == 0 {
+						log.Info(currentSql)
+					} else {
+						s.recordSets.Append(s.myRecord)
+					}
 				}
 			}
 
@@ -889,7 +898,14 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		}
 
 	case *ast.InceptionSetStmt:
-		return s.executeInceptionSet(node, currentSql)
+		if s.haveBegin {
+			_, err := s.executeInceptionSet(node, currentSql)
+			if err != nil {
+				s.AppendErrorMessage(err.Error())
+			}
+		} else {
+			return s.executeInceptionSet(node, currentSql)
+		}
 
 	case *ast.ExplainStmt:
 		s.executeInceptionShow(currentSql)
@@ -5994,6 +6010,15 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			return nil, errors.New("无效参数")
 		}
 
+		if v.IsGlobal && s.haveBegin {
+			return nil, errors.New("全局变量仅支持单独设置")
+		}
+
+		// 非本地模式时,只使用全局设置
+		if !s.haveBegin {
+			v.IsGlobal = true
+		}
+
 		var value *ast.ValueExpr
 
 		switch expr := v.Value.(type) {
@@ -6011,7 +6036,10 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		cnf := config.GetGlobalConfig()
 
 		if v.IsLevel {
-			err := s.setLevelValue(reflect.TypeOf(cnf.IncLevel), reflect.ValueOf(&cnf.IncLevel).Elem(), v.Name, value)
+			if s.haveBegin {
+				return nil, errors.New("暂不支持会话级的自定义审核级别")
+			}
+			err := s.setVariableValue(reflect.TypeOf(cnf.IncLevel), reflect.ValueOf(&cnf.IncLevel).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
@@ -6028,28 +6056,42 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		var err error
 		switch prefix {
 		case "osc":
-			err = s.setVariableValue(reflect.TypeOf(cnf.Osc), reflect.ValueOf(&cnf.Osc).Elem(), v.Name, value)
+			var object *config.Osc
+			if v.IsGlobal {
+				object = &cnf.Osc
+			} else {
+				object = &s.Osc
+			}
+			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
+
 		case "ghost":
-			err = s.setVariableValue(reflect.TypeOf(cnf.Ghost), reflect.ValueOf(&cnf.Ghost).Elem(), v.Name, value)
+			var object *config.Ghost
+			if v.IsGlobal {
+				object = &cnf.Ghost
+			} else {
+				object = &s.Ghost
+			}
+			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
 			}
+
 		default:
 			if prefix == "version" {
 				return nil, errors.New("只读变量")
 			}
-
-			err = s.setVariableValue(reflect.TypeOf(cnf.Inc), reflect.ValueOf(&cnf.Inc).Elem(), v.Name, value)
+			var object *config.Inc
+			if v.IsGlobal {
+				object = &cnf.Inc
+			} else {
+				object = &s.Inc
+			}
+			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
-			}
-
-			// 错误信息语言设置
-			if prefix == "lang" {
-				SetLanguage(value.GetString())
 			}
 		}
 	}
@@ -6059,10 +6101,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 
 func (s *session) setVariableValue(t reflect.Type, values reflect.Value,
 	name string, value *ast.ValueExpr) error {
-
-	// t := reflect.TypeOf(*(obj))
-	// // values := reflect.ValueOf(obj).Elem()
-	// values := reflect.ValueOf(obj).Elem()
 
 	found := false
 	for i := 0; i < values.NumField(); i++ {
@@ -6333,7 +6371,7 @@ func splitWhere(where ast.ExprNode) []ast.ExprNode {
 }
 
 // checkColumnName: 检查列是否存在
-func checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err error) {
+func (s *session) checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err error) {
 	colIndex = -1
 	if e, ok := expr.(*ast.ColumnNameExpr); ok {
 		found := false
@@ -6344,19 +6382,19 @@ func checkColumnName(expr ast.ExprNode, colNames []string) (colIndex int, err er
 			}
 		}
 		if !found {
-			return colIndex, errors.New(fmt.Sprintf(GetErrorMessage(ER_COLUMN_NOT_EXISTED), e.Name.Name.String()))
+			return colIndex, errors.New(fmt.Sprintf(s.getErrorMessage(ER_COLUMN_NOT_EXISTED), e.Name.Name.String()))
 		}
 	}
 	return colIndex, nil
 }
 
 // filterExprNode: 条件筛选
-func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool, error) {
+func (s *session) filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool, error) {
 	switch x := expr.(type) {
 	case *ast.BinaryOperationExpr:
 		switch x.Op {
 		case opcode.EQ:
-			colIndex, err := checkColumnName(x.L, colNames)
+			colIndex, err := s.checkColumnName(x.L, colNames)
 			if err != nil {
 				return false, err
 			}
@@ -6373,7 +6411,7 @@ func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool
 			return false, errors.New("不支持的操作")
 		}
 	case *ast.PatternLikeExpr:
-		colIndex, err := checkColumnName(x.Expr, colNames)
+		colIndex, err := s.checkColumnName(x.Expr, colNames)
 		if err != nil {
 			return false, err
 		}
@@ -6398,9 +6436,9 @@ func filterExprNode(expr ast.ExprNode, colNames []string, values []string) (bool
 }
 
 // filter: 条件筛选
-func filter(expr []ast.ExprNode, colNames []string, value []string) (bool, error) {
+func (s *session) filter(expr []ast.ExprNode, colNames []string, value []string) (bool, error) {
 	for _, e := range expr {
-		ok, err := filterExprNode(e, colNames, value)
+		ok, err := s.filterExprNode(e, colNames, value)
 		if err != nil {
 			return false, err
 		}
@@ -6437,8 +6475,8 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 		name := code.String()
 		if v, ok := s.incLevel[name]; ok {
 			if len(filters) > 0 {
-				ok, err := filter(filters, names, []string{
-					name, strconv.Itoa(int(v)), GetErrorMessage(code),
+				ok, err := s.filter(filters, names, []string{
+					name, strconv.Itoa(int(v)), s.getErrorMessage(code),
 				})
 				if err != nil {
 					return nil, err
@@ -6447,58 +6485,14 @@ func (s *session) executeLocalShowLevels(node *ast.ShowStmt) ([]sqlexec.RecordSe
 					continue
 				}
 			}
-			res.Append(name, int64(v), GetErrorMessage(code))
-
-			// if len(like) == 0 {
-			// 	if len(filters) > 0 {
-			// 		ok, err := filter(filters, names, []string{
-			// 			name, string(v), GetErrorMessage(code),
-			// 		})
-			// 		if err != nil {
-			// 			return nil, err
-			// 		}
-			// 		if !ok {
-			// 			continue
-			// 		}
-			// 	}
-
-			// 	res.Append(name, int64(v), GetErrorMessage(code))
-			// } else {
-			// 	match := stringutil.DoMatch(name, patChars, patTypes)
-			// 	if match && !node.Pattern.Not {
-			// 		if len(filters) > 0 {
-			// 			ok, err := filter(filters, names, []string{
-			// 				name, string(v), GetErrorMessage(code),
-			// 			})
-			// 			if err != nil {
-			// 				return nil, err
-			// 			}
-			// 			if !ok {
-			// 				continue
-			// 			}
-			// 		}
-			// 		res.Append(name, int64(v), GetErrorMessage(code))
-			// 	} else if !match && node.Pattern.Not {
-			// 		if len(filters) > 0 {
-			// 			ok, err := filter(filters, names, []string{
-			// 				name, string(v), GetErrorMessage(code),
-			// 			})
-			// 			if err != nil {
-			// 				return nil, err
-			// 			}
-			// 			if !ok {
-			// 				continue
-			// 			}
-			// 		}
-			// 		res.Append(name, int64(v), GetErrorMessage(code))
-			// 	}
-			// }
+			res.Append(name, int64(v), s.getErrorMessage(code))
 		}
 	}
 
 	s.sessionVars.StmtCtx.AddAffectedRows(uint64(res.rc.count))
 	return res.Rows(), nil
 }
+
 func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
 	pl := s.sessionManager.ShowOscProcessList()
 
@@ -6886,7 +6880,7 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 			s.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
 				r.AffectedRows, s.Inc.MaxUpdateRows)
 			if newRecord != nil {
-				newRecord.AppendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
+				newRecord.AppendErrorNo(s.Inc.Lang, ER_UDPATE_TOO_MUCH_ROWS,
 					r.AffectedRows, s.Inc.MaxUpdateRows)
 			}
 		}
@@ -6937,9 +6931,6 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 			rows.Scan(&value)
 		}
 	}
-
-	// log.Info(sql)
-	// log.Info(value)
 
 	r.AffectedRows = value
 	// if newRecord != nil {
@@ -7185,9 +7176,6 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 				s.checkItem(l.Expr, tableInfoList)
 			}
-
-			// log.Infof("%#v", node.TableRefs)
-			// log.Infof("%#v", node.TableRefs.TableRefs)
 
 			s.checkSelectItem(node.TableRefs.TableRefs, node.Where != nil)
 			// if node.TableRefs.TableRefs.On != nil {
@@ -7660,25 +7648,25 @@ func (r *Record) AppendErrorMessage(msg string) {
 	r.Buf.WriteString("\n")
 }
 
-func (r *Record) AppendErrorNo(number ErrorCode, values ...interface{}) {
+func (r *Record) AppendErrorNo(lang string, number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
 
 	if len(values) == 0 {
-		r.Buf.WriteString(GetErrorMessage(number))
+		r.Buf.WriteString(GetErrorMessage(number, lang))
 	} else {
-		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
 	}
 	r.Buf.WriteString("\n")
 }
 
 // AppendWarning 添加警告. 错误级别指定为警告
-func (r *Record) AppendWarning(number ErrorCode, values ...interface{}) {
+func (r *Record) AppendWarning(lang string, number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
 
 	if len(values) == 0 {
-		r.Buf.WriteString(GetErrorMessage(number))
+		r.Buf.WriteString(GetErrorMessage(number, lang))
 	} else {
-		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
 	}
 	r.Buf.WriteString("\n")
 }
@@ -7701,7 +7689,7 @@ func (s *session) AppendWarning(number ErrorCode, values ...interface{}) {
 	} else if s.stage == StageExec {
 		s.myRecord.Buf.WriteString("Execute: ")
 	}
-	s.myRecord.AppendWarning(number, values...)
+	s.myRecord.AppendWarning(s.Inc.Lang, number, values...)
 	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 }
 
@@ -7729,9 +7717,9 @@ func (s *session) AppendErrorNo(number ErrorCode, values ...interface{}) {
 			r.Buf.WriteString("Execute: ")
 		}
 		if len(values) == 0 {
-			r.Buf.WriteString(GetErrorMessage(number))
+			r.Buf.WriteString(s.getErrorMessage(number))
 		} else {
-			r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number), values...))
+			r.Buf.WriteString(fmt.Sprintf(s.getErrorMessage(number), values...))
 		}
 		r.Buf.WriteString("\n")
 	}
@@ -8581,4 +8569,9 @@ func (s *session) checkSetStmt(node *ast.SetStmt) {
 // IgnoreCase 判断是否忽略大小写
 func (s *session) IgnoreCase() bool {
 	return s.LowerCaseTableNames > 0
+}
+
+// getErrorMessage 获取审核信息
+func (s *session) getErrorMessage(code ErrorCode) string {
+	return GetErrorMessage(code, s.Inc.Lang)
 }

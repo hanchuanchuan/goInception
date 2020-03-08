@@ -39,12 +39,9 @@ func (s *testSessionPrintSuite) SetUpSuite(c *C) {
 
 	s.initSetUp(c)
 
-	// config.GetGlobalConfig().Inc.Lang = "zh-CN"
-	// session.SetLanguage("zh-CN")
 	config.GetGlobalConfig().Inc.Lang = "en-US"
 	config.GetGlobalConfig().Inc.EnableFingerprint = true
 	config.GetGlobalConfig().Inc.SqlSafeUpdates = 0
-	session.SetLanguage("en-US")
 
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
