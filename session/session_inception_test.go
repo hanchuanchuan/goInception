@@ -2793,3 +2793,34 @@ func (s *testSessionIncSuite) TestSetSessionVariables(c *C) {
 		session.NewErrf("Set comments for table 't2'."))
 
 }
+
+// TestSetVariables 设置会话级变量进行审核
+func (s *testSessionIncSuite) TestBlobAndText(c *C) {
+	sql := ""
+
+	s.mustRunExec(c, "drop table if exists t1,t2;")
+
+	config.GetGlobalConfig().Inc.EnableBlobType = false
+	sql = `create table t1(id int primary key,
+		c1 tinyblob ,
+		c2 blob,
+		c3 mediumblob,
+		c4 longblob);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c2"),
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c3"),
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c4"))
+
+	sql = `create table t2(id int primary key,
+			c1 tinytext ,
+			c2 text,
+			c3 mediumtext,
+			c4 longtext);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c2"),
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c3"),
+		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c4"))
+
+}
