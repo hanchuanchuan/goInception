@@ -342,9 +342,13 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
-	sql = `create table t1(id int,c1 char(200));`
+	sql = `create table t1(id int,c1 char(200),c2 char(100));`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
+
+	config.GetGlobalConfig().Inc.MaxCharLength = 0
+	sql = `create table t1(id int,c1 char(200));`
+	s.testErrorCode(c, sql)
 
 	// 主键的默认值为函数
 	sql = "create table t1(c1 datetime(6) not null default current_timestamp(6) primary key);"
