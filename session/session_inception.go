@@ -4528,7 +4528,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.AppendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
 	}
 
-	if field.Tp.Tp == mysql.TypeString && field.Tp.Flen > int(s.Inc.MaxCharLength) {
+	if field.Tp.Tp == mysql.TypeString && (s.Inc.MaxCharLength > 0 && field.Tp.Flen > int(s.Inc.MaxCharLength)) {
 		s.AppendErrorNo(ER_CHAR_TO_VARCHAR_LEN, field.Name.Name)
 	}
 
