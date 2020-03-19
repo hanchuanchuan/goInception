@@ -701,7 +701,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 		}
 	}
 
-	if !s.haveCommit {
+	if s.haveBegin && !s.haveCommit {
 		if s.opt != nil && s.opt.Print {
 			s.printSets.Append(2, "", "", "Must end with commit.")
 		} else if s.opt != nil && s.opt.split {
