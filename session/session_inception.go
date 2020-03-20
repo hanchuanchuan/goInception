@@ -3895,6 +3895,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	}
 
 	for i, alter := range node.Specs {
+
 		switch alter.Tp {
 		case ast.AlterTableOption:
 			if len(alter.Options) == 0 {
@@ -4578,7 +4579,11 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
 			case ast.ColumnOptionCollate:
-				s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
+				if s.Inc.EnableColumnCharset {
+					s.checkCollation(op.StrValue)
+				} else {
+					s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
+				}
 			}
 		}
 	}
@@ -4641,9 +4646,20 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		if !notNullFlag && !hasGenerated {
 			s.AppendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
 		}
+	}
 
-		if field.Tp.Charset != "" || field.Tp.Collate != "" {
-			if field.Tp.Charset != "binary" {
+	// 审核所有指定了charset或collate的字段
+	if field.Tp.Charset != "" || field.Tp.Collate != "" {
+		if field.Tp.Charset != "" && field.Tp.Charset != "binary" {
+			if s.Inc.EnableColumnCharset {
+				s.checkCharset(field.Tp.Charset)
+			} else {
+				s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
+			}
+		} else if field.Tp.Collate != "" && field.Tp.Collate != "binary" {
+			if s.Inc.EnableColumnCharset {
+				s.checkCollation(field.Tp.Collate)
+			} else {
 				s.AppendErrorNo(ER_CHARSET_ON_COLUMN, tableName, field.Name.Name)
 			}
 		}
