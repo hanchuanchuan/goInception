@@ -168,6 +168,11 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString(" --max-lag=")
 	buf.WriteString(fmt.Sprintf("%d", s.Osc.OscMaxLag))
 
+	if s.IsClusterNode && s.DBVersion > 50600 && s.Osc.OscMaxFlowCtl >= 0 {
+		buf.WriteString(" --max-flow-ctl=")
+		buf.WriteString(fmt.Sprintf("%d", s.Osc.OscMaxFlowCtl))
+	}
+
 	buf.WriteString(" --no-version-check ")
 	buf.WriteString(" --recursion-method=")
 	buf.WriteString(s.Osc.OscRecursionMethod)

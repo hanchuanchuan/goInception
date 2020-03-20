@@ -44,6 +44,8 @@ func (s *testSessionIncExecSuite) SetUpSuite(c *C) {
 	inc.EnableFingerprint = true
 	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
+
+	config.GetGlobalConfig().Osc.OscMaxFlowCtl = 1
 }
 
 func (s *testSessionIncExecSuite) TearDownSuite(c *C) {
