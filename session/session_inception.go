@@ -327,6 +327,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 	s.haveBegin = false
 	s.haveCommit = false
 	s.threadID = 0
+	s.IsClusterNode = false
 
 	s.tableCacheList = make(map[string]*TableInfo)
 	s.dbCacheList = make(map[string]*DBInfo)
@@ -2418,7 +2419,8 @@ func (s *session) mysqlServerVersion() {
 
 	var name, value string
 	// sql := "select @@version;"
-	sql := `show variables where Variable_name in ('innodb_large_prefix','version','sql_mode','lower_case_table_names');`
+	sql := `show variables where Variable_name in
+	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on');`
 
 	rows, err := s.Raw(sql)
 	if rows != nil {
@@ -2460,7 +2462,7 @@ func (s *session) mysqlServerVersion() {
 				log.Debug("db version: ", s.DBVersion)
 			case "innodb_large_prefix":
 				emptyInnodbLargePrefix = false
-				s.innodbLargePrefix = value == "ON"
+				s.innodbLargePrefix = (value == "ON" || value == "1")
 			case "sql_mode":
 				if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
 					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
@@ -2478,6 +2480,8 @@ func (s *session) mysqlServerVersion() {
 				} else {
 					s.LowerCaseTableNames = v
 				}
+			case "wsrep_on":
+				s.IsClusterNode = (value == "ON" || value == "1")
 			}
 		}
 

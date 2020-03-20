@@ -419,6 +419,9 @@ type Osc struct {
 	// 对应参数pt-online-schema-change中的参数--max-lag。默认值：3
 	OscMaxLag int `toml:"osc_max_lag" json:"osc_max_lag"`
 
+	// 类似--max-lag，检查集群暂停流量控制所花费的平均时间（仅适用于PXC 5.6及以上版本）
+	OscMaxFlowCtl int `toml:"osc_max_flow_ctl" json:"osc_max_flow_ctl"`
+
 	// 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
 	OscCheckAlter bool `toml:"osc_check_alter" json:"osc_check_alter"`
 
@@ -773,6 +776,7 @@ var defaultConf = Config{
 		OscAlterForeignKeysMethod:  "none",
 		OscRecursionMethod:         "processlist",
 		OscMaxLag:                  3,
+		OscMaxFlowCtl:              -1,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
 		OscCheckUniqueKeyChange:    true,
