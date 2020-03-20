@@ -170,7 +170,7 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	if s.IsClusterNode && s.DBVersion > 50600 && s.Osc.OscMaxFlowCtl >= 0 {
 		buf.WriteString(" --max-flow-ctl=")
-		buf.WriteString(fmt.Sprintf("%f", s.Osc.OscMaxFlowCtl))
+		buf.WriteString(fmt.Sprintf("%d", s.Osc.OscMaxFlowCtl))
 	}
 
 	buf.WriteString(" --no-version-check ")
