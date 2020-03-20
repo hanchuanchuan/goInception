@@ -243,6 +243,8 @@ type session struct {
 	innodbLargePrefix bool
 	// 目标数据库的lower-case-table-names设置, 默认值为1,即不区分大小写
 	LowerCaseTableNames int
+	// PXC集群节点
+	IsClusterNode bool
 }
 
 // DDLOwnerChecker returns s.ddlOwnerChecker.

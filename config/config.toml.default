@@ -110,6 +110,8 @@ osc_recursion_method = "processlist"
 # 对应参数pt-online-schema-change中的参数--max-lag。默认值：3
 osc_max_lag = 3
 
+# 类似--max-lag，检查集群暂停流量控制所花费的平均时间（仅适用于PXC 5.6及以上版本,会自动检测)
+osc_max_flow_ctl = -1
 # 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
 osc_check_alter = true
 
