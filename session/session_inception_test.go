@@ -125,7 +125,10 @@ func (s *testSessionIncSuite) testSQLError(c *C, sql string, errors ...*session.
 	allErrors := []string{}
 	for _, row := range res.Rows()[1:] {
 		if v, ok := row[4].(string); ok {
-			allErrors = append(allErrors, strings.TrimSpace(v))
+			v = strings.TrimSpace(v)
+			if v != "<nil>" {
+				allErrors = append(allErrors, v)
+			}
 		}
 	}
 
@@ -134,7 +137,7 @@ func (s *testSessionIncSuite) testSQLError(c *C, sql string, errors ...*session.
 		errMsgs = append(errMsgs, e.Error())
 	}
 
-	c.Assert(len(errMsgs), Equals, len(allErrors), Commentf("%v", res.Rows()))
+	c.Assert(len(errMsgs), Equals, len(allErrors), Commentf("%v", allErrors))
 
 	for index, err := range allErrors {
 		c.Assert(err, Equals, errMsgs[index], Commentf("%v", res.Rows()))
@@ -927,16 +930,12 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
 
 	// 字符集
-	res = s.runCheck(`drop table if exists t1;create table t1(id int);
-		alter table t1 add column c1 varchar(20) character set utf8;
-		alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`)
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-2]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c1'.")
-
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c2'.")
+	sql = `drop table if exists t1;create table t1(id int);
+        alter table t1 add column c1 varchar(20) character set utf8;
+        alter table t1 add column c2 varchar(20) COLLATE utf8_bin;`
+	s.testSQLError(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c2"))
 
 	// 关键字
 	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
@@ -1128,21 +1127,17 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 		session.NewErr(session.ER_CHAR_TO_VARCHAR_LEN, "c1"))
 
 	// 字符集
-	res = s.runCheck(`create table t1(id int,c1 varchar(20));
+	sql = `create table t1(id int,c1 varchar(20));
 		alter table t1 modify column c1 varchar(20) character set utf8;
-		alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;`)
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-2]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c1'.")
-
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
-	c.Assert(row[2], Equals, "1")
-	c.Assert(row[4], Equals, "Not Allowed set charset for column 't1.c1'.")
+		alter table t1 modify column c1 varchar(20) COLLATE utf8_bin;`
+	s.testSQLError(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"),
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c1"))
 
 	// 列注释
 	config.GetGlobalConfig().Inc.CheckColumnComment = true
 	res = s.runCheck("create table t1(id int,c1 varchar(10));alter table t1 modify column c1 varchar(20);")
-	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "1")
 	c.Assert(row[4], Equals, "Column 'c1' in table 't1' have no comments.")
 
@@ -2290,6 +2285,43 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	alter table t1 drop column c3;
 	alter table t1 drop column c4; `
 	s.testErrorCode(c, sql)
+
+	// 列字符集&排序规则
+	config.GetGlobalConfig().Inc.EnableColumnCharset = false
+	sql = `drop table if exists t1;
+    create table t1(id int primary key);
+    alter table t1 add column c4 varchar(22) charset utf8;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c4"))
+
+	sql = `drop table if exists t1;
+    create table t1(id int primary key);
+    alter table t1 add column c4 varchar(22) collate utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c4"))
+
+	sql = `drop table if exists t1;
+    create table t1(id int primary key);
+    alter table t1 add column c4 varchar(22) charset utf8 collate utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c4"),
+		session.NewErr(session.ER_CHARSET_ON_COLUMN, "t1", "c4"))
+
+	config.GetGlobalConfig().Inc.EnableColumnCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
+	sql = `drop table if exists t1;
+    create table t1(id int primary key);
+    alter table t1 add column c4 varchar(22) charset utf8 collate utf8_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCharsetNotSupport, "utf8mb4"))
+
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8"
+	config.GetGlobalConfig().Inc.SupportCollation = "utf8_bin"
+	sql = `drop table if exists t1;
+    create table t1(id int primary key);
+    alter table t1 add column c4 varchar(22) charset utf8 collate utf8mb4_bin;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCollationNotSupport, "utf8_bin"))
 
 }
 
