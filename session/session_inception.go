@@ -3680,6 +3680,10 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		}
 	}
 
+	if s.Inc.ColumnsMustHaveIndex != "" {
+		s.checkColumnsMustHaveindex(table)
+	}
+
 	if !s.hasError() && s.opt.execute {
 		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
 	}
@@ -3760,6 +3764,57 @@ func (s *session) checkMustHaveColumns(table *TableInfo) {
 	if len(notFountColumns) > 0 {
 		s.AppendErrorNo(ER_MUST_HAVE_COLUMNS, strings.Join(notFountColumns, ","))
 	}
+}
+
+func (s *session) checkColumnsMustHaveindex(table *TableInfo) {
+	columns := strings.Split(s.Inc.ColumnsMustHaveIndex, ",")
+	if len(columns) == 0 {
+		return
+	}
+	if table == nil {
+		return
+	}
+	var mustHaveNotHaveIndexCol []string
+	for _, mustIndexCol := range columns {
+		mustIndexCol = strings.TrimSpace(mustIndexCol)
+		col_name := mustIndexCol
+		col_type := ""
+		if strings.Contains(mustIndexCol, " ") {
+			column_name_type := strings.Fields(mustIndexCol)
+			if len(column_name_type) > 1 {
+				col_name = column_name_type[0]
+				col_type = GetDataTypeBase(column_name_type[1])
+			}
+		}
+
+		inTable := false
+		haveIndex := false
+		for _, field := range table.Fields {
+			//表内包含必须有索引的列
+			if strings.EqualFold(col_name, field.Field) {
+				inTable = true
+				for _, indexColName := range table.Indexes {
+					if strings.EqualFold(col_name, indexColName.ColumnName) && indexColName.Seq == 1 {
+						haveIndex = true
+					}
+				}
+
+				if col_type != "" && !strings.EqualFold(col_type, GetDataTypeBase(field.Type)) {
+					s.AppendErrorNo(ErrColumnsMustHaveIndexTypeErr, col_name, col_type, GetDataTypeBase(field.Type))
+				}
+			}
+		}
+
+		//col_name 在表中，并且没有索引
+		if inTable == true && haveIndex == false {
+			mustHaveNotHaveIndexCol = append(mustHaveNotHaveIndexCol, col_name)
+		}
+	}
+
+	if len(mustHaveNotHaveIndexCol) > 0 {
+		s.AppendErrorNo(ErrColumnsMustHaveIndex, strings.Join(mustHaveNotHaveIndexCol, ","))
+	}
+
 }
 
 func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
@@ -3962,6 +4017,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 				return
 			}
 		}
+	}
+
+	if s.Inc.ColumnsMustHaveIndex != "" {
+		tableCopy := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
+		s.checkColumnsMustHaveindex(tableCopy)
 	}
 
 	// 生成alter回滚语句,多个时逆向

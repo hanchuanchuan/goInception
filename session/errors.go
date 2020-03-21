@@ -177,6 +177,8 @@ const (
 	ER_CANT_SET_ENGINE
 	ER_MUST_AT_LEAST_ONE_COLUMN
 	ER_MUST_HAVE_COLUMNS
+	ErrColumnsMustHaveIndex
+	ErrColumnsMustHaveIndexTypeErr
 	ER_PRIMARY_CANT_HAVE_NULL
 	ErrCantRemoveAllFields
 	ErrNotFoundTableInfo
@@ -347,6 +349,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_CANT_SET_ENGINE:                     "Cannot set engine '%s'",
 	ER_MUST_AT_LEAST_ONE_COLUMN:            "A table must have at least 1 column.",
 	ER_MUST_HAVE_COLUMNS:                   "Must have the specified column: '%s'.",
+	ErrColumnsMustHaveIndex:                "The specified column: '%s' must have index.",
+	ErrColumnsMustHaveIndexTypeErr:         "The specified column: '%s' type must be '%s',current is '%s'.",
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ErrNotFoundTableInfo:                   "Skip backup because there is no table structure information.",
@@ -517,6 +521,8 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_CANT_SET_ENGINE:                     "禁止指定存储引擎:'%s'",
 	ER_MUST_AT_LEAST_ONE_COLUMN:            "表至少需要有一个列.",
 	ER_MUST_HAVE_COLUMNS:                   "表必须包含以下列: '%s'.",
+	ErrColumnsMustHaveIndex:                "列: '%s' 必须建索引.",
+	ErrColumnsMustHaveIndexTypeErr:         "列: '%s' 类型必须为 '%s',当前为 '%s'",
 	ER_PRIMARY_CANT_HAVE_NULL:              "主键的所有列必须为NOT NULL,如需要NULL列,请改用唯一索引",
 	ErrCantRemoveAllFields:                 "禁止删除表的所有列.",
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
@@ -564,6 +570,8 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_INVALID_DATA_TYPE,
 		ER_INVALID_IDENT,
 		ER_MUST_HAVE_COLUMNS,
+		ErrColumnsMustHaveIndex,
+		ErrColumnsMustHaveIndexTypeErr,
 		ER_NO_WHERE_CONDITION,
 		ErrJoinNoOnCondition,
 		ER_NOT_ALLOWED_NULLABLE,
@@ -979,6 +987,8 @@ func (e ErrorCode) String() string {
 		return "er_must_at_least_one_column"
 	case ER_MUST_HAVE_COLUMNS:
 		return "er_must_have_columns"
+	case ErrColumnsMustHaveIndex:
+		return "er_columns_must_have_index"
 	case ER_PRIMARY_CANT_HAVE_NULL:
 		return "er_primary_cant_have_null"
 	case ErrCantRemoveAllFields:

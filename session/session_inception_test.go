@@ -784,6 +784,30 @@ primary key(id)) comment 'test';`
 
 	config.GetGlobalConfig().Inc.MustHaveColumns = ""
 
+	// 如果表包含以下列，列必须有索引。
+	config.GetGlobalConfig().Inc.ColumnsMustHaveIndex = "c1 , c2 int "
+	sql = `drop table if exists t1;CREATE TABLE t1(id int, c1 int, c2 int, index idx_c1 (c1));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrColumnsMustHaveIndex, "c2"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int, c1 int, c2 varchar (20), index idx_c1 (c1));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrColumnsMustHaveIndexTypeErr, "c2", "int", "varchar"),
+		session.NewErr(session.ErrColumnsMustHaveIndex, "c2"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int,c1 int ,c2 int,index idx_c1(c1),index idx_c2(c2));`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int);ALTER TABLE t1 ADD COLUMN c2 varchar(20);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrColumnsMustHaveIndexTypeErr, "c2", "int", "varchar"),
+		session.NewErr(session.ErrColumnsMustHaveIndex, "c2"))
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int);ALTER TABLE t1 ADD COLUMN c2 int,add index idx_c2(c2);`
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.ColumnsMustHaveIndex = ""
+
 	config.GetGlobalConfig().Inc.CheckInsertField = false
 	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
 
