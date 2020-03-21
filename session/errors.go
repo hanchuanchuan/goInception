@@ -989,6 +989,8 @@ func (e ErrorCode) String() string {
 		return "er_must_have_columns"
 	case ErrColumnsMustHaveIndex:
 		return "er_columns_must_have_index"
+	case ErrColumnsMustHaveIndexTypeErr:
+		return "er_columns_must_have_index_type_err"
 	case ER_PRIMARY_CANT_HAVE_NULL:
 		return "er_primary_cant_have_null"
 	case ErrCantRemoveAllFields:
