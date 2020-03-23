@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"path"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -129,7 +130,7 @@ func (s *testCommon) initSetUp(c *C) {
 	inc := &config.GetGlobalConfig().Inc
 
 	inc.BackupHost = "127.0.0.1"
-	inc.BackupPort = 3306
+	inc.BackupPort = 3336
 	inc.BackupUser = "test"
 	inc.BackupPassword = "test"
 
@@ -137,6 +138,9 @@ func (s *testCommon) initSetUp(c *C) {
 	inc.EnableFingerprint = true
 	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
+
+	// mysql5.6测试用例会出错(docker映射对外的端口不一致)
+	config.GetGlobalConfig().Ghost.GhostAliyunRds = true
 
 	s.defaultInc = *inc
 
@@ -372,7 +376,7 @@ func (s *testCommon) mysqlServerVersion() error {
 	if err != nil {
 		return err
 	}
-	emptyInnodbLargePrefix := true
+	// emptyInnodbLargePrefix := true
 	for rows.Next() {
 		rows.Scan(&name, &value)
 
@@ -391,9 +395,9 @@ func (s *testCommon) mysqlServerVersion() error {
 				return errors.New(fmt.Sprintf("无法解析版本号:%s", value))
 			}
 			log.Debug("db version: ", s.DBVersion)
-		// case "innodb_large_prefix":
-		// 	emptyInnodbLargePrefix = false
-		// 	s.innodbLargePrefix = value == "ON"
+		case "innodb_large_prefix":
+			// emptyInnodbLargePrefix = false
+			s.innodbLargePrefix = value == "ON" || value == "1"
 		case "sql_mode":
 			s.sqlMode = value
 		case "lower_case_table_names":
@@ -410,13 +414,13 @@ func (s *testCommon) mysqlServerVersion() error {
 	}
 
 	// 如果没有innodb_large_prefix系统变量
-	if emptyInnodbLargePrefix {
-		if s.DBVersion > 50700 {
-			s.innodbLargePrefix = true
-		} else {
-			s.innodbLargePrefix = false
-		}
-	}
+	// if emptyInnodbLargePrefix {
+	// 	if s.DBVersion > 50700 {
+	// 		s.innodbLargePrefix = true
+	// 	} else {
+	// 		s.innodbLargePrefix = false
+	// 	}
+	// }
 	return nil
 }
 
@@ -544,6 +548,22 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 	}
 
 	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", rows))
+
+	// 如果是UPDATE多表操作,此时回滚的SQL可能是无序的
+	if len(result) > 1 && strings.HasPrefix(result[0], "UPDATE") {
+		prefix := ""
+		for i, sql := range result {
+			if i == 0 {
+				prefix = strings.Fields(sql)[1]
+				continue
+			}
+			if prefix != strings.Fields(sql)[1] {
+				sort.Strings(result)
+				sort.Strings(rollbackSqls)
+				break
+			}
+		}
+	}
 
 	for i := range result {
 		c.Assert(result[i], Equals, rollbackSqls[i], Commentf("%v", result))
