@@ -5196,7 +5196,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	keyMaxLen := 0
 	// 禁止使用blob列当索引,所以不再检测blob字段时列是否过长
 	isBlobColumn := false
-
+	isOverflowIndexLength := false
 	for _, col := range IndexColNames {
 		found := false
 		var foundField FieldInfo
@@ -5222,7 +5222,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				s.AppendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
-			maxLength := foundField.GetDataBytes(s.DBVersion, s.Inc.DefaultCharset)
+			columnIndexLength := foundField.GetDataBytes(s.DBVersion, s.Inc.DefaultCharset)
 
 			// Length must be specified for BLOB and TEXT column indexes.
 			// if types.IsTypeBlob(col.FieldType.Tp) && ic.Length == types.UnspecifiedLength {
@@ -5240,14 +5240,14 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				if (strings.Contains(strings.ToLower(foundField.Type), "blob") ||
 					strings.Contains(strings.ToLower(foundField.Type), "char") ||
 					strings.Contains(strings.ToLower(foundField.Type), "text")) &&
-					col.Length > maxLength {
+					col.Length > columnIndexLength {
 					s.AppendErrorNo(ER_WRONG_SUB_KEY)
-					col.Length = maxLength
+					col.Length = columnIndexLength
 				}
 			}
 
 			if col.Length == types.UnspecifiedLength {
-				keyMaxLen += maxLength
+				keyMaxLen += columnIndexLength
 			} else {
 				tmpField := &FieldInfo{
 					Field:     foundField.Field,
@@ -5255,7 +5255,8 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 					Collation: foundField.Collation,
 				}
 
-				keyMaxLen += tmpField.GetDataLength(s.DBVersion, s.Inc.DefaultCharset)
+				columnIndexLength = tmpField.GetDataLength(s.DBVersion, s.Inc.DefaultCharset)
+				keyMaxLen += columnIndexLength
 
 				// bysPerChar := 3
 				// charset := s.Inc.DefaultCharset
@@ -5272,6 +5273,13 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				// } else {
 				// 	keyMaxLen += col.Length * 3
 				// }
+			}
+
+			if !s.innodbLargePrefix && !isOverflowIndexLength &&
+				!isBlobColumn &&
+				columnIndexLength > maxKeyLength {
+				s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
+				isOverflowIndexLength = true
 			}
 
 			if tp == ast.ConstraintPrimaryKey {
@@ -5299,21 +5307,18 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		s.AppendErrorMessage(fmt.Sprintf("表'%s'的索引'%s'名称过长", t.Name, IndexName))
 	}
 
-	if !isBlobColumn {
-		// mysqlVersion := s.DBVersion
-		// mysql 5.6版本索引长度限制是767,5.7及之后变为3072
-		// log.Info(s.innodbLargePrefix)
-		// log.Info(keyMaxLen)
-		if s.innodbLargePrefix && keyMaxLen > maxKeyLength57 {
+	if !isBlobColumn && !isOverflowIndexLength {
+		// --删除!-- mysql 5.6版本索引长度限制是767,5.7及之后变为3072
+		// 未开启innodbLargePrefix时,单列长度不能超过767
+		// 所有情况下,总长度不能超过3072
+		if keyMaxLen > maxKeyLength57 {
 			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
-		} else if !s.innodbLargePrefix && keyMaxLen > maxKeyLength {
-			s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
 		}
 
-		// if mysqlVersion < 50700 && keyMaxLen > maxKeyLength {
-		// 	s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
-		// } else if (mysqlVersion >= 50700) && keyMaxLen > maxKeyLength57 {
+		// if s.innodbLargePrefix && keyMaxLen > maxKeyLength57 {
 		// 	s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
+		// } else if !s.innodbLargePrefix && keyMaxLen > maxKeyLength {
+		// 	s.AppendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength)
 		// }
 	}
 
