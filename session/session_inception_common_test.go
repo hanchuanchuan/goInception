@@ -130,7 +130,7 @@ func (s *testCommon) initSetUp(c *C) {
 	inc := &config.GetGlobalConfig().Inc
 
 	inc.BackupHost = "127.0.0.1"
-	inc.BackupPort = 3336
+	inc.BackupPort = 3306
 	inc.BackupUser = "test"
 	inc.BackupPassword = "test"
 
