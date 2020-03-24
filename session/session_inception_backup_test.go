@@ -380,6 +380,7 @@ func (s *testSessionIncBackupSuite) TestUpdate(c *C) {
 
 	sql = `update table1 t1,table2 t2 set t1.c1=10,t2.c22=20 where t1.id1=t2.id2 and t2.c1=1;`
 	s.mustRunBackup(c, sql)
+
 	s.assertRows(c, s.rows[1:],
 		"UPDATE `test_inc`.`table2` SET `id2`=1, `c1`=1, `c2`=1, `c22`=NULL WHERE `id2`=1;",
 		"UPDATE `test_inc`.`table2` SET `id2`=2, `c1`=1, `c2`=NULL, `c22`=NULL WHERE `id2`=2;",
@@ -714,7 +715,11 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 		insert into t1 values(1,X'71E6D5A383BB447C');`)
 	s.runBackup("delete from t1;")
 	row = s.rows[int(s.session.AffectedRows())-1]
-	c.Assert(row[2], Equals, "2", Commentf("%v", row))
+	if s.DBVersion >= 50700 {
+		c.Assert(row[2], Equals, "2", Commentf("%v", row))
+	} else {
+		c.Assert(row[2], Equals, "0", Commentf("%v", row))
+	}
 }
 
 func (s *testSessionIncBackupSuite) TestCreateDataBase(c *C) {
@@ -789,33 +794,35 @@ func (s *testSessionIncBackupSuite) TestAlterTableDropIndex(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD UNIQUE INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
 
-	sql = `drop table if exists t1;
+	// 几何类型字段低版本不支持
+	if s.DBVersion >= 50700 {
+		sql = `drop table if exists t1;
 	create table t1(id int primary key,c1 GEOMETRY not null ,SPATIAL index ix_1(c1));
 	alter table t1 drop index ix_1;`
-	s.mustRunBackup(c, sql)
-	row = s.rows[int(s.session.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD SPATIAL INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
+		s.mustRunBackup(c, sql)
+		row = s.rows[int(s.session.AffectedRows())-1]
+		backup = s.query("t1", row[7].(string))
+		c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD SPATIAL INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
 
-	sql = `drop table if exists t1;
+		sql = `drop table if exists t1;
 	create table t1(id int primary key,c1 GEOMETRY not null);
 	alter table t1 add SPATIAL index ix_1(c1);
 	alter table t1 drop index ix_1;`
-	s.mustRunBackup(c, sql)
-	row = s.rows[int(s.session.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD SPATIAL INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
+		s.mustRunBackup(c, sql)
+		row = s.rows[int(s.session.AffectedRows())-1]
+		backup = s.query("t1", row[7].(string))
+		c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD SPATIAL INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
 
-	sql = `drop table if exists t1;
+		sql = `drop table if exists t1;
 	create table t1(id int primary key,c1 GEOMETRY not null);
 	alter table t1 add SPATIAL index ix_1(c1);`
-	s.runBackup(sql)
-	sql = "alter table t1 drop index ix_1;"
-	s.mustRunBackup(c, sql)
-	row = s.rows[int(s.session.AffectedRows())-1]
-	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD SPATIAL INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
-
+		s.runBackup(sql)
+		sql = "alter table t1 drop index ix_1;"
+		s.mustRunBackup(c, sql)
+		row = s.rows[int(s.session.AffectedRows())-1]
+		backup = s.query("t1", row[7].(string))
+		c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` ADD SPATIAL INDEX `ix_1`(`c1`);", Commentf("%v", s.rows))
+	}
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
