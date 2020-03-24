@@ -268,7 +268,7 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	fmt.Println("数据库版本: ", s.DBVersion)
 
 	indexMaxLength := 767
-	if s.DBVersion >= 50700 {
+	if s.innodbLargePrefix {
 		indexMaxLength = 3072
 	}
 
@@ -288,6 +288,19 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 	sql = "drop table if exists t1;create table t1(c1 int,c2 text, unique uq_1(c1,c2(3069)));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
+
+	s.runExec("drop table if exists t1")
+	if s.innodbLargePrefix {
+		sql = "create table t1(c1 int,c2 varchar(400),c3 varchar(400),index idx_1(c1,c2))charset utf8;;"
+		s.testErrorCode(c, sql)
+	} else {
+		sql = "create table t1(c1 int,c2 varchar(400),c3 varchar(400),index idx_1(c1,c2))charset utf8;;"
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ER_TOO_LONG_KEY, "idx_1", indexMaxLength))
+	}
+
+	sql = "drop table if exists t1;create table t1(c1 int,c2 varchar(200),c3 varchar(200),index idx_1(c1,c2))charset utf8;;"
+	s.testErrorCode(c, sql)
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	// sql = "drop table if exists t1;create table t1(c1 int,c2 text, unique uq_1(c1,c2(3068)));"
