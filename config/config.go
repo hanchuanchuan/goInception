@@ -652,6 +652,7 @@ type IncLevel struct {
 	ErJsonTypeSupport               int8 `toml:"er_json_type_support"`
 	ErrImplicitTypeConversion       int8 `toml:"er_implicit_type_conversion"`
 	ErrJoinNoOnCondition            int8 `toml:"er_join_no_on_condition"`
+	ErrUseValueExpr                 int8 `toml:"er_use_value_expr"`
 	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
 }
 
@@ -863,6 +864,7 @@ var defaultConf = Config{
 		ErJsonTypeSupport:               2,
 		ErrImplicitTypeConversion:       1,
 		ErrJoinNoOnCondition:            1,
+		ErrUseValueExpr:                 1,
 		ErrWrongAndExpr:                 1,
 	},
 }
