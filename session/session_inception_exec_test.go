@@ -1378,31 +1378,31 @@ func (s *testSessionIncExecSuite) TestWhereCondition(c *C) {
 	sql := ""
 	s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
 
-	sql = "update t1 as tmp set tmp.id = 1 where 123;"
+	sql = "update t1 set id = 1 where 123;"
 	s.mustRunExec(c, sql)
 
-	sql = "update t1 as tmp set tmp.id = 1 where null;"
+	sql = "update t1 set id = 1 where null;"
 	s.mustRunExec(c, sql)
 
 	sql = `
-	update t1 as tmp set tmp.id = 1 where 1+2;
-	update t1 as tmp set tmp.id = 1 where 1-2;
-	update t1 as tmp set tmp.id = 1 where 1*2;
-	update t1 as tmp set tmp.id = 1 where 1/2;
-	update t1 as tmp set tmp.id = 1 where 1&2;
-	update t1 as tmp set tmp.id = 1 where 1|2;
-	update t1 as tmp set tmp.id = 1 where 1^2;
-	update t1 as tmp set tmp.id = 1 where 1 div 2;
+	delete from t1 where 1+2;
+	delete from t1 where 1-2;
+	delete from t1 where 1*2;
+	delete from t1 where 1/2;
+	update t1 set id = 1 where 1&2;
+	update t1 set id = 1 where 1|2;
+	update t1 set id = 1 where 1^2;
+	update t1 set id = 1 where 1 div 2;
 	`
 	s.mustRunExec(c, sql)
 
 	sql = `
-	update t1 as tmp set tmp.id = 1 where 1+2=3;
-	update t1 as tmp set tmp.id = 1 where id is null;
-	update t1 as tmp set tmp.id = 1 where id is not null;
-	update t1 as tmp set tmp.id = 1 where 1=1;
-	update t1 as tmp set tmp.id = 1 where id in (1,2);
-	update t1 as tmp set tmp.id = 1 where id is true;
+	update t1 set id = 1 where 1+2=3;
+	update t1 set id = 1 where id is null;
+	update t1 set id = 1 where id is not null;
+	update t1 set id = 1 where 1=1;
+	update t1 set id = 1 where id in (1,2);
+	update t1 set id = 1 where id is true;
 	`
 	s.mustRunExec(c, sql)
 }

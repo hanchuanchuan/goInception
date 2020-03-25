@@ -1559,7 +1559,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.t1"))
 
-	sql = "create table t1(id int);update t1 as tmp set tmp.id = 1;"
+	sql = "create table t1(id int);update t1 set id = 1;"
 	s.testErrorCode(c, sql)
 
 	sql = "create table t1(id int);update t1 as tmp set t1.id = 1;"
@@ -2863,7 +2863,7 @@ func (s *testSessionIncSuite) TestWhereCondition(c *C) {
 	sql := ""
 	s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
 
-	sql = "update t1 as tmp set tmp.id = 1 where 123;"
+	sql = "update t1 set id = 1 where 123;"
 	config.GetGlobalConfig().IncLevel.ErrUseValueExpr = 0
 	s.testErrorCode(c, sql)
 
@@ -2871,19 +2871,19 @@ func (s *testSessionIncSuite) TestWhereCondition(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrUseValueExpr))
 
-	sql = "update t1 as tmp set tmp.id = 1 where null;"
+	sql = "update t1 set id = 1 where null;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrUseValueExpr))
 
 	sql = `
-	update t1 as tmp set tmp.id = 1 where 1+2;
-	update t1 as tmp set tmp.id = 1 where 1-2;
-	update t1 as tmp set tmp.id = 1 where 1*2;
-	update t1 as tmp set tmp.id = 1 where 1/2;
-	update t1 as tmp set tmp.id = 1 where 1&2;
-	update t1 as tmp set tmp.id = 1 where 1|2;
-	update t1 as tmp set tmp.id = 1 where 1^2;
-	update t1 as tmp set tmp.id = 1 where 1 div 2;
+	update t1 set id = 1 where 1+2;
+	update t1 set id = 1 where 1-2;
+	update t1 set id = 1 where 1*2;
+	delete from t1 where 1/2;
+	delete from t1 where 1&2;
+	delete from t1 where 1|2;
+	delete from t1 where 1^2;
+	delete from t1 where 1 div 2;
 	`
 	s.testSQLError(c, sql,
 		session.NewErr(session.ErrUseValueExpr),
@@ -2897,12 +2897,12 @@ func (s *testSessionIncSuite) TestWhereCondition(c *C) {
 	)
 
 	sql = `
-	update t1 as tmp set tmp.id = 1 where 1+2=3;
-	update t1 as tmp set tmp.id = 1 where id is null;
-	update t1 as tmp set tmp.id = 1 where id is not null;
-	update t1 as tmp set tmp.id = 1 where 1=1;
-	update t1 as tmp set tmp.id = 1 where id in (1,2);
-	update t1 as tmp set tmp.id = 1 where id is true;
+	update t1 set id = 1 where 1+2=3;
+	update t1 set id = 1 where id is null;
+	update t1 set id = 1 where id is not null;
+	update t1 set id = 1 where 1=1;
+	update t1 set id = 1 where id in (1,2);
+	update t1 set id = 1 where id is true;
 	`
 	s.testSQLError(c, sql)
 }
