@@ -204,6 +204,7 @@ const (
 	ErrFkDupName
 	ErrJoinNoOnCondition
 	ErrImplicitTypeConversion
+	ErrUseValueExpr
 	ER_ERROR_LAST
 )
 
@@ -375,6 +376,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
 	ErrJoinNoOnCondition:           "set the on clause for join statement.",
 	ErrImplicitTypeConversion:      "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
+	ErrUseValueExpr:                "Please confirm if you want to use value expression in where condition.",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -538,6 +540,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrWrongAndExpr:                        "可能是错误语法!更新多个字段时请使用逗号分隔.",
 	ErrJoinNoOnCondition:                   "join语句请指定on子句.",
 	ErrImplicitTypeConversion:              "不允许隐式类型转换(列'%s.%s',类型'%s').",
+	ErrUseValueExpr:                        "请确认是否要在where条件中使用值表达式.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -598,6 +601,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_DATETIME_DEFAULT,
 		ErrWrongAndExpr,
 		ErrImplicitTypeConversion,
+		ErrUseValueExpr,
 		ER_WITH_INSERT_FIELD:
 		return 1
 
@@ -1023,6 +1027,8 @@ func (e ErrorCode) String() string {
 		return "er_join_no_on_condition"
 	case ErrImplicitTypeConversion:
 		return "er_implicit_type_conversion"
+	case ErrUseValueExpr:
+		return "er_use_value_expr"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}

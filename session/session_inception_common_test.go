@@ -263,6 +263,8 @@ inception_magic_commit;`
 	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 
 	for _, row := range res.Rows() {
+		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"),
+			Equals, true, Commentf("%v", res.Rows()))
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
 
@@ -291,6 +293,8 @@ inception_magic_commit;`
 
 	// 需要成功执行
 	for _, row := range res.Rows() {
+		// c.Assert(strings.Contains(row[3].(string), "Backup Successfully"),
+		// 	Equals, true, Commentf("%v", res.Rows()))
 		c.Assert(row[2], Not(Equals), "2", Commentf("%v", row))
 	}
 

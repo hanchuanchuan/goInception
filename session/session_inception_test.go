@@ -2858,3 +2858,51 @@ func (s *testSessionIncSuite) TestBlobAndText(c *C) {
 		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c4"))
 
 }
+
+func (s *testSessionIncSuite) TestWhereCondition(c *C) {
+	sql := ""
+	s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
+
+	sql = "update t1 as tmp set tmp.id = 1 where 123;"
+	config.GetGlobalConfig().IncLevel.ErrUseValueExpr = 0
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().IncLevel.ErrUseValueExpr = 1
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrUseValueExpr))
+
+	sql = "update t1 as tmp set tmp.id = 1 where null;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrUseValueExpr))
+
+	sql = `
+	update t1 as tmp set tmp.id = 1 where 1+2;
+	update t1 as tmp set tmp.id = 1 where 1-2;
+	update t1 as tmp set tmp.id = 1 where 1*2;
+	update t1 as tmp set tmp.id = 1 where 1/2;
+	update t1 as tmp set tmp.id = 1 where 1&2;
+	update t1 as tmp set tmp.id = 1 where 1|2;
+	update t1 as tmp set tmp.id = 1 where 1^2;
+	update t1 as tmp set tmp.id = 1 where 1 div 2;
+	`
+	s.testSQLError(c, sql,
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+		session.NewErr(session.ErrUseValueExpr),
+	)
+
+	sql = `
+	update t1 as tmp set tmp.id = 1 where 1+2=3;
+	update t1 as tmp set tmp.id = 1 where id is null;
+	update t1 as tmp set tmp.id = 1 where id is not null;
+	update t1 as tmp set tmp.id = 1 where 1=1;
+	update t1 as tmp set tmp.id = 1 where id in (1,2);
+	update t1 as tmp set tmp.id = 1 where id is true;
+	`
+	s.testSQLError(c, sql)
+}
