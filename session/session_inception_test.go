@@ -798,7 +798,7 @@ primary key(id)) comment 'test';`
 	sql = `drop table if exists t1;create table t1(id int,c2 int unique);`
 	s.testErrorCode(c, sql)
 
-	sql = `drop table if exists t1;create table t1(c1 int primary key)`
+	sql = `drop table if exists t1;create table t1(c1 int primary key,c2 int unique)`
 	s.testErrorCode(c, sql)
 
 	sql = `drop table if exists t1;CREATE TABLE t1(id int, c1 int, c2 int, index idx_1 (c1,c2));`
