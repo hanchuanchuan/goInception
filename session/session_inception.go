@@ -3585,6 +3585,12 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 									{Column: field.Name,
 										Length: types.UnspecifiedLength},
 								}, nil, table, true, ast.ConstraintPrimaryKey)
+						case ast.ColumnOptionUniqKey:
+							s.checkCreateIndex(nil, field.Name.String(),
+								[]*ast.IndexColName{
+									{Column: field.Name, Length: types.UnspecifiedLength},
+								}, nil, table, true, ast.ConstraintUniq)
+
 						}
 					}
 
