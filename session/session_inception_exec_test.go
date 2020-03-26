@@ -84,14 +84,20 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		}
 		c.Assert(row[4], Equals, strings.Join(errMsgs, "\n"), Commentf("%v", row))
 	}
-
-	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", res.Rows()))
+	// 没有错误时允许有警告
+	// if errCode == 0 {
+	// 	c.Assert(row[2], Not(Equals), "2", Commentf("%v", res.Rows()))
+	// } else {
+	// 	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", res.Rows()))
+	// }
 	// 无错误时需要校验结果是否标记为已执行
 	if errCode == 0 {
 		c.Assert(strings.Contains(row[3].(string), "Execute Successfully"), Equals, true, Commentf("%v", res.Rows()))
 		for _, row := range res.Rows() {
 			c.Assert(row[2], Not(Equals), "2", Commentf("%v", res.Rows()))
 		}
+	} else {
+		c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", res.Rows()))
 	}
 
 	return res.Rows()
@@ -1366,4 +1372,37 @@ func (s *testSessionIncExecSuite) TestDisplayWidth(c *C) {
 	sql = `alter table t1 add column c11 tinyint(255);`
 	s.testErrorCode(c, sql)
 
+}
+
+func (s *testSessionIncExecSuite) TestWhereCondition(c *C) {
+	sql := ""
+	s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
+
+	sql = "update t1 set id = 1 where 123;"
+	s.mustRunExec(c, sql)
+
+	sql = "update t1 set id = 1 where null;"
+	s.mustRunExec(c, sql)
+
+	sql = `
+	delete from t1 where 1+2;
+	delete from t1 where 1-2;
+	delete from t1 where 1*2;
+	delete from t1 where 1/2;
+	update t1 set id = 1 where 1&2;
+	update t1 set id = 1 where 1|2;
+	update t1 set id = 1 where 1^2;
+	update t1 set id = 1 where 1 div 2;
+	`
+	s.mustRunExec(c, sql)
+
+	sql = `
+	update t1 set id = 1 where 1+2=3;
+	update t1 set id = 1 where id is null;
+	update t1 set id = 1 where id is not null;
+	update t1 set id = 1 where 1=1;
+	update t1 set id = 1 where id in (1,2);
+	update t1 set id = 1 where id is true;
+	`
+	s.mustRunExec(c, sql)
 }

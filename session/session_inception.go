@@ -7217,6 +7217,11 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 
 	if node.Where == nil {
 		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
+	} else {
+		// log.Infof("%#v", node.Where)
+		if !s.checkVaildWhere(node.Where) {
+			s.AppendErrorNo(ErrUseValueExpr)
+		}
 	}
 
 	if node.Limit != nil {
@@ -7602,6 +7607,10 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 
 	if node.Where == nil {
 		s.AppendErrorNo(ER_NO_WHERE_CONDITION)
+	} else {
+		if !s.checkVaildWhere(node.Where) {
+			s.AppendErrorNo(ErrUseValueExpr)
+		}
 	}
 
 	if node.Limit != nil {
@@ -8599,4 +8608,35 @@ func (s *session) IgnoreCase() bool {
 // getErrorMessage 获取审核信息
 func (s *session) getErrorMessage(code ErrorCode) string {
 	return GetErrorMessage(code, s.Inc.Lang)
+}
+
+// checkVaildWhere 校验where条件是否有效
+// 如果只有单个值或者类似1+2这种表达式，则认为是无效的表达式
+func (s *session) checkVaildWhere(expr ast.ExprNode) bool {
+	switch x := expr.(type) {
+	case nil:
+	case *ast.BinaryOperationExpr:
+		if x.L != nil && x.R != nil {
+			_, ok1 := x.L.(*ast.ValueExpr)
+			_, ok2 := x.R.(*ast.ValueExpr)
+			if !ok1 || !ok2 {
+				return true
+			}
+
+			switch x.Op {
+			case opcode.LogicAnd, opcode.LogicOr, opcode.And,
+				opcode.Or, opcode.Xor,
+				opcode.Plus, opcode.Minus, opcode.Mul, opcode.Mod,
+				opcode.Div, opcode.IntDiv:
+				return false
+			}
+		}
+	case *ast.ParenthesesExpr:
+		return s.checkVaildWhere(x.Expr)
+	case *ast.ValueExpr:
+		return false
+	default:
+		return true
+	}
+	return true
 }
