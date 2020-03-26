@@ -795,6 +795,16 @@ primary key(id)) comment 'test';`
 		session.NewErr(session.ErrColumnsMustHaveIndexTypeErr, "c2", "int", "varchar"),
 		session.NewErr(session.ErrColumnsMustHaveIndex, "c2"))
 
+	sql = `drop table if exists t1;create table t1(id int,c2 int unique);`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;create table t1(c1 int primary key)`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;CREATE TABLE t1(id int, c1 int, c2 int, index idx_1 (c1,c2));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrColumnsMustHaveIndex, "c2"))
+
 	sql = `drop table if exists t1;CREATE TABLE t1(id int,c1 int ,c2 int,index idx_c1(c1),index idx_c2(c2));`
 	s.testErrorCode(c, sql)
 
