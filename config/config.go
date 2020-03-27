@@ -359,6 +359,8 @@ type Inc struct {
 
 	// 建表必须创建的列. 可指定多个列,以逗号分隔.列类型可选. 格式: 列名 [列类型,可选],...
 	MustHaveColumns string `toml:"must_have_columns" json:"must_have_columns"`
+	// 如果表包含以下列，列必须有索引。可指定多个列,以逗号分隔.列类型可选.   格式: 列名 [列类型,可选],...
+	ColumnsMustHaveIndex string `toml:"columns_must_have_index" json:"columns_must_have_index"`
 
 	// 是否跳过用户权限校验
 	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
@@ -621,6 +623,8 @@ type IncLevel struct {
 	ER_INVALID_DATA_TYPE            int8 `toml:"er_invalid_data_type"`
 	ER_INVALID_IDENT                int8 `toml:"er_invalid_ident"`
 	ER_MUST_HAVE_COLUMNS            int8 `toml:"er_must_have_columns"`
+	ErrColumnsMustHaveIndex         int8 `toml:"er_columns_must_have_index"`
+	ErrColumnsMustHaveIndexTypeErr  int8 `toml:"er_columns_must_have_index_type_err"`
 	ER_NO_WHERE_CONDITION           int8 `toml:"er_no_where_condition"`
 	ER_NOT_ALLOWED_NULLABLE         int8 `toml:"er_not_allowed_nullable"`
 	ER_ORDERY_BY_RAND               int8 `toml:"er_ordery_by_rand"`
@@ -833,6 +837,8 @@ var defaultConf = Config{
 		ER_INVALID_DATA_TYPE:            1,
 		ER_INVALID_IDENT:                1,
 		ER_MUST_HAVE_COLUMNS:            1,
+		ErrColumnsMustHaveIndex:         1,
+		ErrColumnsMustHaveIndexTypeErr:  1,
 		ER_NO_WHERE_CONDITION:           1,
 		ER_NOT_ALLOWED_NULLABLE:         1,
 		ER_ORDERY_BY_RAND:               1,
