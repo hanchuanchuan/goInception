@@ -2338,7 +2338,7 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	if err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+			s.AppendErrorMessage(myErr.Message + " (sql: " + sql + ")")
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
@@ -2640,7 +2640,7 @@ func (s *session) modifyBinlogFormatRow() {
 	if _, err := s.Exec(sql, true); err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+			s.AppendErrorMessage(myErr.Message + " (sql: " + sql + ")")
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
@@ -2674,7 +2674,7 @@ func (s *session) modifyBinlogRowImageFull() {
 	if _, err := s.Exec(sql, true); err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+			s.AppendErrorMessage(myErr.Message + " (sql: " + sql + ")")
 		} else {
 			s.AppendErrorMessage(err.Error())
 		}
