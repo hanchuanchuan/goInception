@@ -7,8 +7,8 @@ general:
 
 jobs:
   build:
-    branches:
-      ignore: gh-pages
+    # branches:
+    #   ignore: gh-pages
 
     docker:
       - image: circleci/golang:1.12
@@ -57,3 +57,38 @@ jobs:
               make docker
               make docker-push
             fi
+
+      - run:
+          name: "Make Release"
+          command: make release
+
+  publish-github-release:
+    environment:
+      ARTIFACTS: /go/src/github.com/hanchuanchuan/goInception/release
+    docker:
+    - image: cibuilds/github:0.10
+    steps:
+    - attach_workspace:
+        at: /go/src/github.com/hanchuanchuan/goInception/release
+    - run:
+        name: "Publish Release on GitHub"
+        command: |
+          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} $ARTIFACTS
+
+
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore: gh-pages
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^[Vv]\d+\.\d+\.\d+$/
