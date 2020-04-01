@@ -7,8 +7,8 @@ general:
 
 jobs:
   build:
-    # branches:
-    #   ignore: gh-pages
+    branches:
+      ignore: gh-pages
 
     docker:
       - image: circleci/golang:1.12
@@ -59,36 +59,26 @@ jobs:
             fi
 
       - run:
-          name: "Make Release"
-          command: make release
+          name: Check OR Publish Release on GitHub
+          command: |
+            GIT_COMMIT_DESC=$(git log --format=oneline -n 1 ${CIRCLE_SHA1} | sed -E 's/^[^ ]+ (.*)$/\1/g')
+            echo 'commit message:' "$GIT_COMMIT_DESC"
 
-  publish-github-release:
-    environment:
-      ARTIFACTS: /go/src/github.com/hanchuanchuan/goInception/release
-    docker:
-    - image: cibuilds/github:0.10
-    steps:
-    - attach_workspace:
-        at: /go/src/github.com/hanchuanchuan/goInception/release
-    - run:
-        name: "Publish Release on GitHub"
-        command: |
-          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} ${CIRCLE_TAG} $ARTIFACTS
+            if [[ "$GIT_COMMIT_DESC" =~ ^[vV][0123456789]+\.[0123456789]+.* ]] || [[ "$GIT_COMMIT_DESC" == ^[mM]erge* ]]; then
+                make release2
+                ls -l release
 
+                echo "Publish Release on GitHub"
 
-workflows:
-  version: 2
-  main:
-    jobs:
-      - build:
-          filters:
-            branches:
-              ignore: gh-pages
-      - publish-github-release:
-          requires:
-            - build
-          filters:
-            branches:
-              only: master
-            tags:
-              only: /^[Vv]\d+\.\d+\.\d+$/
+                if [ -z "$CIRCLE_TAG" ]; then
+                  CIRCLE_TAG=$(git describe --tags)
+                fi
+                if [ -n "${CIRCLE_TAG}" ]; then
+                  go get github.com/tcnksm/ghr
+                  ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -replace -c ${CIRCLE_SHA1} -b "### $GIT_COMMIT_DESC" -n ${CIRCLE_TAG} ${CIRCLE_TAG} ./release
+                else
+                  echo '无效$CIRCLE_TAG！'
+                fi
+            else
+              echo "不符合发版格式，跳过Release！！！"
+            fi

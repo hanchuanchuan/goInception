@@ -16,6 +16,8 @@ GOBUILD   := CGO_ENABLED=0 $(GO) build $(BUILD_FLAG)
 
 VERSION := $(shell git describe --tags --dirty)
 
+VERSION_EASY := $(shell git describe --tags)
+
 # 指定部分单元测试跳过
 ifeq ("$(SHORT)", "1")
 	GOTEST    := CGO_ENABLED=1 $(GO) test -p 3 -short
@@ -260,6 +262,19 @@ release:
 			echo "Building $${GOOS}-$${GOARCH} ..."; \
 			GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
 			tar -czf release/goInception-$${GOOS}-amd64-${VERSION}.tar.gz goInception config/config.toml.default; \
+			rm -f goInception; \
+		done ;\
+	done
+
+.PHONY: release
+release2:
+	@echo "$(CGREEN)Cross platform building for release ...$(CEND)"
+	@mkdir -p release
+	@for GOOS in darwin linux; do \
+		for GOARCH in amd64; do \
+			echo "Building $${GOOS}-$${GOARCH} ..."; \
+			GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
+			tar -czf release/goInception-$${GOOS}-amd64-${VERSION_EASY}.tar.gz goInception config/config.toml.default; \
 			rm -f goInception; \
 		done ;\
 	done
