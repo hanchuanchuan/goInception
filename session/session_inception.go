@@ -623,7 +623,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.SetMyProcessInfo(currentSql, time.Now(), float64(i)/float64(lineCount+1))
 
 					// 交互式命令行
-					if _, ok := stmtNode.(*ast.InceptionSetStmt); !need && !ok {
+					if _, ok := stmtNode.(*ast.InceptionSetStmt); !need &&
+						(!ok || (ok && !s.haveBegin)) {
 						if s.opt != nil {
 							return nil, errors.New("无效操作!不支持本地操作和远程操作混用!")
 						}
