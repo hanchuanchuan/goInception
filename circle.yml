@@ -64,7 +64,7 @@ jobs:
             GIT_COMMIT_DESC=$(git log --format=oneline -n 1 ${CIRCLE_SHA1} | sed -E 's/^[^ ]+ (.*)$/\1/g')
             echo 'commit message:' "$GIT_COMMIT_DESC"
 
-            if [[ "$GIT_COMMIT_DESC" =~ ^[vV][0123456789]+\.[0123456789]+.* ]] || [[ "$GIT_COMMIT_DESC" == ^[mM]erge* ]]; then
+            if [[ "$GIT_COMMIT_DESC" =~ ^[vV][0123456789]+\.[0123456789]+.* ]] || [[ "$GIT_COMMIT_DESC" =~ ^[mM]erge.* ]]; then
                 make release2
                 ls -l release
 
