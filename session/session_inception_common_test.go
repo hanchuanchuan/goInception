@@ -507,10 +507,9 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 
 		// 如果表改变了,或者超过500行了
 		if lastTable != currentTable || len(ids) >= 500 {
-			lastTable = currentTable
 			if len(ids) > 0 {
 				sql := "select rollback_statement from %s where opid_time in (?) order by opid_time,id;"
-				sql = fmt.Sprintf(sql, currentTable)
+				sql = fmt.Sprintf(sql, lastTable)
 				rows, err := s.db.Raw(sql, ids).Rows()
 				c.Assert(err, IsNil)
 
@@ -522,11 +521,12 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 				}
 				rows.Close()
 
-				c.Assert(len(result1), Not(Equals), 0, Commentf("-----------: %v", sql))
+				c.Assert(len(result1), Not(Equals), 0, Commentf("-----------: %v,%v", sql, ids))
 				result = append(result, result1...)
 
 				ids = nil
 			}
+			lastTable = currentTable
 		}
 
 		ids = append(ids, opid)
@@ -551,7 +551,7 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 		result = append(result, result1...)
 	}
 
-	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", rows))
+	c.Assert(len(result), Equals, len(rollbackSqls), Commentf("%v", result))
 
 	// 如果是UPDATE多表操作,此时回滚的SQL可能是无序的
 	if len(result) > 1 && strings.HasPrefix(result[0], "UPDATE") {
