@@ -70,9 +70,9 @@ jobs:
 
                 echo "Publish Release on GitHub"
 
-                if [ -z "$CIRCLE_TAG" ]; then
-                  CIRCLE_TAG=$(git describe --tags)
-                fi
+                CIRCLE_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+                echo 'TAG:' "$CIRCLE_TAG"
+
                 if [ -n "${CIRCLE_TAG}" ]; then
                   go get github.com/tcnksm/ghr
                   ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -replace -c ${CIRCLE_SHA1} -b "### $GIT_COMMIT_DESC" -n ${CIRCLE_TAG} ${CIRCLE_TAG} ./release
@@ -82,3 +82,4 @@ jobs:
             else
               echo "不符合发版格式，跳过Release！！！"
             fi
+
