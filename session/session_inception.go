@@ -307,6 +307,8 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		}
 	}
 
+	s.Inc.Lang = strings.Replace(strings.ToLower(s.Inc.Lang), "-", "_", 1)
+
 	if lowerSql == "select database()" {
 		return s.execute(ctx, sql)
 	} else if strings.HasPrefix(lowerSql, "select high_priority") {
@@ -6184,6 +6186,9 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			err = s.setVariableValue(reflect.TypeOf(*object), reflect.ValueOf(object).Elem(), v.Name, value)
 			if err != nil {
 				return nil, err
+			}
+			if prefix == "lang" {
+				s.Inc.Lang = strings.Replace(strings.ToLower(s.Inc.Lang), "-", "_", 1)
 			}
 		}
 	}
