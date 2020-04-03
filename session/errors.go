@@ -677,7 +677,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 
 // GetErrorMessage 获取审核信息,默认为英文
 func GetErrorMessage(code ErrorCode, lang string) string {
-	if lang == "zh_cn" {
+	if lang == "zh_cn" || lang == "zh-cn" {
 		if v, ok := ErrorsChinese[code]; ok {
 			return v
 		}
