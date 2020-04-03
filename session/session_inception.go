@@ -1658,7 +1658,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 	}
 
 	// 用于事务. 判断是否为DML语句
-	lastIsDMLTrans := false
+	// lastIsDMLTrans := false
 	for i, record := range s.recordSets.All() {
 
 		// 忽略不需要备份的类型
@@ -1689,7 +1689,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 					}
 				}
 
-				lastIsDMLTrans = true
+				// lastIsDMLTrans = true
 			case *ast.UseStmt, *ast.SetStmt:
 				// 环境命令
 				// 事务内部和非事务均需要执行
@@ -1724,10 +1724,10 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 				// 如果前端是DML语句,则在执行DDL前切换一次数据库
 				// log.Infof("lastIsDMLTrans: %v", lastIsDMLTrans)
-				if lastIsDMLTrans {
-					s.SwitchDatabase(s.ddlDB)
-					lastIsDMLTrans = false
-				}
+				// if lastIsDMLTrans {
+				// 	s.SwitchDatabase(s.ddlDB)
+				// 	lastIsDMLTrans = false
+				// }
 
 				s.executeRemoteCommand(record, true)
 
