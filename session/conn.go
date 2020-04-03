@@ -87,11 +87,38 @@ func (s *session) Raw(sqlStr string) (rows *sql.Rows, err error) {
 	return
 }
 
-// Raw 执行sql语句,连接失败时自动重连,自动重置当前数据库
+// Exec 执行sql语句,连接失败时自动重连,自动重置当前数据库
 func (s *session) Exec(sqlStr string, retry bool) (res sql.Result, err error) {
 	// 连接断开无效时,自动重试
 	for i := 0; i < maxBadConnRetries; i++ {
 		res, err = s.db.DB().Exec(sqlStr)
+		if err == nil {
+			return
+		} else {
+			log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sqlStr)
+			if err == mysqlDriver.ErrInvalidConn {
+				err1 := s.initConnection()
+				if err1 != nil {
+					return res, err1
+				}
+				if retry {
+					s.AppendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+					continue
+				} else {
+					return
+				}
+			}
+			return
+		}
+	}
+	return
+}
+
+// ExecDDL 执行sql语句,连接失败时自动重连,自动重置当前数据库
+func (s *session) ExecDDL(sqlStr string, retry bool) (res sql.Result, err error) {
+	// 连接断开无效时,自动重试
+	for i := 0; i < maxBadConnRetries; i++ {
+		res, err = s.ddlDB.DB().Exec(sqlStr)
 		if err == nil {
 			return
 		} else {
@@ -180,3 +207,54 @@ func (s *session) initConnection() (err error) {
 	}
 	return
 }
+
+// // SwitchDatabase USE切换到当前数据库. (避免连接断开后当前数据库置空)
+// func (s *session) SwitchDatabase(db *gorm.DB) error {
+// 	name := s.DBName
+// 	if name == "" {
+// 		name = s.opt.db
+// 	}
+// 	if name == "" {
+// 		return nil
+// 	}
+
+// 	// log.Infof("SwitchDatabase: %v", name)
+// 	_, err := db.DB().Exec(fmt.Sprintf("USE `%s`", name))
+// 	if err != nil {
+// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+// 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+// 			s.AppendErrorMessage(myErr.Message)
+// 		} else {
+// 			s.AppendErrorMessage(err.Error())
+// 		}
+// 	}
+// 	return err
+// }
+
+// // GetDatabase 获取当前数据库
+// func (s *session) GetDatabase() string {
+// 	log.Debug("GetDatabase")
+
+// 	var value string
+// 	sql := "select database();"
+
+// 	rows, err := s.Raw(sql)
+// 	if rows != nil {
+// 		defer rows.Close()
+// 	}
+
+// 	if err != nil {
+// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+// 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+// 			s.AppendErrorMessage(myErr.Message)
+// 		} else {
+// 			s.AppendErrorMessage(err.Error())
+// 		}
+// 	} else {
+// 		for rows.Next() {
+// 			rows.Scan(&value)
+// 		}
+// 	}
+
+// 	return value
+// }

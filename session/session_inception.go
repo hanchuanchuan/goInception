@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"io/ioutil"
@@ -524,6 +525,9 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 					if s.db != nil {
 						defer s.db.Close()
+					}
+					if s.ddlDB != nil {
+						defer s.ddlDB.Close()
 					}
 					if s.backupdb != nil {
 						defer s.backupdb.Close()
@@ -1655,6 +1659,8 @@ func (s *session) executeAllStatement(ctx context.Context) {
 		trans = make([]*Record, 0, s.opt.tranBatch)
 	}
 
+	// 用于事务. 判断是否为DML语句
+	// lastIsDMLTrans := false
 	for i, record := range s.recordSets.All() {
 
 		// 忽略不需要备份的类型
@@ -1684,11 +1690,13 @@ func (s *session) executeAllStatement(ctx context.Context) {
 						}
 					}
 				}
+
+				// lastIsDMLTrans = true
 			case *ast.UseStmt, *ast.SetStmt:
 				// 环境命令
 				// 事务内部和非事务均需要执行
 				// log.Infof("1111: [%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
-				_, err := s.Exec(record.Sql, true)
+				_, err := s.ExecDDL(record.Sql, true)
 				if err != nil {
 					// log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 					if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
@@ -1716,7 +1724,14 @@ func (s *session) executeAllStatement(ctx context.Context) {
 					trans = nil
 				}
 
-				s.executeRemoteCommand(record)
+				// 如果前端是DML语句,则在执行DDL前切换一次数据库
+				// log.Infof("lastIsDMLTrans: %v", lastIsDMLTrans)
+				// if lastIsDMLTrans {
+				// 	s.SwitchDatabase(s.ddlDB)
+				// 	lastIsDMLTrans = false
+				// }
+
+				s.executeRemoteCommand(record, true)
 
 				// trans = append(trans, record)
 				// s.executeTransaction(trans)
@@ -1731,7 +1746,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 				}
 			}
 		} else {
-			s.executeRemoteCommand(record)
+			s.executeRemoteCommand(record, false)
 		}
 
 		if s.hasErrorBefore() {
@@ -1946,7 +1961,7 @@ func (s *session) executeTransaction(records []*Record) int {
 	return 0
 }
 
-func (s *session) executeRemoteCommand(record *Record) int {
+func (s *session) executeRemoteCommand(record *Record, isTran bool) int {
 
 	s.myRecord = record
 	record.Stage = StageExec
@@ -1972,7 +1987,7 @@ func (s *session) executeRemoteCommand(record *Record) int {
 		*ast.SetStmt,
 		*ast.DropIndexStmt:
 
-		s.executeRemoteStatement(record)
+		s.executeRemoteStatement(record, isTran)
 
 	default:
 		log.Infof("无匹配类型: %T\n", node)
@@ -2181,10 +2196,10 @@ func statisticsTableSQL() string {
 	return buf.String()
 }
 
-func (s *session) executeRemoteStatement(record *Record) {
+func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 	log.Debug("executeRemoteStatement")
 
-	sql := record.Sql
+	sqlStmt := record.Sql
 
 	start := time.Now()
 
@@ -2205,7 +2220,13 @@ func (s *session) executeRemoteStatement(record *Record) {
 
 		return
 	} else {
-		res, err := s.Exec(sql, false)
+		var res sql.Result
+		var err error
+		if isTran {
+			res, err = s.ExecDDL(sqlStmt, false)
+		} else {
+			res, err = s.Exec(sqlStmt, false)
+		}
 
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 		record.ExecTimestamp = time.Now().Unix()
@@ -2295,7 +2316,7 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 		return
 	}
 
-	s.executeRemoteStatement(record)
+	s.executeRemoteStatement(record, false)
 
 	if !s.hasError() || record.ExecComplete {
 		if s.opt.backup {
@@ -2904,6 +2925,11 @@ func (s *session) parseOptions(sql string) {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		s.AppendErrorMessage(err.Error())
 		return
+	}
+
+	if s.opt.tranBatch > 1 {
+		s.ddlDB, _ = gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
+		s.ddlDB.LogMode(false)
 	}
 
 	// 禁用日志记录器，不显示任何日志

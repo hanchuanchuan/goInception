@@ -169,6 +169,9 @@ type session struct {
 	db       *gorm.DB
 	backupdb *gorm.DB
 
+	// 执行DDL操作的数据库连接. 仅用于事务功能
+	ddlDB *gorm.DB
+
 	DBName string
 
 	myRecord *Record
