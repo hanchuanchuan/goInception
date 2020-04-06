@@ -40,7 +40,6 @@ import (
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/executor"
-	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -8171,7 +8170,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			c.Extra += "auto_increment"
 		case ast.ColumnOptionOnUpdate:
 			if field.Tp.Tp == mysql.TypeTimestamp || field.Tp.Tp == mysql.TypeDatetime {
-				if !expression.IsCurrentTimestampExpr(op.Expr) {
+				if !IsCurrentTimestampExpr(op.Expr) {
 					s.AppendErrorNo(ER_INVALID_ON_UPDATE, c.Field)
 				} else {
 					c.Extra += "on update CURRENT_TIMESTAMP"
