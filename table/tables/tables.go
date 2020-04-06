@@ -28,7 +28,6 @@ import (
 	"github.com/hanchuanchuan/goInception/meta/autoid"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/hanchuanchuan/goInception/owner"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
@@ -1110,10 +1109,5 @@ func (ctx *ctxForPartitionExpr) StmtGetMutation(int64) *binlog.TableMutation {
 
 // StmtAddDirtyTableOP adds the dirty table operation for current statement.
 func (ctx *ctxForPartitionExpr) StmtAddDirtyTableOP(op int, tid int64, handle int64, row []types.Datum) {
-	panic("not support")
-}
-
-// DDLOwnerChecker returns owner.DDLOwnerChecker.
-func (ctx *ctxForPartitionExpr) DDLOwnerChecker() owner.DDLOwnerChecker {
 	panic("not support")
 }

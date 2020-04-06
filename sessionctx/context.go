@@ -17,7 +17,6 @@ import (
 	"fmt"
 
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/owner"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util"
@@ -82,8 +81,6 @@ type Context interface {
 	StmtGetMutation(int64) *binlog.TableMutation
 	// StmtAddDirtyTableOP adds the dirty table operation for current statement.
 	StmtAddDirtyTableOP(op int, tid int64, handle int64, row []types.Datum)
-	// DDLOwnerChecker returns owner.DDLOwnerChecker.
-	DDLOwnerChecker() owner.DDLOwnerChecker
 }
 
 type basicCtxType int
