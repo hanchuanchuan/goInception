@@ -74,10 +74,10 @@ func (s *session) mysqlComputeSqlSha1(r *Record) {
 
 	buf := bytes.NewBufferString(r.DBName)
 
-	buf.WriteString(s.opt.password)
-	buf.WriteString(s.opt.host)
-	buf.WriteString(s.opt.user)
-	buf.WriteString(strconv.Itoa(s.opt.port))
+	buf.WriteString(s.opt.Password)
+	buf.WriteString(s.opt.Host)
+	buf.WriteString(s.opt.User)
+	buf.WriteString(strconv.Itoa(s.opt.Port))
 	buf.WriteString(strconv.Itoa(r.SeqNo))
 	buf.WriteString(r.Sql)
 
@@ -181,13 +181,13 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString("percentage,1 ")
 
 	buf.WriteString(" --user=\"")
-	buf.WriteString(s.opt.user)
+	buf.WriteString(s.opt.User)
 	buf.WriteString("\" --password='")
-	buf.WriteString(strings.Replace(s.opt.password, "'", "'\"'\"'", -1))
+	buf.WriteString(strings.Replace(s.opt.Password, "'", "'\"'\"'", -1))
 	buf.WriteString("' --host=")
-	buf.WriteString(s.opt.host)
+	buf.WriteString(s.opt.Host)
 	buf.WriteString(" --port=")
-	buf.WriteString(strconv.Itoa(s.opt.port))
+	buf.WriteString(strconv.Itoa(s.opt.Port))
 
 	buf.WriteString(" D=")
 	buf.WriteString(r.TableInfo.Schema)
@@ -204,23 +204,23 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	migrationContext := base.NewMigrationContext()
 	// flag.StringVar(&migrationContext.InspectorConnectionConfig.Key.Hostname, "host", "127.0.0.1", "MySQL hostname (preferably a replica, not the master)")
-	migrationContext.InspectorConnectionConfig.Key.Hostname = s.opt.host
+	migrationContext.InspectorConnectionConfig.Key.Hostname = s.opt.Host
 	// flag.StringVar(&migrationContext.AssumeMasterHostname, "assume-master-host", "", "(optional) explicitly tell gh-ost the identity of the master. Format: some.host.com[:port] This is useful in master-master setups where you wish to pick an explicit master, or in a tungsten-replicator where gh-ost is unable to determine the master")
 
 	// RDS数据库需要做特殊处理
 	if s.Ghost.GhostAliyunRds && s.Ghost.GhostAssumeMasterHost == "" {
-		migrationContext.AssumeMasterHostname = fmt.Sprintf("%s:%d", s.opt.host, s.opt.port)
+		migrationContext.AssumeMasterHostname = fmt.Sprintf("%s:%d", s.opt.Host, s.opt.Port)
 	} else {
 		migrationContext.AssumeMasterHostname = s.Ghost.GhostAssumeMasterHost
 	}
 
 	log.Debug("assume_master_host: ", migrationContext.AssumeMasterHostname)
 	// flag.IntVar(&migrationContext.InspectorConnectionConfig.Key.Port, "port", 3306, "MySQL port (preferably a replica, not the master)")
-	migrationContext.InspectorConnectionConfig.Key.Port = s.opt.port
+	migrationContext.InspectorConnectionConfig.Key.Port = s.opt.Port
 	// flag.StringVar(&migrationContext.CliUser, "user", "", "MySQL user")
-	migrationContext.CliUser = s.opt.user
+	migrationContext.CliUser = s.opt.User
 	// flag.StringVar(&migrationContext.CliPassword, "password", "", "MySQL password")
-	migrationContext.CliPassword = s.opt.password
+	migrationContext.CliPassword = s.opt.Password
 	// flag.StringVar(&migrationContext.CliMasterUser, "master-user", "", "MySQL user on master, if different from that on replica. Requires --assume-master-host")
 	// flag.StringVar(&migrationContext.CliMasterPassword, "master-password", "", "MySQL password on master, if different from that on replica. Requires --assume-master-host")
 	// flag.StringVar(&migrationContext.ConfigFile, "conf", "", "Config file")
@@ -461,19 +461,19 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 	if migrationContext.ServeSocketFile == "" {
 		// unix socket file max 104 characters (or 107)
-		socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.host, s.opt.port,
+		socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.Host, s.opt.Port,
 			migrationContext.DatabaseName, migrationContext.OriginalTableName)
 		if len(socketFile) > 100 {
 			// 字符串过长时转换为hash值
-			host := truncateString(s.opt.host, 30)
+			host := truncateString(s.opt.Host, 30)
 			dbName := truncateString(migrationContext.DatabaseName, 30)
 			tableName := truncateString(migrationContext.OriginalTableName, 30)
 
-			socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", host, s.opt.port,
+			socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", host, s.opt.Port,
 				dbName, tableName)
 
 			if len(socketFile) > 100 {
-				socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s.sock", host, s.opt.port,
+				socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s.sock", host, s.opt.Port,
 					dbName, tableName)
 			}
 

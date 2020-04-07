@@ -218,8 +218,8 @@ func (s *session) Parser(ctx context.Context) {
 		host = s.opt.parseHost
 		port = uint16(s.opt.parsePort)
 	} else {
-		host = s.opt.host
-		port = uint16(s.opt.port)
+		host = s.opt.Host
+		port = uint16(s.opt.Port)
 	}
 	cfg := replication.BinlogSyncerConfig{
 		ServerID: 2000111111 + uint32(s.sessionVars.ConnectionID%10000),
@@ -227,8 +227,8 @@ func (s *session) Parser(ctx context.Context) {
 
 		Host:       host,
 		Port:       port,
-		User:       s.opt.user,
-		Password:   s.opt.password,
+		User:       s.opt.User,
+		Password:   s.opt.Password,
 		UseDecimal: true,
 		// RawModeEnabled:  p.cfg.RawMode,
 		// SemiSyncEnabled: p.cfg.SemiSync,

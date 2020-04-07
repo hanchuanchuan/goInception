@@ -103,16 +103,18 @@ type statisticsInfo struct {
 	// dropdb        int
 }
 
-// sourceOptions 线上数据库信息和审核或执行的参数
-type sourceOptions struct {
-	host           string
-	port           int
-	user           string
-	password       string
-	check          bool
-	execute        bool
-	backup         bool
-	ignoreWarnings bool
+// type SourceOptions = sourceOptions
+
+// SourceOptions 线上数据库信息和审核或执行的参数
+type SourceOptions struct {
+	Host           string
+	Port           int
+	User           string
+	Password       string
+	Check          bool
+	Execute        bool
+	Backup         bool
+	IgnoreWarnings bool
 
 	// 每次执行后休眠多少毫秒. 用以降低对线上数据库的影响，特别是针对大量写入的操作.
 	// 单位为毫秒，最小值为0, 最大值为100秒，也就是100000毫秒

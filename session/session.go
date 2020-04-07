@@ -161,7 +161,7 @@ type session struct {
 
 	recordSets *MyRecordSets
 
-	opt *sourceOptions
+	opt *SourceOptions
 
 	db       *gorm.DB
 	backupdb *gorm.DB
