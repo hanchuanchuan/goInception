@@ -557,9 +557,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						return s.makeResult()
 					}
 
-					// s.initMysqlSQLMode()
-					s.mysqlExplicitDefaultsForTimestamp()
-
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
 					} else if s.opt.split {
@@ -942,134 +939,6 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	}
 
 	s.mysqlComputeSqlSha1(s.myRecord)
-
-	return nil, nil
-}
-
-// splitCommand 分隔功能实现
-func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
-	sql string) ([]sqlexec.RecordSet, error) {
-	log.Debug("splitCommand")
-
-	if !s.opt.split {
-		return nil, nil
-	}
-
-	switch node := stmtNode.(type) {
-
-	case *ast.UseStmt:
-		s.DBName = node.DBName
-		s.addSplitNode(s.DBName, "", true, node, sql)
-
-	case *ast.InsertStmt:
-		t := getSingleTableName(node.Table)
-		s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
-
-	case *ast.DeleteStmt:
-		if node.Tables != nil {
-			for _, t := range node.Tables.Tables {
-				s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
-				return nil, nil
-			}
-		} else {
-			var tableList []*ast.TableSource
-			tableList = extractTableList(node.TableRefs.TableRefs, tableList)
-
-			for _, tblSource := range tableList {
-				if t, ok := tblSource.Source.(*ast.TableName); ok {
-					s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
-					return nil, nil
-				}
-			}
-		}
-		s.addSplitNode("", "", true, node, sql)
-		return nil, nil
-	case *ast.UpdateStmt:
-		var originTable string
-		if node.List != nil {
-			for _, l := range node.List {
-				originTable = l.Column.Table.L
-				break
-			}
-		}
-
-		var tableList []*ast.TableSource
-		tableList = extractTableList(node.TableRefs.TableRefs, tableList)
-
-		for _, tblSource := range tableList {
-			tblName, ok := tblSource.Source.(*ast.TableName)
-			if ok {
-				if originTable == "" {
-					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
-					return nil, nil
-				} else if originTable == tblName.Name.L || originTable == tblSource.AsName.L {
-					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
-					return nil, nil
-				}
-			}
-		}
-
-		s.addSplitNode("", "", true, node, sql)
-		return nil, nil
-
-	case *ast.CreateDatabaseStmt:
-		s.addSplitNode(node.Name, "", false, node, sql)
-
-	case *ast.DropDatabaseStmt:
-		s.addSplitNode(node.Name, "", false, node, sql)
-
-	case *ast.CreateTableStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.AlterTableStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.DropTableStmt:
-		for _, t := range node.Tables {
-			s.addSplitNode(t.Schema.O, t.Name.O, false, node, sql)
-			return nil, nil
-		}
-	case *ast.RenameTableStmt:
-		s.addSplitNode(node.OldTable.Schema.O, node.OldTable.Name.O, false, node, sql)
-
-	case *ast.TruncateTableStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, true, node, sql)
-
-	case *ast.CreateIndexStmt:
-
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.DropIndexStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.UnionStmt, *ast.SelectStmt:
-		return nil, nil
-
-	case *ast.CreateViewStmt:
-		return nil, nil
-
-		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
-
-	case *ast.ShowStmt:
-		return nil, nil
-
-	case *ast.InceptionSetStmt:
-		return nil, nil
-
-	case *ast.ExplainStmt:
-		return nil, nil
-
-	case *ast.ShowOscStmt:
-		return nil, nil
-
-	case *ast.KillStmt:
-		return nil, nil
-
-	default:
-		log.Infof("无匹配类型:%T\n", stmtNode)
-		return nil, nil
-		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-	}
 
 	return nil, nil
 }
@@ -1578,18 +1447,6 @@ func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) stri
 	buf.WriteString(") ENGINE INNODB DEFAULT CHARSET UTF8MB4;")
 
 	return buf.String()
-}
-
-func (s *session) mysqlRealQueryBackup(sql string) (err error) {
-	if _, err = s.Exec(sql, true); err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	}
-	return err
 }
 
 func (s *session) getRemoteBackupDBName(record *Record) string {
@@ -2443,7 +2300,8 @@ func (s *session) mysqlServerVersion() {
 	var name, value string
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
-	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on');`
+	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
+	'explicit_defaults_for_timestamp');`
 
 	rows, err := s.Raw(sql)
 	if rows != nil {
@@ -2505,6 +2363,8 @@ func (s *session) mysqlServerVersion() {
 				}
 			case "wsrep_on":
 				s.IsClusterNode = (value == "ON" || value == "1")
+			case "explicit_defaults_for_timestamp":
+				s.explicitDefaultsForTimestamp = (value == "ON" || value == "1")
 			}
 		}
 
@@ -2518,72 +2378,6 @@ func (s *session) mysqlServerVersion() {
 		}
 	}
 
-}
-
-// func (s *session) initMysqlSQLMode() {
-// 	log.Debug("initMysqlSQLMode")
-
-// 	// sc := s.GetSessionVars().StmtCtx
-
-// 	var value string
-// 	sql := "show variables like 'sql_mode';"
-
-// 	rows, err := s.Raw(sql)
-// 	if rows != nil {
-// 		defer rows.Close()
-// 	}
-
-// 	if err != nil {
-// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-// 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-// 			s.AppendErrorMessage(myErr.Message)
-// 		} else {
-// 			s.AppendErrorMessage(err.Error())
-// 		}
-// 	} else {
-// 		for rows.Next() {
-// 			rows.Scan(&value, &value)
-// 		}
-// 	}
-
-// 	if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
-// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-// 		log.Warning(value)
-// 	} else {
-// 		sc := s.GetSessionVars().StmtCtx
-// 		vars := s.sessionVars
-// 		// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
-// 		sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
-// 	}
-// }
-
-func (s *session) mysqlExplicitDefaultsForTimestamp() {
-	log.Debug("mysqlExplicitDefaultsForTimestamp")
-
-	var value string
-	sql := "show variables where Variable_name='explicit_defaults_for_timestamp';"
-
-	rows, err := s.Raw(sql)
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	if err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	} else {
-		for rows.Next() {
-			rows.Scan(&value, &value)
-		}
-	}
-
-	if value == "ON" {
-		s.explicitDefaultsForTimestamp = true
-	}
 }
 
 func (s *session) fetchThreadID() uint32 {
@@ -8599,61 +8393,6 @@ func (f *FieldInfo) IsUnsigned() bool {
 		return true
 	}
 	return false
-}
-
-// addNewSplitRow 添加新的split分隔节点
-func (s *session) addSplitNode(db, tableName string, isDML bool, stmtNode ast.StmtNode, currentSql string) {
-
-	if db == "" {
-		db = s.DBName
-	}
-	key := fmt.Sprintf("%s.%s", db, tableName)
-	key = strings.ToLower(key)
-
-	if s.splitSets.id == 0 {
-		s.addNewSplitNode()
-		if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
-			s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
-		}
-	} else {
-		if isDmlType, ok := s.splitSets.tableList[key]; ok {
-			if isDmlType != isDML {
-				s.addNewSplitNode()
-				if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
-					s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
-				}
-			}
-		}
-	}
-
-	s.splitSets.tableList[key] = isDML
-
-	switch stmtNode.(type) {
-	case *ast.AlterTableStmt, *ast.DropTableStmt:
-		s.splitSets.ddlflag = 1
-	}
-
-	s.splitSets.sqlBuf.WriteString(currentSql)
-	s.splitSets.sqlBuf.WriteString(";\n")
-}
-
-// addNewSplitRow 添加新的split分隔节点
-func (s *session) addNewSplitNode() {
-
-	sql := s.splitSets.sqlBuf.String()
-
-	// if len(sql) == 0{
-	// 	return
-	// }
-
-	if s.splitSets.id > 0 && len(sql) > 0 {
-		s.splitSets.Append(sql, "")
-	}
-
-	s.splitSets.id += 1
-	s.splitSets.tableList = make(map[string]bool)
-	s.splitSets.ddlflag = 0
-	s.splitSets.sqlBuf = new(bytes.Buffer)
 }
 
 // cleanup 清理变量,缓存,osc进程等
