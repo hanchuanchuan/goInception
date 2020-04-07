@@ -221,10 +221,10 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record, longDataType b
 		record.EndFile,
 		strconv.Itoa(record.EndPosition),
 		sql_stmt,
-		s.opt.host,
+		s.opt.Host,
 		record.TableInfo.Schema,
 		record.TableInfo.Name,
-		strconv.Itoa(s.opt.port),
+		strconv.Itoa(s.opt.Port),
 		typeStr,
 	}
 
@@ -300,7 +300,7 @@ func (s *session) getRemoteBackupDBName(record *Record) string {
 		return record.BackupDBName
 	}
 
-	v := fmt.Sprintf("%s_%d_%s", s.opt.host, s.opt.port, record.TableInfo.Schema)
+	v := fmt.Sprintf("%s_%d_%s", s.opt.Host, s.opt.Port, record.TableInfo.Schema)
 
 	if len(v) > mysql.MaxDatabaseNameLength {
 		v = v[len(v)-mysql.MaxDatabaseNameLength:]

@@ -41,14 +41,20 @@ import (
 )
 
 var (
-	regParseOption *regexp.Regexp
-	regFieldLength *regexp.Regexp
-	regIdentified  *regexp.Regexp
 
 	// 忽略的sql列表, 这些sql大都是不同的客户端自动发出的,跳过以免报错
 	skipSqlList = []string{"select @@version_comment limit 1",
 		"select @@max_allowed_packet", "set autocommit=0", "show warnings",
 		"set names utf8", "set names utf8mb4", "set autocommit = 0"}
+
+	// 匹配sql的option设置
+	regParseOption = regexp.MustCompile(`^\/\*(.*?)\*\/`)
+
+	// 匹配字段长度
+	regFieldLength = regexp.MustCompile(`^.*?\((\d)`)
+
+	// 匹配标识符,只能包含字母数字和下划线
+	regIdentified = regexp.MustCompile(`^[0-9a-zA-Z\_]*$`)
 )
 
 // var Keywords map[string]int = parser.GetKeywords()
@@ -63,19 +69,6 @@ const (
 	INDEX_COMMENT_MAXLEN           = 1024
 	TABLE_PARTITION_COMMENT_MAXLEN = 1024
 )
-
-func init() {
-
-	// 匹配sql的option设置
-	regParseOption = regexp.MustCompile(`^\/\*(.*?)\*\/`)
-
-	// 匹配字段长度
-	regFieldLength = regexp.MustCompile(`^.*?\((\d)`)
-
-	// 匹配标识符,只能包含字母数字和下划线
-	regIdentified = regexp.MustCompile(`^[0-9a-zA-Z\_]*$`)
-
-}
 
 func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 
@@ -328,7 +321,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					if s.myRecord.ErrLevel != 2 {
 						s.mysqlServerVersion()
 
-						if s.opt.backup && s.DBType == DBTypeTiDB {
+						if s.opt.Backup && s.DBType == DBTypeTiDB {
 							s.AppendErrorMessage("TiDB暂不支持备份功能.")
 						}
 					}
@@ -631,7 +624,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 			}
 		}
 		s.checkSelectItem(node, false)
-		if s.opt.execute {
+		if s.opt.Execute {
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		}
 
@@ -644,7 +637,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 			}
 		}
 		s.checkSelectItem(node, false)
-		if s.opt.execute {
+		if s.opt.Execute {
 			s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
 		}
 
@@ -738,7 +731,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 func (s *session) executeCommit(ctx context.Context) {
 
-	if s.opt.check || s.opt.Print || !s.opt.execute || s.opt.split {
+	if s.opt.Check || s.opt.Print || !s.opt.Execute || s.opt.split {
 		return
 	}
 
@@ -756,7 +749,7 @@ func (s *session) executeCommit(ctx context.Context) {
 
 	s.modifyWaitTimeout()
 
-	if s.opt.backup {
+	if s.opt.Backup {
 		if !s.checkBinlogIsOn() {
 			s.AppendErrorMessage("binlog日志未开启,无法备份!")
 			return
@@ -788,7 +781,7 @@ func (s *session) executeCommit(ctx context.Context) {
 	// 	return
 	// }
 
-	if s.opt.backup {
+	if s.opt.Backup {
 
 		// 保存统计信息
 		if s.Inc.EnableSqlStatistic {
@@ -922,7 +915,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 	s.stage = StageExec
 
-	if s.opt.execute && s.Inc.EnableSqlStatistic {
+	if s.opt.Execute && s.Inc.EnableSqlStatistic {
 		s.statistics = &statisticsInfo{}
 	}
 
@@ -1134,7 +1127,7 @@ func (s *session) executeTransaction(records []*Record) int {
 		record := records[i]
 		s.myRecord = record
 
-		if i == 0 && s.opt.backup {
+		if i == 0 && s.opt.Backup {
 			if currentThreadId == 0 {
 				s.AppendErrorMessage("无法获取线程号")
 				tx.Rollback()
@@ -1198,7 +1191,7 @@ func (s *session) executeTransaction(records []*Record) int {
 	if !s.hasError() {
 		tx.Commit()
 
-		if s.opt.backup {
+		if s.opt.Backup {
 			record := records[0]
 			masterStatus := s.mysqlFetchMasterBinlogPosition()
 			if masterStatus == nil {
@@ -1273,7 +1266,7 @@ func (s *session) executeRemoteCommand(record *Record, isTran bool) int {
 // sqlStatisticsIncrement save statistics info
 func (s *session) sqlStatisticsIncrement(record *Record) {
 
-	if !s.opt.execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
+	if !s.opt.Execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
 		return
 	}
 
@@ -1363,7 +1356,7 @@ func (s *session) sqlStatisticsIncrement(record *Record) {
 
 // sqlStatisticsSave 保存统计信息
 func (s *session) sqlStatisticsSave() {
-	if !s.opt.execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
+	if !s.opt.Execute || !s.Inc.EnableSqlStatistic || s.statistics == nil {
 		return
 	}
 
@@ -1516,7 +1509,7 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 			// 无法确认是否执行成功,需要通过备份来确认
 			if err == mysqlDriver.ErrInvalidConn {
 				// 如果没有开启备份,则直接返回
-				if s.opt.backup {
+				if s.opt.Backup {
 					// 如果是DML语句,则通过备份来验证是否执行成功
 					// 如果是DDL语句,则直接报错,由人工确认执行结果,但仍会备份
 					switch record.Type.(type) {
@@ -1572,7 +1565,7 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 func (s *session) executeRemoteStatementAndBackup(record *Record) {
 	log.Debug("executeRemoteStatementAndBackup")
 
-	if s.opt.backup {
+	if s.opt.Backup {
 		masterStatus := s.mysqlFetchMasterBinlogPosition()
 		if masterStatus == nil {
 			s.AppendErrorNo(ErrNotFoundMasterStatus)
@@ -1592,7 +1585,7 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 	s.executeRemoteStatement(record, false)
 
 	if !s.hasError() || record.ExecComplete {
-		if s.opt.backup {
+		if s.opt.Backup {
 			masterStatus := s.mysqlFetchMasterBinlogPosition()
 			if masterStatus == nil {
 				s.AppendErrorNo(ErrNotFoundMasterStatus)
@@ -2040,15 +2033,15 @@ func (s *session) parseOptions(sql string) {
 	// 设置默认值
 	// viper.SetDefault("db", "mysql")
 
-	s.opt = &sourceOptions{
-		host:           viper.GetString("host"),
-		port:           viper.GetInt("port"),
-		user:           viper.GetString("user"),
-		password:       viper.GetString("password"),
-		check:          viper.GetBool("check"),
-		execute:        viper.GetBool("execute"),
-		backup:         viper.GetBool("backup"),
-		ignoreWarnings: viper.GetBool("ignoreWarnings"),
+	s.opt = &SourceOptions{
+		Host:           viper.GetString("host"),
+		Port:           viper.GetInt("port"),
+		User:           viper.GetString("user"),
+		Password:       viper.GetString("password"),
+		Check:          viper.GetBool("check"),
+		Execute:        viper.GetBool("execute"),
+		Backup:         viper.GetBool("backup"),
+		IgnoreWarnings: viper.GetBool("ignoreWarnings"),
 		sleep:          viper.GetInt("sleep"),
 		sleepRows:      viper.GetInt("sleepRows"),
 
@@ -2076,12 +2069,12 @@ func (s *session) parseOptions(sql string) {
 		tranBatch: viper.GetInt("trans"),
 	}
 
-	if s.opt.split || s.opt.check || s.opt.Print {
-		s.opt.execute = false
-		s.opt.backup = false
+	if s.opt.split || s.opt.Check || s.opt.Print {
+		s.opt.Execute = false
+		s.opt.Backup = false
 
 		// 审核阶段自动忽略警告,以免审核过早中止
-		s.opt.ignoreWarnings = true
+		s.opt.IgnoreWarnings = true
 	}
 
 	if s.opt.sleep <= 0 {
@@ -2091,20 +2084,20 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	if s.opt.split || s.opt.Print {
-		s.opt.check = false
+		s.opt.Check = false
 	}
 
 	// 不再检查密码是否为空
-	if s.opt.host == "" || s.opt.port == 0 || s.opt.user == "" {
+	if s.opt.Host == "" || s.opt.Port == 0 || s.opt.User == "" {
 		log.Warningf("%#v", s.opt)
 		msg := ""
-		if s.opt.host == "" {
+		if s.opt.Host == "" {
 			msg += "主机名为空,"
 		}
-		if s.opt.port == 0 {
+		if s.opt.Port == 0 {
 			msg += "端口为0,"
 		}
-		if s.opt.user == "" {
+		if s.opt.User == "" {
 			msg += "用户名为空,"
 		}
 		s.AppendErrorNo(ER_SQL_INVALID_SOURCE, strings.TrimRight(msg, ","))
@@ -2113,19 +2106,21 @@ func (s *session) parseOptions(sql string) {
 
 	var addr string
 	if s.opt.middlewareExtend == "" {
-		tlsValue, ok := s.getTLSConfig()
-		if !ok {
+		tlsValue, err := s.getTLSConfig()
+		if err != nil {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.AppendErrorMessage(err.Error())
 			return
 		}
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&tls=%s",
-			s.opt.user, s.opt.password, s.opt.host, s.opt.port, s.opt.db,
+			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port, s.opt.db,
 			s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket, tlsValue)
 	} else {
 		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
 			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
 
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
-			s.opt.user, s.opt.password, s.opt.host, s.opt.port,
+			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port,
 			s.opt.middlewareDB, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
 	}
 
@@ -2147,13 +2142,13 @@ func (s *session) parseOptions(sql string) {
 
 	s.db = db
 
-	if s.opt.execute {
-		if s.opt.backup && !s.checkBinlogIsOn() {
+	if s.opt.Execute {
+		if s.opt.Backup && !s.checkBinlogIsOn() {
 			s.AppendErrorMessage("binlog日志未开启,无法备份!")
 		}
 	}
 
-	if s.opt.backup {
+	if s.opt.Backup {
 		// 不再检查密码是否为空
 		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 || s.Inc.BackupUser == "" {
 			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
@@ -2177,13 +2172,13 @@ func (s *session) parseOptions(sql string) {
 	tmp := s.processInfo.Load()
 	if tmp != nil {
 		pi := tmp.(util.ProcessInfo)
-		pi.DestHost = s.opt.host
-		pi.DestPort = s.opt.port
-		pi.DestUser = s.opt.user
+		pi.DestHost = s.opt.Host
+		pi.DestPort = s.opt.Port
+		pi.DestUser = s.opt.User
 
-		if s.opt.check {
+		if s.opt.Check {
 			pi.Command = "CHECK"
-		} else if s.opt.execute {
+		} else if s.opt.Execute {
 			pi.Command = "EXECUTE"
 		}
 		s.processInfo.Store(pi)
@@ -2194,7 +2189,7 @@ func (s *session) parseOptions(sql string) {
 
 // getTLSConfig 获取tls设置
 // https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#option_general_ssl-mode
-func (s *session) getTLSConfig() (string, bool) {
+func (s *session) getTLSConfig() (string, error) {
 	tlsValue := "false"
 	s.opt.ssl = strings.ToLower(s.opt.ssl)
 	switch s.opt.ssl {
@@ -2214,9 +2209,7 @@ func (s *session) getTLSConfig() (string, bool) {
 			errMsg += "required X509 key in PEM format."
 		}
 		if errMsg != "" {
-			log.Errorf("con:%d %s", s.sessionVars.ConnectionID, errMsg)
-			s.AppendErrorMessage(errMsg)
-			return "", false
+			return "", fmt.Errorf("con:%d %s", s.sessionVars.ConnectionID, errMsg)
 		}
 
 		if !Exist(s.opt.sslCA) {
@@ -2230,12 +2223,10 @@ func (s *session) getTLSConfig() (string, bool) {
 		}
 
 		if errMsg != "" {
-			log.Errorf("con:%d %s", s.sessionVars.ConnectionID, errMsg)
-			s.AppendErrorMessage(errMsg)
-			return "", false
+			return "", fmt.Errorf("con:%d %s", s.sessionVars.ConnectionID, errMsg)
 		}
 
-		tlsValue = fmt.Sprintf("%s_%d", s.opt.host, s.opt.port)
+		tlsValue = fmt.Sprintf("%s_%d", s.opt.Host, s.opt.Port)
 		if len(tlsValue) > mysql.MaxDatabaseNameLength {
 			tlsValue = tlsValue[len(tlsValue)-mysql.MaxDatabaseNameLength:]
 		}
@@ -2245,22 +2236,16 @@ func (s *session) getTLSConfig() (string, bool) {
 		rootCertPool := x509.NewCertPool()
 		pem, err := ioutil.ReadFile(s.opt.sslCA)
 		if err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			s.AppendErrorMessage(err.Error())
-			return "", false
+			return "", fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		}
 		if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
-			log.Errorf("con:%d Failed to append PEM.", s.sessionVars.ConnectionID)
-			s.AppendErrorMessage("Failed to append PEM.")
-			return "", false
+			return "", fmt.Errorf("con:%d Failed to append PEM.", s.sessionVars.ConnectionID)
 		}
 
 		clientCert := make([]tls.Certificate, 0, 1)
 		certs, err := tls.LoadX509KeyPair(s.opt.sslCert, s.opt.sslKey)
 		if err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			s.AppendErrorMessage(err.Error())
-			return "", false
+			return "", fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		}
 		clientCert = append(clientCert, certs)
 
@@ -2277,7 +2262,7 @@ func (s *session) getTLSConfig() (string, bool) {
 
 	// log.Info(tlsValue)
 	// log.Infof("%#v", s.opt)
-	return tlsValue, true
+	return tlsValue, nil
 }
 
 func (s *session) parseIncLevel() {
@@ -2351,12 +2336,12 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 					s.AppendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", t.Schema, t.Name))
 				}
 			} else {
-				if s.opt.execute {
+				if s.opt.Execute {
 					// 生成回滚语句
 					s.mysqlShowCreateTable(table)
 				}
 
-				if s.opt.check {
+				if s.opt.Check {
 					// 获取表估计的受影响行数
 					s.mysqlShowTableStatus(table)
 				}
@@ -2570,7 +2555,7 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 		s.cacheNewTable(table)
 		s.myRecord.TableInfo = table
 
-		if s.opt.execute {
+		if s.opt.Execute {
 			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
 				table.Schema, table.Name, originTable.Schema, originTable.Name)
 		}
@@ -2929,7 +2914,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		s.checkColumnsMustHaveindex(table)
 	}
 
-	if !s.hasError() && s.opt.execute {
+	if !s.hasError() && s.opt.Execute {
 		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLE `%s`.`%s`;", table.Schema, table.Name)
 	}
 }
@@ -3183,7 +3168,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 	s.myRecord.TableInfo = table
 
-	if s.opt.backup {
+	if s.opt.Backup {
 		s.myRecord.DDLRollback += fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
 			table.Schema, table.Name)
 	}
@@ -3270,7 +3255,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	}
 
 	// 生成alter回滚语句,多个时逆向
-	if !s.hasError() && s.opt.execute && s.opt.backup {
+	if !s.hasError() && s.opt.Execute && s.opt.Backup {
 		if hasRenameTable {
 			for _, alter := range node.Specs {
 				if alter.Tp == ast.AlterTableRenameTable {
@@ -3325,7 +3310,7 @@ func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec
 		if !found {
 			s.AppendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 		} else {
-			if s.opt.execute {
+			if s.opt.Execute {
 				if foundField.Default == nil {
 					// s.myRecord.DDLRollback += "DROP DEFAULT,"
 					s.alterRollbackBuffer = append(s.alterRollbackBuffer, "DROP DEFAULT,")
@@ -3407,7 +3392,7 @@ func (s *session) checkAlterTableRenameIndex(t *TableInfo, c *ast.AlterTableSpec
 			}
 			t.Indexes = append(t.Indexes, index)
 		}
-		if s.opt.execute {
+		if s.opt.Execute {
 			rollback := fmt.Sprintf("RENAME INDEX `%s` TO `%s`,",
 				newIndexName, c.FromKey.String())
 			// s.myRecord.DDLRollback += rollback
@@ -3436,7 +3421,7 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 		s.cacheNewTable(table)
 		s.myRecord.TableInfo = table
 
-		if s.opt.execute {
+		if s.opt.Execute {
 			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
 				table.Schema, table.Name, t.Schema, t.Name)
 			s.alterRollbackBuffer = append(s.alterRollbackBuffer, fmt.Sprintf("RENAME TO `%s`.`%s`,",
@@ -3546,7 +3531,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					t.Fields[foundIndexOld] = *(s.buildNewColumnToCache(t, nc))
 				}
 
-				if s.opt.execute {
+				if s.opt.Execute {
 					buf := bytes.NewBufferString("MODIFY COLUMN `")
 					buf.WriteString(foundField.Field)
 					buf.WriteString("` ")
@@ -3672,7 +3657,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					}
 				}
 
-				if s.opt.execute {
+				if s.opt.Execute {
 					buf := bytes.NewBufferString("CHANGE COLUMN `")
 					buf.WriteString(nc.Name.Name.O)
 					buf.WriteString("` `")
@@ -3807,7 +3792,7 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 // hasError return current sql has errors or warnings
 func (s *session) hasError() bool {
 	if s.myRecord.ErrLevel == 2 ||
-		(s.myRecord.ErrLevel == 1 && !s.opt.ignoreWarnings) {
+		(s.myRecord.ErrLevel == 1 && !s.opt.IgnoreWarnings) {
 		return true
 	}
 
@@ -3817,7 +3802,7 @@ func (s *session) hasError() bool {
 // hasError return all sql has errors or warnings
 func (s *session) hasErrorBefore() bool {
 	if s.recordSets.MaxLevel == 2 ||
-		(s.recordSets.MaxLevel == 1 && !s.opt.ignoreWarnings) {
+		(s.recordSets.MaxLevel == 1 && !s.opt.IgnoreWarnings) {
 		return true
 	}
 
@@ -4226,7 +4211,7 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 		return false
 	}
 
-	if s.opt.execute {
+	if s.opt.Execute {
 		var rollbackSql string
 		for i, row := range foundRows {
 			if i == 0 {
@@ -4378,7 +4363,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 			}
 
-			if s.opt.execute {
+			if s.opt.Execute {
 				s.alterRollbackBuffer = append(s.alterRollbackBuffer,
 					fmt.Sprintf("DROP COLUMN `%s`,",
 						nc.Name.Name.O))
@@ -4437,7 +4422,7 @@ func (s *session) cacheTableSnapshot(t *TableInfo) *TableInfo {
 }
 
 func (s *session) mysqlDropColumnRollback(field FieldInfo) {
-	if s.opt.check {
+	if s.opt.Check {
 		return
 	}
 
@@ -4691,7 +4676,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	}
 
 	// !t.IsNew &&
-	if s.opt.execute {
+	if s.opt.Execute {
 		var rollbackSql string
 		if IndexName == "PRIMARY" {
 			rollbackSql = fmt.Sprintf("DROP PRIMARY KEY,")
