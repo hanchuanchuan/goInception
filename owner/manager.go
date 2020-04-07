@@ -65,12 +65,6 @@ const (
 	keyOpDefaultTimeout      = 5 * time.Second
 )
 
-// DDLOwnerChecker is used to check whether tidb is owner.
-type DDLOwnerChecker interface {
-	// IsOwner returns whether the ownerManager is the owner.
-	IsOwner() bool
-}
-
 // ownerManager represents the structure which is used for electing owner.
 type ownerManager struct {
 	id        string // id is the ID of the manager.

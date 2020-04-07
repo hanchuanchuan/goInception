@@ -1,20 +1,3 @@
-// Copyright 2013 The ql Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSES/QL-LICENSE file.
-
-// Copyright 2015 PingCAP, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package session
 
 import (
@@ -33,14 +16,11 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unicode/utf8"
 
-	// json "github.com/CorgiMan/json2"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/executor"
-	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -58,195 +38,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
-	// "vitess.io/vitess/go/vt/sqlparser"
 )
-
-// MasterStatus 主库状态信息,包括当前日志文件,位置等
-type MasterStatus struct {
-	gorm.Model
-	File            string `gorm:"Column:File"`
-	Position        int    `gorm:"Column:Position"`
-	BinlogDoDB      string `gorm:"Column:Binlog_Do_DB"`
-	BinlogIgnoreDB  string `gorm:"Column:Binlog_Ignore_DB"`
-	ExecutedGtidSet string `gorm:"Column:Executed_Gtid_Set"`
-}
-
-// statisticsInfo 统计信息
-type statisticsInfo struct {
-	usedb        int
-	insert       int
-	update       int
-	deleting     int
-	selects      int
-	altertable   int
-	rename       int
-	createindex  int
-	dropindex    int
-	addcolumn    int
-	dropcolumn   int
-	changecolumn int
-	alteroption  int
-	alterconvert int
-	createtable  int
-	droptable    int
-	createdb     int
-	truncate     int
-	// changedefault int
-	// dropdb        int
-}
-
-// sourceOptions 线上数据库信息和审核或执行的参数
-type sourceOptions struct {
-	host           string
-	port           int
-	user           string
-	password       string
-	check          bool
-	execute        bool
-	backup         bool
-	ignoreWarnings bool
-
-	// 每次执行后休眠多少毫秒. 用以降低对线上数据库的影响，特别是针对大量写入的操作.
-	// 单位为毫秒，最小值为0, 最大值为100秒，也就是100000毫秒
-	sleep int
-	// 执行多条后休眠, 最小值1,默认值1
-	sleepRows int
-
-	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
-	middlewareExtend string
-	middlewareDB     string
-	// 原始主机和端口,用以解析binlog
-	parseHost string
-	parsePort int
-
-	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
-	fingerprint bool
-
-	// 打印语法树功能
-	Print bool
-
-	// DDL/DML分隔功能
-	split bool
-
-	// 使用count(*)计算受影响行数
-	realRowCount bool
-
-	// 连接的数据库,默认为mysql
-	db string
-
-	ssl     string // 连接加密
-	sslCA   string // 证书颁发机构（CA）证书
-	sslCert string // 客户端公共密钥证书
-	sslKey  string // 客户端私钥文件
-
-	// 事务支持,一次执行多少条
-	tranBatch int
-
-	// // 扩展参数,支持一次性会话设置
-	// extendParams string
-}
-
-// ExplainInfo 执行计划信息
-type ExplainInfo struct {
-	// gorm.Model
-
-	SelectType   string  `gorm:"Column:select_type"`
-	Table        string  `gorm:"Column:table"`
-	Partitions   string  `gorm:"Column:partitions"`
-	Type         string  `gorm:"Column:type"`
-	PossibleKeys string  `gorm:"Column:possible_keys"`
-	Key          string  `gorm:"Column:key"`
-	KeyLen       string  `gorm:"Column:key_len"`
-	Ref          string  `gorm:"Column:ref"`
-	Rows         int     `gorm:"Column:rows"`
-	Filtered     float32 `gorm:"Column:filtered"`
-	Extra        string  `gorm:"Column:Extra"`
-
-	// TiDB的Explain预估行数存储在Count中
-	Count float32 `gorm:"Column:count"`
-}
-
-// FieldInfo 字段信息
-type FieldInfo struct {
-	// gorm.Model
-
-	Field      string  `gorm:"Column:Field"`
-	Type       string  `gorm:"Column:Type"`
-	Collation  string  `gorm:"Column:Collation"`
-	Null       string  `gorm:"Column:Null"`
-	Key        string  `gorm:"Column:Key"`
-	Default    *string `gorm:"Column:Default"`
-	Extra      string  `gorm:"Column:Extra"`
-	Privileges string  `gorm:"Column:Privileges"`
-	Comment    string  `gorm:"Column:Comment"`
-
-	IsDeleted bool `gorm:"-"`
-	IsNew     bool `gorm:"-"`
-
-	Tp *types.FieldType `gorm:"-"`
-}
-
-// DBInfo 库信息
-type DBInfo struct {
-	Name string
-	// 是否已删除
-	IsDeleted bool
-	// 是否为新增
-	IsNew bool
-}
-
-// TableInfo 表结构.
-// 表结构实现了快照功能,在表结构变更前,会复制快照,在快照上做变更
-// 在解析binlog时,基于执行时的快照做binlog解析,以实现删除列时的binlog解析
-type TableInfo struct {
-	Schema string
-	Name   string
-	// 表别名,仅用于update,delete多表
-	AsName string
-	Fields []FieldInfo
-
-	// 索引
-	Indexes []*IndexInfo
-
-	// 是否已删除
-	IsDeleted bool
-	// 备份库是否已创建
-	IsCreated bool
-
-	// 表是否为新增
-	IsNew bool
-	// 列是否为新增
-	IsNewColumns bool
-
-	// 主键信息,用以备份
-	hasPrimary bool
-	primarys   map[int]bool
-
-	AlterCount int
-
-	// 是否已清除已删除的列[解析binlog时会自动清除已删除的列]
-	IsClear bool
-
-	// 表大小.单位MB
-	TableSize uint
-
-	// 字符集&排序规则
-	Collation string
-}
-
-// IndexInfo 索引信息
-type IndexInfo struct {
-	gorm.Model
-
-	Table      string `gorm:"Column:Table"`
-	NonUnique  int    `gorm:"Column:Non_unique"`
-	IndexName  string `gorm:"Column:Key_name"`
-	Seq        int    `gorm:"Column:Seq_in_index"`
-	ColumnName string `gorm:"Column:Column_name"`
-	IndexType  string `gorm:"Column:Index_type"`
-
-	IsDeleted bool `gorm:"-"`
-}
 
 var (
 	regParseOption *regexp.Regexp
@@ -557,9 +349,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						}
 						return s.makeResult()
 					}
-
-					// s.initMysqlSQLMode()
-					s.mysqlExplicitDefaultsForTimestamp()
 
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
@@ -947,134 +736,6 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	return nil, nil
 }
 
-// splitCommand 分隔功能实现
-func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
-	sql string) ([]sqlexec.RecordSet, error) {
-	log.Debug("splitCommand")
-
-	if !s.opt.split {
-		return nil, nil
-	}
-
-	switch node := stmtNode.(type) {
-
-	case *ast.UseStmt:
-		s.DBName = node.DBName
-		s.addSplitNode(s.DBName, "", true, node, sql)
-
-	case *ast.InsertStmt:
-		t := getSingleTableName(node.Table)
-		s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
-
-	case *ast.DeleteStmt:
-		if node.Tables != nil {
-			for _, t := range node.Tables.Tables {
-				s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
-				return nil, nil
-			}
-		} else {
-			var tableList []*ast.TableSource
-			tableList = extractTableList(node.TableRefs.TableRefs, tableList)
-
-			for _, tblSource := range tableList {
-				if t, ok := tblSource.Source.(*ast.TableName); ok {
-					s.addSplitNode(t.Schema.O, t.Name.O, true, node, sql)
-					return nil, nil
-				}
-			}
-		}
-		s.addSplitNode("", "", true, node, sql)
-		return nil, nil
-	case *ast.UpdateStmt:
-		var originTable string
-		if node.List != nil {
-			for _, l := range node.List {
-				originTable = l.Column.Table.L
-				break
-			}
-		}
-
-		var tableList []*ast.TableSource
-		tableList = extractTableList(node.TableRefs.TableRefs, tableList)
-
-		for _, tblSource := range tableList {
-			tblName, ok := tblSource.Source.(*ast.TableName)
-			if ok {
-				if originTable == "" {
-					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
-					return nil, nil
-				} else if originTable == tblName.Name.L || originTable == tblSource.AsName.L {
-					s.addSplitNode(tblName.Schema.L, tblName.Name.L, true, node, sql)
-					return nil, nil
-				}
-			}
-		}
-
-		s.addSplitNode("", "", true, node, sql)
-		return nil, nil
-
-	case *ast.CreateDatabaseStmt:
-		s.addSplitNode(node.Name, "", false, node, sql)
-
-	case *ast.DropDatabaseStmt:
-		s.addSplitNode(node.Name, "", false, node, sql)
-
-	case *ast.CreateTableStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.AlterTableStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.DropTableStmt:
-		for _, t := range node.Tables {
-			s.addSplitNode(t.Schema.O, t.Name.O, false, node, sql)
-			return nil, nil
-		}
-	case *ast.RenameTableStmt:
-		s.addSplitNode(node.OldTable.Schema.O, node.OldTable.Name.O, false, node, sql)
-
-	case *ast.TruncateTableStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, true, node, sql)
-
-	case *ast.CreateIndexStmt:
-
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.DropIndexStmt:
-		s.addSplitNode(node.Table.Schema.O, node.Table.Name.O, false, node, sql)
-
-	case *ast.UnionStmt, *ast.SelectStmt:
-		return nil, nil
-
-	case *ast.CreateViewStmt:
-		return nil, nil
-
-		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
-
-	case *ast.ShowStmt:
-		return nil, nil
-
-	case *ast.InceptionSetStmt:
-		return nil, nil
-
-	case *ast.ExplainStmt:
-		return nil, nil
-
-	case *ast.ShowOscStmt:
-		return nil, nil
-
-	case *ast.KillStmt:
-		return nil, nil
-
-	default:
-		log.Infof("无匹配类型:%T\n", stmtNode)
-		return nil, nil
-		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
-	}
-
-	return nil, nil
-}
-
 func (s *session) executeCommit(ctx context.Context) {
 
 	if s.opt.check || s.opt.Print || !s.opt.execute || s.opt.split {
@@ -1213,203 +874,6 @@ func makeOPIDByTime(execTime int64, threadId uint32, seqNo int) string {
 	return fmt.Sprintf("%d_%d_%08d", execTime, threadId, seqNo)
 }
 
-func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
-	if record.DDLRollback == "" {
-		return
-	}
-
-	var buf strings.Builder
-	buf.WriteString("INSERT INTO ")
-	dbname := s.getRemoteBackupDBName(record)
-	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, record.TableInfo.Name))
-	buf.WriteString("(rollback_statement, opid_time) VALUES('")
-	buf.WriteString(HTMLEscapeString(record.DDLRollback))
-	buf.WriteString("','")
-	buf.WriteString(record.OPID)
-	buf.WriteString("')")
-
-	sql := buf.String()
-
-	if err := s.backupdb.Exec(sql).Error; err != nil {
-		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sql)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-		record.StageStatus = StatusBackupFail
-	}
-	record.StageStatus = StatusBackupOK
-}
-
-// mysqlExecuteBackupInfoInsertSql 写入备份记录表
-// longDataType 为true表示字段类型已更新,否则为text,需要在写入时自动截断
-func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record, longDataType bool) int {
-
-	record.OPID = makeOPIDByTime(record.ExecTimestamp, record.ThreadId, record.SeqNo)
-
-	typeStr := "UNKNOWN"
-	switch record.Type.(type) {
-	case *ast.InsertStmt:
-		typeStr = "INSERT"
-	case *ast.DeleteStmt:
-		typeStr = "DELETE"
-	case *ast.UpdateStmt:
-		typeStr = "UPDATE"
-	case *ast.CreateDatabaseStmt:
-		typeStr = "CREATEDB"
-	case *ast.CreateTableStmt:
-		typeStr = "CREATETABLE"
-	case *ast.AlterTableStmt:
-		typeStr = "ALTERTABLE"
-	case *ast.DropTableStmt:
-		typeStr = "DROPTABLE"
-	case *ast.RenameTableStmt:
-		typeStr = "RENAMETABLE"
-	case *ast.CreateIndexStmt:
-		typeStr = "CREATEINDEX"
-	case *ast.DropIndexStmt:
-		typeStr = "DROPINDEX"
-	default:
-		log.Warning("类型未知: ", record.Type)
-	}
-
-	sql_stmt := HTMLEscapeString(record.Sql)
-
-	// 已更新sql_statement类型为mediumtext
-	// longDataType 为true表示字段类型已更新,否则为text,需要在写入时自动截断
-
-	// 最大可存储65535个字节(64KB-1)
-	if !longDataType && len(sql_stmt) > (1<<16)-1 {
-
-		s.AppendWarning(ErrDataTooLong, "sql_statement", 1)
-
-		sql_stmt = sql_stmt[:(1<<16)-4]
-		// 如果误截取了utf8字符,则往前找最后一个有效字符
-		for {
-			ch, _ := utf8.DecodeLastRuneInString(sql_stmt)
-			if ch != utf8.RuneError {
-				break
-			} else {
-				sql_stmt = sql_stmt[:len(sql_stmt)-1]
-			}
-		}
-		sql_stmt = sql_stmt + "..."
-	}
-
-	values := []interface{}{
-		record.OPID,
-		record.StartFile,
-		strconv.Itoa(record.StartPosition),
-		record.EndFile,
-		strconv.Itoa(record.EndPosition),
-		sql_stmt,
-		s.opt.host,
-		record.TableInfo.Schema,
-		record.TableInfo.Name,
-		strconv.Itoa(s.opt.port),
-		typeStr,
-	}
-
-	dbName := s.getRemoteBackupDBName(record)
-
-	if s.lastBackupTable == "" {
-		s.lastBackupTable = dbName
-	}
-	// 库名改变时强制flush
-	if s.lastBackupTable != dbName {
-		s.chBackupRecord <- &chanBackup{
-			dbname: s.lastBackupTable,
-			record: record,
-			values: nil,
-		}
-		s.lastBackupTable = dbName
-	}
-
-	s.chBackupRecord <- &chanBackup{
-		dbname: dbName,
-		record: record,
-		values: values,
-	}
-
-	// s.lastBackupTable = lastBackupTable
-
-	// var buf strings.Builder
-
-	// buf.WriteString("INSERT INTO ")
-	// dbname := s.getRemoteBackupDBName(record)
-	// buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable))
-	// buf.WriteString(" VALUES('")
-	// buf.WriteString(record.OPID)
-	// buf.WriteString("','")
-	// buf.WriteString(record.StartFile)
-	// buf.WriteString("',")
-	// buf.WriteString(strconv.Itoa(record.StartPosition))
-	// buf.WriteString(",'")
-	// buf.WriteString(record.EndFile)
-	// buf.WriteString("',")
-	// buf.WriteString(strconv.Itoa(record.EndPosition))
-	// // buf.WriteString(",?,'")
-	// buf.WriteString(",'")
-	// buf.WriteString(HTMLEscapeString(record.Sql))
-	// buf.WriteString("','")
-	// buf.WriteString(s.opt.host)
-	// buf.WriteString("','")
-	// buf.WriteString(record.TableInfo.Schema)
-	// buf.WriteString("','")
-	// buf.WriteString(record.TableInfo.Name)
-	// buf.WriteString("',")
-	// buf.WriteString(strconv.Itoa(s.opt.port))
-	// buf.WriteString(",NOW(),'")
-
-	// switch record.Type.(type) {
-	// case *ast.InsertStmt:
-	// 	buf.WriteString("INSERT")
-	// case *ast.DeleteStmt:
-	// 	buf.WriteString("DELETE")
-	// case *ast.UpdateStmt:
-	// 	buf.WriteString("UPDATE")
-	// case *ast.CreateDatabaseStmt:
-	// 	buf.WriteString("CREATEDB")
-	// case *ast.CreateTableStmt:
-	// 	buf.WriteString("CREATETABLE")
-	// case *ast.AlterTableStmt:
-	// 	buf.WriteString("ALTERTABLE")
-	// case *ast.DropTableStmt:
-	// 	buf.WriteString("DROPTABLE")
-	// case *ast.RenameTableStmt:
-	// 	buf.WriteString("RENAMETABLE")
-	// case *ast.CreateIndexStmt:
-	// 	buf.WriteString("CREATEINDEX")
-	// case *ast.DropIndexStmt:
-	// 	buf.WriteString("DROPINDEX")
-	// default:
-	// 	buf.WriteString("UNKNOWN")
-	// }
-
-	// buf.WriteString("')")
-
-	// if err := s.backupdb.Exec(buf.String()).Error; err != nil {
-	// 	log.Error(err)
-	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-	// 		s.AppendErrorMessage(myErr.Message)
-
-	// 		record.StageStatus = StatusBackupFail
-	// 		return 2
-	// 	}
-	// }
-
-	return 0
-}
-
-func (s *session) mysqlBackupSingleDDLStatement(record *Record) {
-
-}
-
-func (s *session) mysqlBackupSingleStatement(record *Record) {
-
-}
-
 func (s *session) checkSqlIsDML(record *Record) bool {
 	switch record.Type.(type) {
 	case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
@@ -1420,197 +884,6 @@ func (s *session) checkSqlIsDML(record *Record) bool {
 	default:
 		return false
 	}
-}
-
-// mysqlCreateBackupTable 创建备份表.
-// 如果备份表的表结构是旧表结构,即sql_statement字段类型为text,则返回false,否则返回true
-// longDataType 为true表示字段类型已更新,否则为text,需要在写入时自动截断
-func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
-
-	if record.TableInfo == nil {
-		return
-	}
-
-	backupDBName := s.getRemoteBackupDBName(record)
-	if backupDBName == "" {
-		return
-	}
-
-	if record.TableInfo.IsCreated {
-		// 返回longDataType值
-		key := fmt.Sprintf("%s.%s", backupDBName, remoteBackupTable)
-		if v, ok := s.backupTableCacheList[key]; ok {
-			return v
-		}
-		return
-	}
-
-	if _, ok := s.backupDBCacheList[backupDBName]; !ok {
-		sql := fmt.Sprintf("create database if not exists `%s`;", backupDBName)
-		if err := s.backupdb.Exec(sql).Error; err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
-					s.AppendErrorMessage(myErr.Message)
-					return
-				}
-			} else {
-				s.AppendErrorMessage(err.Error())
-				return
-			}
-		}
-		s.backupDBCacheList[backupDBName] = true
-	}
-
-	key := fmt.Sprintf("%s.%s", backupDBName, record.TableInfo.Name)
-	if _, ok := s.backupTableCacheList[key]; !ok {
-		createSql := s.mysqlCreateSqlFromTableInfo(backupDBName, record.TableInfo)
-		if err := s.backupdb.Exec(createSql).Error; err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
-					s.AppendErrorMessage(myErr.Message)
-					return
-				}
-			} else {
-				s.AppendErrorMessage(err.Error())
-				return
-			}
-		}
-		s.backupTableCacheList[key] = true
-	}
-
-	key = fmt.Sprintf("%s.%s", backupDBName, remoteBackupTable)
-	if _, ok := s.backupTableCacheList[key]; !ok {
-		createSql := s.mysqlCreateSqlBackupTable(backupDBName)
-		if err := s.backupdb.Exec(createSql).Error; err != nil {
-			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
-					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-					s.AppendErrorMessage(myErr.Message)
-					return
-				} else {
-					// 获取sql_statement字段类型,用以兼容类型为text的旧表结构
-					longDataType = s.checkBackupTableSqlStmtColumnType(backupDBName)
-				}
-			} else {
-				s.AppendErrorMessage(err.Error())
-				return
-			}
-		} else {
-			longDataType = true
-		}
-		s.backupTableCacheList[key] = longDataType
-	}
-
-	record.TableInfo.IsCreated = true
-
-	return
-}
-
-// checkBackupTableSqlStmtColumnType 检查sql_statement字段类型,用以兼容类型为text的旧表结构
-func (s *session) checkBackupTableSqlStmtColumnType(dbname string) (longDataType bool) {
-
-	// 获取sql_statement字段类型,用以兼容类型为text的旧表结构
-	sql := fmt.Sprintf(`select DATA_TYPE from information_schema.columns
-					where table_schema='%s' and table_name='%s' and column_name='sql_statement';`,
-		dbname, remoteBackupTable)
-
-	var res string
-
-	rows, err2 := s.backupdb.DB().Query(sql)
-	if err2 != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err2)
-		if myErr, ok := err2.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err2.Error())
-		}
-	}
-	if rows != nil {
-		defer rows.Close()
-		for rows.Next() {
-			rows.Scan(&res)
-		}
-		return res != "text"
-	}
-
-	return
-
-}
-
-func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
-
-	// if not exists
-	buf := bytes.NewBufferString("CREATE TABLE  ")
-
-	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, remoteBackupTable))
-	buf.WriteString("(")
-
-	buf.WriteString("opid_time varchar(50),")
-	buf.WriteString("start_binlog_file varchar(512),")
-	buf.WriteString("start_binlog_pos int,")
-	buf.WriteString("end_binlog_file varchar(512),")
-	buf.WriteString("end_binlog_pos int,")
-	buf.WriteString("sql_statement mediumtext,")
-	buf.WriteString("host VARCHAR(64),")
-	buf.WriteString("dbname VARCHAR(64),")
-	buf.WriteString("tablename VARCHAR(64),")
-	buf.WriteString("port INT,")
-	buf.WriteString("time TIMESTAMP,")
-	buf.WriteString("type VARCHAR(20),")
-	buf.WriteString("PRIMARY KEY(opid_time)")
-
-	buf.WriteString(")ENGINE INNODB DEFAULT CHARSET UTF8MB4;")
-
-	return buf.String()
-}
-
-func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) string {
-
-	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
-	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, ti.Name))
-	buf.WriteString("(")
-
-	buf.WriteString("id bigint auto_increment primary key, ")
-	buf.WriteString("rollback_statement mediumtext, ")
-	buf.WriteString("opid_time varchar(50)")
-
-	buf.WriteString(") ENGINE INNODB DEFAULT CHARSET UTF8MB4;")
-
-	return buf.String()
-}
-
-func (s *session) mysqlRealQueryBackup(sql string) (err error) {
-	if _, err = s.Exec(sql, true); err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	}
-	return err
-}
-
-func (s *session) getRemoteBackupDBName(record *Record) string {
-
-	if record.BackupDBName != "" {
-		return record.BackupDBName
-	}
-
-	v := fmt.Sprintf("%s_%d_%s", s.opt.host, s.opt.port, record.TableInfo.Schema)
-
-	if len(v) > mysql.MaxDatabaseNameLength {
-		v = v[len(v)-mysql.MaxDatabaseNameLength:]
-		// s.AppendErrorNo(ER_TOO_LONG_BAKDB_NAME, s.opt.host, s.opt.port, record.TableInfo.Schema)
-		// return ""
-	}
-
-	v = strings.Replace(v, "-", "_", -1)
-	v = strings.Replace(v, ".", "_", -1)
-	record.BackupDBName = v
-	return record.BackupDBName
 }
 
 func (s *session) checkSqlIsDDL(record *Record) bool {
@@ -2444,7 +1717,8 @@ func (s *session) mysqlServerVersion() {
 	var name, value string
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
-	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on');`
+	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
+	'explicit_defaults_for_timestamp');`
 
 	rows, err := s.Raw(sql)
 	if rows != nil {
@@ -2506,6 +1780,8 @@ func (s *session) mysqlServerVersion() {
 				}
 			case "wsrep_on":
 				s.IsClusterNode = (value == "ON" || value == "1")
+			case "explicit_defaults_for_timestamp":
+				s.explicitDefaultsForTimestamp = (value == "ON" || value == "1")
 			}
 		}
 
@@ -2519,72 +1795,6 @@ func (s *session) mysqlServerVersion() {
 		}
 	}
 
-}
-
-// func (s *session) initMysqlSQLMode() {
-// 	log.Debug("initMysqlSQLMode")
-
-// 	// sc := s.GetSessionVars().StmtCtx
-
-// 	var value string
-// 	sql := "show variables like 'sql_mode';"
-
-// 	rows, err := s.Raw(sql)
-// 	if rows != nil {
-// 		defer rows.Close()
-// 	}
-
-// 	if err != nil {
-// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-// 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-// 			s.AppendErrorMessage(myErr.Message)
-// 		} else {
-// 			s.AppendErrorMessage(err.Error())
-// 		}
-// 	} else {
-// 		for rows.Next() {
-// 			rows.Scan(&value, &value)
-// 		}
-// 	}
-
-// 	if err := s.sessionVars.SetSystemVar(variable.SQLModeVar, value); err != nil {
-// 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-// 		log.Warning(value)
-// 	} else {
-// 		sc := s.GetSessionVars().StmtCtx
-// 		vars := s.sessionVars
-// 		// 未指定严格模式或者NO_ZERO_IN_DATE时,忽略错误日期
-// 		sc.IgnoreZeroInDate = !vars.StrictSQLMode || !vars.SQLMode.HasNoZeroInDateMode()
-// 	}
-// }
-
-func (s *session) mysqlExplicitDefaultsForTimestamp() {
-	log.Debug("mysqlExplicitDefaultsForTimestamp")
-
-	var value string
-	sql := "show variables where Variable_name='explicit_defaults_for_timestamp';"
-
-	rows, err := s.Raw(sql)
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	if err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
-		} else {
-			s.AppendErrorMessage(err.Error())
-		}
-	} else {
-		for rows.Next() {
-			rows.Scan(&value, &value)
-		}
-	}
-
-	if value == "ON" {
-		s.explicitDefaultsForTimestamp = true
-	}
 }
 
 func (s *session) fetchThreadID() uint32 {
@@ -3349,7 +2559,7 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	// 旧表存在,新建不存在时
 	if originTable != nil && table == nil {
-		table = s.copyTableInfo(originTable)
+		table = originTable.copy()
 
 		table.Name = node.NewTable.Name.O
 		if node.NewTable.Schema.O == "" {
@@ -3414,7 +2624,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		if node.ReferTable != nil {
 			originTable := s.getTableFromCache(node.ReferTable.Schema.O, node.ReferTable.Name.O, true)
 			if originTable != nil {
-				table = s.copyTableInfo(originTable)
+				table = originTable.copy()
 
 				table.Name = node.Table.Name.O
 				table.Schema = node.Table.Schema.O
@@ -4215,7 +3425,7 @@ func (s *session) checkAlterTableRenameTable(t *TableInfo, c *ast.AlterTableSpec
 	} else {
 		// 旧表存在,新建不存在时
 
-		table = s.copyTableInfo(t)
+		table = t.copy()
 
 		table.Name = c.NewTable.Name.O
 		if c.NewTable.Schema.O == "" {
@@ -5217,7 +4427,7 @@ func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 // cacheTableSnapshot 保存表快照,用以解析binlog
 // 当删除列,变更列顺序时, 重新保存表结构
 func (s *session) cacheTableSnapshot(t *TableInfo) *TableInfo {
-	newT := s.copyTableInfo(t)
+	newT := t.copy()
 
 	s.cacheNewTable(newT)
 
@@ -5750,7 +4960,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 					if tblSource.AsName.L != "" {
 						t.AsName = tblSource.AsName.O
-						tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+						tableInfoList = append(tableInfoList, t.copy())
 					} else {
 						tableInfoList = append(tableInfoList, t)
 					}
@@ -5824,7 +5034,7 @@ func (s *session) getTableList(tableList []*ast.TableSource) ([]*TableInfo, bool
 			if t != nil {
 				if tblSource.AsName.L != "" {
 					t.AsName = tblSource.AsName.O
-					tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+					tableInfoList = append(tableInfoList, t.copy())
 				} else {
 					tableInfoList = append(tableInfoList, t)
 				}
@@ -7227,7 +6437,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 		if t != nil {
 			if tblSource.AsName.L != "" {
 				t.AsName = tblSource.AsName.O
-				tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+				tableInfoList = append(tableInfoList, t.copy())
 			} else {
 				tableInfoList = append(tableInfoList, t)
 			}
@@ -7535,52 +6745,6 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 	}
 }
 
-// getFieldWithTableInfo 获取字段对应的表信息
-func getFieldWithTableInfo(name *ast.ColumnName, tables []*TableInfo) *TableInfo {
-	db := name.Schema.L
-	for _, t := range tables {
-		var tName string
-		if t.AsName != "" {
-			tName = t.AsName
-		} else {
-			tName = t.Name
-		}
-		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
-			(strings.EqualFold(tName, name.Table.L)) ||
-			name.Table.L == "" {
-			for _, field := range t.Fields {
-				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
-					return t
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// getFieldItem 获取字段信息
-func getFieldInfo(name *ast.ColumnName, tables []*TableInfo) (*FieldInfo, string) {
-	db := name.Schema.L
-	for _, t := range tables {
-		var tName string
-		if t.AsName != "" {
-			tName = t.AsName
-		} else {
-			tName = t.Name
-		}
-		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
-			(strings.EqualFold(tName, name.Table.L)) ||
-			name.Table.L == "" {
-			for i, field := range t.Fields {
-				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
-					return &t.Fields[i], tName
-				}
-			}
-		}
-	}
-	return nil, ""
-}
-
 // checkFuncItem 检查函数的字段
 func (s *session) checkFuncItem(f *ast.FuncCallExpr, tables []*TableInfo) bool {
 
@@ -7638,7 +6802,7 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 	// 	if t != nil {
 	// 		if tblSource.AsName.L != "" {
 	// 			t.AsName = tblSource.AsName.O
-	// 			tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+	// 			tableInfoList = append(tableInfoList, t.copy())
 	// 		} else {
 	// 			tableInfoList = append(tableInfoList, t)
 	// 		}
@@ -7768,39 +6932,6 @@ func (s *session) QueryIndexFromDB(db string, tableName string, reportNotExists 
 		return nil
 	}
 	return rows
-}
-
-func (r *Record) AppendErrorMessage(msg string) {
-	r.ErrLevel = 2
-
-	r.Buf.WriteString(msg)
-	if !strings.HasSuffix(msg, ".") && !strings.HasSuffix(msg, "!") {
-		r.Buf.WriteString(".")
-	}
-	r.Buf.WriteString("\n")
-}
-
-func (r *Record) AppendErrorNo(lang string, number ErrorCode, values ...interface{}) {
-	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
-
-	if len(values) == 0 {
-		r.Buf.WriteString(GetErrorMessage(number, lang))
-	} else {
-		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
-	}
-	r.Buf.WriteString("\n")
-}
-
-// AppendWarning 添加警告. 错误级别指定为警告
-func (r *Record) AppendWarning(lang string, number ErrorCode, values ...interface{}) {
-	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
-
-	if len(values) == 0 {
-		r.Buf.WriteString(GetErrorMessage(number, lang))
-	} else {
-		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
-	}
-	r.Buf.WriteString("\n")
 }
 
 func (s *session) AppendErrorMessage(msg string) {
@@ -8099,10 +7230,6 @@ func (s *session) cacheNewTable(t *TableInfo) {
 	t.IsNew = true
 	// 如果表删除后新建,直接覆盖即可
 	s.tableCacheList[key] = t
-
-	// if t, ok := s.tableCacheList[key]; !ok {
-	// 	s.tableCacheList[key] = t
-	// }
 }
 
 func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *FieldInfo {
@@ -8171,7 +7298,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			c.Extra += "auto_increment"
 		case ast.ColumnOptionOnUpdate:
 			if field.Tp.Tp == mysql.TypeTimestamp || field.Tp.Tp == mysql.TypeDatetime {
-				if !expression.IsCurrentTimestampExpr(op.Expr) {
+				if !IsCurrentTimestampExpr(op.Expr) {
 					s.AppendErrorNo(ER_INVALID_ON_UPDATE, c.Field)
 				} else {
 					c.Extra += "on update CURRENT_TIMESTAMP"
@@ -8206,73 +7333,6 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 	return c
 }
 
-func Max(x, y int) int {
-	if x >= y {
-		return x
-	}
-	return y
-}
-
-func Min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func (s *session) copyTableInfo(t *TableInfo) *TableInfo {
-	p := &TableInfo{}
-
-	p.Schema = t.Schema
-	p.Name = t.Name
-	p.AsName = t.AsName
-	p.AlterCount = t.AlterCount
-
-	p.Fields = make([]FieldInfo, len(t.Fields))
-	copy(p.Fields, t.Fields)
-
-	// 移除已删除的列
-	// newFields := make([]FieldInfo, len(t.Fields))
-	// copy(newFields, t.Fields)
-
-	// for _, f := range newFields {
-	// 	if !f.IsDeleted {
-	// 		p.Fields = append(p.Fields, f)
-	// 	}
-	// }
-
-	if len(t.Indexes) > 0 {
-		originIndexes := make([]IndexInfo, 0, len(t.Indexes))
-		p.Indexes = make([]*IndexInfo, 0, len(t.Indexes))
-
-		for i := range t.Indexes {
-			originIndexes = append(originIndexes, *(t.Indexes[i]))
-		}
-
-		newIndexes := make([]IndexInfo, len(t.Indexes))
-		copy(newIndexes, originIndexes)
-
-		for i, r := range newIndexes {
-			if !r.IsDeleted {
-				p.Indexes = append(p.Indexes, &newIndexes[i])
-			}
-		}
-	}
-
-	// querySql := fmt.Sprintf("SHOW INDEX FROM `%s`.`%s`", t.Schema, t.Name)
-	// var rows []*IndexInfo
-	// if err := s.db.Raw(querySql).Scan(&rows).Error; err != nil {
-	// 	if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-	// 		s.AppendErrorMessage(myErr.Message)
-	// 	} else {
-	// 		s.AppendErrorMessage(err.Error())
-	// 	}
-	// }
-	// p.Indexes = rows
-
-	return p
-}
-
 // checkSelectItem 子句递归检查
 func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*TableInfo {
 	if node == nil {
@@ -8302,13 +7362,6 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 		tableInfoList := s.checkSelectItem(x.Left, false)
 		tableInfoList = append(tableInfoList, s.checkSelectItem(x.Right, false)...)
 
-		// b, _ := json.MarshalIndent(x, "", "  ")
-		// log.Info(string(b))
-
-		// log.Infof("%#v", x.Left)
-		// log.Infof("%#v", x.Right)
-		// log.Infof("%#v", x)
-
 		if x.On != nil {
 			s.checkItem(x.On.Expr, tableInfoList)
 		} else if x.Right != nil {
@@ -8325,7 +7378,7 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 			if t != nil {
 				if x.AsName.L != "" {
 					t.AsName = x.AsName.O
-					return []*TableInfo{s.copyTableInfo(t)}
+					return []*TableInfo{t.copy()}
 				} else {
 					return []*TableInfo{t}
 				}
@@ -8368,16 +7421,12 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 
 		default:
 			return s.checkSelectItem(tblSource, false)
-			// log.Infof("%T", x)
-			// log.Infof("%#v", x)
 		}
 
 	default:
 		log.Infof("con:%d %T", s.sessionVars.ConnectionID, x)
-		// log.Infof("%#v", x)
 	}
 	return nil
-	// return !s.hasError()
 }
 
 func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
@@ -8408,7 +7457,7 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 
 				if tblSource.AsName.L != "" {
 					t.AsName = tblSource.AsName.O
-					tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+					tableInfoList = append(tableInfoList, t.copy())
 				} else {
 					tableInfoList = append(tableInfoList, t)
 				}
@@ -8511,7 +7560,7 @@ func (s *session) getTableInfoByTableSource(tableList []*ast.TableSource) (table
 
 				if tblSource.AsName.L != "" {
 					t.AsName = tblSource.AsName.O
-					tableInfoList = append(tableInfoList, s.copyTableInfo(t))
+					tableInfoList = append(tableInfoList, t.copy())
 				} else {
 					tableInfoList = append(tableInfoList, t)
 				}
@@ -8591,70 +7640,6 @@ func (s *session) saveFingerprint(sqlId string) {
 	if s.Inc.EnableFingerprint && sqlId != "" {
 		s.sqlFingerprint[sqlId] = s.myRecord
 	}
-}
-
-// IsUnsigned 是否无符号列
-func (f *FieldInfo) IsUnsigned() bool {
-	columnType := f.Type
-	if strings.Contains(columnType, "unsigned") || strings.Contains(columnType, "zerofill") {
-		return true
-	}
-	return false
-}
-
-// addNewSplitRow 添加新的split分隔节点
-func (s *session) addSplitNode(db, tableName string, isDML bool, stmtNode ast.StmtNode, currentSql string) {
-
-	if db == "" {
-		db = s.DBName
-	}
-	key := fmt.Sprintf("%s.%s", db, tableName)
-	key = strings.ToLower(key)
-
-	if s.splitSets.id == 0 {
-		s.addNewSplitNode()
-		if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
-			s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
-		}
-	} else {
-		if isDmlType, ok := s.splitSets.tableList[key]; ok {
-			if isDmlType != isDML {
-				s.addNewSplitNode()
-				if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
-					s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
-				}
-			}
-		}
-	}
-
-	s.splitSets.tableList[key] = isDML
-
-	switch stmtNode.(type) {
-	case *ast.AlterTableStmt, *ast.DropTableStmt:
-		s.splitSets.ddlflag = 1
-	}
-
-	s.splitSets.sqlBuf.WriteString(currentSql)
-	s.splitSets.sqlBuf.WriteString(";\n")
-}
-
-// addNewSplitRow 添加新的split分隔节点
-func (s *session) addNewSplitNode() {
-
-	sql := s.splitSets.sqlBuf.String()
-
-	// if len(sql) == 0{
-	// 	return
-	// }
-
-	if s.splitSets.id > 0 && len(sql) > 0 {
-		s.splitSets.Append(sql, "")
-	}
-
-	s.splitSets.id += 1
-	s.splitSets.tableList = make(map[string]bool)
-	s.splitSets.ddlflag = 0
-	s.splitSets.sqlBuf = new(bytes.Buffer)
 }
 
 // cleanup 清理变量,缓存,osc进程等

@@ -21,7 +21,6 @@ import (
 
 	// "github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/owner"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/types"
@@ -52,11 +51,6 @@ type Context struct {
 // Execute implements sqlexec.SQLExecutor Execute interface.
 func (c *Context) Execute(ctx context.Context, sql string) ([]sqlexec.RecordSet, error) {
 	return nil, errors.Errorf("Not Support.")
-}
-
-// DDLOwnerChecker returns owner.DDLOwnerChecker.
-func (c *Context) DDLOwnerChecker() owner.DDLOwnerChecker {
-	return nil
 }
 
 // SetValue implements sessionctx.Context SetValue interface.

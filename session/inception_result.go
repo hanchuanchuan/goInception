@@ -15,6 +15,7 @@ package session
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/ast"
@@ -24,6 +25,7 @@ import (
 	"github.com/hanchuanchuan/goInception/types/json"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
+
 	// log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -94,6 +96,39 @@ type Record struct {
 	// update多表时,默认set第一列的表为主表,其余表才会记录到该处
 	// 仅在发现多表操作时,初始化该参数
 	MultiTables map[string]*TableInfo
+}
+
+func (r *Record) AppendErrorMessage(msg string) {
+	r.ErrLevel = 2
+
+	r.Buf.WriteString(msg)
+	if !strings.HasSuffix(msg, ".") && !strings.HasSuffix(msg, "!") {
+		r.Buf.WriteString(".")
+	}
+	r.Buf.WriteString("\n")
+}
+
+func (r *Record) AppendErrorNo(lang string, number ErrorCode, values ...interface{}) {
+	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
+
+	if len(values) == 0 {
+		r.Buf.WriteString(GetErrorMessage(number, lang))
+	} else {
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
+	}
+	r.Buf.WriteString("\n")
+}
+
+// AppendWarning 添加警告. 错误级别指定为警告
+func (r *Record) AppendWarning(lang string, number ErrorCode, values ...interface{}) {
+	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
+
+	if len(values) == 0 {
+		r.Buf.WriteString(GetErrorMessage(number, lang))
+	} else {
+		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
+	}
+	r.Buf.WriteString("\n")
 }
 
 type recordSet struct {
