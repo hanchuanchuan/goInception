@@ -14,6 +14,8 @@ import (
 
 	// "github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/types"
+	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -67,35 +69,242 @@ var charSets = map[string]int{
 	"utf8mb4":  4,
 }
 
-// HTMLEscape writes to w the escaped HTML equivalent of the plain text data b.
-func HTMLEscape(w io.Writer, b []byte) {
-	last := 0
-	for i, c := range b {
-		var html []byte
-		switch c {
-		case '"':
-			html = htmlQuot
-		case '\'':
-			html = htmlApos
-		default:
-			continue
-		}
-		w.Write(b[last:i])
-		w.Write(html)
-		last = i + 1
-	}
-	w.Write(b[last:])
+// MasterStatus 主库状态信息,包括当前日志文件,位置等
+type MasterStatus struct {
+	gorm.Model
+	File            string `gorm:"Column:File"`
+	Position        int    `gorm:"Column:Position"`
+	BinlogDoDB      string `gorm:"Column:Binlog_Do_DB"`
+	BinlogIgnoreDB  string `gorm:"Column:Binlog_Ignore_DB"`
+	ExecutedGtidSet string `gorm:"Column:Executed_Gtid_Set"`
 }
 
-// HTMLEscapeString returns the escaped HTML equivalent of the plain text data s.
-func HTMLEscapeString(s string) string {
-	// Avoid allocation if we can.
-	if !strings.ContainsAny(s, "'\"") {
-		return s
+// statisticsInfo 统计信息
+type statisticsInfo struct {
+	usedb        int
+	insert       int
+	update       int
+	deleting     int
+	selects      int
+	altertable   int
+	rename       int
+	createindex  int
+	dropindex    int
+	addcolumn    int
+	dropcolumn   int
+	changecolumn int
+	alteroption  int
+	alterconvert int
+	createtable  int
+	droptable    int
+	createdb     int
+	truncate     int
+	// changedefault int
+	// dropdb        int
+}
+
+// sourceOptions 线上数据库信息和审核或执行的参数
+type sourceOptions struct {
+	host           string
+	port           int
+	user           string
+	password       string
+	check          bool
+	execute        bool
+	backup         bool
+	ignoreWarnings bool
+
+	// 每次执行后休眠多少毫秒. 用以降低对线上数据库的影响，特别是针对大量写入的操作.
+	// 单位为毫秒，最小值为0, 最大值为100秒，也就是100000毫秒
+	sleep int
+	// 执行多条后休眠, 最小值1,默认值1
+	sleepRows int
+
+	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
+	middlewareExtend string
+	middlewareDB     string
+	// 原始主机和端口,用以解析binlog
+	parseHost string
+	parsePort int
+
+	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
+	fingerprint bool
+
+	// 打印语法树功能
+	Print bool
+
+	// DDL/DML分隔功能
+	split bool
+
+	// 使用count(*)计算受影响行数
+	realRowCount bool
+
+	// 连接的数据库,默认为mysql
+	db string
+
+	ssl     string // 连接加密
+	sslCA   string // 证书颁发机构（CA）证书
+	sslCert string // 客户端公共密钥证书
+	sslKey  string // 客户端私钥文件
+
+	// 事务支持,一次执行多少条
+	tranBatch int
+
+	// // 扩展参数,支持一次性会话设置
+	// extendParams string
+}
+
+// ExplainInfo 执行计划信息
+type ExplainInfo struct {
+	// gorm.Model
+
+	SelectType   string  `gorm:"Column:select_type"`
+	Table        string  `gorm:"Column:table"`
+	Partitions   string  `gorm:"Column:partitions"`
+	Type         string  `gorm:"Column:type"`
+	PossibleKeys string  `gorm:"Column:possible_keys"`
+	Key          string  `gorm:"Column:key"`
+	KeyLen       string  `gorm:"Column:key_len"`
+	Ref          string  `gorm:"Column:ref"`
+	Rows         int     `gorm:"Column:rows"`
+	Filtered     float32 `gorm:"Column:filtered"`
+	Extra        string  `gorm:"Column:Extra"`
+
+	// TiDB的Explain预估行数存储在Count中
+	Count float32 `gorm:"Column:count"`
+}
+
+// FieldInfo 字段信息
+type FieldInfo struct {
+	// gorm.Model
+
+	Field      string  `gorm:"Column:Field"`
+	Type       string  `gorm:"Column:Type"`
+	Collation  string  `gorm:"Column:Collation"`
+	Null       string  `gorm:"Column:Null"`
+	Key        string  `gorm:"Column:Key"`
+	Default    *string `gorm:"Column:Default"`
+	Extra      string  `gorm:"Column:Extra"`
+	Privileges string  `gorm:"Column:Privileges"`
+	Comment    string  `gorm:"Column:Comment"`
+
+	IsDeleted bool `gorm:"-"`
+	IsNew     bool `gorm:"-"`
+
+	Tp *types.FieldType `gorm:"-"`
+}
+
+// TableInfo 表结构.
+// 表结构实现了快照功能,在表结构变更前,会复制快照,在快照上做变更
+// 在解析binlog时,基于执行时的快照做binlog解析,以实现删除列时的binlog解析
+type TableInfo struct {
+	Schema string
+	Name   string
+	// 表别名,仅用于update,delete多表
+	AsName string
+	Fields []FieldInfo
+
+	// 索引
+	Indexes []*IndexInfo
+
+	// 是否已删除
+	IsDeleted bool
+	// 备份库是否已创建
+	IsCreated bool
+
+	// 表是否为新增
+	IsNew bool
+	// 列是否为新增
+	IsNewColumns bool
+
+	// 主键信息,用以备份
+	hasPrimary bool
+	primarys   map[int]bool
+
+	AlterCount int
+
+	// 是否已清除已删除的列[解析binlog时会自动清除已删除的列]
+	IsClear bool
+
+	// 表大小.单位MB
+	TableSize uint
+
+	// 字符集&排序规则
+	Collation string
+}
+
+// IndexInfo 索引信息
+type IndexInfo struct {
+	gorm.Model
+
+	Table      string `gorm:"Column:Table"`
+	NonUnique  int    `gorm:"Column:Non_unique"`
+	IndexName  string `gorm:"Column:Key_name"`
+	Seq        int    `gorm:"Column:Seq_in_index"`
+	ColumnName string `gorm:"Column:Column_name"`
+	IndexType  string `gorm:"Column:Index_type"`
+
+	IsDeleted bool `gorm:"-"`
+}
+
+// DBInfo 库信息
+type DBInfo struct {
+	Name string
+	// 是否已删除
+	IsDeleted bool
+	// 是否为新增
+	IsNew bool
+}
+
+func (t *TableInfo) copy() *TableInfo {
+	p := &TableInfo{}
+
+	p.Schema = t.Schema
+	p.Name = t.Name
+	p.AsName = t.AsName
+	p.AlterCount = t.AlterCount
+
+	p.Fields = make([]FieldInfo, len(t.Fields))
+	copy(p.Fields, t.Fields)
+
+	// 移除已删除的列
+	// newFields := make([]FieldInfo, len(t.Fields))
+	// copy(newFields, t.Fields)
+
+	// for _, f := range newFields {
+	// 	if !f.IsDeleted {
+	// 		p.Fields = append(p.Fields, f)
+	// 	}
+	// }
+
+	if len(t.Indexes) > 0 {
+		originIndexes := make([]IndexInfo, 0, len(t.Indexes))
+		p.Indexes = make([]*IndexInfo, 0, len(t.Indexes))
+
+		for i := range t.Indexes {
+			originIndexes = append(originIndexes, *(t.Indexes[i]))
+		}
+
+		newIndexes := make([]IndexInfo, len(t.Indexes))
+		copy(newIndexes, originIndexes)
+
+		for i, r := range newIndexes {
+			if !r.IsDeleted {
+				p.Indexes = append(p.Indexes, &newIndexes[i])
+			}
+		}
 	}
-	var b bytes.Buffer
-	HTMLEscape(&b, []byte(s))
-	return b.String()
+
+	return p
+}
+
+// IsUnsigned 是否无符号列
+func (f *FieldInfo) IsUnsigned() bool {
+	columnType := f.Type
+	if strings.Contains(columnType, "unsigned") || strings.Contains(columnType, "zerofill") {
+		return true
+	}
+	return false
 }
 
 // GetDataBytes 计算数据类型字节数
@@ -190,6 +399,83 @@ func (col *FieldInfo) GetDataLength(dbVersion int, defaultCharset string) int {
 		log.Warnf("Type %v not support:", col.Type)
 		return -1
 	}
+}
+
+// getFieldWithTableInfo 获取字段对应的表信息
+func getFieldWithTableInfo(name *ast.ColumnName, tables []*TableInfo) *TableInfo {
+	db := name.Schema.L
+	for _, t := range tables {
+		var tName string
+		if t.AsName != "" {
+			tName = t.AsName
+		} else {
+			tName = t.Name
+		}
+		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+			(strings.EqualFold(tName, name.Table.L)) ||
+			name.Table.L == "" {
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+					return t
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// getFieldItem 获取字段信息
+func getFieldInfo(name *ast.ColumnName, tables []*TableInfo) (*FieldInfo, string) {
+	db := name.Schema.L
+	for _, t := range tables {
+		var tName string
+		if t.AsName != "" {
+			tName = t.AsName
+		} else {
+			tName = t.Name
+		}
+		if name.Table.L != "" && (db == "" || strings.EqualFold(t.Schema, db)) &&
+			(strings.EqualFold(tName, name.Table.L)) ||
+			name.Table.L == "" {
+			for i, field := range t.Fields {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+					return &t.Fields[i], tName
+				}
+			}
+		}
+	}
+	return nil, ""
+}
+
+// HTMLEscape writes to w the escaped HTML equivalent of the plain text data b.
+func HTMLEscape(w io.Writer, b []byte) {
+	last := 0
+	for i, c := range b {
+		var html []byte
+		switch c {
+		case '"':
+			html = htmlQuot
+		case '\'':
+			html = htmlApos
+		default:
+			continue
+		}
+		w.Write(b[last:i])
+		w.Write(html)
+		last = i + 1
+	}
+	w.Write(b[last:])
+}
+
+// HTMLEscapeString returns the escaped HTML equivalent of the plain text data s.
+func HTMLEscapeString(s string) string {
+	// Avoid allocation if we can.
+	if !strings.ContainsAny(s, "'\"") {
+		return s
+	}
+	var b bytes.Buffer
+	HTMLEscape(&b, []byte(s))
+	return b.String()
 }
 
 // StringStorageReq String Type Storage Requirements return bytes count
@@ -518,4 +804,18 @@ func findColumnWithList(c *ast.ColumnNameExpr, tables []*TableInfo) *FieldInfo {
 func Exist(filename string) bool {
 	_, err := os.Stat(filename)
 	return err == nil || os.IsExist(err)
+}
+
+func Max(x, y int) int {
+	if x >= y {
+		return x
+	}
+	return y
+}
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
 }
