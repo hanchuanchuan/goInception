@@ -36,7 +36,6 @@ import (
 	"github.com/hanchuanchuan/goInception/meta"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/hanchuanchuan/goInception/owner"
 	"github.com/hanchuanchuan/goInception/parser"
 	plannercore "github.com/hanchuanchuan/goInception/planner/core"
 	"github.com/hanchuanchuan/goInception/privilege"
@@ -156,8 +155,6 @@ type session struct {
 	sessionManager util.SessionManager
 
 	statsCollector *statistics.SessionStatsCollector
-	// ddlOwnerChecker is used in `select tidb_is_ddl_owner()` statement;
-	ddlOwnerChecker owner.DDLOwnerChecker
 
 	haveBegin  bool
 	haveCommit bool
@@ -248,11 +245,6 @@ type session struct {
 	LowerCaseTableNames int
 	// PXC集群节点
 	IsClusterNode bool
-}
-
-// DDLOwnerChecker returns s.ddlOwnerChecker.
-func (s *session) DDLOwnerChecker() owner.DDLOwnerChecker {
-	return s.ddlOwnerChecker
 }
 
 func (s *session) getMembufCap() int {
@@ -1329,10 +1321,10 @@ func createSession(store kv.Storage) (*session, error) {
 		return nil, errors.Trace(err)
 	}
 	s := &session{
-		store:           store,
-		parser:          parser.New(),
-		sessionVars:     variable.NewSessionVars(),
-		ddlOwnerChecker: dom.DDL().OwnerManager(),
+		store:       store,
+		parser:      parser.New(),
+		sessionVars: variable.NewSessionVars(),
+		// ddlOwnerChecker: dom.DDL().OwnerManager(),
 
 		LowerCaseTableNames: 1,
 		// haveBegin:  false,

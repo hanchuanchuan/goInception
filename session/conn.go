@@ -18,16 +18,10 @@
 package session
 
 import (
-	"fmt"
-	// "math"
-	// "strings"
 	"database/sql"
+	"fmt"
 	"time"
 
-	// "github.com/hanchuanchuan/goInception/ast"
-	// "github.com/hanchuanchuan/goInception/expression"
-	// "github.com/hanchuanchuan/goInception/mysql"
-	// "github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"

@@ -26,7 +26,6 @@ import (
 	// "time"
 
 	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/planner/core"
 
@@ -205,7 +204,7 @@ func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 					return false
 				}
 
-				d, err := expression.GetTimeValue(s, columnOpt.Expr, tp.Tp, tp.Decimal)
+				d, err := GetTimeValue(s, columnOpt.Expr, tp.Tp, tp.Decimal)
 				if err != nil {
 					// log.Warning(err)
 					return true
