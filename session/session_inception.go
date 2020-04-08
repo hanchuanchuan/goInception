@@ -297,14 +297,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.splitSets = NewSplitSets()
 					}
 
-					if s.myRecord.ErrLevel != 2 {
-						s.mysqlServerVersion()
-
-						if s.opt.Backup && s.dbType == DBTypeTiDB {
-							s.appendErrorMessage("TiDB暂不支持备份功能.")
-						}
-					}
-
 					if s.myRecord.ErrLevel == 2 {
 						if strings.Contains(currentSql, "*/") {
 							currentSql = currentSql[strings.Index(currentSql, "*/")+2:]
@@ -2050,114 +2042,14 @@ func (s *session) parseOptions(sql string) {
 		s.opt.IgnoreWarnings = true
 	}
 
-	if s.opt.sleep <= 0 {
-		s.opt.sleepRows = 0
-	} else if s.opt.sleepRows < 1 {
-		s.opt.sleepRows = 1
-	}
-
-	if s.opt.split || s.opt.Print {
-		s.opt.Check = false
-	}
-
-	// 不再检查密码是否为空
-	if s.opt.Host == "" || s.opt.Port == 0 || s.opt.User == "" {
-		log.Warningf("%#v", s.opt)
-		msg := ""
-		if s.opt.Host == "" {
-			msg += "主机名为空,"
-		}
-		if s.opt.Port == 0 {
-			msg += "端口为0,"
-		}
-		if s.opt.User == "" {
-			msg += "用户名为空,"
-		}
-		s.appendErrorNo(ER_SQL_INVALID_SOURCE, strings.TrimRight(msg, ","))
+	if s.hasError() {
 		return
 	}
 
-	var addr string
-	if s.opt.middlewareExtend == "" {
-		tlsValue, err := s.getTLSConfig()
-		if err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			s.appendErrorMessage(err.Error())
-			return
-		}
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&tls=%s",
-			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port, s.opt.db,
-			s.inc.DefaultCharset, s.inc.MaxAllowedPacket, tlsValue)
-	} else {
-		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
-			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
-
-		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
-			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port,
-			s.opt.middlewareDB, s.inc.DefaultCharset, s.inc.MaxAllowedPacket)
-	}
-
-	db, err := gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
-
-	if err != nil {
+	if err := s.checkOptions(); err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		s.appendErrorMessage(err.Error())
-		return
 	}
-
-	if s.opt.tranBatch > 1 {
-		s.ddlDB, _ = gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
-		s.ddlDB.LogMode(false)
-	}
-
-	// 禁用日志记录器，不显示任何日志
-	db.LogMode(false)
-
-	s.db = db
-
-	if s.opt.Execute {
-		if s.opt.Backup && !s.checkBinlogIsOn() {
-			s.appendErrorMessage("binlog日志未开启,无法备份!")
-		}
-	}
-
-	if s.opt.Backup {
-		// 不再检查密码是否为空
-		if s.inc.BackupHost == "" || s.inc.BackupPort == 0 || s.inc.BackupUser == "" {
-			s.appendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
-		} else {
-			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
-				s.inc.BackupUser, s.inc.BackupPassword, s.inc.BackupHost, s.inc.BackupPort,
-				s.inc.DefaultCharset)
-			backupdb, err := gorm.Open("mysql", addr)
-
-			if err != nil {
-				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-				s.appendErrorMessage(err.Error())
-				return
-			}
-
-			backupdb.LogMode(false)
-			s.backupdb = backupdb
-		}
-	}
-
-	tmp := s.processInfo.Load()
-	if tmp != nil {
-		pi := tmp.(util.ProcessInfo)
-		pi.DestHost = s.opt.Host
-		pi.DestPort = s.opt.Port
-		pi.DestUser = s.opt.User
-
-		if s.opt.Check {
-			pi.Command = "CHECK"
-		} else if s.opt.Execute {
-			pi.Command = "EXECUTE"
-		}
-		s.processInfo.Store(pi)
-	}
-
-	s.setSqlSafeUpdates()
 }
 
 // getTLSConfig 获取tls设置

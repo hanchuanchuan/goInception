@@ -210,13 +210,9 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 
 	s.stage = StageCheck
 
-	err = s.initOptions()
+	err = s.checkOptions()
 	if err != nil {
 		return err
-	}
-
-	if s.opt.Backup && s.dbType == DBTypeTiDB {
-		return errors.New("TiDB暂不支持备份功能.")
 	}
 
 	if s.opt.Print {
@@ -357,7 +353,8 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 
 }
 
-func (s *session) initOptions() error {
+// checkOptions 校验配置信息
+func (s *session) checkOptions() error {
 
 	if s.opt == nil {
 		return errors.New("未配置数据源信息!")
@@ -421,6 +418,11 @@ func (s *session) initOptions() error {
 		return fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 	}
 
+	if s.opt.tranBatch > 1 {
+		s.ddlDB, _ = gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
+		s.ddlDB.LogMode(false)
+	}
+
 	// 禁用日志记录器，不显示任何日志
 	db.LogMode(false)
 
@@ -435,7 +437,7 @@ func (s *session) initOptions() error {
 	if s.opt.Backup {
 		// 不再检查密码是否为空
 		if s.inc.BackupHost == "" || s.inc.BackupPort == 0 || s.inc.BackupUser == "" {
-			s.appendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
+			return errors.New(s.getErrorMessage(ER_INVALID_BACKUP_HOST_INFO))
 		} else {
 			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
 				s.inc.BackupUser, s.inc.BackupPassword, s.inc.BackupHost, s.inc.BackupPort,
@@ -468,6 +470,10 @@ func (s *session) initOptions() error {
 
 	s.mysqlServerVersion()
 	s.setSqlSafeUpdates()
+
+	if s.opt.Backup && s.dbType == DBTypeTiDB {
+		s.appendErrorMessage("TiDB暂不支持备份功能.")
+	}
 
 	return nil
 }
