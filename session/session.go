@@ -161,7 +161,7 @@ type session struct {
 
 	recordSets *MyRecordSets
 
-	opt *sourceOptions
+	opt *SourceOptions
 
 	db       *gorm.DB
 	backupdb *gorm.DB
@@ -169,7 +169,7 @@ type session struct {
 	// 执行DDL操作的数据库连接. 仅用于事务功能
 	ddlDB *gorm.DB
 
-	DBName string
+	dbName string
 
 	myRecord *Record
 
@@ -181,12 +181,12 @@ type session struct {
 	// 备份库中的备份表
 	backupTableCacheList map[string]bool
 
-	Inc   config.Inc
-	Osc   config.Osc
-	Ghost config.Ghost
+	inc   config.Inc
+	osc   config.Osc
+	ghost config.Ghost
 
 	// 异步备份的通道
-	ch chan *ChanData
+	ch chan *chanData
 
 	// 批量写入表$_$Inception_backup_information$_$
 	chBackupRecord chan *chanBackup
@@ -201,13 +201,13 @@ type session struct {
 	lastBackupTable string
 
 	// 总的操作行数,当备份时用以计算备份进度
-	TotalChangeRows int
-	BackupTotalRows int
+	totalChangeRows int
+	backupTotalRows int
 
 	// 数据库类型
-	DBType int
+	dbType int
 	// 数据库版本号
-	DBVersion int
+	dbVersion int
 
 	// 远程数据库线程ID,在启用备份功能时,用以记录线程ID来解析binlog
 	threadID uint32
@@ -242,9 +242,9 @@ type session struct {
 	// 目标数据库的innodb_large_prefix设置
 	innodbLargePrefix bool
 	// 目标数据库的lower-case-table-names设置, 默认值为1,即不区分大小写
-	LowerCaseTableNames int
+	lowerCaseTableNames int
 	// PXC集群节点
-	IsClusterNode bool
+	isClusterNode bool
 }
 
 func (s *session) getMembufCap() int {
@@ -1326,7 +1326,7 @@ func createSession(store kv.Storage) (*session, error) {
 		sessionVars: variable.NewSessionVars(),
 		// ddlOwnerChecker: dom.DDL().OwnerManager(),
 
-		LowerCaseTableNames: 1,
+		lowerCaseTableNames: 1,
 		// haveBegin:  false,
 		// haveCommit: false,
 
