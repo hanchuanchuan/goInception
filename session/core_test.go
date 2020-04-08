@@ -9,17 +9,17 @@ import (
 	"golang.org/x/net/context"
 )
 
-var _ = Suite(&testSessionIncExecSuite{})
+var _ = Suite(&testInceptionSuite{})
 
-func TestExec(t *testing.T) {
+func testInception(t *testing.T) {
 	TestingT(t)
 }
 
-type testSessionIncExecSuite struct {
+type testInceptionSuite struct {
 }
 
 // TestDisplayWidth 测试列指定长度参数
-func (s *testSessionIncExecSuite) TestInception(c *C) {
+func (s *testInceptionSuite) TestInception(c *C) {
 	core := session.NewInception()
 	// cfg:=config.GetGlobalConfig()
 	core.LoadOptions(session.SourceOptions{

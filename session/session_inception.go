@@ -82,7 +82,8 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		}
 	}
 
-	s.Inc = config.GetGlobalConfig().Inc
+	s.init()
+	defer s.clear()
 
 	// 设置要跳过的sql
 	if s.Inc.SkipSqls != "" {
@@ -92,8 +93,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 			}
 		}
 	}
-
-	s.Inc.Lang = strings.Replace(strings.ToLower(s.Inc.Lang), "-", "_", 1)
 
 	if lowerSql == "select database()" {
 		return s.execute(ctx, sql)
@@ -111,26 +110,6 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 	// pprof.StartCPUProfile(f)
 	// defer pprof.StopCPUProfile()
 
-	s.DBName = ""
-	s.haveBegin = false
-	s.haveCommit = false
-	s.threadID = 0
-	s.IsClusterNode = false
-
-	s.tableCacheList = make(map[string]*TableInfo)
-	s.dbCacheList = make(map[string]*DBInfo)
-
-	s.backupDBCacheList = make(map[string]bool)
-	s.backupTableCacheList = make(map[string]bool)
-
-	s.Osc = config.GetGlobalConfig().Osc
-	s.Ghost = config.GetGlobalConfig().Ghost
-
-	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
-	s.parseIncLevel()
-
-	s.sqlFingerprint = nil
-
 	// 全量日志
 	if s.Inc.GeneralLog {
 		atomic.StoreUint32(&variable.ProcessGeneralLog, 1)
@@ -145,17 +124,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		s.sessionVars.StmtCtx.AppendError(err)
 	}
 
-	defer func() {
-		s.tableCacheList = nil
-		s.dbCacheList = nil
-		s.backupDBCacheList = nil
-		s.backupTableCacheList = nil
-		s.sqlFingerprint = nil
-
-		s.incLevel = nil
-	}()
 	// pprof.StopCPUProfile()
-
 	return
 }
 
@@ -170,7 +139,11 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 			if s.opt != nil && s.opt.Print {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
 			} else if s.opt != nil && s.opt.split {
-				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
+				if s.splitSets != nil {
+					s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
+				} else {
+					s.sessionVars.StmtCtx.AddAffectedRows(0)
+				}
 			} else {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
 			}
@@ -318,6 +291,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						defer s.backupdb.Close()
 					}
 
+					if s.opt.Print {
+						s.printSets = NewPrintSets()
+					} else if s.opt.split {
+						s.splitSets = NewSplitSets()
+					}
+
 					if s.myRecord.ErrLevel != 2 {
 						s.mysqlServerVersion()
 
@@ -341,12 +320,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 							s.recordSets.Append(s.myRecord)
 						}
 						return s.makeResult()
-					}
-
-					if s.opt.Print {
-						s.printSets = NewPrintSets()
-					} else if s.opt.split {
-						s.splitSets = NewSplitSets()
 					}
 
 					// sql指纹设置取并集

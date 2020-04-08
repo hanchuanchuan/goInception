@@ -70,10 +70,12 @@ func NewInception() *session {
 }
 
 // init 初始化map
-func (s *session) init() error {
-	if s.opt == nil {
-		return errors.New("未配置数据源信息!")
-	}
+func (s *session) init() {
+	s.DBName = ""
+	s.haveBegin = false
+	s.haveCommit = false
+	s.threadID = 0
+	s.IsClusterNode = false
 
 	s.tableCacheList = make(map[string]*TableInfo)
 	s.dbCacheList = make(map[string]*DBInfo)
@@ -85,10 +87,12 @@ func (s *session) init() error {
 	s.Osc = config.GetGlobalConfig().Osc
 	s.Ghost = config.GetGlobalConfig().Ghost
 
+	s.Inc.Lang = strings.Replace(strings.ToLower(s.Inc.Lang), "-", "_", 1)
+
+	s.sqlFingerprint = nil
+
 	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
 	s.parseIncLevel()
-
-	return nil
 }
 
 // clear 清理变量或map等信息
@@ -101,6 +105,8 @@ func (s *session) clear() {
 	}
 
 	s.DBName = ""
+	s.haveBegin = false
+	s.haveCommit = false
 	s.threadID = 0
 	s.IsClusterNode = false
 
@@ -119,9 +125,11 @@ func (s *session) clear() {
 
 func (s *session) Audit(ctx context.Context, sql string) ([]Record, error) {
 
-	if err := s.init(); err != nil {
-		return nil, err
+	if s.opt == nil {
+		return nil, errors.New("未配置数据源信息!")
 	}
+
+	s.init()
 	defer s.clear()
 	s.opt.Check = true
 	err := s.audit(ctx, sql)
@@ -134,9 +142,12 @@ func (s *session) Audit(ctx context.Context, sql string) ([]Record, error) {
 }
 
 func (s *session) RunExecute(ctx context.Context, sql string) ([]Record, error) {
-	if err := s.init(); err != nil {
-		return nil, err
+
+	if s.opt == nil {
+		return nil, errors.New("未配置数据源信息!")
 	}
+
+	s.init()
 	defer s.clear()
 
 	s.opt.Check = false
