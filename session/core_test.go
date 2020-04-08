@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/session"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
@@ -11,28 +12,72 @@ import (
 
 var _ = Suite(&testInceptionSuite{})
 
-func testInception(t *testing.T) {
+type testInceptionSuite struct{}
+
+func TestInception(t *testing.T) {
 	TestingT(t)
 }
 
-type testInceptionSuite struct {
+func (s *testInceptionSuite) SetUpSuite(c *C) {
+	inc := &config.GetGlobalConfig().Inc
+
+	inc.BackupHost = "127.0.0.1"
+	inc.BackupPort = 3306
+	inc.BackupUser = "test"
+	inc.BackupPassword = "test"
+
+	inc.Lang = "en-US"
+	inc.EnableFingerprint = true
+	inc.SqlSafeUpdates = 0
+	inc.EnableDropTable = true
 }
 
-// TestDisplayWidth 测试列指定长度参数
-func (s *testInceptionSuite) TestInception(c *C) {
+func (s *testInceptionSuite) TestCheck(c *C) {
 	core := session.NewInception()
-	// cfg:=config.GetGlobalConfig()
 	core.LoadOptions(session.SourceOptions{
 		Host:     "127.0.0.1",
 		Port:     3306,
 		User:     "test",
 		Password: "test",
 	})
-	result, err := core.Audit(context.Background(), "create table test.tt1(id int)")
+	sql := `use test_inc;
+	drop table if exists t1;
+	create table t1(id int primary key);
+	insert into t1 values(1);`
+	result, err := core.Audit(context.Background(), sql)
 	c.Assert(err, IsNil)
 
 	for _, row := range result {
-		fmt.Println(fmt.Sprintf("%#v", row))
+		// fmt.Println(fmt.Sprintf("%#v", row))
+		if row.ErrLevel == 2 {
+			fmt.Println(fmt.Sprintf("sql: %v, err: %v", row.Sql, row.ErrorMessage))
+		} else {
+			fmt.Println(fmt.Sprintf("sql: %v, result: %v", row.Sql, row.StageStatus))
+		}
 	}
+}
 
+func (s *testInceptionSuite) TestExecute(c *C) {
+	core := session.NewInception()
+	core.LoadOptions(session.SourceOptions{
+		Host:     "127.0.0.1",
+		Port:     3306,
+		User:     "test",
+		Password: "test",
+	})
+	sql := `use test_inc;
+	drop table if exists t1;
+	create table t1(id int primary key);
+	insert into t1 values(1);`
+	result, err := core.RunExecute(context.Background(), sql)
+	c.Assert(err, IsNil)
+
+	for _, row := range result {
+		// fmt.Println(fmt.Sprintf("%#v", row))
+		if row.ErrLevel == 2 {
+			fmt.Println(fmt.Sprintf("sql: %v, err: %v", row.Sql, row.ErrorMessage))
+		} else {
+			fmt.Println(fmt.Sprintf("sql: %v, result: %v", row.Sql, row.StageStatus))
+		}
+	}
 }

@@ -23,8 +23,8 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 	switch node := stmtNode.(type) {
 
 	case *ast.UseStmt:
-		s.DBName = node.DBName
-		s.addSplitNode(s.DBName, "", true, node, sql)
+		s.dbName = node.DBName
+		s.addSplitNode(s.dbName, "", true, node, sql)
 
 	case *ast.InsertStmt:
 		t := getSingleTableName(node.Table)
@@ -113,7 +113,7 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.CreateViewStmt:
 		return nil, nil
 
-		s.AppendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
+		s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
 	case *ast.ShowStmt:
 		return nil, nil
@@ -133,7 +133,7 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 	default:
 		log.Infof("无匹配类型:%T\n", stmtNode)
 		return nil, nil
-		s.AppendErrorNo(ER_NOT_SUPPORTED_YET)
+		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
 
 	return nil, nil
@@ -143,22 +143,22 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 func (s *session) addSplitNode(db, tableName string, isDML bool, stmtNode ast.StmtNode, currentSql string) {
 
 	if db == "" {
-		db = s.DBName
+		db = s.dbName
 	}
 	key := fmt.Sprintf("%s.%s", db, tableName)
 	key = strings.ToLower(key)
 
 	if s.splitSets.id == 0 {
 		s.addNewSplitNode()
-		if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
-			s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
+		if _, ok := stmtNode.(*ast.UseStmt); !ok && s.dbName != "" {
+			s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.dbName))
 		}
 	} else {
 		if isDmlType, ok := s.splitSets.tableList[key]; ok {
 			if isDmlType != isDML {
 				s.addNewSplitNode()
-				if _, ok := stmtNode.(*ast.UseStmt); !ok && s.DBName != "" {
-					s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.DBName))
+				if _, ok := stmtNode.(*ast.UseStmt); !ok && s.dbName != "" {
+					s.splitSets.sqlBuf.WriteString(fmt.Sprintf("use `%s`;\n", s.dbName))
 				}
 			}
 		}

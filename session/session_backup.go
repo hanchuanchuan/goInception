@@ -24,7 +24,7 @@ type chanBackup struct {
 	record *Record
 }
 
-func (s *session) ProcessChanBackup(wg *sync.WaitGroup) {
+func (s *session) processChanBackup(wg *sync.WaitGroup) {
 	for {
 		r := <-s.chBackupRecord
 
@@ -49,7 +49,7 @@ func (s *session) runBackup(ctx context.Context) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	s.chBackupRecord = make(chan *chanBackup, 50)
-	go s.ProcessChanBackup(&wg)
+	go s.processChanBackup(&wg)
 	defer func() {
 		close(s.chBackupRecord)
 		wg.Wait()
@@ -68,7 +68,7 @@ func (s *session) runBackup(ctx context.Context) {
 			// 	break
 			// }
 			if record.TableInfo == nil {
-				s.AppendErrorNo(ErrNotFoundTableInfo)
+				s.appendErrorNo(ErrNotFoundTableInfo)
 			} else {
 				s.mysqlBackupSql(record, longDataType)
 			}
@@ -118,7 +118,7 @@ func (s *session) flushBackupRecord(dbname string, record *Record) {
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				s.recordSets.MaxLevel = 2
 				record.StageStatus = StatusBackupFail
-				record.AppendErrorMessage(myErr.Message)
+				record.appendErrorMessage(myErr.Message)
 			}
 		}
 
@@ -150,9 +150,9 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 	if err := s.backupdb.Exec(sql).Error; err != nil {
 		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sql)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+			s.appendErrorMessage(myErr.Message)
 		} else {
-			s.AppendErrorMessage(err.Error())
+			s.appendErrorMessage(err.Error())
 		}
 		record.StageStatus = StatusBackupFail
 	}
@@ -199,7 +199,7 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record, longDataType b
 	// 最大可存储65535个字节(64KB-1)
 	if !longDataType && len(sql_stmt) > (1<<16)-1 {
 
-		s.AppendWarning(ErrDataTooLong, "sql_statement", 1)
+		s.appendWarning(ErrDataTooLong, "sql_statement", 1)
 
 		sql_stmt = sql_stmt[:(1<<16)-4]
 		// 如果误截取了utf8字符,则往前找最后一个有效字符
@@ -343,11 +343,11 @@ func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
-					s.AppendErrorMessage(myErr.Message)
+					s.appendErrorMessage(myErr.Message)
 					return
 				}
 			} else {
-				s.AppendErrorMessage(err.Error())
+				s.appendErrorMessage(err.Error())
 				return
 			}
 		}
@@ -361,11 +361,11 @@ func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
-					s.AppendErrorMessage(myErr.Message)
+					s.appendErrorMessage(myErr.Message)
 					return
 				}
 			} else {
-				s.AppendErrorMessage(err.Error())
+				s.appendErrorMessage(err.Error())
 				return
 			}
 		}
@@ -379,14 +379,14 @@ func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
 					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-					s.AppendErrorMessage(myErr.Message)
+					s.appendErrorMessage(myErr.Message)
 					return
 				} else {
 					// 获取sql_statement字段类型,用以兼容类型为text的旧表结构
 					longDataType = s.checkBackupTableSqlStmtColumnType(backupDBName)
 				}
 			} else {
-				s.AppendErrorMessage(err.Error())
+				s.appendErrorMessage(err.Error())
 				return
 			}
 		} else {
@@ -414,9 +414,9 @@ func (s *session) checkBackupTableSqlStmtColumnType(dbname string) (longDataType
 	if err2 != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err2)
 		if myErr, ok := err2.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+			s.appendErrorMessage(myErr.Message)
 		} else {
-			s.AppendErrorMessage(err2.Error())
+			s.appendErrorMessage(err2.Error())
 		}
 	}
 	if rows != nil {

@@ -98,7 +98,7 @@ type Record struct {
 	MultiTables map[string]*TableInfo
 }
 
-func (r *Record) AppendErrorMessage(msg string) {
+func (r *Record) appendErrorMessage(msg string) {
 	r.ErrLevel = 2
 
 	r.Buf.WriteString(msg)
@@ -108,7 +108,7 @@ func (r *Record) AppendErrorMessage(msg string) {
 	r.Buf.WriteString("\n")
 }
 
-func (r *Record) AppendErrorNo(lang string, number ErrorCode, values ...interface{}) {
+func (r *Record) appendErrorNo(lang string, number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(GetErrorLevel(number))))
 
 	if len(values) == 0 {
@@ -119,8 +119,8 @@ func (r *Record) AppendErrorNo(lang string, number ErrorCode, values ...interfac
 	r.Buf.WriteString("\n")
 }
 
-// AppendWarning 添加警告. 错误级别指定为警告
-func (r *Record) AppendWarning(lang string, number ErrorCode, values ...interface{}) {
+// appendWarning 添加警告. 错误级别指定为警告
+func (r *Record) appendWarning(lang string, number ErrorCode, values ...interface{}) {
 	r.ErrLevel = uint8(Max(int(r.ErrLevel), 1))
 
 	if len(values) == 0 {
@@ -129,6 +129,17 @@ func (r *Record) AppendWarning(lang string, number ErrorCode, values ...interfac
 		r.Buf.WriteString(fmt.Sprintf(GetErrorMessage(number, lang), values...))
 	}
 	r.Buf.WriteString("\n")
+}
+
+// cut 清理无须返回的字段
+func (r *Record) cut() {
+	if r.ErrorMessage == "" {
+		r.ErrorMessage = strings.TrimSpace(r.Buf.String())
+	}
+	r.Buf = nil
+	r.Type = nil
+	r.TableInfo = nil
+	r.MultiTables = nil
 }
 
 type recordSet struct {

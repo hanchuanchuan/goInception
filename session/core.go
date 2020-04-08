@@ -48,15 +48,10 @@ func (s *session) makeNewResult() ([]Record, error) {
 	// }
 	records := make([]Record, len(s.recordSets.records))
 	for i, r := range s.recordSets.records {
-		log.Info(r.SeqNo, "		", i)
+		// log.Info(r.SeqNo, "		", i)
 		r.SeqNo = i
-		if r.ErrorMessage == "" {
-			r.ErrorMessage = strings.TrimSpace(r.Buf.String())
-		}
-		r.Buf = nil
-		r.Type = nil
-		r.TableInfo = nil
-		r.MultiTables = nil
+
+		r.cut()
 		records[i] = *r
 	}
 	return records, nil
@@ -71,11 +66,11 @@ func NewInception() *session {
 
 // init 初始化map
 func (s *session) init() {
-	s.DBName = ""
+	s.dbName = ""
 	s.haveBegin = false
 	s.haveCommit = false
 	s.threadID = 0
-	s.IsClusterNode = false
+	s.isClusterNode = false
 
 	s.tableCacheList = make(map[string]*TableInfo)
 	s.dbCacheList = make(map[string]*DBInfo)
@@ -83,11 +78,11 @@ func (s *session) init() {
 	s.backupDBCacheList = make(map[string]bool)
 	s.backupTableCacheList = make(map[string]bool)
 
-	s.Inc = config.GetGlobalConfig().Inc
-	s.Osc = config.GetGlobalConfig().Osc
-	s.Ghost = config.GetGlobalConfig().Ghost
+	s.inc = config.GetGlobalConfig().Inc
+	s.osc = config.GetGlobalConfig().Osc
+	s.ghost = config.GetGlobalConfig().Ghost
 
-	s.Inc.Lang = strings.Replace(strings.ToLower(s.Inc.Lang), "-", "_", 1)
+	s.inc.Lang = strings.Replace(strings.ToLower(s.inc.Lang), "-", "_", 1)
 
 	s.sqlFingerprint = nil
 
@@ -104,11 +99,11 @@ func (s *session) clear() {
 		defer s.backupdb.Close()
 	}
 
-	s.DBName = ""
+	s.dbName = ""
 	s.haveBegin = false
 	s.haveCommit = false
 	s.threadID = 0
-	s.IsClusterNode = false
+	s.isClusterNode = false
 
 	s.tableCacheList = nil
 	s.dbCacheList = nil
@@ -174,7 +169,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 	sqlList := strings.Split(sql, "\n")
 
 	// tidb执行的SQL关闭general日志
-	logging := s.Inc.GeneralLog
+	logging := s.inc.GeneralLog
 
 	defer func() {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
@@ -220,7 +215,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 		return err
 	}
 
-	if s.opt.Backup && s.DBType == DBTypeTiDB {
+	if s.opt.Backup && s.dbType == DBTypeTiDB {
 		return errors.New("TiDB暂不支持备份功能.")
 	}
 
@@ -234,10 +229,10 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 
 	// sql指纹设置取并集
 	if s.opt.fingerprint {
-		s.Inc.EnableFingerprint = true
+		s.inc.EnableFingerprint = true
 	}
 
-	if s.Inc.EnableFingerprint {
+	if s.inc.EnableFingerprint {
 		s.sqlFingerprint = make(map[string]*Record, 64)
 	}
 
@@ -326,7 +321,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 				// 进程Killed
 				if err := checkClose(ctx); err != nil {
 					log.Warn("Killed: ", err)
-					s.AppendErrorMessage("Operation has been killed!")
+					s.appendErrorMessage("Operation has been killed!")
 					if s.opt != nil && s.opt.Print {
 						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
 					} else if s.opt != nil && s.opt.split {
@@ -410,14 +405,14 @@ func (s *session) initOptions() error {
 		}
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&tls=%s",
 			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port, s.opt.db,
-			s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket, tlsValue)
+			s.inc.DefaultCharset, s.inc.MaxAllowedPacket, tlsValue)
 	} else {
 		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
 			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
 
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
 			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port,
-			s.opt.middlewareDB, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
+			s.opt.middlewareDB, s.inc.DefaultCharset, s.inc.MaxAllowedPacket)
 	}
 
 	db, err := gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
@@ -439,12 +434,12 @@ func (s *session) initOptions() error {
 
 	if s.opt.Backup {
 		// 不再检查密码是否为空
-		if s.Inc.BackupHost == "" || s.Inc.BackupPort == 0 || s.Inc.BackupUser == "" {
-			s.AppendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
+		if s.inc.BackupHost == "" || s.inc.BackupPort == 0 || s.inc.BackupUser == "" {
+			s.appendErrorNo(ER_INVALID_BACKUP_HOST_INFO)
 		} else {
 			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
-				s.Inc.BackupUser, s.Inc.BackupPassword, s.Inc.BackupHost, s.Inc.BackupPort,
-				s.Inc.DefaultCharset)
+				s.inc.BackupUser, s.inc.BackupPassword, s.inc.BackupHost, s.inc.BackupPort,
+				s.inc.DefaultCharset)
 			backupdb, err := gorm.Open("mysql", addr)
 
 			if err != nil {
