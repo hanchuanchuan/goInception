@@ -113,7 +113,7 @@ func NewMVCCLevelDB(path string) (*MVCCLevelDB, error) {
 	if path == "" {
 		d, err = leveldb.Open(storage.NewMemStorage(), nil)
 	} else {
-		d, err = leveldb.OpenFile(path, &opt.Options{BlockCacheCapacity: 600 * 1024 * 1024})
+		d, err = leveldb.OpenFile(path, &opt.Options{})
 	}
 
 	return &MVCCLevelDB{db: d}, errors.Trace(err)
