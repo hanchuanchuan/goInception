@@ -46,8 +46,8 @@ const (
 )
 
 var (
-	stageList  = [4]string{"RERUN", "CHECKED", "EXECUTED", "BACKUP"}
-	statusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully",
+	StageList  = [4]string{"RERUN", "CHECKED", "EXECUTED", "BACKUP"}
+	StatusList = [5]string{"Audit Completed", "Execute failed", "Execute Successfully",
 		"Execute Successfully\nBackup failed", "Execute Successfully\nBackup Successfully"}
 )
 

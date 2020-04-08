@@ -33,14 +33,14 @@ const maxBadConnRetries = 2
 // 注意: 该方法可能导致driver: bad connection异常
 func (s *session) createNewConnection(dbName string) {
 	addr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&autocommit=1&maxAllowedPacket=%d",
-		s.opt.user, s.opt.password, s.opt.host, s.opt.port,
-		dbName, s.Inc.DefaultCharset, s.Inc.MaxAllowedPacket)
+		s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port,
+		dbName, s.inc.DefaultCharset, s.inc.MaxAllowedPacket)
 
 	db, err := gorm.Open("mysql", addr)
 
 	if err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		s.AppendErrorMessage(err.Error())
+		s.appendErrorMessage(err.Error())
 		return
 	}
 
@@ -57,8 +57,8 @@ func (s *session) createNewConnection(dbName string) {
 	s.db = db
 }
 
-// Raw 执行sql语句,连接失败时自动重连,自动重置当前数据库
-func (s *session) Raw(sqlStr string) (rows *sql.Rows, err error) {
+// raw 执行sql语句,连接失败时自动重连,自动重置当前数据库
+func (s *session) raw(sqlStr string) (rows *sql.Rows, err error) {
 	// 连接断开无效时,自动重试
 	for i := 0; i < maxBadConnRetries; i++ {
 		rows, err = s.db.DB().Query(sqlStr)
@@ -71,7 +71,7 @@ func (s *session) Raw(sqlStr string) (rows *sql.Rows, err error) {
 				if err1 != nil {
 					return rows, err1
 				}
-				s.AppendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
 				continue
 			} else {
 				return
@@ -81,8 +81,8 @@ func (s *session) Raw(sqlStr string) (rows *sql.Rows, err error) {
 	return
 }
 
-// Exec 执行sql语句,连接失败时自动重连,自动重置当前数据库
-func (s *session) Exec(sqlStr string, retry bool) (res sql.Result, err error) {
+// exec 执行sql语句,连接失败时自动重连,自动重置当前数据库
+func (s *session) exec(sqlStr string, retry bool) (res sql.Result, err error) {
 	// 连接断开无效时,自动重试
 	for i := 0; i < maxBadConnRetries; i++ {
 		res, err = s.db.DB().Exec(sqlStr)
@@ -96,7 +96,7 @@ func (s *session) Exec(sqlStr string, retry bool) (res sql.Result, err error) {
 					return res, err1
 				}
 				if retry {
-					s.AppendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+					s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
 					continue
 				} else {
 					return
@@ -108,8 +108,8 @@ func (s *session) Exec(sqlStr string, retry bool) (res sql.Result, err error) {
 	return
 }
 
-// ExecDDL 执行sql语句,连接失败时自动重连,自动重置当前数据库
-func (s *session) ExecDDL(sqlStr string, retry bool) (res sql.Result, err error) {
+// execDDL 执行sql语句,连接失败时自动重连,自动重置当前数据库
+func (s *session) execDDL(sqlStr string, retry bool) (res sql.Result, err error) {
 	// 连接断开无效时,自动重试
 	for i := 0; i < maxBadConnRetries; i++ {
 		res, err = s.ddlDB.DB().Exec(sqlStr)
@@ -123,7 +123,7 @@ func (s *session) ExecDDL(sqlStr string, retry bool) (res sql.Result, err error)
 					return res, err1
 				}
 				if retry {
-					s.AppendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+					s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
 					continue
 				} else {
 					return
@@ -136,7 +136,7 @@ func (s *session) ExecDDL(sqlStr string, retry bool) (res sql.Result, err error)
 }
 
 // Raw 执行sql语句,连接失败时自动重连,自动重置当前数据库
-func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
+func (s *session) rawScan(sqlStr string, dest interface{}) (err error) {
 	// 连接断开无效时,自动重试
 	for i := 0; i < maxBadConnRetries; i++ {
 		err = s.db.Raw(sqlStr).Scan(dest).Error
@@ -149,7 +149,7 @@ func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
 				if err1 != nil {
 					return err1
 				}
-				s.AppendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
 				continue
 			} else {
 				return
@@ -161,7 +161,7 @@ func (s *session) RawScan(sqlStr string, dest interface{}) (err error) {
 
 // initConnection 连接失败时自动重连,重连后重置当前数据库
 func (s *session) initConnection() (err error) {
-	name := s.DBName
+	name := s.dbName
 	if name == "" {
 		name = s.opt.db
 	}
@@ -182,9 +182,9 @@ func (s *session) initConnection() (err error) {
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if err != mysqlDriver.ErrInvalidConn {
 				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-					s.AppendErrorMessage(myErr.Message)
+					s.appendErrorMessage(myErr.Message)
 				} else {
-					s.AppendErrorMessage(err.Error())
+					s.appendErrorMessage(err.Error())
 				}
 				return
 			}
@@ -194,9 +194,9 @@ func (s *session) initConnection() (err error) {
 	if err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.AppendErrorMessage(myErr.Message)
+			s.appendErrorMessage(myErr.Message)
 		} else {
-			s.AppendErrorMessage(err.Error())
+			s.appendErrorMessage(err.Error())
 		}
 	}
 	return
