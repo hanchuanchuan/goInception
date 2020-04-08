@@ -177,6 +177,9 @@ func (s *session) addSplitNode(db, tableName string, isDML bool, stmtNode ast.St
 
 // addNewSplitRow 添加新的split分隔节点
 func (s *session) addNewSplitNode() {
+	if s.splitSets == nil {
+		s.splitSets = NewSplitSets()
+	}
 
 	sql := s.splitSets.sqlBuf.String()
 
