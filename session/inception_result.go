@@ -284,9 +284,9 @@ func (s *MyRecordSets) setFields(r *Record) {
 
 	row[0].SetInt64(int64(s.rc.count + 1))
 
-	row[1].SetString(stageList[r.Stage])
+	row[1].SetString(StageList[r.Stage])
 	row[2].SetInt64(int64(r.ErrLevel))
-	row[3].SetString(statusList[r.StageStatus])
+	row[3].SetString(StatusList[r.StageStatus])
 
 	if r.ErrorMessage != "" {
 		row[4].SetString(r.ErrorMessage)
