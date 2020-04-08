@@ -45,10 +45,10 @@ func (s *session) checkContainDotColumn(stmt *ast.CreateTableStmt) {
 	for _, colDef := range stmt.Cols {
 		// check schema and table names.
 		if colDef.Name.Schema.O != sName && len(colDef.Name.Schema.O) != 0 {
-			s.AppendErrorNo(ER_WRONG_DB_NAME, colDef.Name.Schema.O)
+			s.appendErrorNo(ER_WRONG_DB_NAME, colDef.Name.Schema.O)
 		}
 		if colDef.Name.Table.O != tName && len(colDef.Name.Table.O) != 0 {
-			s.AppendErrorNo(ER_WRONG_TABLE_NAME, colDef.Name.Table.O)
+			s.appendErrorNo(ER_WRONG_TABLE_NAME, colDef.Name.Table.O)
 		}
 	}
 }
@@ -65,7 +65,7 @@ func (s *session) checkAutoIncrement(stmt *ast.CreateTableStmt) {
 		for i, op := range colDef.Options {
 			ok, err := s.checkAutoIncrementOp(colDef, i)
 			if err != nil {
-				s.AppendErrorMessage(err.Error())
+				s.appendErrorMessage(err.Error())
 				// return
 			}
 			if ok {
@@ -95,14 +95,14 @@ func (s *session) checkAutoIncrement(stmt *ast.CreateTableStmt) {
 		}
 	}
 	if (autoIncrementMustBeKey && !isKey) || count > 1 {
-		s.AppendErrorNo(ER_WRONG_AUTO_KEY)
+		s.appendErrorNo(ER_WRONG_AUTO_KEY)
 	}
 
 	switch autoIncrementCol.Tp.Tp {
 	case mysql.TypeTiny, mysql.TypeShort, mysql.TypeLong,
 		mysql.TypeFloat, mysql.TypeDouble, mysql.TypeLonglong, mysql.TypeInt24:
 	default:
-		s.AppendErrorMessage(
+		s.appendErrorMessage(
 			fmt.Sprintf("Incorrect column specifier for column '%s'", autoIncrementCol.Name.Name.O))
 	}
 }
@@ -159,7 +159,7 @@ func (s *session) checkDuplicateColumnName(indexColNames []*ast.IndexColName) {
 	for _, indexColName := range indexColNames {
 		name := indexColName.Column.Name
 		if _, ok := colNames[name.L]; ok {
-			s.AppendErrorNo(ER_DUP_FIELDNAME, name)
+			s.appendErrorNo(ER_DUP_FIELDNAME, name)
 		}
 		colNames[name.L] = struct{}{}
 	}
@@ -170,8 +170,8 @@ func (s *session) checkIndexInfo(tableName, indexName string, indexColNames []*a
 	// if strings.EqualFold(indexName, mysql.PrimaryKeyName) {
 	// 	s.AppendErrorNo(ER_WRONG_NAME_FOR_INDEX, indexName, tableName)
 	// }
-	if s.Inc.MaxKeyParts > 0 && len(indexColNames) > int(s.Inc.MaxKeyParts) {
-		s.AppendErrorNo(ER_TOO_MANY_KEY_PARTS, indexName, "", s.Inc.MaxKeyParts)
+	if s.inc.MaxKeyParts > 0 && len(indexColNames) > int(s.inc.MaxKeyParts) {
+		s.appendErrorNo(ER_TOO_MANY_KEY_PARTS, indexName, "", s.inc.MaxKeyParts)
 	}
 	s.checkDuplicateColumnName(indexColNames)
 }
@@ -217,7 +217,7 @@ func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroDateMode(), t.IsZero())
 				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroInDateMode(), t.InvalidZero())
 				if t.IsZero() {
-					if s.Inc.EnableZeroDate {
+					if s.inc.EnableZeroDate {
 						return vars.StrictSQLMode && vars.SQLMode.HasNoZeroDateMode()
 					} else {
 						return true
@@ -270,7 +270,7 @@ func isIncorrectName(name string) bool {
 func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	tName := stmt.Table.Name.String()
 	if isIncorrectName(tName) {
-		s.AppendErrorNo(ER_WRONG_TABLE_NAME, tName)
+		s.appendErrorNo(ER_WRONG_TABLE_NAME, tName)
 	}
 	countPrimaryKey := 0
 	for _, colDef := range stmt.Cols {
@@ -291,11 +291,11 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 
 	if countPrimaryKey > 1 {
-		s.AppendErrorNo(ER_MULTIPLE_PRI_KEY)
+		s.appendErrorNo(ER_MULTIPLE_PRI_KEY)
 	}
 
 	if len(stmt.Cols) == 0 && stmt.ReferTable == nil {
-		s.AppendErrorNo(ER_MUST_AT_LEAST_ONE_COLUMN)
+		s.appendErrorNo(ER_MUST_AT_LEAST_ONE_COLUMN)
 	}
 }
 
@@ -303,7 +303,7 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 	// Check column name.
 	cName := colDef.Name.Name.String()
 	if isIncorrectName(cName) {
-		s.AppendErrorNo(ER_WRONG_COLUMN_NAME, cName)
+		s.appendErrorNo(ER_WRONG_COLUMN_NAME, cName)
 	}
 
 	// if isInvalidDefaultValue(colDef) {
@@ -316,13 +316,13 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		return nil
 	}
 	if tp.Flen > math.MaxUint32 {
-		s.AppendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", cName, math.MaxUint32))
+		s.appendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", cName, math.MaxUint32))
 	}
 
 	switch tp.Tp {
 	case mysql.TypeString:
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > mysql.MaxFieldCharLength {
-			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, mysql.MaxFieldCharLength))
+			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, mysql.MaxFieldCharLength))
 		}
 	case mysql.TypeVarchar:
 		maxFlen := mysql.MaxFieldVarCharLength
@@ -339,46 +339,46 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		}
 		maxFlen /= desc.Maxlen
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
-			s.AppendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
+			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
 		}
 	case mysql.TypeFloat, mysql.TypeDouble:
 		if tp.Decimal > mysql.MaxFloatingTypeScale {
-			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxFloatingTypeScale))
+			s.appendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxFloatingTypeScale))
 		}
 		if tp.Flen > mysql.MaxFloatingTypeWidth {
 
-			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxFloatingTypeWidth))
+			s.appendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxFloatingTypeWidth))
 		}
 	case mysql.TypeSet:
 		if len(tp.Elems) > mysql.MaxTypeSetMembers {
-			s.AppendErrorMessage(fmt.Sprintf("Too many strings for column %s and SET", cName))
+			s.appendErrorMessage(fmt.Sprintf("Too many strings for column %s and SET", cName))
 		}
 		// Check set elements. See https://dev.mysql.com/doc/refman/5.7/en/set.html .
 		for _, str := range colDef.Tp.Elems {
 			if strings.Contains(str, ",") {
-				s.AppendErrorMessage(fmt.Sprintf("Illegal %s '%-.192s' value found during parsing", types.TypeStr(tp.Tp), str))
+				s.appendErrorMessage(fmt.Sprintf("Illegal %s '%-.192s' value found during parsing", types.TypeStr(tp.Tp), str))
 			}
 		}
 	case mysql.TypeNewDecimal:
 		if tp.Decimal > mysql.MaxDecimalScale {
-			s.AppendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxDecimalScale))
+			s.appendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxDecimalScale))
 		}
 
 		if tp.Flen > mysql.MaxDecimalWidth {
-			s.AppendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxDecimalWidth))
+			s.appendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxDecimalWidth))
 		}
 	case mysql.TypeBit:
 		if tp.Flen <= 0 {
-			s.AppendErrorMessage(fmt.Sprintf("Invalid size for column '%s'.", cName))
+			s.appendErrorMessage(fmt.Sprintf("Invalid size for column '%s'.", cName))
 		}
 		if tp.Flen > mysql.MaxBitDisplayWidth {
-			s.AppendErrorMessage(fmt.Sprintf("Too big display width for column '%s' (max = %d).",
+			s.appendErrorMessage(fmt.Sprintf("Too big display width for column '%s' (max = %d).",
 				cName, mysql.MaxBitDisplayWidth))
 		}
 	case mysql.TypeTiny, mysql.TypeInt24, mysql.TypeLong,
 		mysql.TypeShort, mysql.TypeLonglong:
 		if tp.Flen > mysql.MaxFloatingTypeWidth {
-			s.AppendErrorMessage(fmt.Sprintf("Too big display width for column '%-.192s' (max = %d).",
+			s.appendErrorMessage(fmt.Sprintf("Too big display width for column '%-.192s' (max = %d).",
 				cName, mysql.MaxFloatingTypeWidth))
 		}
 	default:
@@ -412,7 +412,7 @@ func (s *session) checkTableAliasDuplicate(node ast.ResultSetNode, tableAliases 
 
 		_, ok := tableAliases[name]
 		if len(name) != 0 && ok {
-			s.AppendErrorNo(ErrNonUniqTable, name)
+			s.appendErrorNo(ErrNonUniqTable, name)
 			return
 		}
 		tableAliases[name] = nil
@@ -445,7 +445,7 @@ func (s *session) checkOnlyFullGroupByWithOutGroupClause(fields []*ast.SelectFie
 			}
 		}
 		if hasAggFunc && firstNonAggCol != nil {
-			s.AppendErrorNo(ErrMixOfGroupFuncAndFields, firstNonAggColIdx+1, firstNonAggCol.Name.O)
+			s.appendErrorNo(ErrMixOfGroupFuncAndFields, firstNonAggColIdx+1, firstNonAggCol.Name.O)
 			return nil
 		}
 	}
@@ -491,11 +491,11 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 	for _, errExprLoc := range notInGbyCols {
 		switch errExprLoc.Loc {
 		case core.ErrExprInSelect:
-			s.AppendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
+			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
 				sel.Fields.Fields[errExprLoc.Offset].Text())
 			return nil
 		case core.ErrExprInOrderBy:
-			s.AppendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
+			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
 				sel.OrderBy.Items[errExprLoc.Offset].Expr.Text())
 			return nil
 		}

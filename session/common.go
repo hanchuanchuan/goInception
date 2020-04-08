@@ -300,8 +300,8 @@ func (t *TableInfo) copy() *TableInfo {
 	return p
 }
 
-// IsUnsigned 是否无符号列
-func (f *FieldInfo) IsUnsigned() bool {
+// isUnsigned 是否无符号列
+func (f *FieldInfo) isUnsigned() bool {
 	columnType := f.Type
 	if strings.Contains(columnType, "unsigned") || strings.Contains(columnType, "zerofill") {
 		return true
@@ -309,10 +309,10 @@ func (f *FieldInfo) IsUnsigned() bool {
 	return false
 }
 
-// GetDataBytes 计算数据类型字节数
+// getDataBytes 计算数据类型字节数
 // https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html
 // return -1 表示该列无法计算数据大小
-func (col *FieldInfo) GetDataBytes(dbVersion int, defaultCharset string) int {
+func (col *FieldInfo) getDataBytes(dbVersion int, defaultCharset string) int {
 	if col.Type == "" {
 		log.Warnf("Can't get %s data type", col.Field)
 		return -1
@@ -356,7 +356,7 @@ func (col *FieldInfo) GetDataBytes(dbVersion int, defaultCharset string) int {
 	}
 }
 
-func (col *FieldInfo) GetDataLength(dbVersion int, defaultCharset string) int {
+func (col *FieldInfo) getDataLength(dbVersion int, defaultCharset string) int {
 	if col.Type == "" {
 		log.Warnf("Can't get %s data type", col.Field)
 		return -1
