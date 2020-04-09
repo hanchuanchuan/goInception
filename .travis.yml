@@ -78,7 +78,7 @@ script:
 
   - rm -f go.sum
   # - docker ps
-  - travis_wait 30 [[ -n $API ]] && make testapi || make dev upload-coverage
+  - travis_wait 30 ([[ -n $API ]] && make testapi || make dev upload-coverage)
 
 after_failure:
   - netstat -nltp
