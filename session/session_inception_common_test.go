@@ -176,6 +176,7 @@ func (s *testCommon) initSetUp(c *C) {
 	s.isAPI = isAPI
 	if isAPI {
 		s.sessionService = session.NewInception()
+		s.sessionService.SetSessionManager(server)
 		s.sessionService.LoadOptions(session.SourceOptions{
 			Host:         inc.BackupHost,
 			Port:         int(inc.BackupPort),
@@ -842,4 +843,5 @@ func (s *testCommon) parserStmt(sql string) ast.StmtNode {
 func (s *testCommon) reset() {
 	config.GetGlobalConfig().Inc = s.defaultInc
 	log.SetLevel(log.ErrorLevel)
+	log.SetReportCaller(true)
 }

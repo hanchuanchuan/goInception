@@ -98,8 +98,9 @@ type Session interface {
 	// 用以测试
 	GetAlterTablePostPart(sql string, isPtOSC bool) string
 
-	Audit(ctx context.Context, sql string) ([]Record, error)
 	LoadOptions(opt SourceOptions) error
+	Audit(ctx context.Context, sql string) ([]Record, error)
+	RunExecute(ctx context.Context, sql string) ([]Record, error)
 }
 
 var (
