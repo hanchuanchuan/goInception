@@ -95,12 +95,11 @@ type Session interface {
 	// FieldList returns fields list of a table.
 	FieldList(tableName string) (fields []*ast.ResultField, err error)
 
-	// HaveBegin() bool
-	// HaveCommit() bool
-	// RecordSets() *MyRecordSets
-
 	// 用以测试
 	GetAlterTablePostPart(sql string, isPtOSC bool) string
+
+	Audit(ctx context.Context, sql string) ([]Record, error)
+	LoadOptions(opt SourceOptions) error
 }
 
 var (
@@ -158,6 +157,8 @@ type session struct {
 
 	haveBegin  bool
 	haveCommit bool
+	// 标识API请求
+	isAPI bool
 
 	recordSets *MyRecordSets
 
@@ -1321,22 +1322,10 @@ func createSession(store kv.Storage) (*session, error) {
 		return nil, errors.Trace(err)
 	}
 	s := &session{
-		store:       store,
-		parser:      parser.New(),
-		sessionVars: variable.NewSessionVars(),
-		// ddlOwnerChecker: dom.DDL().OwnerManager(),
-
+		store:               store,
+		parser:              parser.New(),
+		sessionVars:         variable.NewSessionVars(),
 		lowerCaseTableNames: 1,
-		// haveBegin:  false,
-		// haveCommit: false,
-
-		// tableCacheList: make(map[string]*TableInfo),
-		// dbCacheList:    make(map[string]bool),
-
-		// backupDBCacheList:    make(map[string]bool),
-		// backupTableCacheList: make(map[string]bool),
-
-		// Inc: config.GetGlobalConfig().Inc,
 	}
 
 	if plannercore.PreparedPlanCacheEnabled() {
