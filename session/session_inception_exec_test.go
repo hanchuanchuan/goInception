@@ -23,6 +23,7 @@ import (
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
+	"golang.org/x/net/context"
 )
 
 var _ = Suite(&testSessionIncExecSuite{})
@@ -58,6 +59,18 @@ func (s *testSessionIncExecSuite) TearDownTest(c *C) {
 }
 
 func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) [][]interface{} {
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:         s.defaultInc.BackupHost,
+			Port:         int(s.defaultInc.BackupPort),
+			User:         s.defaultInc.BackupUser,
+			Password:     s.defaultInc.BackupPassword,
+			RealRowCount: s.realRowCount,
+		})
+		s.testExecuteResult(c, sql, errors...)
+		return nil
+	}
+
 	if s.tk == nil {
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
@@ -101,6 +114,51 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	}
 
 	return res.Rows()
+}
+
+func (s *testSessionIncExecSuite) testExecuteResult(c *C, sql string, errors ...*session.SQLError) {
+
+	result, err := s.sessionService.RunExecute(context.Background(), s.useDB+sql)
+	c.Assert(err, IsNil)
+	// for _, row := range result {
+	// 	if row.ErrLevel == 2 {
+	// 		fmt.Println(fmt.Sprintf("sql: %v, err: %v", row.Sql, row.ErrorMessage))
+	// 	} else {
+	// 		fmt.Println(fmt.Sprintf("[%v] sql: %v", session.StatusList[row.StageStatus], row.Sql))
+	// 	}
+	// }
+
+	s.records = result
+
+	row := result[len(result)-1]
+
+	errCode := uint8(0)
+	if len(errors) > 0 {
+		for _, e := range errors {
+			level := session.GetErrorLevel(e.Code)
+			if level > errCode {
+				errCode = level
+			}
+		}
+	}
+
+	if errCode > 0 {
+		errMsgs := []string{}
+		for _, e := range errors {
+			errMsgs = append(errMsgs, e.Error())
+		}
+		c.Assert(row.ErrorMessage, Equals, strings.Join(errMsgs, "\n"), Commentf("%v", result))
+	}
+
+	if errCode == 0 {
+		// Execute Successfully
+		c.Assert(row.StageStatus, Equals, uint8(2), Commentf("%v", s.records))
+		for _, row := range s.records {
+			c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", s.records))
+		}
+	} else {
+		c.Assert(row.ErrLevel, Equals, errCode, Commentf("%#v", row))
+	}
 }
 
 func (s *testSessionIncExecSuite) TestCreateTable(c *C) {

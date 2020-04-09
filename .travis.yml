@@ -20,6 +20,8 @@ services:
 env:
   - TRAVIS_COVERAGE=0
   - TRAVIS_COVERAGE=1
+  - TRAVIS_COVERAGE=0 API=1
+
 
 # install:
 #   - netstat -nltp
@@ -31,6 +33,8 @@ matrix:
   allow_failures:
     - go: "1.12"
       env: TRAVIS_COVERAGE=1
+    - go: "1.12"
+      env: TRAVIS_COVERAGE=0 API=1
 
 before_install:
   # create /logs/unit-test for unit test.
@@ -74,7 +78,7 @@ script:
 
   - rm -f go.sum
   # - docker ps
-  - travis_wait 30 make dev upload-coverage
+  - travis_wait 30 make dev upload-coverage testapi
 
 after_failure:
   - netstat -nltp
