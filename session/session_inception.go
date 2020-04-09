@@ -2020,7 +2020,7 @@ func (s *session) parseOptions(sql string) {
 		Print: viper.GetBool("queryPrint"),
 
 		split:        viper.GetBool("split"),
-		realRowCount: viper.GetBool("realRowCount"),
+		RealRowCount: viper.GetBool("realRowCount"),
 
 		db: viper.GetString("db"),
 
@@ -5195,7 +5195,7 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		}
 
 		// 非本地模式时,只使用全局设置
-		if !s.haveBegin {
+		if !s.haveBegin && !s.isAPI {
 			v.IsGlobal = true
 		}
 
@@ -6150,7 +6150,7 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 		return
 	}
 
-	if s.opt.realRowCount {
+	if s.opt.RealRowCount {
 		// dml转换成select
 		rw, err := NewRewrite(sql)
 		if err != nil {

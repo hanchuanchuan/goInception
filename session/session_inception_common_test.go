@@ -15,6 +15,7 @@ package session_test
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"path"
 	"runtime"
@@ -42,7 +43,15 @@ import (
 )
 
 var _ = Suite(&testCommon{})
+
 var sql string
+
+// 是否测试api接口
+var isAPI bool
+
+func init() {
+	flag.BoolVar(&isAPI, "api", false, "test api interface")
+}
 
 func TestCommonTest(t *testing.T) {
 	TestingT(t)
@@ -80,6 +89,13 @@ type testCommon struct {
 
 	// 测试数据库,默认为test_inc,该参数用以测试未指定数据库情况下的审核
 	useDB string
+
+	// API调用
+	isAPI bool
+	// session API调用
+	sessionService session.Session
+	// API返回结果
+	records []session.Record
 }
 
 func (s *testCommon) initSetUp(c *C) {
@@ -87,6 +103,8 @@ func (s *testCommon) initSetUp(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
+
+	flag.Parse()
 
 	log.SetLevel(log.ErrorLevel)
 	repllog.SetLevel(repllog.LevelFatal)
@@ -150,7 +168,22 @@ func (s *testCommon) initSetUp(c *C) {
 	c.Assert(s.mysqlServerVersion(), IsNil)
 	c.Assert(s.sqlMode, Not(Equals), "")
 	// log.Infof("%#v", s)
-	log.Info("数据库版本: ", s.DBVersion)
+	log.Error("数据库版本: ", s.DBVersion)
+
+	// 测试API接口时自动忽略之前的测试方法
+
+	log.Errorf("is api: %v", isAPI)
+	s.isAPI = isAPI
+	if isAPI {
+		s.sessionService = session.NewInception()
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:         inc.BackupHost,
+			Port:         int(inc.BackupPort),
+			User:         inc.BackupUser,
+			Password:     inc.BackupPassword,
+			RealRowCount: s.realRowCount,
+		})
+	}
 }
 
 func (s *testCommon) tearDownSuite(c *C) {
