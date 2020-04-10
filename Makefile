@@ -159,16 +159,24 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 
 	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' -concurrency=1 -- -short || { $(GOFAIL_DISABLE); exit 1; }
 else
+
+ifeq ("$(API)", "1")
+	@echo "Running in native mode (API)."
+	@export log_level=error;
+	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' github.com/hanchuanchuan/goInception/session -api
+else
 	@echo "Running in native mode."
-	@export log_level=error; \
+	@export log_level=error;
 	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' -cover $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
+endif
+
 endif
 	@$(GOFAIL_DISABLE)
 
 testapi: parserlib
 ifeq ("$(API)", "1")
 	@echo "Running in native mode (API)."
-	@export log_level=error; \
+	@export log_level=error;
 	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' github.com/hanchuanchuan/goInception/session -api
 endif
 
