@@ -40,6 +40,7 @@ import (
 	. "github.com/pingcap/check"
 	repllog "github.com/siddontang/go-log/log"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 var _ = Suite(&testCommon{})
@@ -318,6 +319,28 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) mustRunBackup(c *C, sql string) *testkit.Result {
+
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			Backup:         true,
+			IgnoreWarnings: true,
+		})
+		result, err := s.sessionService.RunExecute(context.Background(), s.useDB+sql)
+		c.Assert(err, IsNil)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return nil
+	}
+
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -844,4 +867,12 @@ func (s *testCommon) reset() {
 	config.GetGlobalConfig().Inc = s.defaultInc
 	log.SetLevel(log.ErrorLevel)
 	log.SetReportCaller(true)
+}
+
+// getAffectedRows 获取受影响行数, 区分api返回和mysql会话返回
+func (s *testCommon) getAffectedRows() int {
+	if s.isAPI {
+		return len(s.records)
+	}
+	return int(s.session.AffectedRows())
 }

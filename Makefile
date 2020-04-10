@@ -174,12 +174,9 @@ endif
 	@$(GOFAIL_DISABLE)
 
 testapi: parserlib
-ifeq ("$(API)", "1")
 	@echo "Running in native mode (API)."
 	@export log_level=error;
 	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' github.com/hanchuanchuan/goInception/session -api
-endif
-
 
 
 race: parserlib

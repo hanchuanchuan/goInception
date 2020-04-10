@@ -69,7 +69,7 @@ func (s *session) getNextBackupRecord() *Record {
 
 		if r.TableInfo != nil {
 
-			lastBackupTable := fmt.Sprintf("`%s`.`%s`", r.BackupDBName, r.TableInfo.Name)
+			lastBackupTable := fmt.Sprintf("`%s`.`%s`", s.getRemoteBackupDBName(r), r.TableInfo.Name)
 
 			if s.lastBackupTable == "" {
 				s.lastBackupTable = lastBackupTable

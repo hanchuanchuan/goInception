@@ -61,11 +61,12 @@ func (s *testSessionIncExecSuite) TearDownTest(c *C) {
 func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*session.SQLError) [][]interface{} {
 	if s.isAPI {
 		s.sessionService.LoadOptions(session.SourceOptions{
-			Host:         s.defaultInc.BackupHost,
-			Port:         int(s.defaultInc.BackupPort),
-			User:         s.defaultInc.BackupUser,
-			Password:     s.defaultInc.BackupPassword,
-			RealRowCount: s.realRowCount,
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			IgnoreWarnings: true,
 		})
 		s.testExecuteResult(c, sql, errors...)
 		return nil
