@@ -15,6 +15,7 @@ package session_test
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"path"
 	"runtime"
@@ -39,10 +40,19 @@ import (
 	. "github.com/pingcap/check"
 	repllog "github.com/siddontang/go-log/log"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 var _ = Suite(&testCommon{})
+
 var sql string
+
+// 是否测试api接口
+var isAPI bool
+
+func init() {
+	flag.BoolVar(&isAPI, "api", false, "test api interface")
+}
 
 func TestCommonTest(t *testing.T) {
 	TestingT(t)
@@ -80,6 +90,13 @@ type testCommon struct {
 
 	// 测试数据库,默认为test_inc,该参数用以测试未指定数据库情况下的审核
 	useDB string
+
+	// API调用
+	isAPI bool
+	// session API调用
+	sessionService session.Session
+	// API返回结果
+	records []session.Record
 }
 
 func (s *testCommon) initSetUp(c *C) {
@@ -87,6 +104,8 @@ func (s *testCommon) initSetUp(c *C) {
 	if testing.Short() {
 		c.Skip("skipping test; in TRAVIS mode")
 	}
+
+	flag.Parse()
 
 	log.SetLevel(log.ErrorLevel)
 	repllog.SetLevel(repllog.LevelFatal)
@@ -150,7 +169,23 @@ func (s *testCommon) initSetUp(c *C) {
 	c.Assert(s.mysqlServerVersion(), IsNil)
 	c.Assert(s.sqlMode, Not(Equals), "")
 	// log.Infof("%#v", s)
-	log.Info("数据库版本: ", s.DBVersion)
+	log.Error("数据库版本: ", s.DBVersion)
+
+	// 测试API接口时自动忽略之前的测试方法
+
+	log.Errorf("is api: %v", isAPI)
+	s.isAPI = isAPI
+	if isAPI {
+		s.sessionService = session.NewInception()
+		s.sessionService.SetSessionManager(server)
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:         inc.BackupHost,
+			Port:         int(inc.BackupPort),
+			User:         inc.BackupUser,
+			Password:     inc.BackupPassword,
+			RealRowCount: s.realRowCount,
+		})
+	}
 }
 
 func (s *testCommon) tearDownSuite(c *C) {
@@ -184,10 +219,10 @@ func (s *testCommon) tearDownTest(c *C) {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	session.CheckAuditSetting(config.GetGlobalConfig())
 
-	res := s.runCheck("show tables")
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+	s.runCheck("show tables")
+	c.Assert(int(s.getAffectedRows()), Equals, 2)
 
-	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	row := s.rows[s.getAffectedRows()-1]
 	sql := row[5]
 
 	exec := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;*/
@@ -202,8 +237,8 @@ inception_magic_commit;`
 		n := strings.Replace(name, "'", "", -1)
 		res := s.tk.MustQueryInc(fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop table `"+n+"`"))
 		// log.Info(res.Rows())
-		c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
-		row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
+		c.Assert(s.getAffectedRows(), Equals, 2)
+		row := res.Rows()[s.getAffectedRows()-1]
 		c.Assert(row[2], Equals, "0", Commentf("%v", row))
 		c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
 		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
@@ -213,8 +248,28 @@ inception_magic_commit;`
 
 }
 
-func (s *testCommon) runCheck(sql string) *testkit.Result {
+func (s *testCommon) runCheck(sql string) {
 	session.CheckAuditSetting(config.GetGlobalConfig())
+
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			IgnoreWarnings: true,
+		})
+		result, _ := s.sessionService.Audit(context.Background(), s.useDB+sql)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			// c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return
+	}
+
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -222,11 +277,30 @@ inception_magic_start;
 inception_magic_commit;`
 	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
 	s.rows = res.Rows()
-	return res
+	return
 }
 
 func (s *testCommon) mustCheck(c *C, sql string) *testkit.Result {
-	// session.CheckAuditSetting(config.GetGlobalConfig())
+
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:         s.defaultInc.BackupHost,
+			Port:         int(s.defaultInc.BackupPort),
+			User:         s.defaultInc.BackupUser,
+			Password:     s.defaultInc.BackupPassword,
+			RealRowCount: s.realRowCount,
+		})
+		result, err := s.sessionService.Audit(context.Background(), s.useDB+sql)
+		c.Assert(err, IsNil)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return nil
+	}
+
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -241,7 +315,25 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) runExec(sql string) *testkit.Result {
-	// session.CheckAuditSetting(config.GetGlobalConfig())
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			IgnoreWarnings: true,
+		})
+		result, _ := s.sessionService.RunExecute(context.Background(), s.useDB+sql)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			// c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return nil
+	}
+
 	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -255,6 +347,27 @@ inception_magic_commit;`
 func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	session.CheckAuditSetting(config.GetGlobalConfig())
+
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			IgnoreWarnings: true,
+		})
+		result, err := s.sessionService.RunExecute(context.Background(), s.useDB+sql)
+		c.Assert(err, IsNil)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return nil
+	}
+
 	a := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -273,6 +386,26 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) runBackup(sql string) *testkit.Result {
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			Backup:         true,
+			IgnoreWarnings: true,
+		})
+		result, _ := s.sessionService.RunExecute(context.Background(), s.useDB+sql)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			// c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return nil
+	}
+
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -284,6 +417,28 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) mustRunBackup(c *C, sql string) *testkit.Result {
+
+	if s.isAPI {
+		s.sessionService.LoadOptions(session.SourceOptions{
+			Host:           s.defaultInc.BackupHost,
+			Port:           int(s.defaultInc.BackupPort),
+			User:           s.defaultInc.BackupUser,
+			Password:       s.defaultInc.BackupPassword,
+			RealRowCount:   s.realRowCount,
+			Backup:         true,
+			IgnoreWarnings: true,
+		})
+		result, err := s.sessionService.RunExecute(context.Background(), s.useDB+sql)
+		c.Assert(err, IsNil)
+		s.records = result
+		s.rows = make([][]interface{}, len(result))
+		for index, row := range result {
+			c.Assert(row.ErrLevel, Not(Equals), uint8(2), Commentf("%v", result))
+			s.rows[index] = row.List()
+		}
+		return nil
+	}
+
 	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -809,4 +964,29 @@ func (s *testCommon) parserStmt(sql string) ast.StmtNode {
 func (s *testCommon) reset() {
 	config.GetGlobalConfig().Inc = s.defaultInc
 	log.SetLevel(log.ErrorLevel)
+	log.SetReportCaller(true)
+}
+
+// getAffectedRows 获取受影响行数, 区分api返回和mysql会话返回
+func (s *testCommon) getAffectedRows() int {
+	if s.isAPI {
+		return len(s.rows)
+	}
+	return int(s.session.AffectedRows())
+}
+
+func (s *testCommon) testAffectedRows(c *C, affectedRows ...int) {
+	if len(s.rows) == 0 && len(s.records) == 0 {
+		return
+	}
+	count := len(affectedRows)
+	for i, affectedRow := range affectedRows {
+		if s.isAPI {
+			row := s.records[len(s.records)-(count-i)]
+			c.Assert(row.AffectedRows, Equals, affectedRow, Commentf("%#v", row))
+		} else {
+			row := s.rows[len(s.rows)-(count-i)]
+			c.Assert(row[6], Equals, strconv.Itoa(affectedRow), Commentf("%v", row))
+		}
+	}
 }

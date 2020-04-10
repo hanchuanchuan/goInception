@@ -142,6 +142,47 @@ func (r *Record) cut() {
 	r.MultiTables = nil
 }
 
+func (r *Record) List() []interface{} {
+
+	columns := make([]interface{}, 12)
+
+	columns[0] = r.SeqNo
+
+	columns[1] = StageList[r.Stage]
+	columns[2] = int64(r.ErrLevel)
+	columns[3] = StatusList[r.StageStatus]
+
+	columns[4] = r.ErrorMessage
+
+	columns[5] = r.Sql
+	columns[6] = int64(r.AffectedRows)
+
+	if r.OPID == "" {
+		columns[7] = makeOPIDByTime(r.ExecTimestamp,
+			r.ThreadId, r.SeqNo)
+	} else {
+		columns[7] = r.OPID
+	}
+
+	columns[8] = r.BackupDBName
+
+	if r.ExecTime == "" {
+		columns[9] = "0"
+	} else {
+		columns[9] = r.ExecTime
+	}
+
+	columns[10] = r.Sqlsha1
+
+	if r.BackupCostTime == "" {
+		columns[11] = "0"
+	} else {
+		columns[11] = r.BackupCostTime
+	}
+
+	return columns
+}
+
 type recordSet struct {
 	firstIsID  bool
 	data       [][]types.Datum
