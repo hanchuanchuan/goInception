@@ -85,7 +85,7 @@ before_install:
   - ps -ef|grep mysql
 
 script:
-  - sudo [ ! -f "/usr/local/bin/pt-online-schema-change" ] && wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
+  - sudo [ ! -f "/usr/local/bin/pt-online-schema-change" ] && sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
   - sudo chmod +x /usr/local/bin/pt-online-schema-change
   # - sudo apt-get install -y --no-install-recommends --no-install-suggests libdbi-perl libdbd-mysql-perl
 
