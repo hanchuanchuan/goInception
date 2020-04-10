@@ -653,7 +653,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		}
 
 	case *ast.InceptionSetStmt:
-		if s.haveBegin {
+		if s.haveBegin || s.isAPI {
 			_, err := s.executeInceptionSet(node, currentSql)
 			if err != nil {
 				s.appendErrorMessage(err.Error())
@@ -5190,7 +5190,7 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			return nil, errors.New("无效参数")
 		}
 
-		if v.IsGlobal && s.haveBegin {
+		if v.IsGlobal && (s.haveBegin || s.isAPI) {
 			return nil, errors.New("全局变量仅支持单独设置")
 		}
 
@@ -5216,7 +5216,7 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 		cnf := config.GetGlobalConfig()
 
 		if v.IsLevel {
-			if s.haveBegin {
+			if s.haveBegin || s.isAPI {
 				return nil, errors.New("暂不支持会话级的自定义审核级别")
 			}
 			err := s.setVariableValue(reflect.TypeOf(cnf.IncLevel), reflect.ValueOf(&cnf.IncLevel).Elem(), v.Name, value)
