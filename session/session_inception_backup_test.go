@@ -716,9 +716,17 @@ func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 	s.runBackup("delete from t1;")
 	row = s.rows[s.getAffectedRows()-1]
 	if s.DBVersion >= 50700 {
-		c.Assert(row[2], Equals, "2", Commentf("%v", row))
+		if v, ok := row[2].(string); ok {
+			c.Assert(v, Equals, "2", Commentf("%v", row))
+		} else {
+			c.Assert(row[2], Equals, int64(2), Commentf("%v", row))
+		}
 	} else {
-		c.Assert(row[2], Equals, "0", Commentf("%v", row))
+		if v, ok := row[2].(string); ok {
+			c.Assert(v, Equals, "0", Commentf("%v", row))
+		} else {
+			c.Assert(row[2], Equals, int64(0), Commentf("%v", row))
+		}
 	}
 }
 
