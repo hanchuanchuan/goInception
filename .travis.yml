@@ -6,10 +6,23 @@ go:
   - "1.12"
 
 cache:
+  apt: true
   directories:
     - $HOME/.cache/go-build
     - $HOME/gopath/pkg/mod
+    - /usr/local/bin/pt-online-schema-change
 
+addons:
+  apt:
+    # sources:
+    #   - mysql-5.7-trusty
+    packages:
+      # - mysql-server
+      # - mysql-client
+      - libdbi-perl
+      - libdbd-mysql-perl
+
+# dist: trusty
 
 services:
 # - docker
@@ -72,9 +85,9 @@ before_install:
   - ps -ef|grep mysql
 
 script:
-  - sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
+  - sudo [ ! -f "/usr/local/bin/pt-online-schema-change" ] && wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
   - sudo chmod +x /usr/local/bin/pt-online-schema-change
-  - sudo apt-get install -y libdbi-perl libdbd-mysql-perl
+  # - sudo apt-get install -y --no-install-recommends --no-install-suggests libdbi-perl libdbd-mysql-perl
 
   - rm -f go.sum
   # - docker ps
