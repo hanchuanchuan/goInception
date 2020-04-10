@@ -139,7 +139,7 @@ type SourceOptions struct {
 	split bool
 
 	// 使用count(*)计算受影响行数
-	realRowCount bool
+	RealRowCount bool
 
 	// 连接的数据库,默认为mysql
 	db string

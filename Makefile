@@ -51,7 +51,7 @@ CHECK_LDFLAGS += $(LDFLAGS) ${TEST_LDFLAGS}
 
 TARGET = ""
 
-.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist
+.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist testapi
 
 default: server buildsucc
 
@@ -159,11 +159,25 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 
 	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' -concurrency=1 -- -short || { $(GOFAIL_DISABLE); exit 1; }
 else
+
+ifeq ("$(API)", "1")
+	@echo "Running in native mode (API)."
+	@export log_level=error;
+	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' github.com/hanchuanchuan/goInception/session -api
+else
 	@echo "Running in native mode."
-	@export log_level=error; \
+	@export log_level=error;
 	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' -cover $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
 endif
+
+endif
 	@$(GOFAIL_DISABLE)
+
+testapi: parserlib
+	@echo "Running in native mode (API)."
+	@export log_level=error;
+	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' github.com/hanchuanchuan/goInception/session -api
+
 
 race: parserlib
 	$(GO) get github.com/etcd-io/gofail@v0.0.0-20180808172546-51ce9a71510a

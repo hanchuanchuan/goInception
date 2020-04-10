@@ -24,6 +24,7 @@ import (
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/types"
+	"github.com/hanchuanchuan/goInception/util/timeutil"
 	"github.com/pingcap/errors"
 )
 
@@ -75,6 +76,9 @@ func GetTimeValue(ctx sessionctx.Context, v interface{}, tp byte, fsp int) (d ty
 		return d, errors.Trace(err)
 	}
 	sc := ctx.GetSessionVars().StmtCtx
+	if sc.TimeZone == nil {
+		sc.TimeZone = timeutil.SystemLocation()
+	}
 	switch x := v.(type) {
 	case string:
 		upperX := strings.ToUpper(x)

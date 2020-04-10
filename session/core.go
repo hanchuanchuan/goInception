@@ -29,6 +29,7 @@ import (
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
+	"github.com/hanchuanchuan/goInception/util/timeutil"
 	"github.com/jinzhu/gorm"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
@@ -58,10 +59,32 @@ func (s *session) makeNewResult() ([]Record, error) {
 }
 
 func NewInception() *session {
-	return &session{
-		parser:      parser.New(),
-		sessionVars: variable.NewSessionVars(),
+	se := &session{
+		parser:              parser.New(),
+		sessionVars:         variable.NewSessionVars(),
+		lowerCaseTableNames: 1,
+		isAPI:               true,
 	}
+
+	// cluster := mocktikv.NewCluster()
+	// mocktikv.BootstrapWithSingleStore(cluster)
+	// mvccStore := mocktikv.MustNewMVCCStore()
+	// store, err := mockstore.NewMockTikvStore(
+	// 	mockstore.WithCluster(cluster),
+	// 	mockstore.WithMVCCStore(mvccStore),
+	// )
+	// se.store = store
+
+	// session.SetSchemaLease(0)
+	// session.SetStatsLease(0)
+
+	se.sessionVars.GlobalVarsAccessor = se
+
+	tz := timeutil.InferSystemTZ()
+	// log.Errorf("tz: %v", tz)
+	timeutil.SetSystemTZ(tz)
+
+	return se
 }
 
 // init 初始化map
@@ -178,7 +201,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 			} else if s.opt != nil && s.opt.split {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
 			} else {
-				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
+				s.sessionVars.StmtCtx.AddAffectedRows(uint64(len(s.recordSets.records)))
 			}
 		}
 
@@ -188,8 +211,8 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 	}()
 
 	// s.PrepareTxnCtx(ctx)
-	// connID := s.sessionVars.ConnectionID
-	connID := 1
+	connID := s.sessionVars.ConnectionID
+	// connID := 1
 	// err = s.loadCommonGlobalVariablesIfNeeded()
 	// if err != nil {
 	// 	return nil, errors.Trace(err)
