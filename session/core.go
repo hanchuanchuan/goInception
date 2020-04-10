@@ -201,7 +201,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 			} else if s.opt != nil && s.opt.split {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
 			} else {
-				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.recordSets.rc.count))
+				s.sessionVars.StmtCtx.AddAffectedRows(uint64(len(s.recordSets.records)))
 			}
 		}
 
