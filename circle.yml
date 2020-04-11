@@ -93,3 +93,15 @@ jobs:
               echo "不符合发版格式，跳过Release！！！"
             fi
 
+      - run:
+          name: Upload coverage
+          command: make upload-coverage
+          environment:
+            TRAVIS_COVERAGE: 1
+
+      - run:
+          name: test API
+          command: make dev
+          no_output_timeout: 1200
+          environment:
+            API: 1
