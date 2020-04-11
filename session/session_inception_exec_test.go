@@ -808,9 +808,6 @@ func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
 		alter table t1 drop column c1,add column c1 varchar(20);`
 	s.testErrorCode(c, sql)
 
-	sql = "alter table t1 drop column c1,add column c1 varchar(20) comment '123';"
-	s.testErrorCode(c, sql)
-
 	sql = `-- 这是一条注释
 	alter table t1 add column c2 varchar(20) comment '!@#$%^&*()_+[]{}\\|;:",.<>/?';`
 	s.testErrorCode(c, sql)
@@ -850,9 +847,6 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 
 	sql = `/* 这是一条注释 */
 	alter table t1 drop column c1,add column c1 varchar(20);`
-	s.testErrorCode(c, sql)
-
-	sql = "alter table t1 drop column c1,add column c1 varchar(20) comment '123';"
 	s.testErrorCode(c, sql)
 
 	sql = `-- 这是一条注释
