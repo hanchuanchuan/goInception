@@ -95,7 +95,7 @@ jobs:
 
       - run:
           name: Upload coverage
-          command: make upload-coverage
+          command: make dev upload-coverage
           environment:
             TRAVIS_COVERAGE: 1
 
