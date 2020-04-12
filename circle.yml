@@ -41,10 +41,20 @@ jobs:
       - run: sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
       - run: sudo chmod +x /usr/local/bin/pt-online-schema-change
       - run: sudo chmod +x cmd/explaintest/run-tests.sh
+
+      - restore_cache:
+          keys:
+            - pkg-cache-{{ checksum "go.mod" }}
+
       - run:
           name: "Build & Test"
           command: make dev
           no_output_timeout: 1200
+
+      - save_cache: # Store cache in the /go/pkg directory
+          key: pkg-cache-{{ checksum "go.mod" }}
+          paths:
+            - /go/pkg/
 
       - setup_remote_docker:
           docker_layer_caching: false
@@ -83,3 +93,15 @@ jobs:
               echo "不符合发版格式，跳过Release！！！"
             fi
 
+      - run:
+          name: Upload coverage
+          command: make dev upload-coverage
+          environment:
+            TRAVIS_COVERAGE: 1
+
+      - run:
+          name: test API
+          command: make dev
+          no_output_timeout: 1200
+          environment:
+            API: 1

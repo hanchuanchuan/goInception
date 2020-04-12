@@ -39,6 +39,7 @@ import (
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/auth"
+
 	// "github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/testkit"
@@ -842,7 +843,7 @@ func (s *testSessionSuite) TestPrepare(c *C) {
 	c.Assert(err, IsNil)
 }
 
-func (s *testSessionSuite) TestSpecifyIndexPrefixLength(c *C) {
+func (s *testSessionSuite) testSpecifyIndexPrefixLength(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 
 	_, err := tk.Exec("create table t (c1 char, index(c1(3)));")
@@ -998,7 +999,7 @@ func (s *testSessionSuite) TestFieldText(c *C) {
 	}
 }
 
-func (s *testSessionSuite) TestIndexMaxLength(c *C) {
+func (s *testSessionSuite) testIndexMaxLength(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)
 	tk.MustExec("drop table if exists t;")
 
