@@ -24,7 +24,7 @@ import (
 )
 
 // SetupSignalHandler setup signal handler for TiDB Server
-func SetupSignalHandler(shudownFunc func(bool)) {
+func SetupSignalHandler(ignoreSighup bool, shudownFunc func(bool)) {
 	usrDefSignalChan := make(chan os.Signal, 1)
 
 	signal.Notify(usrDefSignalChan, syscall.SIGUSR1)
@@ -40,11 +40,21 @@ func SetupSignalHandler(shudownFunc func(bool)) {
 	}()
 
 	closeSignalChan := make(chan os.Signal, 1)
-	signal.Notify(closeSignalChan,
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT)
+
+	// 忽略信号 终端控制进程结束(终端连接断开)
+	if ignoreSighup {
+		signal.Ignore(syscall.SIGHUP)
+		signal.Notify(closeSignalChan,
+			syscall.SIGINT,
+			syscall.SIGTERM,
+			syscall.SIGQUIT)
+	} else {
+		signal.Notify(closeSignalChan,
+			syscall.SIGHUP,
+			syscall.SIGINT,
+			syscall.SIGTERM,
+			syscall.SIGQUIT)
+	}
 
 	go func() {
 		sig := <-closeSignalChan

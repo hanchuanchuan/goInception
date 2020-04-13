@@ -8,6 +8,9 @@ port = 4000
 # TiDB数据库目录
 path = "/tmp/tidb"
 
+# 忽略终端连接断开信号
+ignore_sighup = true
+
 [log]
 # 日志级别: debug, info, warn, error, fatal.
 level = "info"

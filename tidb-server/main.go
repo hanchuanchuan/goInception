@@ -129,7 +129,7 @@ func main() {
 	setupBinlogClient()
 	createStoreAndDomain()
 	createServer()
-	signal.SetupSignalHandler(serverShutdown)
+	signal.SetupSignalHandler(cfg.IgnoreSighup, serverShutdown)
 
 	// 在启动完成后关闭DDL线程(goInception用不到该线程)
 	ddl := dom.DDL()
