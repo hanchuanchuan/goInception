@@ -83,6 +83,9 @@ type Config struct {
 
 	// 是否跳过用户权限校验
 	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
+
+	// 忽略终端连接断开信号
+	IgnoreSighup bool `toml:"ignore_sighup" json:"ignore_sighup"`
 }
 
 // Log is the log section of config.
@@ -734,6 +737,7 @@ var defaultConf = Config{
 	// 默认跳过权限校验 2019-1-26
 	// 为配置方便,在config节点也添加相同参数
 	SkipGrantTable: true,
+	IgnoreSighup:   true,
 	Security: Security{
 		SkipGrantTable: true,
 	},

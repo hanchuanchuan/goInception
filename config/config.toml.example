@@ -50,6 +50,9 @@ compatible-kill-query = false
 
 skip_grant_table = true
 
+# 忽略终端连接断开信号
+ignore_sighup = true
+
 [log]
 # Log level: debug, info, warn, error, fatal.
 level = "info"
