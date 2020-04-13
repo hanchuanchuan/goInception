@@ -33,8 +33,6 @@ const (
 	DefaultLogMaxSize = 300 // MB
 	defaultLogFormat  = "text"
 	defaultLogLevel   = log.InfoLevel
-	// DefaultSlowThreshold is the default slow log threshold in millisecond.
-	DefaultSlowThreshold = 300
 	// DefaultQueryLogMaxLen is the default max length of the query in the log.
 	DefaultQueryLogMaxLen = 2048
 )
@@ -220,6 +218,7 @@ func stringToLogFormatter(format string, disableTimestamp bool) log.Formatter {
 	switch strings.ToLower(format) {
 	case "text":
 		return &log.TextFormatter{
+			TimestampFormat:  defaultLogTimeFormat,
 			DisableTimestamp: disableTimestamp,
 			DisableColors:    true,
 			// CallerPrettyfier: callerPrettyfier,
@@ -240,12 +239,14 @@ func stringToLogFormatter(format string, disableTimestamp bool) log.Formatter {
 		}
 	case "highlight":
 		return &log.TextFormatter{
+			TimestampFormat:  defaultLogTimeFormat,
 			DisableTimestamp: disableTimestamp,
 			DisableColors:    false,
 			// CallerPrettyfier: callerPrettyfier,
 		}
 	default:
 		return &log.TextFormatter{
+			TimestampFormat: defaultLogTimeFormat,
 			// CallerPrettyfier: callerPrettyfier,
 		}
 	}
@@ -279,9 +280,6 @@ func initFileLog(cfg *FileLogConfig, logger *log.Logger) error {
 	return nil
 }
 
-// SlowQueryLogger is used to log slow query, InitLogger will modify it according to config file.
-var SlowQueryLogger = log.StandardLogger()
-
 // InitLogger initializes PD's logger.
 func InitLogger(cfg *LogConfig) error {
 	log.SetLevel(stringToLogLevel(cfg.Level))
@@ -298,24 +296,6 @@ func InitLogger(cfg *LogConfig) error {
 		if err := initFileLog(&cfg.File, nil); err != nil {
 			return errors.Trace(err)
 		}
-	}
-
-	if len(cfg.SlowQueryFile) != 0 {
-		SlowQueryLogger = log.New()
-		tmp := cfg.File
-		tmp.Filename = cfg.SlowQueryFile
-		if err := initFileLog(&tmp, SlowQueryLogger); err != nil {
-			return errors.Trace(err)
-		}
-		hooks := make(log.LevelHooks)
-		hooks.Add(&contextHook{})
-		SlowQueryLogger.Hooks = hooks
-		slowQueryFormatter := stringToLogFormatter(cfg.Format, cfg.DisableTimestamp)
-		ft, ok := slowQueryFormatter.(*textFormatter)
-		if ok {
-			ft.EnableEntryOrder = true
-		}
-		SlowQueryLogger.Formatter = slowQueryFormatter
 	}
 
 	return nil

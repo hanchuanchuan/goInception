@@ -14,15 +14,12 @@
 package executor
 
 import (
-	"fmt"
 	"math"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/config"
-	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/kv"
@@ -34,7 +31,6 @@ import (
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util/chunk"
-	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -117,7 +113,6 @@ func (a *recordSet) NewChunk() *chunk.Chunk {
 
 func (a *recordSet) Close() error {
 	err := a.executor.Close()
-	a.stmt.logSlowQuery(a.txnStartTS, a.lastErr == nil)
 	return errors.Trace(err)
 }
 
@@ -259,11 +254,6 @@ func (a *ExecStmt) handleNoDelayExecutor(ctx context.Context, sctx sessionctx.Co
 	var err error
 	defer func() {
 		terror.Log(errors.Trace(e.Close()))
-		txnTS := uint64(0)
-		if sctx.Txn() != nil {
-			txnTS = sctx.Txn().StartTS()
-		}
-		a.logSlowQuery(txnTS, err == nil)
 	}()
 
 	err = e.Next(ctx, e.newFirstChunk())
@@ -327,74 +317,6 @@ func (a *ExecStmt) buildExecutor(ctx sessionctx.Context) (Executor, error) {
 
 // QueryReplacer replaces new line and tab for grep result including query string.
 var QueryReplacer = strings.NewReplacer("\r", " ", "\n", " ", "\t", " ")
-
-func (a *ExecStmt) logSlowQuery(txnTS uint64, succ bool) {
-	level := log.GetLevel()
-	if level < log.WarnLevel {
-		return
-	}
-	cfg := config.GetGlobalConfig()
-	costTime := time.Since(a.startTime)
-	threshold := time.Duration(cfg.Log.SlowThreshold) * time.Millisecond
-	if costTime < threshold && level < log.DebugLevel {
-		return
-	}
-	sql := a.Text
-	if len(sql) > int(cfg.Log.QueryLogMaxLen) {
-		sql = fmt.Sprintf("%.*q(len:%d)", cfg.Log.QueryLogMaxLen, sql, len(a.Text))
-	}
-	sessVars := a.Ctx.GetSessionVars()
-	sql = QueryReplacer.Replace(sql) + sessVars.GetExecuteArgumentsInfo()
-
-	connID := sessVars.ConnectionID
-	currentDB := sessVars.CurrentDB
-	var tableIDs, indexIDs string
-	if len(sessVars.StmtCtx.TableIDs) > 0 {
-		tableIDs = strings.Replace(fmt.Sprintf("table_ids:%v ", a.Ctx.GetSessionVars().StmtCtx.TableIDs), " ", ",", -1)
-	}
-	if len(sessVars.StmtCtx.IndexIDs) > 0 {
-		indexIDs = strings.Replace(fmt.Sprintf("index_ids:%v ", a.Ctx.GetSessionVars().StmtCtx.IndexIDs), " ", ",", -1)
-	}
-	user := sessVars.User
-	var internal string
-	if sessVars.InRestrictedSQL {
-		internal = "[INTERNAL] "
-	}
-	execDetail := sessVars.StmtCtx.GetExecDetails()
-	if costTime < threshold {
-		logutil.SlowQueryLogger.Debugf(
-			"[QUERY] %vcost_time:%v %s succ:%v con:%v user:%s txn_start_ts:%v database:%v %v%vsql:%v",
-			internal, costTime, execDetail, succ, connID, user, txnTS, currentDB, tableIDs, indexIDs, sql)
-	} else {
-		logutil.SlowQueryLogger.Warnf(
-			"[SLOW_QUERY] %vcost_time:%v %s succ:%v con:%v user:%s txn_start_ts:%v database:%v %v%vsql:%v",
-			internal, costTime, execDetail, succ, connID, user, txnTS, currentDB, tableIDs, indexIDs, sql)
-		var userString string
-		if user != nil {
-			userString = user.String()
-		}
-		if len(tableIDs) > 10 {
-			tableIDs = tableIDs[10 : len(tableIDs)-1] // Remove "table_ids:" and the last ","
-		}
-		if len(indexIDs) > 10 {
-			indexIDs = indexIDs[10 : len(indexIDs)-1] // Remove "index_ids:" and the last ","
-		}
-		domain.GetDomain(a.Ctx).LogSlowQuery(&domain.SlowQueryInfo{
-			SQL:      sql,
-			Start:    a.startTime,
-			Duration: costTime,
-			Detail:   sessVars.StmtCtx.GetExecDetails(),
-			Succ:     succ,
-			ConnID:   connID,
-			TxnTS:    txnTS,
-			User:     userString,
-			DB:       currentDB,
-			TableIDs: tableIDs,
-			IndexIDs: indexIDs,
-			Internal: sessVars.InRestrictedSQL,
-		})
-	}
-}
 
 // IsPointGetWithPKOrUniqueKeyByAutoCommit returns true when meets following conditions:
 //  1. ctx is auto commit tagged

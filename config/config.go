@@ -96,10 +96,8 @@ type Log struct {
 	// File log config.
 	File logutil.FileLogConfig `toml:"file" json:"file"`
 
-	SlowQueryFile      string `toml:"slow-query-file" json:"slow-query-file"`
-	SlowThreshold      uint   `toml:"slow-threshold" json:"slow-threshold"`
-	ExpensiveThreshold uint   `toml:"expensive-threshold" json:"expensive-threshold"`
-	QueryLogMaxLen     uint   `toml:"query-log-max-len" json:"query-log-max-len"`
+	ExpensiveThreshold uint `toml:"expensive-threshold" json:"expensive-threshold"`
+	QueryLogMaxLen     uint `toml:"query-log-max-len" json:"query-log-max-len"`
 }
 
 // Security is the security section of the config.
@@ -687,7 +685,6 @@ var defaultConf = Config{
 			LogRotate: true,
 			MaxSize:   logutil.DefaultLogMaxSize,
 		},
-		SlowThreshold:      300,
 		ExpensiveThreshold: 10000,
 		QueryLogMaxLen:     2048,
 	},
@@ -908,7 +905,6 @@ func (l *Log) ToLogConfig() *logutil.LogConfig {
 		Format:           l.Format,
 		DisableTimestamp: l.DisableTimestamp,
 		File:             l.File,
-		SlowQueryFile:    l.SlowQueryFile,
 	}
 }
 
