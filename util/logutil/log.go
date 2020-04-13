@@ -79,8 +79,21 @@ type contextHook struct{}
 // Fire implements logrus.Hook interface
 // https://github.com/sirupsen/logrus/issues/63
 func (hook *contextHook) Fire(entry *log.Entry) error {
+	// for skip := 0; ; skip++ {
+	// 	pc, _, _, ok := runtime.Caller(skip)
+	// 	if !ok {
+	// 		break
+	// 	}
+	// 	p := runtime.FuncForPC(pc)
+	// 	file, line := p.FileLine(0)
+
+	// 	fmt.Printf("skip = %v, pc = %v\n", skip, pc)
+	// 	fmt.Printf("  file = %v, line = %d\n", file, line)
+	// 	fmt.Printf("  name = %v\n", p.Name())
+	// }
+
 	pc := make([]uintptr, 4)
-	cnt := runtime.Callers(6, pc)
+	cnt := runtime.Callers(8, pc)
 
 	for i := 0; i < cnt; i++ {
 		fu := runtime.FuncForPC(pc[i] - 1)
@@ -89,6 +102,9 @@ func (hook *contextHook) Fire(entry *log.Entry) error {
 			file, line := fu.FileLine(pc[i] - 1)
 			entry.Data["file"] = path.Base(file)
 			entry.Data["line"] = line
+			// entry.Data["file"] = fmt.Sprintf("%s:%d", path.Base(file), line)
+			s := strings.Split(name, ".")
+			entry.Data["func"] = s[len(s)-1]
 			break
 		}
 	}
@@ -193,29 +209,45 @@ func (f *textFormatter) Format(entry *log.Entry) ([]byte, error) {
 }
 
 func stringToLogFormatter(format string, disableTimestamp bool) log.Formatter {
+
+	// callerPrettyfier := func(f *runtime.Frame) (string, string) {
+	// 	filename := path.Base(f.File)
+	// 	s := strings.Split(f.Function, ".")
+	// 	funcName := s[len(s)-1]
+	// 	return funcName, fmt.Sprintf("%s:%d", filename, f.Line)
+	// }
+
 	switch strings.ToLower(format) {
 	case "text":
-		return &textFormatter{
+		return &log.TextFormatter{
 			DisableTimestamp: disableTimestamp,
+			DisableColors:    true,
+			// CallerPrettyfier: callerPrettyfier,
 		}
 	case "json":
 		return &log.JSONFormatter{
 			TimestampFormat:  defaultLogTimeFormat,
 			DisableTimestamp: disableTimestamp,
+			// CallerPrettyfier: callerPrettyfier,
 		}
 	case "console":
 		return &log.TextFormatter{
 			FullTimestamp:    true,
 			TimestampFormat:  defaultLogTimeFormat,
 			DisableTimestamp: disableTimestamp,
+			// CallerPrettyfier: callerPrettyfier,
+			DisableColors: false,
 		}
 	case "highlight":
-		return &textFormatter{
+		return &log.TextFormatter{
 			DisableTimestamp: disableTimestamp,
-			EnableColors:     true,
+			DisableColors:    false,
+			// CallerPrettyfier: callerPrettyfier,
 		}
 	default:
-		return &textFormatter{}
+		return &log.TextFormatter{
+			// CallerPrettyfier: callerPrettyfier,
+		}
 	}
 }
 
@@ -260,6 +292,7 @@ func InitLogger(cfg *LogConfig) error {
 	}
 	formatter := stringToLogFormatter(cfg.Format, cfg.DisableTimestamp)
 	log.SetFormatter(formatter)
+	// log.SetReportCaller(true)
 
 	if len(cfg.File.Filename) != 0 {
 		if err := initFileLog(&cfg.File, nil); err != nil {
