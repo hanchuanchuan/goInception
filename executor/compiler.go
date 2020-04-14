@@ -22,7 +22,6 @@ import (
 	"github.com/hanchuanchuan/goInception/planner"
 	plannercore "github.com/hanchuanchuan/goInception/planner/core"
 	"github.com/hanchuanchuan/goInception/sessionctx"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -35,10 +34,6 @@ type Compiler struct {
 
 // Compile compiles an ast.StmtNode to a physical plan.
 func (c *Compiler) Compile(ctx context.Context, stmtNode ast.StmtNode) (*ExecStmt, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil {
-		span1 := opentracing.StartSpan("executor.Compile", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-	}
 
 	infoSchema := GetInfoSchema(c.Ctx)
 	if err := plannercore.Preprocess(c.Ctx, stmtNode, infoSchema, false); err != nil {

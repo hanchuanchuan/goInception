@@ -20,9 +20,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/goInception/terror"
@@ -110,17 +108,6 @@ func (a *connArray) Init(addr string, security config.Security) error {
 
 	unaryInterceptor := grpc_prometheus.UnaryClientInterceptor
 	streamInterceptor := grpc_prometheus.StreamClientInterceptor
-	cfg := config.GetGlobalConfig()
-	if cfg.OpenTracing.Enable {
-		unaryInterceptor = grpc_middleware.ChainUnaryClient(
-			unaryInterceptor,
-			grpc_opentracing.UnaryClientInterceptor(),
-		)
-		streamInterceptor = grpc_middleware.ChainStreamClient(
-			streamInterceptor,
-			grpc_opentracing.StreamClientInterceptor(),
-		)
-	}
 
 	for i := range a.v {
 		ctx, cancel := context.WithTimeout(context.Background(), dialTimeout)

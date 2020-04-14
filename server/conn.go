@@ -50,8 +50,6 @@ import (
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/opentracing/opentracing-go"
-	// "github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util/arena"
@@ -567,10 +565,7 @@ func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
 // The most frequently used command is ComQuery.
 func (cc *clientConn) dispatch(data []byte) error {
 
-	span := opentracing.StartSpan("server.dispatch")
-	ctx := opentracing.ContextWithSpan(context.Background(), span)
-
-	ctx1, cancelFunc := context.WithCancel(ctx)
+	ctx1, cancelFunc := context.WithCancel(context.Background())
 	cc.mu.Lock()
 	cc.mu.cancelFunc = cancelFunc
 	cc.mu.Unlock()
@@ -583,7 +578,6 @@ func (cc *clientConn) dispatch(data []byte) error {
 	defer func() {
 		cc.ctx.SetProcessInfo("", t, mysql.ComSleep)
 		cc.server.releaseToken(token)
-		span.Finish()
 	}()
 
 	if cmd < mysql.ComEnd {
