@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/types"
@@ -28,7 +29,6 @@ import (
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
-	"github.com/twinj/uuid"
 )
 
 var (
@@ -848,7 +848,8 @@ func (b *builtinUUIDSig) Clone() builtinFunc {
 // evalString evals a builtinUUIDSig.
 // See https://dev.mysql.com/doc/refman/5.7/en/miscellaneous-functions.html#function_uuid
 func (b *builtinUUIDSig) evalString(_ chunk.Row) (d string, isNull bool, err error) {
-	return uuid.NewV1().String(), false, nil
+	tmpUid, _ := uuid.NewV1()
+	return tmpUid.String(), false, nil
 }
 
 type uuidShortFunctionClass struct {

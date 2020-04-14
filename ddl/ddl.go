@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/coreos/etcd/clientv3"
+	"github.com/gofrs/uuid"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/ddl/util"
 	"github.com/hanchuanchuan/goInception/infoschema"
@@ -40,7 +41,6 @@ import (
 	"github.com/ngaut/pools"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/twinj/uuid"
 	"golang.org/x/net/context"
 )
 
@@ -302,7 +302,8 @@ func newDDL(ctx context.Context, etcdCli *clientv3.Client, store kv.Storage,
 	if hook == nil {
 		hook = &BaseCallback{}
 	}
-	id := uuid.NewV4().String()
+	tmpUid, _ := uuid.NewV4()
+	id := tmpUid.String()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var manager owner.Manager
 	var syncer SchemaSyncer
