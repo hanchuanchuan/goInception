@@ -14,10 +14,10 @@
 package tikv
 
 import (
+	"github.com/gofrs/uuid"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/pingcap/errors"
-	"github.com/pingcap/pd/client"
-	"github.com/twinj/uuid"
+	pd "github.com/pingcap/pd/client"
 )
 
 // NewTestTiKVStore creates a test store with Option
@@ -32,7 +32,8 @@ func NewTestTiKVStore(client Client, pdClient pd.Client, clientHijack func(Clien
 	}
 
 	// Make sure the uuid is unique.
-	uid := uuid.NewV4().String()
+	tmpUid, _ := uuid.NewV4()
+	uid := tmpUid.String()
 	spkv := NewMockSafePointKV()
 	tikvStore, err := newTikvStore(uid, pdCli, spkv, client, false)
 

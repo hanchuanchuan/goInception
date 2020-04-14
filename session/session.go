@@ -58,7 +58,6 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
 	log "github.com/sirupsen/logrus"
-	"go.uber.org/zap"
 	"golang.org/x/net/context"
 
 	"github.com/jinzhu/gorm"
@@ -677,7 +676,7 @@ func (s *session) ExecRestrictedSQLWithSnapshot(sctx sessionctx.Context, sql str
 		}
 		defer func() {
 			if err := se.sessionVars.SetSystemVar(variable.TiDBSnapshot, ""); err != nil {
-				log.Error("set tidbSnapshot error", zap.Error(err))
+				log.Error("set tidbSnapshot error", err)
 			}
 		}()
 	}
