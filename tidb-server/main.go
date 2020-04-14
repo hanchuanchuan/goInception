@@ -43,7 +43,6 @@ import (
 	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/hanchuanchuan/goInception/util/printer"
 	"github.com/hanchuanchuan/goInception/util/signal"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
 	goMysqlLog "github.com/siddontang/go-log/log"
@@ -124,7 +123,6 @@ func main() {
 	validateConfig()
 	setGlobalVars()
 	setupLog()
-	setupTracing() // Should before createServer and after setup config.
 	printInfo()
 	setupBinlogClient()
 	createStoreAndDomain()
@@ -392,15 +390,6 @@ func serverShutdown(isgraceful bool) {
 		graceful = true
 	}
 	svr.Close()
-}
-
-func setupTracing() {
-	tracingCfg := cfg.OpenTracing.ToTracingConfig()
-	tracer, _, err := tracingCfg.New("TiDB")
-	if err != nil {
-		log.Fatal("cannot initialize Jaeger Tracer", err)
-	}
-	opentracing.SetGlobalTracer(tracer)
 }
 
 func runServer() {

@@ -14,15 +14,10 @@
 package executor
 
 import (
-	"time"
-
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/planner"
 	plannercore "github.com/hanchuanchuan/goInception/planner/core"
 	"github.com/hanchuanchuan/goInception/util/chunk"
-	"github.com/hanchuanchuan/goInception/util/tracing"
-	"github.com/opentracing/basictracer-go"
-	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
 )
@@ -30,15 +25,10 @@ import (
 // TraceExec represents a root executor of trace query.
 type TraceExec struct {
 	baseExecutor
-	// CollectedSpans collects all span during execution. Span is appended via
-	// callback method which passes into tracer implementation.
-	CollectedSpans []basictracer.RawSpan
 	// exhausted being true means there is no more result.
 	exhausted bool
 	// stmtNode is the real query ast tree and it is used for building real query's plan.
 	stmtNode ast.StmtNode
-	// rootTrace represents root span which is father of all other span.
-	rootTrace opentracing.Span
 
 	builder *executorBuilder
 }
@@ -51,12 +41,10 @@ func (e *TraceExec) Next(ctx context.Context, chk *chunk.Chunk) error {
 	}
 
 	// record how much time was spent for optimizeing plan
-	optimizeSp := e.rootTrace.Tracer().StartSpan("plan_optimize", opentracing.FollowsFrom(e.rootTrace.Context()))
 	stmtPlan, err := planner.Optimize(e.builder.ctx, e.stmtNode, e.builder.is)
 	if err != nil {
 		return err
 	}
-	optimizeSp.Finish()
 
 	pp, ok := stmtPlan.(plannercore.PhysicalPlan)
 	if !ok {
@@ -66,17 +54,11 @@ func (e *TraceExec) Next(ctx context.Context, chk *chunk.Chunk) error {
 	// append select executor to trace executor
 	stmtExec := e.builder.build(pp)
 
-	e.rootTrace = tracing.NewRecordedTrace("trace_exec", func(sp basictracer.RawSpan) {
-		e.CollectedSpans = append(e.CollectedSpans, sp)
-	})
 	err = stmtExec.Open(ctx)
 	if err != nil {
 		return errors.Trace(err)
 	}
 	stmtExecChk := stmtExec.newFirstChunk()
-
-	// store span into context
-	ctx = opentracing.ContextWithSpan(ctx, e.rootTrace)
 
 	for {
 		if err := stmtExec.Next(ctx, stmtExecChk); err != nil {
@@ -87,46 +69,6 @@ func (e *TraceExec) Next(ctx context.Context, chk *chunk.Chunk) error {
 		}
 	}
 
-	e.rootTrace.LogKV("event", "tracing completed")
-	e.rootTrace.Finish()
-	var rootSpan basictracer.RawSpan
-
-	treeSpans := make(map[uint64][]basictracer.RawSpan)
-	for _, sp := range e.CollectedSpans {
-		treeSpans[sp.ParentSpanID] = append(treeSpans[sp.ParentSpanID], sp)
-		// if a span's parentSpanID is 0, then it is root span
-		// this is by design
-		if sp.ParentSpanID == 0 {
-			rootSpan = sp
-		}
-	}
-
-	dfsTree(rootSpan, treeSpans, "", false, chk)
 	e.exhausted = true
 	return nil
-}
-
-func dfsTree(span basictracer.RawSpan, tree map[uint64][]basictracer.RawSpan, prefix string, isLast bool, chk *chunk.Chunk) {
-	suffix := ""
-	spans := tree[span.Context.SpanID]
-	var newPrefix string
-	if span.ParentSpanID == 0 {
-		newPrefix = prefix
-	} else {
-		if len(tree[span.ParentSpanID]) > 0 && !isLast {
-			suffix = "├─"
-			newPrefix = prefix + "│ "
-		} else {
-			suffix = "└─"
-			newPrefix = prefix + "  "
-		}
-	}
-
-	chk.AppendString(0, prefix+suffix+span.Operation)
-	chk.AppendString(1, span.Start.Format(time.StampNano))
-	chk.AppendString(2, span.Duration.String())
-
-	for i, sp := range spans {
-		dfsTree(sp, tree, newPrefix, i == (len(spans))-1 /*last element of array*/, chk)
-	}
 }
