@@ -23,18 +23,25 @@ import (
 	"reflect"
 	"strings"
 
-	// "time"
-
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/hanchuanchuan/goInception/planner/core"
-
-	// "github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/pingcap/errors"
-	// log "github.com/sirupsen/logrus"
 )
+
+const (
+	// ErrExprInSelect  is in select fields for the error of ErrFieldNotInGroupBy
+	ErrExprInSelect = "SELECT list"
+	// ErrExprInOrderBy  is in order by items for the error of ErrFieldNotInGroupBy
+	ErrExprInOrderBy = "ORDER BY"
+)
+
+// ErrExprLoc is for generate the ErrFieldNotInGroupBy error info
+type ErrExprLoc struct {
+	Offset int
+	Loc    string
+}
 
 // checkContainDotColumn checks field contains the table name.
 // for example :create table t (c1.c2 int default null).
@@ -469,18 +476,18 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 		}
 	}
 
-	notInGbyCols := make(map[*FieldInfo]core.ErrExprLoc, len(sel.Fields.Fields))
+	notInGbyCols := make(map[*FieldInfo]ErrExprLoc, len(sel.Fields.Fields))
 	for offset, field := range sel.Fields.Fields {
 		// log.Info(field.Auxiliary, "---", field.Expr)
 		if field.Auxiliary {
 			continue
 		}
-		checkExprInGroupBy(field.Expr, offset, core.ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+		checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
 	}
 
 	if sel.OrderBy != nil {
 		for offset, item := range sel.OrderBy.Items {
-			checkExprInGroupBy(item.Expr, offset, core.ErrExprInOrderBy, gbyCols, gbyExprs, notInGbyCols, tables)
+			checkExprInGroupBy(item.Expr, offset, ErrExprInOrderBy, gbyCols, gbyExprs, notInGbyCols, tables)
 		}
 	}
 
@@ -490,11 +497,11 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 
 	for _, errExprLoc := range notInGbyCols {
 		switch errExprLoc.Loc {
-		case core.ErrExprInSelect:
+		case ErrExprInSelect:
 			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
 				sel.Fields.Fields[errExprLoc.Offset].Text())
 			return nil
-		case core.ErrExprInOrderBy:
+		case ErrExprInOrderBy:
 			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
 				sel.OrderBy.Items[errExprLoc.Offset].Expr.Text())
 			return nil
@@ -505,7 +512,7 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 }
 
 func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
-	gbyCols map[*FieldInfo]struct{}, gbyExprs []ast.ExprNode, notInGbyCols map[*FieldInfo]core.ErrExprLoc, tables []*TableInfo) {
+	gbyCols map[*FieldInfo]struct{}, gbyExprs []ast.ExprNode, notInGbyCols map[*FieldInfo]ErrExprLoc, tables []*TableInfo) {
 	if _, ok := expr.(*ast.AggregateFuncExpr); ok {
 		return
 	}
@@ -513,7 +520,7 @@ func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
 		col := findColumnWithList(c, tables)
 		if col != nil {
 			if _, ok := gbyCols[col]; !ok {
-				notInGbyCols[col] = core.ErrExprLoc{Offset: offset, Loc: loc}
+				notInGbyCols[col] = ErrExprLoc{Offset: offset, Loc: loc}
 			}
 		}
 	} else {
