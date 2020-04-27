@@ -300,7 +300,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_END_WITH_COMMIT:                     "Must end with commit.",
 	ER_DB_NOT_EXISTED_ERROR:                "Selected Database '%s' not existed.",
 	ER_TABLE_EXISTS_ERROR:                  "Table '%s' already exists.",
-	ER_INDEX_NAME_IDX_PREFIX:               "Index '%s' in table '%s' need 'idx_' prefix.",
+	ER_INDEX_NAME_IDX_PREFIX:               "Index '%s' in table '%s' need '%s' prefix.",
 	ER_INDEX_NAME_UNIQ_PREFIX:              "Index '%s' in table '%s' need 'uniq_' prefix.",
 	ER_AUTOINC_UNSIGNED:                    "Set unsigned attribute on auto increment column in table '%s'.",
 	ER_VARCHAR_TO_TEXT_LEN:                 "Set column '%s' to TEXT type.",
