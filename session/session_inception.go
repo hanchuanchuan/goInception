@@ -281,16 +281,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.haveBegin = true
 					s.parseOptions(currentSql)
 
-					if s.db != nil {
-						defer s.db.Close()
-					}
-					if s.ddlDB != nil {
-						defer s.ddlDB.Close()
-					}
-					if s.backupdb != nil {
-						defer s.backupdb.Close()
-					}
-
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
 					} else if s.opt.split {

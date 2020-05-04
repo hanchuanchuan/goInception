@@ -118,6 +118,9 @@ func (s *session) clear() {
 	if s.db != nil {
 		defer s.db.Close()
 	}
+	if s.ddlDB != nil {
+		defer s.ddlDB.Close()
+	}
 	if s.backupdb != nil {
 		defer s.backupdb.Close()
 	}
