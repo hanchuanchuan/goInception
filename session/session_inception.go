@@ -3944,16 +3944,17 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		}
 
 	default:
-		var slices []string = strings.Split(s.inc.IndexPrefix,",")
-		var i int
-		for _, v := range slices {
-            if strings.HasPrefix(name, v){
-            	i++
+		if s.inc.IndexPrefix != "" {
+			var found bool
+			for _, v := range strings.Split(s.inc.IndexPrefix, ",") {
+				if strings.HasPrefix(name, v) {
+					found = true
+					break
+				}
 			}
-		}
-
-		if i == 0 {
-			s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name, s.inc.IndexPrefix, )
+			if !found {
+				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name, s.inc.IndexPrefix)
+			}
 		}
 	}
 
