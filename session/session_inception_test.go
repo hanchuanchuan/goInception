@@ -921,8 +921,19 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
 		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "",
-			config.GetGlobalConfig().Inc.IndexPrefix, "test_error_code_3"),
+			"test_error_code_3", config.GetGlobalConfig().Inc.IndexPrefix),
 		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
+
+	config.GetGlobalConfig().Inc.IndexPrefix = "idx_,idx1_"
+	sql = "create table test_error_code_3(c1 int,c2 int,key idx_1(c1),key idx1_2(c2));"
+	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.IndexPrefix = "idx_,idx1_"
+	sql = "create table test_error_code_3(c1 int,c2 int,key idx_1(c1),key idx2_2(c2));"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "idx2_2",
+			"test_error_code_3", config.GetGlobalConfig().Inc.IndexPrefix),
+	)
 
 	config.GetGlobalConfig().Inc.TablePrefix = "t_"
 	sql = "create table t1(id int primary key);"
