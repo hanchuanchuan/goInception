@@ -108,6 +108,7 @@ func (s *session) init() {
 	s.inc.Lang = strings.Replace(strings.ToLower(s.inc.Lang), "-", "_", 1)
 
 	s.sqlFingerprint = nil
+	s.dbType = DBTypeMysql
 
 	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
 	s.parseIncLevel()
