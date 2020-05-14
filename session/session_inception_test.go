@@ -62,6 +62,7 @@ func (s *testSessionIncSuite) SetUpSuite(c *C) {
 	inc.EnableFingerprint = true
 	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
+	inc.EnableIdentiferKeyword = true
 }
 
 func (s *testSessionIncSuite) TearDownSuite(c *C) {
@@ -737,15 +738,17 @@ primary key(id)) comment 'test';`
 	  type tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql,
-			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
+			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"),
+			session.NewErr(session.ER_IDENT_USE_KEYWORD, "type"),
+		)
 
 		sql = `CREATE TABLE t1(c1 json DEFAULT NULL COMMENT '日志记录',
-	  type          tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  type1          tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql)
 
 		sql = `CREATE TABLE t1(c1 json COMMENT '日志记录',
-	  type  tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  type1  tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql)
 
@@ -753,18 +756,18 @@ primary key(id)) comment 'test';`
 		config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
 
 		sql = `CREATE TABLE t1(c1 json DEFAULT '{}' COMMENT '日志记录',
-	  type tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  type1 tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_BLOB_CANT_HAVE_DEFAULT, "c1"))
 
 		sql = `CREATE TABLE t1(c1 json DEFAULT NULL COMMENT '日志记录',
-	  type          tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  type1 tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql)
 
 		sql = `CREATE TABLE t1(c1 json COMMENT '日志记录',
-	  type  tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
+	  type1 tinyint(10) GENERATED ALWAYS AS (json_extract(operate_info, '$.type')) VIRTUAL COMMENT '操作类型')
 	  ENGINE = InnoDB DEFAULT CHARSET = utf8 COMMENT ='xxx';`
 		s.testErrorCode(c, sql)
 
@@ -2619,7 +2622,8 @@ func (s *testSessionIncSuite) TestMergeAlterTable(c *C) {
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
 	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10));alter table t1 modify name varchar(10);alter table t1 modify name varchar(10);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"))
+		session.NewErr(session.ER_ALTER_TABLE_ONCE, "t1"),
+	)
 
 	//er_alter_table_once
 	config.GetGlobalConfig().Inc.MergeAlterTable = true
