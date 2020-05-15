@@ -654,17 +654,31 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 
 	buf := bytes.NewBufferString("")
 
+	var stopSign int
+	var lock sync.RWMutex
+
 	//实时循环读取输出流中的一行内容
 	f := func(reader *bufio.Reader) {
 		for {
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
+				lock.Lock()
+				stopSign++
+				lock.Unlock()
 				wg.Done()
 				break
 			}
 			buf.WriteString(line)
 			buf.WriteString("\n")
 			s.mysqlAnalyzeOscOutput(line, p)
+		}
+	}
+
+	kill := func() {
+		for {
+			if stopSign == 2 {
+				break
+			}
 			if p.Killed {
 				if err := cmd.Process.Kill(); err != nil {
 					s.appendErrorMessage(err.Error())
@@ -672,10 +686,12 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 					s.appendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
 						p.Percent, p.RemainTime))
 				}
+				break
 			}
 		}
 	}
 
+	go kill()
 	go f(reader)
 	go f(reader2)
 
