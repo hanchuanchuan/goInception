@@ -5734,6 +5734,9 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 		} else {
 			pi.Killed = true
+			if !pi.IsGhost {
+				pi.PanicAbort <- util.ProcessOperationKill
+			}
 		}
 	} else {
 		return nil, errors.New("osc process not found")
@@ -5754,6 +5757,7 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
 		} else {
 			pi.Pause = true
+			// pi.PanicAbort <- util.ProcessOperationPause
 		}
 	} else {
 		return nil, errors.New("osc process not found")
@@ -5772,6 +5776,7 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 
 		if pi.Pause {
 			pi.Pause = false
+			// pi.PanicAbort <- util.ProcessOperationResume
 		} else {
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
 		}
