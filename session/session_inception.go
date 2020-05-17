@@ -19,7 +19,6 @@ import (
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
@@ -32,6 +31,8 @@ import (
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/stringutil"
+	"github.com/hanchuanchuan/inception-core/config"
+	core "github.com/hanchuanchuan/inception-core/session"
 	"github.com/jinzhu/gorm"
 	"github.com/percona/go-mysql/query"
 	"github.com/pingcap/errors"
@@ -138,7 +139,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
 			if s.opt != nil && s.opt.Print {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
-			} else if s.opt != nil && s.opt.split {
+			} else if s.opt != nil && s.opt.Split {
 				if s.splitSets != nil {
 					s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
 				} else {
@@ -222,7 +223,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 				}
 				if s.opt != nil && s.opt.Print {
 					s.printSets.Append(2, strings.TrimSpace(s1), "", err.Error())
-				} else if s.opt != nil && s.opt.split {
+				} else if s.opt != nil && s.opt.Split {
 					s.addNewSplitNode()
 					s.splitSets.Append(strings.TrimSpace(s1), err.Error())
 				} else {
@@ -262,7 +263,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, currentSql, "", s.getErrorMessage(ER_HAVE_BEGIN))
-						} else if s.opt != nil && s.opt.split {
+						} else if s.opt != nil && s.opt.Split {
 							s.addNewSplitNode()
 							s.splitSets.Append(currentSql, s.getErrorMessage(ER_HAVE_BEGIN))
 						} else {
@@ -283,7 +284,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 					if s.opt.Print {
 						s.printSets = NewPrintSets()
-					} else if s.opt.split {
+					} else if s.opt.Split {
 						s.splitSets = NewSplitSets()
 					}
 
@@ -295,7 +296,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
-						} else if s.opt != nil && s.opt.split {
+						} else if s.opt != nil && s.opt.Split {
 							s.addNewSplitNode()
 							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
@@ -305,7 +306,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					}
 
 					// sql指纹设置取并集
-					if s.opt.fingerprint {
+					if s.opt.Fingerprint {
 						s.inc.EnableFingerprint = true
 					}
 
@@ -313,14 +314,135 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.sqlFingerprint = make(map[string]*Record, 64)
 					}
 
-					continue
+					sql = sql[len(stmtNode.Text()):]
+					log.Error(sql)
+					inception := core.NewInception()
+					option := core.SourceOptions{
+						Host:             s.opt.Host,
+						Port:             s.opt.Port,
+						User:             s.opt.User,
+						Password:         s.opt.Password,
+						Check:            s.opt.Check,
+						Execute:          s.opt.Execute,
+						Backup:           s.opt.Backup,
+						IgnoreWarnings:   s.opt.IgnoreWarnings,
+						Sleep:            s.opt.Sleep,
+						SleepRows:        s.opt.SleepRows,
+						MiddlewareExtend: s.opt.MiddlewareExtend,
+						MiddlewareDB:     s.opt.MiddlewareDB,
+						ParseHost:        s.opt.ParseHost,
+						ParsePort:        s.opt.ParsePort,
+						Fingerprint:      s.opt.Fingerprint,
+						Print:            s.opt.Print,
+						Split:            s.opt.Split,
+						RealRowCount:     s.opt.RealRowCount,
+						DB:               s.opt.DB,
+						Ssl:              s.opt.Ssl,
+						SslCA:            s.opt.SslCA,
+						SslCert:          s.opt.SslCert,
+						SslKey:           s.opt.SslKey,
+						TranBatch:        s.opt.TranBatch,
+					}
+					inception.LoadOptions(option)
+
+					// log.Errorf("%#v", option)
+					if s.opt.Execute {
+						result, err := inception.RunExecute(context.Background(), sql)
+						if err != nil {
+							log.Error(err)
+							s.recordSets.Append(&Record{
+								Sql:          "",
+								ErrLevel:     2,
+								ErrorMessage: err.Error(),
+							})
+						}
+						for _, row := range result {
+							record := &Record{
+								Stage:          row.Stage,
+								StageStatus:    row.StageStatus,
+								ErrLevel:       row.ErrLevel,
+								ErrorMessage:   row.ErrorMessage,
+								Sql:            row.Sql,
+								AffectedRows:   row.AffectedRows,
+								BackupDBName:   row.BackupDBName,
+								ExecTime:       row.ExecTime,
+								BackupCostTime: row.BackupCostTime,
+								Sqlsha1:        row.Sqlsha1,
+								ExecTimestamp:  row.ExecTimestamp,
+								StartFile:      row.StartFile,
+								StartPosition:  row.StartPosition,
+								EndFile:        row.EndFile,
+								EndPosition:    row.EndPosition,
+								ThreadId:       row.ThreadId,
+								SeqNo:          row.SeqNo,
+								DBName:         row.DBName,
+								TableName:      row.TableName,
+								DDLRollback:    row.DDLRollback,
+								OPID:           row.OPID,
+								ExecComplete:   row.ExecComplete,
+								UseOsc:         row.UseOsc,
+							}
+							s.recordSets.Append(record)
+						}
+
+					} else if s.opt.Print {
+						result, _ := inception.Print(context.Background(), sql)
+						for _, row := range result {
+							s.printSets.Append(int64(row.ErrLevel), row.SQL,
+								row.QueryTree, row.ErrorMessage)
+						}
+					} else if s.opt.Split {
+						result, _ := inception.Split(context.Background(), sql)
+						for _, row := range result {
+							if row.IsDDL {
+								s.splitSets.ddlflag = 1
+							} else {
+								s.splitSets.ddlflag = 0
+							}
+							s.splitSets.Append(row.SQL, row.ErrorMessage)
+						}
+					} else {
+						result, _ := inception.Audit(context.Background(), sql)
+						for _, row := range result {
+							record := &Record{
+								Stage:          row.Stage,
+								StageStatus:    row.StageStatus,
+								ErrLevel:       row.ErrLevel,
+								ErrorMessage:   row.ErrorMessage,
+								Sql:            row.Sql,
+								AffectedRows:   row.AffectedRows,
+								BackupDBName:   row.BackupDBName,
+								ExecTime:       row.ExecTime,
+								BackupCostTime: row.BackupCostTime,
+								Sqlsha1:        row.Sqlsha1,
+								ExecTimestamp:  row.ExecTimestamp,
+								StartFile:      row.StartFile,
+								StartPosition:  row.StartPosition,
+								EndFile:        row.EndFile,
+								EndPosition:    row.EndPosition,
+								ThreadId:       row.ThreadId,
+								SeqNo:          row.SeqNo,
+								DBName:         row.DBName,
+								TableName:      row.TableName,
+								DDLRollback:    row.DDLRollback,
+								OPID:           row.OPID,
+								ExecComplete:   row.ExecComplete,
+								UseOsc:         row.UseOsc,
+								// MultiTables:    row.MultiTables,
+							}
+							s.recordSets.Append(record)
+						}
+					}
+
+					return s.makeResult()
+					// continue
 				case *ast.InceptionCommitStmt:
 
 					if !s.haveBegin {
 						s.appendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
-						} else if s.opt != nil && s.opt.split {
+						} else if s.opt != nil && s.opt.Split {
 							s.addNewSplitNode()
 							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
@@ -354,7 +476,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.appendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
-						} else if s.opt != nil && s.opt.split {
+						} else if s.opt != nil && s.opt.Split {
 							s.addNewSplitNode()
 							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
@@ -383,7 +505,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						var err error
 						if s.opt != nil && s.opt.Print {
 							result, err = s.printCommand(ctx, stmtNode, currentSql)
-						} else if s.opt != nil && s.opt.split {
+						} else if s.opt != nil && s.opt.Split {
 							result, err = s.splitCommand(ctx, stmtNode, currentSql)
 						} else {
 							result, err = s.processCommand(ctx, stmtNode, currentSql)
@@ -402,7 +524,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.appendErrorMessage("Operation has been killed!")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
-						} else if s.opt != nil && s.opt.split {
+						} else if s.opt != nil && s.opt.Split {
 							s.addNewSplitNode()
 							s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 						} else {
@@ -417,7 +539,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.appendErrorMessage("Must start as begin statement.")
 					if s.opt != nil && s.opt.Print {
 						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
-					} else if s.opt != nil && s.opt.split {
+					} else if s.opt != nil && s.opt.Split {
 						s.addNewSplitNode()
 						s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 					} else {
@@ -449,7 +571,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 	if s.haveBegin && !s.haveCommit {
 		if s.opt != nil && s.opt.Print {
 			s.printSets.Append(2, "", "", "Must end with commit.")
-		} else if s.opt != nil && s.opt.split {
+		} else if s.opt != nil && s.opt.Split {
 			s.addNewSplitNode()
 			s.splitSets.Append("", "Must end with commit.")
 		} else {
@@ -476,8 +598,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
 	if s.opt != nil && s.opt.Print && s.printSets != nil {
 		return s.printSets.Rows(), nil
-	} else if s.opt != nil && s.opt.split && s.splitSets != nil {
-		s.addNewSplitNode()
+	} else if s.opt != nil && s.opt.Split && s.splitSets != nil {
+		// s.addNewSplitNode()
 		// log.Infof("%#v", s.splitSets)
 		return s.splitSets.Rows(), nil
 	} else {
@@ -686,7 +808,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 func (s *session) executeCommit(ctx context.Context) {
 
-	if s.opt.Check || s.opt.Print || !s.opt.Execute || s.opt.split {
+	if s.opt.Check || s.opt.Print || !s.opt.Execute || s.opt.Split {
 		return
 	}
 
@@ -798,7 +920,7 @@ func (s *session) executeCommit(ctx context.Context) {
 		if !s.isMiddleware() {
 			// 解析binlog生成回滚语句
 			s.parserBinlog(ctx)
-		} else if s.opt.parseHost != "" && s.opt.parsePort != 0 {
+		} else if s.opt.ParseHost != "" && s.opt.ParsePort != 0 {
 			s.parserBinlog(ctx)
 		}
 	}
@@ -876,8 +998,8 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 	count := len(s.recordSets.All())
 	var trans []*Record
-	if s.opt.tranBatch > 1 {
-		trans = make([]*Record, 0, s.opt.tranBatch)
+	if s.opt.TranBatch > 1 {
+		trans = make([]*Record, 0, s.opt.TranBatch)
 	}
 
 	// 用于事务. 判断是否为DML语句
@@ -892,22 +1014,22 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 		s.SetMyProcessInfo(record.Sql, time.Now(), float64(i)/float64(count))
 
-		if s.opt.tranBatch > 1 {
+		if s.opt.TranBatch > 1 {
 			// 非DML操作时,执行并清空事务集合
 			switch record.Type.(type) {
 			case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
-				if len(trans) < s.opt.tranBatch {
+				if len(trans) < s.opt.TranBatch {
 					trans = append(trans, record)
 				} else {
 					s.executeTransaction(trans)
 					trans = nil
 					trans = append(trans, record)
 
-					if s.opt.sleep > 0 && s.opt.sleepRows > 0 {
-						if s.opt.sleepRows == 1 {
-							mysqlSleep(s.opt.sleep)
-						} else if i%s.opt.sleepRows == 0 {
-							mysqlSleep(s.opt.sleep)
+					if s.opt.Sleep > 0 && s.opt.SleepRows > 0 {
+						if s.opt.SleepRows == 1 {
+							mysqlSleep(s.opt.Sleep)
+						} else if i%s.opt.SleepRows == 0 {
+							mysqlSleep(s.opt.Sleep)
 						}
 					}
 				}
@@ -930,7 +1052,7 @@ func (s *session) executeAllStatement(ctx context.Context) {
 
 				// s.executeRemoteCommand(record)
 
-				if len(trans) < s.opt.tranBatch {
+				if len(trans) < s.opt.TranBatch {
 					trans = append(trans, record)
 				} else {
 					s.executeTransaction(trans)
@@ -958,11 +1080,11 @@ func (s *session) executeAllStatement(ctx context.Context) {
 				// s.executeTransaction(trans)
 				// trans = nil
 
-				if s.opt.sleep > 0 && s.opt.sleepRows > 0 {
-					if s.opt.sleepRows == 1 {
-						mysqlSleep(s.opt.sleep)
-					} else if i%s.opt.sleepRows == 0 {
-						mysqlSleep(s.opt.sleep)
+				if s.opt.Sleep > 0 && s.opt.SleepRows > 0 {
+					if s.opt.SleepRows == 1 {
+						mysqlSleep(s.opt.Sleep)
+					} else if i%s.opt.SleepRows == 0 {
+						mysqlSleep(s.opt.Sleep)
 					}
 				}
 			}
@@ -984,16 +1106,16 @@ func (s *session) executeAllStatement(ctx context.Context) {
 			break
 		}
 
-		if s.opt.tranBatch <= 1 && s.opt.sleep > 0 && s.opt.sleepRows > 0 {
-			if s.opt.sleepRows == 1 {
-				mysqlSleep(s.opt.sleep)
-			} else if i%s.opt.sleepRows == 0 {
-				mysqlSleep(s.opt.sleep)
+		if s.opt.TranBatch <= 1 && s.opt.Sleep > 0 && s.opt.SleepRows > 0 {
+			if s.opt.SleepRows == 1 {
+				mysqlSleep(s.opt.Sleep)
+			} else if i%s.opt.SleepRows == 0 {
+				mysqlSleep(s.opt.Sleep)
 			}
 		}
 	}
 
-	if !s.hasErrorBefore() && s.opt.tranBatch > 1 && len(trans) > 0 {
+	if !s.hasErrorBefore() && s.opt.TranBatch > 1 && len(trans) > 0 {
 		s.executeTransaction(trans)
 	}
 	trans = nil
@@ -1424,7 +1546,7 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 
 	start := time.Now()
 
-	if record.useOsc {
+	if record.UseOsc {
 		if s.ghost.GhostOn {
 			log.Infof("con:%d use gh-ost", s.sessionVars.ConnectionID)
 			s.mysqlExecuteAlterTableGhost(record)
@@ -1571,7 +1693,7 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 
 	sql := "SHOW MASTER STATUS;"
 	if s.isMiddleware() {
-		sql = s.opt.middlewareExtend + sql
+		sql = s.opt.MiddlewareExtend + sql
 	}
 
 	var r MasterStatus
@@ -1756,7 +1878,7 @@ func (s *session) fetchThreadID() uint32 {
 	var threadId uint64
 	sql := "select connection_id();"
 	if s.isMiddleware() {
-		sql = s.opt.middlewareExtend + sql
+		sql = s.opt.MiddlewareExtend + sql
 	}
 
 	rows, err := s.raw(sql)
@@ -1999,34 +2121,34 @@ func (s *session) parseOptions(sql string) {
 		Execute:        viper.GetBool("execute"),
 		Backup:         viper.GetBool("backup"),
 		IgnoreWarnings: viper.GetBool("ignoreWarnings"),
-		sleep:          viper.GetInt("sleep"),
-		sleepRows:      viper.GetInt("sleepRows"),
+		Sleep:          viper.GetInt("sleep"),
+		SleepRows:      viper.GetInt("sleepRows"),
 
-		middlewareExtend: viper.GetString("middlewareExtend"),
-		middlewareDB:     viper.GetString("middlewareDB"),
-		parseHost:        viper.GetString("parseHost"),
-		parsePort:        viper.GetInt("parsePort"),
+		MiddlewareExtend: viper.GetString("middlewareExtend"),
+		MiddlewareDB:     viper.GetString("middlewareDB"),
+		ParseHost:        viper.GetString("parseHost"),
+		ParsePort:        viper.GetInt("parsePort"),
 
-		fingerprint: viper.GetBool("fingerprint"),
+		Fingerprint: viper.GetBool("fingerprint"),
 
 		Print: viper.GetBool("queryPrint"),
 
-		split:        viper.GetBool("split"),
+		Split:        viper.GetBool("split"),
 		RealRowCount: viper.GetBool("realRowCount"),
 
-		db: viper.GetString("db"),
+		DB: viper.GetString("db"),
 
 		// 连接加密
-		ssl:     viper.GetString("ssl"),
-		sslCA:   viper.GetString("sslCa"),
-		sslCert: viper.GetString("sslCert"),
-		sslKey:  viper.GetString("sslKey"),
+		Ssl:     viper.GetString("ssl"),
+		SslCA:   viper.GetString("sslCa"),
+		SslCert: viper.GetString("sslCert"),
+		SslKey:  viper.GetString("sslKey"),
 
 		// 开启事务功能，设置一次提交多少记录
-		tranBatch: viper.GetInt("trans"),
+		TranBatch: viper.GetInt("trans"),
 	}
 
-	if s.opt.split || s.opt.Check || s.opt.Print {
+	if s.opt.Split || s.opt.Check || s.opt.Print {
 		s.opt.Execute = false
 		s.opt.Backup = false
 
@@ -2048,35 +2170,35 @@ func (s *session) parseOptions(sql string) {
 // https://dev.mysql.com/doc/refman/5.7/en/connection-options.html#option_general_ssl-mode
 func (s *session) getTLSConfig() (string, error) {
 	tlsValue := "false"
-	s.opt.ssl = strings.ToLower(s.opt.ssl)
-	switch s.opt.ssl {
+	s.opt.Ssl = strings.ToLower(s.opt.Ssl)
+	switch s.opt.Ssl {
 	case "preferred", "true":
 		tlsValue = "true"
 	case "required":
 		tlsValue = "skip-verify"
 	case "verify_ca", "verify_identity":
 		var errMsg string
-		if s.opt.sslCA == "" {
+		if s.opt.SslCA == "" {
 			errMsg = "required CA file in PEM format."
 		}
-		if s.opt.sslCert == "" {
+		if s.opt.SslCert == "" {
 			errMsg += "required X509 cert in PEM format."
 		}
-		if s.opt.sslCert == "" {
+		if s.opt.SslCert == "" {
 			errMsg += "required X509 key in PEM format."
 		}
 		if errMsg != "" {
 			return "", fmt.Errorf("con:%d %s", s.sessionVars.ConnectionID, errMsg)
 		}
 
-		if !Exist(s.opt.sslCA) {
-			errMsg = fmt.Sprintf("file: %s cannot open.", s.opt.sslCA)
+		if !Exist(s.opt.SslCA) {
+			errMsg = fmt.Sprintf("file: %s cannot open.", s.opt.SslCA)
 		}
-		if !Exist(s.opt.sslCert) {
-			errMsg += fmt.Sprintf("file: %s cannot open.", s.opt.sslCA)
+		if !Exist(s.opt.SslCert) {
+			errMsg += fmt.Sprintf("file: %s cannot open.", s.opt.SslCA)
 		}
-		if !Exist(s.opt.sslKey) {
-			errMsg += fmt.Sprintf("file: %s cannot open.", s.opt.sslCA)
+		if !Exist(s.opt.SslKey) {
+			errMsg += fmt.Sprintf("file: %s cannot open.", s.opt.SslCA)
 		}
 
 		if errMsg != "" {
@@ -2091,7 +2213,7 @@ func (s *session) getTLSConfig() (string, error) {
 		tlsValue = strings.Replace(tlsValue, ".", "_", -1)
 
 		rootCertPool := x509.NewCertPool()
-		pem, err := ioutil.ReadFile(s.opt.sslCA)
+		pem, err := ioutil.ReadFile(s.opt.SslCA)
 		if err != nil {
 			return "", fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		}
@@ -2100,7 +2222,7 @@ func (s *session) getTLSConfig() (string, error) {
 		}
 
 		clientCert := make([]tls.Certificate, 0, 1)
-		certs, err := tls.LoadX509KeyPair(s.opt.sslCert, s.opt.sslKey)
+		certs, err := tls.LoadX509KeyPair(s.opt.SslCert, s.opt.SslKey)
 		if err != nil {
 			return "", fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 		}
@@ -2110,7 +2232,7 @@ func (s *session) getTLSConfig() (string, error) {
 			// ServerName:         s.opt.host,
 			RootCAs:            rootCertPool,
 			Certificates:       clientCert,
-			InsecureSkipVerify: s.opt.ssl == "verify_ca",
+			InsecureSkipVerify: s.opt.Ssl == "verify_ca",
 		})
 
 	default:
@@ -3018,7 +3140,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			s.checkAlterUseOsc(table)
 		} else {
 			hasRenameTable = true
-			s.myRecord.useOsc = false
+			s.myRecord.UseOsc = false
 			break
 		}
 	}
@@ -3069,7 +3191,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			s.appendErrorNo(ErCantChangeColumn, alter.OldColumnName.String())
 
 			// 如果使用pt-osc,且非第一条语句使用了change命令,则禁止
-			if i > 0 && s.myRecord.useOsc && s.osc.OscOn && !s.ghost.GhostOn {
+			if i > 0 && s.myRecord.UseOsc && s.osc.OscOn && !s.ghost.GhostOn {
 				s.appendErrorMessage("Can't execute this sql,the renamed columns' data maybe lost(pt-osc have a bug)!")
 			}
 			s.checkChangeColumn(table, alter)
@@ -6191,7 +6313,7 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 		var explain []string
 
 		if s.isMiddleware() {
-			explain = append(explain, s.opt.middlewareExtend)
+			explain = append(explain, s.opt.MiddlewareExtend)
 		}
 
 		explain = append(explain, "EXPLAIN ")
@@ -7437,7 +7559,7 @@ func (s *session) getTableInfoByTableSource(tableList []*ast.TableSource) (table
 	return tableInfoList
 }
 func (s *session) isMiddleware() bool {
-	return s.opt.middlewareExtend != ""
+	return s.opt.MiddlewareExtend != ""
 }
 
 func (s *session) executeKillStmt(node *ast.KillStmt) ([]sqlexec.RecordSet, error) {

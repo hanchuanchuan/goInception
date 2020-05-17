@@ -61,14 +61,14 @@ var regGhostPercent *regexp.Regexp = regexp.MustCompile(`^Copy:.*?(\d+).\d+%;.*?
 
 func (s *session) checkAlterUseOsc(t *TableInfo) {
 	if (s.osc.OscOn || s.ghost.GhostOn) && (s.osc.OscMinTableSize == 0 || t.TableSize >= s.osc.OscMinTableSize) {
-		s.myRecord.useOsc = true
+		s.myRecord.UseOsc = true
 	} else {
-		s.myRecord.useOsc = false
+		s.myRecord.UseOsc = false
 	}
 }
 
 func (s *session) mysqlComputeSqlSha1(r *Record) {
-	if !r.useOsc || r.Sqlsha1 != "" {
+	if !r.UseOsc || r.Sqlsha1 != "" {
 		return
 	}
 

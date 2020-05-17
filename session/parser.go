@@ -215,8 +215,8 @@ func (s *session) parserBinlog(ctx context.Context) {
 		port uint16
 	)
 	if s.isMiddleware() {
-		host = s.opt.parseHost
-		port = uint16(s.opt.parsePort)
+		host = s.opt.ParseHost
+		port = uint16(s.opt.ParsePort)
 	} else {
 		host = s.opt.Host
 		port = uint16(s.opt.Port)
@@ -366,7 +366,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 			} else {
 				break
 			}
-		} else if s.opt.tranBatch > 1 {
+		} else if s.opt.TranBatch > 1 {
 			if record.AffectedRows <= changeRows {
 				if record.AffectedRows > 0 {
 					record.StageStatus = StatusBackupOK

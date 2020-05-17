@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
+	"github.com/hanchuanchuan/inception-core/config"
 	. "github.com/pingcap/check"
 	"github.com/pingcap/errors"
 )
@@ -58,7 +58,7 @@ func (ts *TidbTestSuite) SetUpSuite(c *C) {
 	cfg.Port = 4001
 	cfg.Status.ReportStatus = true
 	cfg.Status.StatusPort = 10090
-	cfg.Performance.TCPKeepAlive = true
+	// cfg.Performance.TCPKeepAlive = true
 
 	server, err := NewServer(cfg, ts.tidbdrv)
 	c.Assert(err, IsNil)

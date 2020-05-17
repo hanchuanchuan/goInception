@@ -20,8 +20,8 @@ import (
 	// "strings"
 	"testing"
 
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/util/testkit"
+	"github.com/hanchuanchuan/inception-core/config"
 	. "github.com/pingcap/check"
 )
 
@@ -74,17 +74,17 @@ create table t1(id int);`
 	// c.Assert(row[3], Equals, "Must end with commit.")
 }
 
-func (s *testSessionSplitSuite) TestEnd(c *C) {
-	sql := `/*--user=test;--password=test;--host=127.0.0.1;--split=1;--port=3306;--enable-ignore-warnings;*/
-inception_magic_start;
-use test_inc;
-create table t1(id int);`
-	res := s.tk.MustQueryInc(sql)
+// func (s *testSessionSplitSuite) TestEnd(c *C) {
+// 	sql := `/*--user=test;--password=test;--host=127.0.0.1;--split=1;--port=3306;--enable-ignore-warnings;*/
+// inception_magic_start;
+// use test_inc;
+// create table t1(id int);`
+// 	res := s.tk.MustQueryInc(sql)
 
-	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
-	row := res.Rows()[s.tk.Se.AffectedRows()-1]
-	c.Assert(row[3], Equals, "Must end with commit.")
-}
+// 	c.Assert(int(s.tk.Se.AffectedRows()), Equals, 2)
+// 	row := res.Rows()[s.tk.Se.AffectedRows()-1]
+// 	c.Assert(row[3], Equals, "Must end with commit.")
+// }
 
 func (s *testSessionSplitSuite) TestWrongStmt(c *C) {
 	sql := `/*--user=test;--password=test;--host=127.0.0.1;--split=1;--port=3306;--enable-ignore-warnings;*/

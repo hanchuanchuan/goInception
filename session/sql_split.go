@@ -16,7 +16,7 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 	sql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("splitCommand")
 
-	if !s.opt.split {
+	if !s.opt.Split {
 		return nil, nil
 	}
 

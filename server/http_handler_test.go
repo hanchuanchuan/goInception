@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/session"
@@ -30,6 +29,7 @@ import (
 	"github.com/hanchuanchuan/goInception/tablecodec"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/codec"
+	"github.com/hanchuanchuan/inception-core/config"
 	. "github.com/pingcap/check"
 )
 

@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanchuanchuan/goInception/config"
+	myconfig "github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/ddl"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
@@ -40,9 +40,10 @@ import (
 	"github.com/hanchuanchuan/goInception/store/tikv/gcworker"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util"
-	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/hanchuanchuan/goInception/util/printer"
 	"github.com/hanchuanchuan/goInception/util/signal"
+	"github.com/hanchuanchuan/inception-core/config"
+	"github.com/hanchuanchuan/inception-core/util/logutil"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"
 	goMysqlLog "github.com/siddontang/go-log/log"
@@ -282,12 +283,12 @@ func overrideConfig() {
 	}
 
 	// PROXY Protocol
-	if actualFlags[nmProxyProtocolNetworks] {
-		cfg.ProxyProtocol.Networks = *proxyProtocolNetworks
-	}
-	if actualFlags[nmProxyProtocolHeaderTimeout] {
-		cfg.ProxyProtocol.HeaderTimeout = *proxyProtocolHeaderTimeout
-	}
+	// if actualFlags[nmProxyProtocolNetworks] {
+	// 	cfg.ProxyProtocol.Networks = *proxyProtocolNetworks
+	// }
+	// if actualFlags[nmProxyProtocolHeaderTimeout] {
+	// 	cfg.ProxyProtocol.HeaderTimeout = *proxyProtocolHeaderTimeout
+	// }
 }
 
 func validateConfig() {
@@ -309,10 +310,10 @@ func validateConfig() {
 	// 	log.Errorf("can't disable DDL on mocktikv")
 	// 	os.Exit(-1)
 	// }
-	if cfg.Log.File.MaxSize > config.MaxLogFileSize {
-		log.Errorf("log max-size should not be larger than %d MB", config.MaxLogFileSize)
-		os.Exit(-1)
-	}
+	// if cfg.Log.File.MaxSize > config.MaxLogFileSize {
+	// 	log.Errorf("log max-size should not be larger than %d MB", config.MaxLogFileSize)
+	// 	os.Exit(-1)
+	// }
 	cfg.OOMAction = strings.ToLower(cfg.OOMAction)
 
 	// lower_case_table_names is allowed to be 0, 1, 2
@@ -323,34 +324,48 @@ func validateConfig() {
 }
 
 func setGlobalVars() {
+	performance := myconfig.Performance{
+		TCPKeepAlive: false,
+		CrossJoin:    true,
+		// 设置0s时关闭统计信息更新
+		StatsLease:     "0s",
+		RunAutoAnalyze: false,
+		StmtCountLimit: 5000,
+		// 统计直方图采样率,为0时不作采样
+		FeedbackProbability: 0.0,
+		// 内存最大采样数
+		QueryFeedbackLimit:  0,
+		PseudoEstimateRatio: 0.8,
+		ForcePriority:       "NO_PRIORITY",
+	}
 	ddlLeaseDuration := parseDuration(cfg.Lease)
 	session.SetSchemaLease(ddlLeaseDuration)
-	runtime.GOMAXPROCS(int(cfg.Performance.MaxProcs))
-	statsLeaseDuration := parseDuration(cfg.Performance.StatsLease)
+	runtime.GOMAXPROCS(int(performance.MaxProcs))
+	statsLeaseDuration := parseDuration(performance.StatsLease)
 	session.SetStatsLease(statsLeaseDuration)
 
-	domain.RunAutoAnalyze = cfg.Performance.RunAutoAnalyze
-	statistics.FeedbackProbability = cfg.Performance.FeedbackProbability
-	statistics.MaxQueryFeedbackCount = int(cfg.Performance.QueryFeedbackLimit)
-	statistics.RatioOfPseudoEstimate = cfg.Performance.PseudoEstimateRatio
+	domain.RunAutoAnalyze = performance.RunAutoAnalyze
+	statistics.FeedbackProbability = performance.FeedbackProbability
+	statistics.MaxQueryFeedbackCount = int(performance.QueryFeedbackLimit)
+	statistics.RatioOfPseudoEstimate = performance.PseudoEstimateRatio
 	ddl.RunWorker = cfg.RunDDL
 	ddl.EnableSplitTableRegion = cfg.SplitTable
-	plannercore.AllowCartesianProduct = cfg.Performance.CrossJoin
+	plannercore.AllowCartesianProduct = performance.CrossJoin
 	// 权限参数冗余设置,开启任一鉴权即可,默认跳过鉴权
 	skip := cfg.SkipGrantTable && cfg.Security.SkipGrantTable && cfg.Inc.SkipGrantTable
 	cfg.Security.SkipGrantTable = skip
 	cfg.Inc.SkipGrantTable = skip
 	cfg.SkipGrantTable = skip
 	privileges.SkipWithGrant = skip
-	variable.ForcePriority = int32(mysql.Str2Priority(cfg.Performance.ForcePriority))
+	variable.ForcePriority = int32(mysql.Str2Priority(performance.ForcePriority))
 
 	variable.SysVars[variable.TIDBMemQuotaQuery].Value = strconv.FormatInt(cfg.MemQuotaQuery, 10)
 	variable.SysVars["lower_case_table_names"].Value = strconv.Itoa(cfg.LowerCaseTableNames)
 
-	plannercore.SetPreparedPlanCache(cfg.PreparedPlanCache.Enabled)
-	if plannercore.PreparedPlanCacheEnabled() {
-		plannercore.PreparedPlanCacheCapacity = cfg.PreparedPlanCache.Capacity
-	}
+	plannercore.SetPreparedPlanCache(false)
+	// if plannercore.PreparedPlanCacheEnabled() {
+	// 	plannercore.PreparedPlanCacheCapacity = cfg.PreparedPlanCache.Capacity
+	// }
 
 	if cfg.TiKVClient.GrpcConnectionCount > 0 {
 		tikv.MaxConnectionCount = cfg.TiKVClient.GrpcConnectionCount

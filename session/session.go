@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/kv"
@@ -54,6 +53,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/kvcache"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/timeutil"
+	"github.com/hanchuanchuan/inception-core/config"
 	"github.com/ngaut/pools"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-binlog"

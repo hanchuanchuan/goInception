@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/kv"
@@ -34,6 +33,7 @@ import (
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/chunk"
+	"github.com/hanchuanchuan/inception-core/config"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -171,13 +171,13 @@ func runStmt(ctx context.Context, sctx sessionctx.Context, s ast.Statement) (ast
 	} else {
 		// If the user insert, insert, insert ... but never commit, TiDB would OOM.
 		// So we limit the statement count in a transaction here.
-		history := GetHistory(sctx)
-		if history.Count() > int(config.GetGlobalConfig().Performance.StmtCountLimit) {
-			err1 := se.RollbackTxn(ctx)
-			terror.Log(errors.Trace(err1))
-			return rs, errors.Errorf("statement count %d exceeds the transaction limitation, autocommit = %t",
-				history.Count(), sctx.GetSessionVars().IsAutocommit())
-		}
+		// history := GetHistory(sctx)
+		// if history.Count() > int(config.GetGlobalConfig().Performance.StmtCountLimit) {
+		// 	err1 := se.RollbackTxn(ctx)
+		// 	terror.Log(errors.Trace(err1))
+		// 	return rs, errors.Errorf("statement count %d exceeds the transaction limitation, autocommit = %t",
+		// 		history.Count(), sctx.GetSessionVars().IsAutocommit())
+		// }
 	}
 	return rs, errors.Trace(err)
 }

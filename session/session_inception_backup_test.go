@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/goInception/config"
+	"github.com/hanchuanchuan/inception-core/config"
 	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 )

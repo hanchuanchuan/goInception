@@ -90,7 +90,7 @@ type Record struct {
 	ExecComplete bool
 
 	// 是否开启OSC
-	useOsc bool
+	UseOsc bool
 
 	// update多表时,记录多余的表
 	// update多表时,默认set第一列的表为主表,其余表才会记录到该处

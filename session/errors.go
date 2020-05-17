@@ -21,9 +21,9 @@ import (
 	"fmt"
 	// "strconv"
 
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/terror"
+	"github.com/hanchuanchuan/inception-core/config"
 )
 
 //go:generate stringer -type=ErrorCode

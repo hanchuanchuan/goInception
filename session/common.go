@@ -118,39 +118,39 @@ type SourceOptions struct {
 
 	// 每次执行后休眠多少毫秒. 用以降低对线上数据库的影响，特别是针对大量写入的操作.
 	// 单位为毫秒，最小值为0, 最大值为100秒，也就是100000毫秒
-	sleep int
+	Sleep int
 	// 执行多条后休眠, 最小值1,默认值1
-	sleepRows int
+	SleepRows int
 
 	// 仅供第三方扩展使用! 设置该字符串会跳过binlog解析!
-	middlewareExtend string
-	middlewareDB     string
+	MiddlewareExtend string
+	MiddlewareDB     string
 	// 原始主机和端口,用以解析binlog
-	parseHost string
-	parsePort int
+	ParseHost string
+	ParsePort int
 
 	// sql指纹功能,可在调用参数中设置,也可全局设置,值取并集
-	fingerprint bool
+	Fingerprint bool
 
 	// 打印语法树功能
 	Print bool
 
 	// DDL/DML分隔功能
-	split bool
+	Split bool
 
 	// 使用count(*)计算受影响行数
 	RealRowCount bool
 
 	// 连接的数据库,默认为mysql
-	db string
+	DB string
 
-	ssl     string // 连接加密
-	sslCA   string // 证书颁发机构（CA）证书
-	sslCert string // 客户端公共密钥证书
-	sslKey  string // 客户端私钥文件
+	Ssl     string // 连接加密
+	SslCA   string // 证书颁发机构（CA）证书
+	SslCert string // 客户端公共密钥证书
+	SslKey  string // 客户端私钥文件
 
 	// 事务支持,一次执行多少条
-	tranBatch int
+	TranBatch int
 
 	// // 扩展参数,支持一次性会话设置
 	// extendParams string

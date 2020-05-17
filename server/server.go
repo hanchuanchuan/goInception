@@ -36,6 +36,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+
 	// For pprof
 	_ "net/http/pprof"
 	"sync"
@@ -43,11 +44,11 @@ import (
 	"time"
 
 	"github.com/blacktear23/go-proxyprotocol"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/util"
+	"github.com/hanchuanchuan/inception-core/config"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -117,13 +118,13 @@ func (s *Server) releaseToken(token *Token) {
 // It allocates a connection ID and random salt data for authentication.
 func (s *Server) newConn(conn net.Conn) *clientConn {
 	cc := newClientConn(s)
-	if s.cfg.Performance.TCPKeepAlive {
-		if tcpConn, ok := conn.(*net.TCPConn); ok {
-			if err := tcpConn.SetKeepAlive(true); err != nil {
-				log.Error("failed to set tcp keep alive option:", err)
-			}
-		}
-	}
+	// if s.cfg.Performance.TCPKeepAlive {
+	// 	if tcpConn, ok := conn.(*net.TCPConn); ok {
+	// 		if err := tcpConn.SetKeepAlive(true); err != nil {
+	// 			log.Error("failed to set tcp keep alive option:", err)
+	// 		}
+	// 	}
+	// }
 	cc.setConn(conn)
 	cc.salt = util.RandomBuf(20)
 	return cc
@@ -170,16 +171,16 @@ func NewServer(cfg *config.Config, driver IDriver) (*Server, error) {
 		}
 	}
 
-	if cfg.ProxyProtocol.Networks != "" {
-		pplistener, errProxy := proxyprotocol.NewListener(s.listener, cfg.ProxyProtocol.Networks,
-			int(cfg.ProxyProtocol.HeaderTimeout))
-		if errProxy != nil {
-			log.Error("ProxyProtocol Networks parameter invalid")
-			return nil, errors.Trace(errProxy)
-		}
-		log.Infof("Server is running MySQL Protocol (through PROXY Protocol) at [%s]", s.cfg.Host)
-		s.listener = pplistener
-	}
+	// if cfg.ProxyProtocol.Networks != "" {
+	// 	pplistener, errProxy := proxyprotocol.NewListener(s.listener, cfg.ProxyProtocol.Networks,
+	// 		int(cfg.ProxyProtocol.HeaderTimeout))
+	// 	if errProxy != nil {
+	// 		log.Error("ProxyProtocol Networks parameter invalid")
+	// 		return nil, errors.Trace(errProxy)
+	// 	}
+	// 	log.Infof("Server is running MySQL Protocol (through PROXY Protocol) at [%s]", s.cfg.Host)
+	// 	s.listener = pplistener
+	// }
 
 	if err != nil {
 		return nil, errors.Trace(err)

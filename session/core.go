@@ -24,12 +24,12 @@ import (
 	"time"
 
 	"github.com/hanchuanchuan/goInception/ast"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/parser"
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/hanchuanchuan/goInception/util/timeutil"
+	"github.com/hanchuanchuan/inception-core/config"
 	"github.com/jinzhu/gorm"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
@@ -202,7 +202,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
 			if s.opt != nil && s.opt.Print {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
-			} else if s.opt != nil && s.opt.split {
+			} else if s.opt != nil && s.opt.Split {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.splitSets.rc.count))
 			} else {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(len(s.recordSets.records)))
@@ -244,14 +244,14 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 
 	if s.opt.Print {
 		s.printSets = NewPrintSets()
-	} else if s.opt.split {
+	} else if s.opt.Split {
 		s.splitSets = NewSplitSets()
 	} else {
 		s.recordSets = NewRecordSets()
 	}
 
 	// sql指纹设置取并集
-	if s.opt.fingerprint {
+	if s.opt.Fingerprint {
 		s.inc.EnableFingerprint = true
 	}
 
@@ -299,7 +299,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 				log.Error(s1)
 				if s.opt != nil && s.opt.Print {
 					s.printSets.Append(2, strings.TrimSpace(s1), "", err.Error())
-				} else if s.opt != nil && s.opt.split {
+				} else if s.opt != nil && s.opt.Split {
 					s.addNewSplitNode()
 					s.splitSets.Append(strings.TrimSpace(s1), err.Error())
 				} else {
@@ -329,7 +329,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 				var err error
 				if s.opt != nil && s.opt.Print {
 					result, err = s.printCommand(ctx, stmtNode, currentSql)
-				} else if s.opt != nil && s.opt.split {
+				} else if s.opt != nil && s.opt.Split {
 					result, err = s.splitCommand(ctx, stmtNode, currentSql)
 				} else {
 					result, err = s.processCommand(ctx, stmtNode, currentSql)
@@ -347,7 +347,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 					s.appendErrorMessage("Operation has been killed!")
 					if s.opt != nil && s.opt.Print {
 						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
-					} else if s.opt != nil && s.opt.split {
+					} else if s.opt != nil && s.opt.Split {
 						s.addNewSplitNode()
 						s.splitSets.Append("", strings.TrimSpace(s.myRecord.Buf.String()))
 					} else {
@@ -387,7 +387,7 @@ func (s *session) checkOptions() error {
 		return errors.New("未配置数据源信息!")
 	}
 
-	if s.opt.split || s.opt.Check || s.opt.Print {
+	if s.opt.Split || s.opt.Check || s.opt.Print {
 		s.opt.Execute = false
 		s.opt.Backup = false
 
@@ -395,13 +395,13 @@ func (s *session) checkOptions() error {
 		s.opt.IgnoreWarnings = true
 	}
 
-	if s.opt.sleep <= 0 {
-		s.opt.sleepRows = 0
-	} else if s.opt.sleepRows < 1 {
-		s.opt.sleepRows = 1
+	if s.opt.Sleep <= 0 {
+		s.opt.SleepRows = 0
+	} else if s.opt.SleepRows < 1 {
+		s.opt.SleepRows = 1
 	}
 
-	if s.opt.split || s.opt.Print {
+	if s.opt.Split || s.opt.Print {
 		s.opt.Check = false
 	}
 
@@ -422,21 +422,21 @@ func (s *session) checkOptions() error {
 	}
 
 	var addr string
-	if s.opt.middlewareExtend == "" {
+	if s.opt.MiddlewareExtend == "" {
 		tlsValue, err := s.getTLSConfig()
 		if err != nil {
 			return err
 		}
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&tls=%s",
-			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port, s.opt.db,
+			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port, s.opt.DB,
 			s.inc.DefaultCharset, s.inc.MaxAllowedPacket, tlsValue)
 	} else {
-		s.opt.middlewareExtend = fmt.Sprintf("/*%s*/",
-			strings.Replace(s.opt.middlewareExtend, ": ", "=", 1))
+		s.opt.MiddlewareExtend = fmt.Sprintf("/*%s*/",
+			strings.Replace(s.opt.MiddlewareExtend, ": ", "=", 1))
 
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local&maxAllowedPacket=%d&maxOpen=100&maxLifetime=60",
 			s.opt.User, s.opt.Password, s.opt.Host, s.opt.Port,
-			s.opt.middlewareDB, s.inc.DefaultCharset, s.inc.MaxAllowedPacket)
+			s.opt.MiddlewareDB, s.inc.DefaultCharset, s.inc.MaxAllowedPacket)
 	}
 
 	db, err := gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
@@ -445,7 +445,7 @@ func (s *session) checkOptions() error {
 		return fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 	}
 
-	if s.opt.tranBatch > 1 {
+	if s.opt.TranBatch > 1 {
 		s.ddlDB, _ = gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
 		s.ddlDB.LogMode(false)
 	}

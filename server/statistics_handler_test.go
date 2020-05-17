@@ -18,13 +18,13 @@ import (
 	"fmt"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/statistics"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
 	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/inception-core/config"
 	. "github.com/pingcap/check"
 )
 

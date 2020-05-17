@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/util/testkit"
+	"github.com/hanchuanchuan/inception-core/config"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
 )
