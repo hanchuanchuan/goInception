@@ -1,4 +1,4 @@
-FROM golang:1.12-alpine as builder
+FROM golang:1.14-alpine as builder
 # MAINTAINER hanchuanchuan <chuanchuanhan@gmail.com>
 
 ENV TZ=Asia/Shanghai

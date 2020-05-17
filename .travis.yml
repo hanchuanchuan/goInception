@@ -3,7 +3,7 @@ language: go
 go_import_path: github.com/hanchuanchuan/goInception
 
 go:
-  - "1.12"
+  - "1.14"
 
 cache:
   apt: true
