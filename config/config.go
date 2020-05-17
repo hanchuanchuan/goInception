@@ -398,6 +398,9 @@ type Osc struct {
 	// 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
 	OscCheckAlter bool `toml:"osc_check_alter" json:"osc_check_alter"`
 
+	// 对应参数pt-online-schema-change中的参数 --set-vars lock_wait_timeout=?
+	OscLockWaitTimeout int `toml:"osc_lock_wait_timeout" json:"osc_lock_wait_timeout"`
+
 	// 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
 	OscCheckReplicationFilters bool `toml:"osc_check_replication_filters" json:"osc_check_replication_filters"`
 	// 是否检查唯一索引,默认检查,如果是,则禁止
@@ -745,6 +748,7 @@ var defaultConf = Config{
 		OscRecursionMethod:         "processlist",
 		OscMaxLag:                  3,
 		OscMaxFlowCtl:              -1,
+		OscLockWaitTimeout:         3,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
 		OscCheckUniqueKeyChange:    true,
