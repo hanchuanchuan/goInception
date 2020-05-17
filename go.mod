@@ -27,7 +27,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114083508-62a578b91654
 	github.com/hanchuanchuan/go-mysql v0.0.0-20200114082439-6d0d8d3a982e
-	github.com/hanchuanchuan/inception-core v0.0.0-20200517024959-ea1f60a4e7e4
+	github.com/hanchuanchuan/inception-core v0.0.0-20200517095426-9e30f7d26537
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5

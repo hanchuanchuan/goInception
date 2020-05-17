@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/executor"
 	"github.com/hanchuanchuan/goInception/kv"
@@ -1930,28 +1929,28 @@ func (s *testSessionSuite) TestStatementErrorInTransaction(c *C) {
 	tk.MustQuery("select * from test where a = 1 and b = 11").Check(testkit.Rows())
 }
 
-func (s *testSessionSuite) TestStatementCountLimit(c *C) {
-	tk := testkit.NewTestKitWithInit(c, s.store)
-	tk.MustExec("create table stmt_count_limit (id int)")
-	saved := config.GetGlobalConfig().Performance.StmtCountLimit
-	config.GetGlobalConfig().Performance.StmtCountLimit = 3
-	defer func() {
-		config.GetGlobalConfig().Performance.StmtCountLimit = saved
-	}()
-	tk.MustExec("begin")
-	tk.MustExec("insert into stmt_count_limit values (1)")
-	tk.MustExec("insert into stmt_count_limit values (2)")
-	_, err := tk.Exec("insert into stmt_count_limit values (3)")
-	c.Assert(err, NotNil)
+// func (s *testSessionSuite) TestStatementCountLimit(c *C) {
+// 	tk := testkit.NewTestKitWithInit(c, s.store)
+// 	tk.MustExec("create table stmt_count_limit (id int)")
+// 	saved := config.GetGlobalConfig().Performance.StmtCountLimit
+// 	config.GetGlobalConfig().Performance.StmtCountLimit = 3
+// 	defer func() {
+// 		config.GetGlobalConfig().Performance.StmtCountLimit = saved
+// 	}()
+// 	tk.MustExec("begin")
+// 	tk.MustExec("insert into stmt_count_limit values (1)")
+// 	tk.MustExec("insert into stmt_count_limit values (2)")
+// 	_, err := tk.Exec("insert into stmt_count_limit values (3)")
+// 	c.Assert(err, NotNil)
 
-	// begin is counted into history but this one is not.
-	tk.MustExec("SET SESSION autocommit = false")
-	tk.MustExec("insert into stmt_count_limit values (1)")
-	tk.MustExec("insert into stmt_count_limit values (2)")
-	tk.MustExec("insert into stmt_count_limit values (3)")
-	_, err = tk.Exec("insert into stmt_count_limit values (4)")
-	c.Assert(err, NotNil)
-}
+// 	// begin is counted into history but this one is not.
+// 	tk.MustExec("SET SESSION autocommit = false")
+// 	tk.MustExec("insert into stmt_count_limit values (1)")
+// 	tk.MustExec("insert into stmt_count_limit values (2)")
+// 	tk.MustExec("insert into stmt_count_limit values (3)")
+// 	_, err = tk.Exec("insert into stmt_count_limit values (4)")
+// 	c.Assert(err, NotNil)
+// }
 
 func (s *testSessionSuite) TestCastTimeToDate(c *C) {
 	tk := testkit.NewTestKitWithInit(c, s.store)

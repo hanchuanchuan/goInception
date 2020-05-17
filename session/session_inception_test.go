@@ -332,16 +332,16 @@ func (s *testSessionIncSuite) TestWrongDBName(c *C) {
 	}
 }
 
-func (s *testSessionIncSuite) TestEnd(c *C) {
-	res := s.tk.MustQueryInc(fmt.Sprintf(`/*%s;--check=1;--backup=0;--ignore-warnings=1;*/
-inception_magic_start;use test_inc;create table t1(id int);`, s.getAddr()))
-	s.rows = res.Rows()
-	c.Assert(s.getAffectedRows(), Equals, 3)
+// func (s *testSessionIncSuite) TestEnd(c *C) {
+// 	res := s.tk.MustQueryInc(fmt.Sprintf(`/*%s;--check=1;--backup=0;--ignore-warnings=1;*/
+// inception_magic_start;use test_inc;create table t1(id int);`, s.getAddr()))
+// 	s.rows = res.Rows()
+// 	c.Assert(s.getAffectedRows(), Equals, 3)
 
-	row := s.rows[s.getAffectedRows()-1]
-	c.Assert(row[2], Equals, "2")
-	c.Assert(row[4], Equals, "Must end with commit.")
-}
+// 	row := s.rows[s.getAffectedRows()-1]
+// 	c.Assert(row[2], Equals, "2")
+// 	c.Assert(row[4], Equals, "Must end with commit.")
+// }
 
 func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql := ""
@@ -917,7 +917,7 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
 		session.NewErr(session.ER_INDEX_NAME_UNIQ_PREFIX, "",
-			config.GetGlobalConfig().Inc.UniqIndexPrefix, "test_error_code_3"),
+			"test_error_code_3", config.GetGlobalConfig().Inc.UniqIndexPrefix),
 		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
 
 	sql = "create table test_error_code_3(a text, key (a(3073)));"
