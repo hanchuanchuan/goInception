@@ -748,7 +748,7 @@ var defaultConf = Config{
 		OscRecursionMethod:         "processlist",
 		OscMaxLag:                  3,
 		OscMaxFlowCtl:              -1,
-		OscLockWaitTimeout:         3,
+		OscLockWaitTimeout:         60,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
 		OscCheckUniqueKeyChange:    true,
