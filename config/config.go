@@ -398,7 +398,7 @@ type Osc struct {
 	// 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
 	OscCheckAlter bool `toml:"osc_check_alter" json:"osc_check_alter"`
 
-	// 对应参数pt-online-schema-change中的参数 --set-vars lock_wait_timeout=?
+	// 对应参数pt-online-schema-change中的参数 --set-vars lock_wait_timeout=60s
 	OscLockWaitTimeout int `toml:"osc_lock_wait_timeout" json:"osc_lock_wait_timeout"`
 
 	// 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
