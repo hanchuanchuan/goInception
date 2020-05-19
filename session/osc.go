@@ -113,6 +113,7 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	if s.osc.OscPrintSql {
 		buf.WriteString(" --print ")
 	}
+	buf.WriteString(fmt.Sprintf("  --set-vars lock_wait_timeout=%d", s.osc.OscLockWaitTimeout))
 	buf.WriteString(" --charset=utf8 ")
 	buf.WriteString(" --chunk-time ")
 	buf.WriteString(fmt.Sprintf("%g ", s.osc.OscChunkTime))
