@@ -52,6 +52,17 @@ type SessionManager interface {
 	ShowOscProcessList() map[string]*OscProcessInfo
 }
 
+// ProcessOperation Process operation
+type ProcessOperation int
+
+// Process operation.
+const (
+	ProcessOperationNone ProcessOperation = iota
+	ProcessOperationKill
+	ProcessOperationPause
+	ProcessOperationResume
+)
+
 // OscProcessInfo is a struct used for show osc processlist statement.
 type OscProcessInfo struct {
 	ID uint64
@@ -70,4 +81,6 @@ type OscProcessInfo struct {
 
 	IsGhost bool
 	Pause   bool
+
+	PanicAbort chan ProcessOperation
 }
