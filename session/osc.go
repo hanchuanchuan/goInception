@@ -519,6 +519,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		RemainTime: "",
 		Info:       "",
 		IsGhost:    true,
+		PanicAbort: make(chan util.ProcessOperation),
 	}
 	s.sessionManager.AddOscProcess(p)
 
@@ -568,6 +569,24 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 	migrator.Log = bytes.NewBufferString("")
 
+	// 监听Kill操作
+	// go func() {
+	// 	oper := <-p.PanicAbort
+	// 	switch oper {
+	// 	case util.ProcessOperationKill:
+	// 		migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
+	// 			p.Percent, p.RemainTime)
+	// 		done = true
+	// 	case util.ProcessOperationPause:
+	// 		if migrationContext.ThrottleCommandedByUser == 0 {
+	// 			atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
+	// 		}
+	// 	case util.ProcessOperationResume:
+	// 		if migrationContext.ThrottleCommandedByUser == 1 {
+	// 			atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
+	// 		}
+	// 	}
+	// }()
 	go f(bufio.NewReader(migrator.Log))
 
 	// if config.GetGlobalConfig().Log.Level == "debug" ||
@@ -586,6 +605,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		s.appendErrorMessage(err.Error())
 	}
 
+	close(p.PanicAbort)
 	done = true
 
 	if s.hasError() {
@@ -642,6 +662,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		Percent:    0,
 		RemainTime: "",
 		Info:       "",
+		PanicAbort: make(chan util.ProcessOperation),
 	}
 	s.sessionManager.AddOscProcess(p)
 
@@ -666,17 +687,21 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 			buf.WriteString(line)
 			buf.WriteString("\n")
 			s.mysqlAnalyzeOscOutput(line, p)
-			if p.Killed {
-				if err := cmd.Process.Kill(); err != nil {
-					s.appendErrorMessage(err.Error())
-				} else {
-					s.appendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
-						p.Percent, p.RemainTime))
-				}
-			}
 		}
 	}
 
+	// 监听Kill操作
+	go func() {
+		oper := <-p.PanicAbort
+		if oper == util.ProcessOperationKill {
+			if err := cmd.Process.Kill(); err != nil {
+				s.appendErrorMessage(err.Error())
+			} else {
+				s.appendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
+					p.Percent, p.RemainTime))
+			}
+		}
+	}()
 	go f(reader)
 	go f(reader2)
 
@@ -689,6 +714,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		log.Errorf("%s %s", commandName, params)
 		log.Error(err)
 	}
+
 	if p.Percent < 100 || s.hasError() {
 		s.recordSets.MaxLevel = 2
 		r.ErrLevel = 2
@@ -703,6 +729,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		r.Buf.WriteString("\n")
 	}
 
+	close(p.PanicAbort)
 	// 执行完成或中止后清理osc进程信息
 	// pl := s.sessionManager.ShowOscProcessList()
 	// delete(pl, p.Sqlsha1)
