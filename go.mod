@@ -23,7 +23,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
-	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a // indirect
+	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/uuid v3.2.0+incompatible
@@ -33,7 +33,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114083508-62a578b91654
 	github.com/hanchuanchuan/go-mysql v0.0.0-20200114082439-6d0d8d3a982e
-	github.com/hanchuanchuan/inception-core v0.0.0-20200517095426-9e30f7d26537
+	github.com/hanchuanchuan/inception-core v0.0.0-20200524123502-2c3cf67af97b
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5
@@ -56,8 +56,6 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
 	github.com/unrolled/render v0.0.0-20180914162206-b9786414de4d // indirect
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
-	go.uber.org/atomic v1.3.2 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 	golang.org/x/text v0.3.2

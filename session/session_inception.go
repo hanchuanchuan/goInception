@@ -2110,7 +2110,7 @@ func (s *session) parseOptions(sql string) {
 		Sleep:          viper.GetInt("sleep"),
 		SleepRows:      viper.GetInt("sleepRows"),
 
-		MiddlewareExtend: viper.GetString("middlewareExtend"),
+		MiddlewareExtend: viper.GetString("MiddlewareExtend"),
 		MiddlewareDB:     viper.GetString("middlewareDB"),
 		ParseHost:        viper.GetString("parseHost"),
 		ParsePort:        viper.GetInt("parsePort"),
@@ -6304,7 +6304,7 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	var explain []string
 
 	if s.isMiddleware() {
-		explain = append(explain, s.opt.middlewareExtend)
+		explain = append(explain, s.opt.MiddlewareExtend)
 	}
 
 	explain = append(explain, "EXPLAIN ")
