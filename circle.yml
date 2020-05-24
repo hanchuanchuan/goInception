@@ -11,7 +11,7 @@ jobs:
       ignore: gh-pages
 
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.12
       - image: circleci/mysql:5.7
         command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111
         environment:
