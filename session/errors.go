@@ -1047,9 +1047,8 @@ func (e ErrorCode) String() string {
 	return ""
 }
 
-// CheckAuditSetting 自动校准旧的审核规则和自定义规则
-func CheckAuditSetting(cnf *config.Config) {
-	return
+// TestCheckAuditSetting 自动校准旧的审核规则和自定义规则
+func TestCheckAuditSetting(cnf *config.Config) {
 
 	if cnf.Inc.CheckInsertField {
 		cnf.IncLevel.ER_WITH_INSERT_FIELD = int8(GetErrorLevel(ER_WITH_INSERT_FIELD))
@@ -1238,9 +1237,9 @@ func CheckAuditSetting(cnf *config.Config) {
 	}
 
 	if cnf.Inc.EnableChangeColumn {
-		cnf.IncLevel.ErCantChangeColumn = int8(GetErrorLevel(ErCantChangeColumn))
-	} else {
 		cnf.IncLevel.ErCantChangeColumn = 0
+	} else {
+		cnf.IncLevel.ErCantChangeColumn = int8(GetErrorLevel(ErCantChangeColumn))
 	}
 
 	if !cnf.Inc.EnableBlobNotNull {

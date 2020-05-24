@@ -64,18 +64,17 @@ func (s *session) raw(sqlStr string) (rows *sql.Rows, err error) {
 		rows, err = s.db.DB().Query(sqlStr)
 		if err == nil {
 			return
-		} else {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			if err == mysqlDriver.ErrInvalidConn {
-				err1 := s.initConnection()
-				if err1 != nil {
-					return rows, err1
-				}
-				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
-				continue
-			} else {
-				return
+		}
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if err == mysqlDriver.ErrInvalidConn {
+			err1 := s.initConnection()
+			if err1 != nil {
+				return rows, err1
 			}
+			s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+			continue
+		} else {
+			return
 		}
 	}
 	return
@@ -88,22 +87,21 @@ func (s *session) exec(sqlStr string, retry bool) (res sql.Result, err error) {
 		res, err = s.db.DB().Exec(sqlStr)
 		if err == nil {
 			return
-		} else {
-			log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sqlStr)
-			if err == mysqlDriver.ErrInvalidConn {
-				err1 := s.initConnection()
-				if err1 != nil {
-					return res, err1
-				}
-				if retry {
-					s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
-					continue
-				} else {
-					return
-				}
-			}
-			return
 		}
+		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sqlStr)
+		if err == mysqlDriver.ErrInvalidConn {
+			err1 := s.initConnection()
+			if err1 != nil {
+				return res, err1
+			}
+			if retry {
+				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+				continue
+			} else {
+				return
+			}
+		}
+		return
 	}
 	return
 }
@@ -115,22 +113,21 @@ func (s *session) execDDL(sqlStr string, retry bool) (res sql.Result, err error)
 		res, err = s.ddlDB.DB().Exec(sqlStr)
 		if err == nil {
 			return
-		} else {
-			log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sqlStr)
-			if err == mysqlDriver.ErrInvalidConn {
-				err1 := s.initConnection()
-				if err1 != nil {
-					return res, err1
-				}
-				if retry {
-					s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
-					continue
-				} else {
-					return
-				}
-			}
-			return
 		}
+		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sqlStr)
+		if err == mysqlDriver.ErrInvalidConn {
+			err1 := s.initConnection()
+			if err1 != nil {
+				return res, err1
+			}
+			if retry {
+				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+				continue
+			} else {
+				return
+			}
+		}
+		return
 	}
 	return
 }
@@ -142,19 +139,17 @@ func (s *session) rawScan(sqlStr string, dest interface{}) (err error) {
 		err = s.db.Raw(sqlStr).Scan(dest).Error
 		if err == nil {
 			return
-		} else {
-			if err == mysqlDriver.ErrInvalidConn {
-				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-				err1 := s.initConnection()
-				if err1 != nil {
-					return err1
-				}
-				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
-				continue
-			} else {
-				return
-			}
 		}
+		if err == mysqlDriver.ErrInvalidConn {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			err1 := s.initConnection()
+			if err1 != nil {
+				return err1
+			}
+			s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+			continue
+		}
+		return
 	}
 	return
 }
@@ -178,16 +173,16 @@ func (s *session) initConnection() (err error) {
 			// s.threadID = 0
 			log.Infof("con:%d 数据库断开重连", s.sessionVars.ConnectionID)
 			return
-		} else {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			if err != mysqlDriver.ErrInvalidConn {
-				if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-					s.appendErrorMessage(myErr.Message)
-				} else {
-					s.appendErrorMessage(err.Error())
-				}
-				return
+		}
+
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if err != mysqlDriver.ErrInvalidConn {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.appendErrorMessage(myErr.Message)
+			} else {
+				s.appendErrorMessage(err.Error())
 			}
+			return
 		}
 	}
 

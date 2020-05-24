@@ -217,7 +217,7 @@ func (s *testCommon) tearDownTest(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-	session.CheckAuditSetting(config.GetGlobalConfig())
+	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	s.runCheck("show tables")
 	c.Assert(int(s.getAffectedRows()), Equals, 2)
@@ -249,7 +249,7 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) runCheck(sql string) {
-	session.CheckAuditSetting(config.GetGlobalConfig())
+	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	if s.isAPI {
 		s.sessionService.LoadOptions(session.SourceOptions{
@@ -346,7 +346,7 @@ inception_magic_commit;`
 
 func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-	session.CheckAuditSetting(config.GetGlobalConfig())
+	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	if s.isAPI {
 		s.sessionService.LoadOptions(session.SourceOptions{
@@ -789,24 +789,18 @@ func (s *testCommon) getObjectName(sql string) (name string) {
 		case *ast.UpdateStmt:
 			return ""
 
-			tblSrc := getLeftTable(node.TableRefs.TableRefs)
-			if tblSrc == nil {
-				log.Errorf("未找到表名！！！ sql: %s", sql)
-				return ""
-			}
-			tblName, ok := tblSrc.Source.(*ast.TableName)
-			if !ok {
-				log.Infof("%#v", tblSrc.Source)
-				return ""
-			}
-
-			// for _, l := range node.List {
-			// 	originTable := l.Column.Table.L
-			// 	firstColumnName := l.Column.Name.O
-
+			// tblSrc := getLeftTable(node.TableRefs.TableRefs)
+			// if tblSrc == nil {
+			// 	log.Errorf("未找到表名！！！ sql: %s", sql)
+			// 	return ""
+			// }
+			// tblName, ok := tblSrc.Source.(*ast.TableName)
+			// if !ok {
+			// 	log.Infof("%#v", tblSrc.Source)
+			// 	return ""
 			// }
 
-			name = tblName.Name.String()
+			// name = tblName.Name.String()
 		case *ast.DeleteStmt:
 			tableRefs := node.TableRefs
 			if tableRefs == nil || tableRefs.TableRefs == nil || tableRefs.TableRefs.Right != nil {

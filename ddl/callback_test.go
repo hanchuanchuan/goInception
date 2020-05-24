@@ -14,10 +14,10 @@
 package ddl
 
 import (
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/sessionctx"
+	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )

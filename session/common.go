@@ -312,31 +312,31 @@ func (f *FieldInfo) isUnsigned() bool {
 // getDataBytes 计算数据类型字节数
 // https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html
 // return -1 表示该列无法计算数据大小
-func (col *FieldInfo) getDataBytes(dbVersion int, defaultCharset string) int {
-	if col.Type == "" {
-		log.Warnf("Can't get %s data type", col.Field)
+func (f *FieldInfo) getDataBytes(dbVersion int, defaultCharset string) int {
+	if f.Type == "" {
+		log.Warnf("Can't get %s data type", f.Field)
 		return -1
 	}
-	switch strings.ToLower(GetDataTypeBase(col.Type)) {
+	switch strings.ToLower(GetDataTypeBase(f.Type)) {
 	case "tinyint", "smallint", "mediumint",
 		"int", "integer", "bigint",
 		"double", "real", "float", "decimal",
 		"numeric", "bit":
 		// numeric
-		return numericStorageReq(col.Type)
+		return numericStorageReq(f.Type)
 
 	case "year", "date", "time", "datetime", "timestamp":
 		// date & time
-		return timeStorageReq(col.Type, dbVersion)
+		return timeStorageReq(f.Type, dbVersion)
 
 	case "char", "binary", "varchar", "varbinary", "enum", "set",
 		"geometry", "point", "linestring", "polygon":
 		// string
 		// charset := "utf8mb4"
-		if col.Collation != "" {
-			defaultCharset = strings.SplitN(col.Collation, "_", 2)[0]
+		if f.Collation != "" {
+			defaultCharset = strings.SplitN(f.Collation, "_", 2)[0]
 		}
-		return StringStorageReq(col.Type, defaultCharset)
+		return StringStorageReq(f.Type, defaultCharset)
 	case "tibyblob", "tinytext":
 		return 1<<8 - 1
 	case "blob", "text":
@@ -351,45 +351,45 @@ func (col *FieldInfo) getDataBytes(dbVersion int, defaultCharset string) int {
 	// 	// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
 	// 	return MaxKeyLength + 1
 	default:
-		log.Warnf("Type %v not support:", col.Type)
+		log.Warnf("Type %v not support:", f.Type)
 		return -1
 	}
 }
 
-func (col *FieldInfo) getDataLength(dbVersion int, defaultCharset string) int {
-	if col.Type == "" {
-		log.Warnf("Can't get %s data type", col.Field)
+func (f *FieldInfo) getDataLength(dbVersion int, defaultCharset string) int {
+	if f.Type == "" {
+		log.Warnf("Can't get %s data type", f.Field)
 		return -1
 	}
 	// get length
-	typeLength := GetDataTypeLength(col.Type)
+	typeLength := GetDataTypeLength(f.Type)
 	if typeLength[0] == -1 {
 		return 0
 	}
 
 	length := typeLength[0]
-	if col.Collation != "" {
-		defaultCharset = strings.SplitN(col.Collation, "_", 2)[0]
+	if f.Collation != "" {
+		defaultCharset = strings.SplitN(f.Collation, "_", 2)[0]
 	}
 
-	switch strings.ToLower(GetDataTypeBase(col.Type)) {
+	switch strings.ToLower(GetDataTypeBase(f.Type)) {
 	case "tinyint", "smallint", "mediumint",
 		"int", "integer", "bigint",
 		"double", "real", "float", "decimal",
 		"numeric", "bit":
 		// numeric
-		return numericStorageReq(col.Type)
+		return numericStorageReq(f.Type)
 
 	case "year", "date", "time", "datetime", "timestamp":
 		// date & time
-		return timeStorageReq(col.Type, dbVersion)
+		return timeStorageReq(f.Type, dbVersion)
 
 	case "char", "varchar", "enum", "set",
 		"geometry", "point", "linestring", "polygon":
-		return StringStorageReq(col.Type, defaultCharset)
+		return StringStorageReq(f.Type, defaultCharset)
 
 	case "tinytext", "text", "mediumtext", "longtext":
-		return StringStorageReq(col.Type, defaultCharset)
+		return StringStorageReq(f.Type, defaultCharset)
 		// 二进制不限长度
 	case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
 		return length
@@ -398,7 +398,7 @@ func (col *FieldInfo) getDataLength(dbVersion int, defaultCharset string) int {
 	// 	// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关
 	// 	return MaxKeyLength + 1
 	default:
-		log.Warnf("Type %v not support:", col.Type)
+		log.Warnf("Type %v not support:", f.Type)
 		return -1
 	}
 }

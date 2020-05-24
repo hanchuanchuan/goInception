@@ -16,9 +16,9 @@ package ast_test
 import (
 	"testing"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/parser"
+	. "github.com/pingcap/check"
 )
 
 func TestT(t *testing.T) {

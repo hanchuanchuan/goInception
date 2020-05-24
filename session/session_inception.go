@@ -235,9 +235,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 				}
 				return s.makeResult()
 
-				s.rollbackOnError(ctx)
-				log.Warnf("con:%d parse error:\n%v\n%s", connID, err, s1)
-				return nil, errors.Trace(err)
 			}
 
 			for i, stmtNode := range stmtNodes {
@@ -500,22 +497,22 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						}
 
 						return s.processCommand(ctx, stmtNode, currentSql)
+					}
+
+					var result []sqlexec.RecordSet
+					var err error
+					if s.opt != nil && s.opt.Print {
+						result, err = s.printCommand(ctx, stmtNode, currentSql)
+					} else if s.opt != nil && s.opt.Split {
+						result, err = s.splitCommand(ctx, stmtNode, currentSql)
 					} else {
-						var result []sqlexec.RecordSet
-						var err error
-						if s.opt != nil && s.opt.Print {
-							result, err = s.printCommand(ctx, stmtNode, currentSql)
-						} else if s.opt != nil && s.opt.Split {
-							result, err = s.splitCommand(ctx, stmtNode, currentSql)
-						} else {
-							result, err = s.processCommand(ctx, stmtNode, currentSql)
-						}
-						if err != nil {
-							return nil, err
-						}
-						if result != nil {
-							return result, nil
-						}
+						result, err = s.processCommand(ctx, stmtNode, currentSql)
+					}
+					if err != nil {
+						return nil, err
+					}
+					if result != nil {
+						return result, nil
 					}
 
 					// 进程Killed
@@ -584,15 +581,6 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 	}
 
 	return s.makeResult()
-
-	if s.sessionVars.ClientCapability&mysql.ClientMultiResults == 0 && len(recordSets) > 1 {
-		// return the first recordset if client doesn't support ClientMultiResults.
-		recordSets = recordSets[:1]
-	}
-
-	// t := &testStatisticsSuite{}
-
-	return recordSets, nil
 }
 
 func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
@@ -622,26 +610,26 @@ func (s *session) isRunToTiDB(stmtNode ast.StmtNode) (is bool, isFlush bool) {
 	case *ast.SelectStmt:
 		return true, false
 
-		if node.From != nil {
-			join := node.From.TableRefs
-			if join.Right == nil {
-				switch x := node.From.TableRefs.Left.(type) {
-				case *ast.TableSource:
-					if s, ok := x.Source.(*ast.TableName); ok {
-						// log.Infof("%#v", s)
-						if s.Name.L == "user" {
-							return true, false
-						}
-						return false, false
-					}
-				default:
-					log.Infof("%T", x)
-					// log.Infof("%#v", x)
-				}
-			}
-		} else {
-			return true, false
-		}
+		// if node.From != nil {
+		// 	join := node.From.TableRefs
+		// 	if join.Right == nil {
+		// 		switch x := node.From.TableRefs.Left.(type) {
+		// 		case *ast.TableSource:
+		// 			if s, ok := x.Source.(*ast.TableName); ok {
+		// 				// log.Infof("%#v", s)
+		// 				if s.Name.L == "user" {
+		// 					return true, false
+		// 				}
+		// 				return false, false
+		// 			}
+		// 		default:
+		// 			log.Infof("%T", x)
+		// 			// log.Infof("%#v", x)
+		// 		}
+		// 	}
+		// } else {
+		// 	return true, false
+		// }
 
 	case *ast.CreateUserStmt, *ast.AlterUserStmt, *ast.DropUserStmt,
 		*ast.GrantStmt, *ast.RevokeStmt,
@@ -1215,10 +1203,9 @@ func (s *session) executeTransaction(records []*Record) int {
 				s.appendErrorNo(ErrNotFoundMasterStatus)
 				tx.Rollback()
 				return 2
-			} else {
-				record.StartFile = masterStatus.File
-				record.StartPosition = masterStatus.Position
 			}
+			record.StartFile = masterStatus.File
+			record.StartPosition = masterStatus.Position
 		}
 
 		record.Stage = StageExec
@@ -1250,19 +1237,19 @@ func (s *session) executeTransaction(records []*Record) int {
 				}
 			}
 			return 2
-		} else {
-			// log.Infof("TRAN!!! [%s] [%d] %s,RowsAffected: %d", s.DBName, currentThreadId, record.Sql, res.RowsAffected)
-			record.AffectedRows = int(res.RowsAffected)
-			record.ThreadId = currentThreadId
+		}
 
-			record.StageStatus = StatusExecOK
-			record.ExecComplete = true
-			s.totalChangeRows += record.AffectedRows
+		// log.Infof("TRAN!!! [%s] [%d] %s,RowsAffected: %d", s.DBName, currentThreadId, record.Sql, res.RowsAffected)
+		record.AffectedRows = int(res.RowsAffected)
+		record.ThreadId = currentThreadId
 
-			switch node := record.Type.(type) {
-			case *ast.UseStmt:
-				s.dbName = node.DBName
-			}
+		record.StageStatus = StatusExecOK
+		record.ExecComplete = true
+		s.totalChangeRows += record.AffectedRows
+
+		switch node := record.Type.(type) {
+		case *ast.UseStmt:
+			s.dbName = node.DBName
 		}
 	}
 	if !s.hasError() {
@@ -1274,20 +1261,20 @@ func (s *session) executeTransaction(records []*Record) int {
 			if masterStatus == nil {
 				s.appendErrorNo(ErrNotFoundMasterStatus)
 				return 2
-			} else {
-				record.EndFile = masterStatus.File
-				record.EndPosition = masterStatus.Position
+			}
 
-				// 开始位置和结束位置一样,无变更
-				if record.StartFile == record.EndFile &&
-					record.StartPosition == record.EndPosition {
+			record.EndFile = masterStatus.File
+			record.EndPosition = masterStatus.Position
 
-					record.StartFile = ""
-					record.StartPosition = 0
-					record.EndFile = ""
-					record.EndPosition = 0
-					return 0
-				}
+			// 开始位置和结束位置一样,无变更
+			if record.StartFile == record.EndFile &&
+				record.StartPosition == record.EndPosition {
+
+				record.StartFile = ""
+				record.StartPosition = 0
+				record.EndFile = ""
+				record.EndPosition = 0
+				return 0
 			}
 
 			for i, r := range records {
@@ -1562,80 +1549,80 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
 
 		return
+	}
+
+	var res sql.Result
+	var err error
+	if isTran {
+		res, err = s.execDDL(sqlStmt, false)
 	} else {
-		var res sql.Result
-		var err error
-		if isTran {
-			res, err = s.execDDL(sqlStmt, false)
+		res, err = s.exec(sqlStmt, false)
+	}
+
+	record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
+	record.ExecTimestamp = time.Now().Unix()
+
+	if err != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.appendErrorMessage(myErr.Message)
 		} else {
-			res, err = s.exec(sqlStmt, false)
+			s.appendErrorMessage(err.Error())
 		}
+		record.StageStatus = StatusExecFail
 
-		record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
-		record.ExecTimestamp = time.Now().Unix()
-
-		if err != nil {
-			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-				s.appendErrorMessage(myErr.Message)
-			} else {
-				s.appendErrorMessage(err.Error())
-			}
-			record.StageStatus = StatusExecFail
-
-			// 无法确认是否执行成功,需要通过备份来确认
-			if err == mysqlDriver.ErrInvalidConn {
-				// 如果没有开启备份,则直接返回
-				if s.opt.Backup {
-					// 如果是DML语句,则通过备份来验证是否执行成功
-					// 如果是DDL语句,则直接报错,由人工确认执行结果,但仍会备份
-					switch record.Type.(type) {
-					case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
-						record.AffectedRows = 0
-					default:
-						s.appendErrorMessage("The execution result is unknown! Please confirm manually.")
-					}
-
-					record.ThreadId = s.fetchThreadID()
-					record.ExecComplete = true
-				} else {
+		// 无法确认是否执行成功,需要通过备份来确认
+		if err == mysqlDriver.ErrInvalidConn {
+			// 如果没有开启备份,则直接返回
+			if s.opt.Backup {
+				// 如果是DML语句,则通过备份来验证是否执行成功
+				// 如果是DDL语句,则直接报错,由人工确认执行结果,但仍会备份
+				switch record.Type.(type) {
+				case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+					record.AffectedRows = 0
+				default:
 					s.appendErrorMessage("The execution result is unknown! Please confirm manually.")
 				}
-			}
 
-			// log.Infof("[%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
-
-			return
-		} else {
-			affectedRows, err := res.RowsAffected()
-			if err != nil {
-				s.appendErrorMessage(err.Error())
-			}
-			record.AffectedRows = int(affectedRows)
-			record.ThreadId = s.fetchThreadID()
-			if record.ThreadId == 0 {
-				s.appendErrorMessage("无法获取线程号")
-			} else {
+				record.ThreadId = s.fetchThreadID()
 				record.ExecComplete = true
-			}
-
-			record.StageStatus = StatusExecOK
-
-			// log.Infof("[%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
-
-			switch node := record.Type.(type) {
-			// switch record.Type.(type) {
-			case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
-				s.totalChangeRows += record.AffectedRows
-			case *ast.UseStmt:
-				s.dbName = node.DBName
-			}
-
-			if _, ok := record.Type.(*ast.CreateTableStmt); ok &&
-				record.TableInfo == nil && record.DBName != "" && record.TableName != "" {
-				record.TableInfo = s.getTableFromCache(record.DBName, record.TableName, true)
+			} else {
+				s.appendErrorMessage("The execution result is unknown! Please confirm manually.")
 			}
 		}
+
+		// log.Infof("[%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
+
+		return
+	}
+
+	affectedRows, err := res.RowsAffected()
+	if err != nil {
+		s.appendErrorMessage(err.Error())
+	}
+	record.AffectedRows = int(affectedRows)
+	record.ThreadId = s.fetchThreadID()
+	if record.ThreadId == 0 {
+		s.appendErrorMessage("无法获取线程号")
+	} else {
+		record.ExecComplete = true
+	}
+
+	record.StageStatus = StatusExecOK
+
+	// log.Infof("[%s] [%d] %s,RowsAffected: %d", s.DBName, s.fetchThreadID(), record.Sql, record.AffectedRows)
+
+	switch node := record.Type.(type) {
+	// switch record.Type.(type) {
+	case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+		s.totalChangeRows += record.AffectedRows
+	case *ast.UseStmt:
+		s.dbName = node.DBName
+	}
+
+	if _, ok := record.Type.(*ast.CreateTableStmt); ok &&
+		record.TableInfo == nil && record.DBName != "" && record.TableName != "" {
+		record.TableInfo = s.getTableFromCache(record.DBName, record.TableName, true)
 	}
 }
 
@@ -1647,10 +1634,9 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 		if masterStatus == nil {
 			s.appendErrorNo(ErrNotFoundMasterStatus)
 			return
-		} else {
-			record.StartFile = masterStatus.File
-			record.StartPosition = masterStatus.Position
 		}
+		record.StartFile = masterStatus.File
+		record.StartPosition = masterStatus.Position
 	}
 
 	if s.hasError() {
@@ -1667,20 +1653,20 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 			if masterStatus == nil {
 				s.appendErrorNo(ErrNotFoundMasterStatus)
 				return
-			} else {
-				record.EndFile = masterStatus.File
-				record.EndPosition = masterStatus.Position
+			}
 
-				// 开始位置和结束位置一样,无变更
-				if record.StartFile == record.EndFile &&
-					record.StartPosition == record.EndPosition {
+			record.EndFile = masterStatus.File
+			record.EndPosition = masterStatus.Position
 
-					record.StartFile = ""
-					record.StartPosition = 0
-					record.EndFile = ""
-					record.EndPosition = 0
-					return
-				}
+			// 开始位置和结束位置一样,无变更
+			if record.StartFile == record.EndFile &&
+				record.StartPosition == record.EndPosition {
+
+				record.StartFile = ""
+				record.StartPosition = 0
+				record.EndFile = ""
+				record.EndPosition = 0
+				return
 			}
 		}
 
@@ -4746,16 +4732,15 @@ func (s *session) checkDBExists(db string, reportNotExists bool) bool {
 			s.appendErrorNo(ER_DB_NOT_EXISTED_ERROR, db)
 		}
 		return false
-	} else {
-		s.dbCacheList[key] = &DBInfo{
-			Name:      db,
-			IsNew:     false,
-			IsDeleted: false,
-		}
-
-		return true
 	}
 
+	s.dbCacheList[key] = &DBInfo{
+		Name:      db,
+		IsNew:     false,
+		IsDeleted: false,
+	}
+
+	return true
 }
 
 func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
@@ -5856,6 +5841,9 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 		} else {
 			pi.Killed = true
+			if !pi.IsGhost {
+				pi.PanicAbort <- util.ProcessOperationKill
+			}
 		}
 	} else {
 		return nil, errors.New("osc process not found")
@@ -5876,6 +5864,7 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
 		} else {
 			pi.Pause = true
+			// pi.PanicAbort <- util.ProcessOperationPause
 		}
 	} else {
 		return nil, errors.New("osc process not found")
@@ -5894,6 +5883,7 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 
 		if pi.Pause {
 			pi.Pause = false
+			// pi.PanicAbort <- util.ProcessOperationResume
 		} else {
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
 		}
@@ -6232,10 +6222,10 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 			// }
 		}
 		return
-	} else {
-		for rows.Next() {
-			rows.Scan(&value)
-		}
+	}
+
+	for rows.Next() {
+		rows.Scan(&value)
 	}
 
 	r.AffectedRows = value
@@ -6290,38 +6280,39 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 			}
 		}
 		return
-	} else {
-		if s.dbVersion < 50600 {
-			rw, err := NewRewrite(sql)
+	}
+
+	if s.dbVersion < 50600 {
+		rw, err := NewRewrite(sql)
+		if err != nil {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.appendErrorMessage(err.Error())
+		} else {
+			err = rw.RewriteDML2Select()
 			if err != nil {
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.appendErrorMessage(err.Error())
 			} else {
-				err = rw.RewriteDML2Select()
-				if err != nil {
-					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-					s.appendErrorMessage(err.Error())
-				} else {
-					sql = rw.SQL
-					if sql == "" {
-						return
-					}
+				sql = rw.SQL
+				if sql == "" {
+					return
 				}
 			}
 		}
-
-		var explain []string
-
-		if s.isMiddleware() {
-			explain = append(explain, s.opt.MiddlewareExtend)
-		}
-
-		explain = append(explain, "EXPLAIN ")
-		explain = append(explain, sql)
-
-		// rows := s.getExplainInfo(strings.Join(explain, ""))
-		s.getExplainInfo(strings.Join(explain, ""), sqlId)
 	}
+
+	var explain []string
+
+	if s.isMiddleware() {
+		explain = append(explain, s.opt.middlewareExtend)
+	}
+
+	explain = append(explain, "EXPLAIN ")
+	explain = append(explain, sql)
+
+	// rows := s.getExplainInfo(strings.Join(explain, ""))
+	s.getExplainInfo(strings.Join(explain, ""), sqlId)
+
 }
 
 func (s *session) anlyzeExplain(rows []ExplainInfo) {
@@ -6690,9 +6681,8 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 					if found {
 						isAmbiguous = true
 						break
-					} else {
-						found = true
 					}
+					found = true
 				}
 			}
 			if isAmbiguous {
@@ -6707,15 +6697,16 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 
 	if found {
 		return true
-	} else {
-		if name.Table.L == "" {
-			s.appendErrorNo(ER_COLUMN_NOT_EXISTED, name.Name.O)
-		} else {
-			s.appendErrorNo(ER_COLUMN_NOT_EXISTED,
-				fmt.Sprintf("%s.%s", name.Table.O, name.Name.O))
-		}
-		return false
 	}
+
+	if name.Table.L == "" {
+		s.appendErrorNo(ER_COLUMN_NOT_EXISTED, name.Name.O)
+	} else {
+		s.appendErrorNo(ER_COLUMN_NOT_EXISTED,
+			fmt.Sprintf("%s.%s", name.Table.O, name.Name.O))
+	}
+	return false
+
 }
 
 // checkFuncItem 检查函数的字段
@@ -7171,21 +7162,21 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 		}
 		t.AsName = ""
 		return t
-	} else {
-		rows := s.queryTableFromDB(db, tableName, reportNotExists)
-		if rows != nil {
-			newT := &TableInfo{
-				Schema: db,
-				Name:   tableName,
-				Fields: rows,
-			}
-			if rows := s.queryIndexFromDB(db, tableName, reportNotExists); rows != nil {
-				newT.Indexes = rows
-			}
-			s.tableCacheList[key] = newT
+	}
 
-			return newT
+	rows := s.queryTableFromDB(db, tableName, reportNotExists)
+	if rows != nil {
+		newT := &TableInfo{
+			Schema: db,
+			Name:   tableName,
+			Fields: rows,
 		}
+		if rows := s.queryIndexFromDB(db, tableName, reportNotExists); rows != nil {
+			newT.Indexes = rows
+		}
+		s.tableCacheList[key] = newT
+
+		return newT
 	}
 
 	return nil
@@ -7352,12 +7343,10 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 				if x.AsName.L != "" {
 					t.AsName = x.AsName.O
 					return []*TableInfo{t.copy()}
-				} else {
-					return []*TableInfo{t}
 				}
-			} else {
-				return nil
+				return []*TableInfo{t}
 			}
+			return nil
 		case *ast.SelectStmt:
 			s.checkSubSelectItem(tblSource)
 
