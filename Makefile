@@ -1,4 +1,4 @@
-PROJECT=tidb
+PROJECT=goInception
 GOPATH ?= $(shell go env GOPATH)
 
 # Ensure GOPATH is set before running build process.
@@ -34,7 +34,7 @@ MAC       := "Darwin"
 PACKAGE_LIST  := go list ./...| grep -vE "vendor"
 PACKAGES  := $$($(PACKAGE_LIST))
 PACKAGE_DIRECTORIES := $(PACKAGE_LIST) | sed 's|github.com/hanchuanchuan/$(PROJECT)/||'
-FILES     := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go" | grep -vE "vendor")
+FILES     := $$(find $$($(PACKAGE_DIRECTORIES)) -name "*.go")
 
 GOFAIL_ENABLE  := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail enable)
 GOFAIL_DISABLE := $$(find $$PWD/ -type d | grep -vE "(\.git|vendor)" | xargs gofail disable)
@@ -92,10 +92,10 @@ parserlib: parser/parser.go
 parser/parser.go: parser/parser.y
 	make parser
 
-# The retool tools.json is setup from hack/retool-install.sh
-check-setup:
-	@which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
-	@retool sync
+# Install the check tools.
+check-setup:tools/bin/revive tools/bin/goword tools/bin/gometalinter tools/bin/gosec
+# @which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
+# @retool sync
 
 check: check-setup fmt lint vet
 
@@ -104,10 +104,11 @@ check-fail: goword check-static check-slow
 
 fmt:
 	@echo "gofmt (simplify)"
-	@gofmt -s -l -w $(FILES) 2>&1 | grep -v "vendor|parser/parser.go" | $(FAIL_ON_STDOUT)
+	@gofmt -s -l -w $(FILES) 2>&1 | $(FAIL_ON_STDOUT)
 
-goword:
-	retool do goword $(FILES) 2>&1 | $(FAIL_ON_STDOUT)
+
+goword:tools/bin/goword
+	tools/bin/goword $(FILES) 2>&1 | $(FAIL_ON_STDOUT)
 
 check-static:
 	@ # vet and fmt have problems with vendor when ran through metalinter
@@ -123,13 +124,13 @@ check-slow:
 	  $$($(PACKAGE_DIRECTORIES))
 	CGO_ENABLED=0 retool do gosec $$($(PACKAGE_DIRECTORIES))
 
-lint:
+lint:tools/bin/revive
 	@echo "linting"
-	@CGO_ENABLED=0 retool do revive -formatter friendly -config revive.toml $(PACKAGES)
+	@tools/bin/revive -formatter friendly -config tools/check/revive.toml ./...
 
 vet:
 	@echo "vet"
-	@go vet -all -shadow $(PACKAGES) 2>&1 | $(FAIL_ON_STDOUT)
+	$(GO) vet -all $(PACKAGES) 2>&1 | $(FAIL_ON_STDOUT)
 
 clean:
 	$(GO) clean -i ./...
@@ -265,6 +266,21 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 	bash <(curl -s https://codecov.io/bash)
 endif
 
+tools/bin/revive: tools/check/go.mod
+	cd tools/check; \
+	$(GO) build -o ../bin/revive github.com/mgechev/revive
+
+tools/bin/goword: tools/check/go.mod
+	cd tools/check; \
+	$(GO) build -o ../bin/goword github.com/chzchzchz/goword
+
+tools/bin/gometalinter: tools/check/go.mod
+	cd tools/check; \
+	$(GO) build -o ../bin/gometalinter gopkg.in/alecthomas/gometalinter.v3
+
+tools/bin/gosec: tools/check/go.mod
+	cd tools/check; \
+	$(GO) build -o ../bin/gosec github.com/securego/gosec/cmd/gosec
 
 # 	windows无法build,github.com/outbrain/golib有引用syslog.Writer,其在windows未实现.
 .PHONY: release
@@ -307,3 +323,4 @@ docker:
 docker-push:
 	v1=$(shell git tag|tail -1) && docker push hanchuanchuan/goinception:$${v1} \
 	&& docker push hanchuanchuan/goinception:latest
+

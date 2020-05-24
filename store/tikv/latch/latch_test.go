@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/pingcap/check"
 	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
+	. "github.com/pingcap/check"
 )
 
 func TestT(t *testing.T) {

@@ -116,9 +116,6 @@ func (s *testSessionIncSuite) testErrorCode(c *C, sql string, errors ...*session
 	}
 
 	c.Assert(row[2], Equals, strconv.Itoa(errCode), Commentf("%v", row))
-
-	s.rows = s.rows
-
 }
 
 func (s *testSessionIncSuite) testAuditResult(c *C, sql string, errors ...*session.SQLError) {
@@ -208,7 +205,7 @@ func (s *testSessionIncSuite) runAudit(c *C) {
 		sqls = append(sqls, a.sql)
 	}
 
-	session.CheckAuditSetting(config.GetGlobalConfig())
+	session.TestCheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
