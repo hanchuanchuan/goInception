@@ -76,7 +76,7 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
 
-	session.CheckAuditSetting(config.GetGlobalConfig())
+	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	res := s.runExec(sql)
 	row := res.Rows()[s.getAffectedRows()-1]

@@ -113,7 +113,7 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.CreateViewStmt:
 		return nil, nil
 
-		s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
+		// s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
 	case *ast.ShowStmt:
 		return nil, nil
@@ -133,7 +133,7 @@ func (s *session) splitCommand(ctx context.Context, stmtNode ast.StmtNode,
 	default:
 		log.Infof("无匹配类型:%T\n", stmtNode)
 		return nil, nil
-		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		// s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
 
 	return nil, nil
