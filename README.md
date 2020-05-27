@@ -52,7 +52,7 @@ docker pull hanchuanchuan/goinception
 - [TiDB](https://github.com/pingcap/tidb)
 
 #### 赞助&定制
-- [赞助与支持](https://hanchuanchuan.github.io/goInception/support/)
+- [赞助与支持](https://hanchuanchuan.github.io/goInception/support.html)
 
 #### 交流
 
