@@ -89,6 +89,7 @@ merge_alter_table   |  false    |   true,false     |  在多个改同一个表�
 must_have_columns  `v0.6.3` | ''    |   string  | 用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
 skip_sqls `v1.0-rc3` | ''    |   string  | 指定不再审核的SQL.该参数指定要跳过的客户端/框架默认SQL,以实现客户端兼容
 sql_safe_updates               | -1              |  -1,0,1  | 安全更新.-1表示不做操作,基于远端数据库,0表示关闭安全更新,1表示开启安全更新
+lock_wait_timeout               | -1              |  -1, N+  | 会话在执行SQL 时获取锁超时的时间, -1 表示基于远端数据库，正整数表示获取锁的超时时间
 support_charset | utf8,utf8mb4              | string | 支持的字符集,多个时以逗号分隔
 support_collation `v0.7` | ''             | string | 支持的排序规则,多个时以逗号分隔
 support_engine `v1.0-rc4` | 'innodb'    |   string  | 支持的存储引擎类型.默认为`innodb`,此处可以设置多个,以逗号分隔,或者修改默认的存在引擎类型

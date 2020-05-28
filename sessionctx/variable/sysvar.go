@@ -753,6 +753,8 @@ const (
 	ForeignKeyChecks = "foreign_key_checks"
 	// SQLSafeUpdates is the name for 'sql_safe_updates' system variable.
 	SQLSafeUpdates = "sql_safe_updates"
+	// LockWaitTimeout is the name for 'lock_wait_timeout' system variable.
+	LockWaitTimeout = "lock_wait_timeout"
 	// WarningCount is the name for 'warning_count' system variable.
 	WarningCount = "warning_count"
 	// ErrorCount is the name for 'error_count' system variable.
