@@ -497,6 +497,7 @@ func (s *session) checkOptions() error {
 
 	s.mysqlServerVersion()
 	s.setSqlSafeUpdates()
+	s.setLockWaitTimeout()
 
 	if s.opt.Backup && s.dbType == DBTypeTiDB {
 		s.appendErrorMessage("TiDB暂不支持备份功能.")

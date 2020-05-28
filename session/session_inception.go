@@ -1873,6 +1873,26 @@ func (s *session) setSqlSafeUpdates() {
 	}
 }
 
+func (s *session) setLockWaitTimeout() {
+	log.Debug("setLockWaitTimeout")
+
+	var sql string
+	if s.inc.LockWaitTimeout > 0 {
+		sql = fmt.Sprintf("set session lock_wait_timeout=%d;", s.inc.LockWaitTimeout)
+	} else {
+		return
+	}
+
+	if _, err := s.exec(sql, true); err != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.appendErrorMessage(myErr.Message)
+		} else {
+			s.appendErrorMessage(err.Error())
+		}
+	}
+}
+
 func (s *session) checkBinlogIsOn() bool {
 	log.Debug("checkBinlogIsOn")
 

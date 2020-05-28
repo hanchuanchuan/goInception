@@ -344,6 +344,11 @@ type Inc struct {
 	// 1  表示开启安全更新
 	SqlSafeUpdates int `toml:"sql_safe_updates" json:"sql_safe_updates"`
 
+	// 设置执行SQL时，会话变量
+	// 0 表示不做操作，基于远端数据库【默认值】
+	// > 0 值表示，会话在执行SQL 时获取锁超时的时间
+	LockWaitTimeout int `toml:"lock_wait_timeout" json:"lock_wait_timeout"`
+
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
 
@@ -719,6 +724,7 @@ var defaultConf = Config{
 		CheckFloatDouble:      false,
 		CheckIdentifierUpper:  false,
 		SqlSafeUpdates:        -1,
+		LockWaitTimeout:       -1,
 		SupportCharset:        "utf8,utf8mb4",
 		SupportEngine:         "innodb",
 		Lang:                  "en-US",
