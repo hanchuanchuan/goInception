@@ -129,6 +129,48 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 	return
 }
 
+func (s *session) processInfoTicker(inception core.Session) chan bool {
+	ticker := time.NewTicker(1 * time.Second)
+	stopChan := make(chan bool)
+	go func(ticker *time.Ticker) {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				p := inception.ShowProcess()
+
+				tmp := s.processInfo.Load()
+				if tmp != nil {
+					pi := tmp.(util.ProcessInfo)
+					// pi.ID = p.ID
+					pi.DestUser = p.DestUser
+					pi.DestHost = p.DestHost
+					pi.DestPort = p.DestPort
+					// pi.Host = p.Host
+					pi.Command = p.Command
+					pi.OperState = p.OperState
+					pi.Percent = p.Percent
+					pi.State = p.State
+					pi.DB = p.DB
+					if p.User != "" {
+						pi.User = p.User
+					}
+					pi.Info = p.Info
+					pi.Time = p.Time
+
+					s.processInfo.Store(pi)
+				}
+
+			case stop := <-stopChan:
+				if stop {
+					return
+				}
+			}
+		}
+	}(ticker)
+
+	return stopChan
+}
 func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
 	sqlList := strings.Split(sql, "\n")
 
@@ -169,6 +211,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 	lineCount := len(sqlList) - 1
 	// batchSize := 1
 
+	inception := core.NewInception()
+
 	tmp := s.processInfo.Load()
 	if tmp != nil {
 		pi := tmp.(util.ProcessInfo)
@@ -176,6 +220,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 		pi.Percent = 0
 		s.processInfo.Store(pi)
 	}
+
+	stopChan := s.processInfoTicker(inception)
+	defer func() {
+		stopChan <- true
+		close(stopChan)
+	}()
 
 	s.stage = StageCheck
 
@@ -313,7 +363,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 					sql = sql[len(stmtNode.Text()):]
 					log.Error(sql)
-					inception := core.NewInception()
+
 					option := core.SourceOptions{
 						Host:             s.opt.Host,
 						Port:             s.opt.Port,
@@ -484,6 +534,8 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 					s.SetMyProcessInfo(currentSql, time.Now(), float64(i)/float64(lineCount+1))
 
+					runOnCore := isRunToInceptionCore(stmtNode)
+
 					// 交互式命令行
 					if _, ok := stmtNode.(*ast.InceptionSetStmt); !need &&
 						(!ok || (ok && !s.haveBegin)) {
@@ -495,19 +547,26 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						if err := executor.ResetContextOfStmt(s, stmtNode); err != nil {
 							return nil, errors.Trace(err)
 						}
-
-						return s.processCommand(ctx, stmtNode, currentSql)
+						if runOnCore {
+							return inception.CheckStmt(ctx, stmtNode, currentSql)
+						}
 					}
 
 					var result []sqlexec.RecordSet
 					var err error
-					if s.opt != nil && s.opt.Print {
-						result, err = s.printCommand(ctx, stmtNode, currentSql)
-					} else if s.opt != nil && s.opt.Split {
-						result, err = s.splitCommand(ctx, stmtNode, currentSql)
+
+					if runOnCore {
+						result, err = inception.CheckStmt(ctx, stmtNode, currentSql)
 					} else {
-						result, err = s.processCommand(ctx, stmtNode, currentSql)
+						if s.opt != nil && s.opt.Print {
+							result, err = s.printCommand(ctx, stmtNode, currentSql)
+						} else if s.opt != nil && s.opt.Split {
+							result, err = s.splitCommand(ctx, stmtNode, currentSql)
+						} else {
+							result, err = s.processCommand(ctx, stmtNode, currentSql)
+						}
 					}
+
 					if err != nil {
 						return nil, err
 					}
@@ -593,6 +652,25 @@ func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
 	} else {
 		return s.recordSets.Rows(), nil
 	}
+}
+
+func isRunToInceptionCore(stmtNode ast.StmtNode) bool {
+	switch node := stmtNode.(type) {
+	case *ast.ShowStmt:
+		if node.IsInception {
+			switch node.Tp {
+			case ast.ShowVariables, ast.ShowProcessList, ast.ShowLevels:
+				return false
+			}
+		}
+	case *ast.KillStmt:
+		return false
+	case *ast.InceptionSetStmt:
+		return true
+	case *ast.ShowOscStmt:
+		return true
+	}
+	return true
 }
 
 func (s *session) isRunToTiDB(stmtNode ast.StmtNode) (is bool, isFlush bool) {
