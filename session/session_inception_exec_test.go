@@ -198,12 +198,15 @@ func (s *testSessionIncExecSuite) TestCreateTable(c *C) {
 		indexMaxLength = 3072
 	}
 
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+
 	s.runExec("drop table if exists t1")
 	if s.innodbLargePrefix {
-		sql = "create table t1(c1 int,c2 varchar(400),c3 varchar(400),index idx_1(c1,c2))charset utf8;;"
+		sql = "create table t1(c1 int,c2 varchar(400),c3 varchar(400),index idx_1(c1,c2))charset utf8;"
 		s.testErrorCode(c, sql)
 	} else {
-		sql = "create table t1(c1 int,c2 varchar(400),c3 varchar(400),index idx_1(c1,c2))charset utf8;;"
+		sql = "create table t1(c1 int,c2 varchar(400),c3 varchar(400),index idx_1(c1,c2))charset utf8;"
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_TOO_LONG_KEY, "idx_1", indexMaxLength))
 	}
