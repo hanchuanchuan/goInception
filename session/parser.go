@@ -281,6 +281,12 @@ func (s *session) parserBinlog(ctx context.Context) {
 			continue
 		}
 
+		// log.Errorf("binlog pos: %d", int(currentPosition.Pos))
+		// log.Errorf("binlog pos: %v", e.Header.EventType.String())
+		// log.Errorf("currentThreadID: %v", currentThreadID)
+		// e.Dump(os.Stdout)
+		// os.Stdout.Sync()
+
 		switch e.Header.EventType {
 		case replication.TABLE_MAP_EVENT:
 			if event, ok := e.Event.(*replication.TableMapEvent); ok {
@@ -291,8 +297,17 @@ func (s *session) parserBinlog(ctx context.Context) {
 			}
 
 		case replication.QUERY_EVENT:
-			if event, ok := e.Event.(*replication.QueryEvent); ok {
-				currentThreadID = event.SlaveProxyID
+			// if event, ok := e.Event.(*replication.QueryEvent); ok {
+			// 	// currentThreadID = event.SlaveProxyID
+			// 	log.Error(string(event.Query))
+			// }
+
+			if s.dbType == DBTypeMariaDB && s.dbVersion >= 100000 {
+				goto ENDCHECK
+			} else {
+				if event, ok := e.Event.(*replication.QueryEvent); ok {
+					currentThreadID = event.SlaveProxyID
+				}
 			}
 
 		case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:
@@ -367,7 +382,8 @@ func (s *session) parserBinlog(ctx context.Context) {
 				break
 			}
 		} else if s.opt.tranBatch > 1 {
-			if record.AffectedRows <= changeRows {
+			if changeRows >= record.AffectedRows &&
+				(s.dbType != DBTypeMariaDB || s.dbVersion < 100000) {
 				if record.AffectedRows > 0 {
 					record.StageStatus = StatusBackupOK
 				}
@@ -539,6 +555,7 @@ func (s *session) write(b []byte, binEvent *replication.BinlogEvent) {
 		s.myRecord.AffectedRows += 1
 		s.totalChangeRows += 1
 	}
+
 	s.ch <- &chanData{sql: b, e: binEvent, opid: s.myRecord.OPID,
 		table: s.lastBackupTable, record: s.myRecord}
 }

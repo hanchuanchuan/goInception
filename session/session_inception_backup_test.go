@@ -79,7 +79,7 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	row = s.rows[s.getAffectedRows()-1]
 	backup = s.query("t1", row[7].(string))
 	// mysql 8.0版本默认字符集改成了utf8mb4
-	if s.DBVersion < 80000 {
+	if s.DBVersion < 80000 || s.DBType == DBTypeMariaDB {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
 	} else {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
@@ -89,7 +89,7 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	s.mustRunBackup(c, "drop table t1;")
 	row = s.rows[s.getAffectedRows()-1]
 	backup = s.query("t1", row[7].(string))
-	if s.DBVersion < 80000 {
+	if s.DBVersion < 80000 || s.DBType == DBTypeMariaDB {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;")
 	} else {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
@@ -99,7 +99,7 @@ func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	s.mustRunBackup(c, "drop table t1;")
 	row = s.rows[s.getAffectedRows()-1]
 	backup = s.query("t1", row[7].(string))
-	if s.DBVersion < 80000 {
+	if s.DBVersion < 80000 || s.DBType == DBTypeMariaDB {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) NOT NULL DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
 	} else {
 		c.Assert(backup, Equals, "CREATE TABLE `t1` (\n `id` int(11) NOT NULL DEFAULT '0'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;")
@@ -503,7 +503,7 @@ func (s *testSessionIncBackupSuite) TestMinimalUpdate(c *C) {
 func (s *testSessionIncBackupSuite) TestDelete(c *C) {
 
 	s.mustRunExec(c, `drop table if exists t1;
-	create table t1(id int,c1 int);
+	create table t1(id int primary key,c1 int);
 	insert into t1 values(1,1),(2,2);`)
 
 	s.mustRunBackup(c, "delete from t1 where id <= 2;")
