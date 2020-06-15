@@ -4517,10 +4517,6 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	}
 	// }
 
-	if s.hasError() {
-		return
-	}
-
 	indexType := "BTREE"
 	if tp == ast.ConstraintSpatial {
 		indexType = "SPATIAL"
@@ -4547,8 +4543,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		t.Indexes = append(t.Indexes, index)
 	}
 
-	// !t.IsNew &&
-	if s.opt.Execute {
+	if !s.hasError() && s.opt.Execute {
 		var rollbackSql string
 		if IndexName == "PRIMARY" {
 			rollbackSql = fmt.Sprintf("DROP PRIMARY KEY,")
