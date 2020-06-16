@@ -2773,7 +2773,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		}
 	}
 
-	if s.inc.ColumnsMustHaveIndex != "" {
+	if !s.hasError() && s.inc.ColumnsMustHaveIndex != "" {
 		s.checkColumnsMustHaveindex(table)
 	}
 
@@ -3112,7 +3112,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		}
 	}
 
-	if s.inc.ColumnsMustHaveIndex != "" {
+	if !s.hasError() && s.inc.ColumnsMustHaveIndex != "" {
 		tableCopy := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
 		s.checkColumnsMustHaveindex(tableCopy)
 	}
@@ -4515,7 +4515,6 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	if s.inc.MaxKeys > 0 && key_count >= int(s.inc.MaxKeys) {
 		s.appendErrorNo(ER_TOO_MANY_KEYS, t.Name, s.inc.MaxKeys)
 	}
-	// }
 
 	if s.hasError() {
 		return
@@ -4547,7 +4546,6 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		t.Indexes = append(t.Indexes, index)
 	}
 
-	// !t.IsNew &&
 	if s.opt.Execute {
 		var rollbackSql string
 		if IndexName == "PRIMARY" {
