@@ -14,6 +14,8 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 
 **[使用文档](https://hanchuanchuan.github.io/goInception/)**
 
+**[使用文档-备用-国内](https://docs.goinception.com/)**
+
 **[更新日志](https://github.com/hanchuanchuan/inc-docs/blob/master/changelog.md)**
 
 
