@@ -6333,7 +6333,11 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 			for _, l := range node.List {
 				// 未指定表别名时加默认设置
 				if l.Column.Table.L == "" && len(tableInfoList) == 1 {
-					l.Column.Table = model.NewCIStr(s.myRecord.TableInfo.Name)
+					if s.myRecord.TableInfo.AsName != "" {
+						l.Column.Table = model.NewCIStr(s.myRecord.TableInfo.AsName)
+					} else {
+						l.Column.Table = model.NewCIStr(s.myRecord.TableInfo.Name)
+					}
 				}
 
 				if s.checkFieldItem(l.Column, tableInfoList) {
