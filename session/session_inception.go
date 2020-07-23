@@ -347,7 +347,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					need := s.needDataSource(stmtNode)
 
 					if !s.haveBegin && need {
-						log.Warnf("%#v", stmtNode)
+						// log.Warnf("%#v", stmtNode)
 						s.appendErrorMessage("Must start as begin statement.")
 						if s.opt != nil && s.opt.Print {
 							s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
@@ -1729,6 +1729,8 @@ func (s *session) mysqlServerVersion() {
 				s.innodbLargePrefix = false
 			}
 		}
+
+		// log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
 	}
 
 }
@@ -4488,6 +4490,13 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		// 注释长度校验
 		if len(IndexOption.Comment) > INDEX_COMMENT_MAXLEN {
 			s.appendErrorNo(ER_TOO_LONG_INDEX_COMMENT, IndexName, INDEX_COMMENT_MAXLEN)
+		}
+
+		if IndexOption.Visibility != ast.IndexVisibilityDefault {
+			if s.dbType == DBTypeMariaDB ||
+				s.dbVersion < 80000 {
+				s.appendErrorNo(ErrUseIndexVisibility)
+			}
 		}
 	}
 
@@ -7302,7 +7311,6 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 
 	var tableInfoList []*TableInfo
 	for _, tblSource := range tableList {
-
 		switch x := tblSource.Source.(type) {
 		case *ast.TableName:
 			tblName := x
@@ -7357,6 +7365,24 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 	}
 
 	s.checkItem(node.Where, tableInfoList)
+
+	// var outerTableList []*TableInfo
+	// if node.GroupBy != nil ||
+	// 	node.Having != nil ||
+	// 	node.OrderBy != nil {
+	// 	cols := s.getSubSelectColumns(node)
+	// 	if cols != nil {
+	// 		rows := make([]FieldInfo, len(cols))
+	// 		for i, colName := range cols {
+	// 			rows[i].Field = colName
+	// 		}
+	// 		t := &TableInfo{
+	// 			Schema: "",
+	// 			Fields: rows,
+	// 		}
+	// 		outerTableList = append(outerTableList, t)
+	// 	}
+	// }
 
 	// log.Info("group by : ", s.sessionVars.SQLMode.HasOnlyFullGroupBy())
 	if s.sessionVars.SQLMode.HasOnlyFullGroupBy() && node.From != nil {

@@ -495,15 +495,17 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 		return nil
 	}
 
-	for _, errExprLoc := range notInGbyCols {
+	for field, errExprLoc := range notInGbyCols {
 		switch errExprLoc.Loc {
 		case ErrExprInSelect:
+			// getName(sel.Fields.Fields[errExprLoc.Offset])
 			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
-				sel.Fields.Fields[errExprLoc.Offset].Text())
+				field.Field)
 			return nil
 		case ErrExprInOrderBy:
+			// sel.OrderBy.Items[errExprLoc.Offset].Expr.Text()
 			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
-				sel.OrderBy.Items[errExprLoc.Offset].Expr.Text())
+				field.Field)
 			return nil
 		}
 		return nil
