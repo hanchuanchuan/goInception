@@ -2257,6 +2257,16 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 	sql = "CREATE TABLE geom (id int,g GEOMETRY NOT NULL);alter table geom add SPATIAL INDEX ix_1(id,g);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_MANY_KEY_PARTS, "ix_1", "geom", 1))
+
+	sql = `create table t1(id int,c1 int);
+		alter table t1 add index idx (c1) visible;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrUseIndexVisibility))
+
+	sql = `create table t1(id int,c1 int);
+		alter table t1 add index idx2 (c1) invisible;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrUseIndexVisibility))
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {
