@@ -34,8 +34,10 @@ import (
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
 	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	"github.com/hanchuanchuan/goInception/util/testleak"
+
 	"github.com/jinzhu/gorm"
 	. "github.com/pingcap/check"
 	repllog "github.com/siddontang/go-log/log"
@@ -181,7 +183,7 @@ func (s *testCommon) initSetUp(c *C) {
 
 	// 测试API接口时自动忽略之前的测试方法
 
-	log.Errorf("is api: %v", isAPI)
+	// log.Errorf("is api: %v", isAPI)
 	s.isAPI = isAPI
 	if isAPI {
 		s.sessionService = session.NewInception()
@@ -975,7 +977,13 @@ func (s *testCommon) parserStmt(sql string) ast.StmtNode {
 func (s *testCommon) reset() {
 	config.GetGlobalConfig().Inc = s.defaultInc
 	log.SetLevel(log.ErrorLevel)
-	log.SetReportCaller(true)
+	// log.SetReportCaller(true)
+
+	_ = logutil.InitLogger(&logutil.LogConfig{
+		Level:            "error",
+		Format:           "text",
+		DisableTimestamp: false,
+	})
 }
 
 // getAffectedRows 获取受影响行数, 区分api返回和mysql会话返回
