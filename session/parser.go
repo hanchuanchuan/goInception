@@ -257,6 +257,24 @@ func (s *session) parserBinlog(ctx context.Context) {
 	// 已解析行数，如果行数大于等于record的实际受影响行数，则可以直接切换到下一record
 	var changeRows int
 
+	defer func() {
+		if err := recover(); err != nil {
+			log.Errorf("ERROR!! BUG!!")
+			if s.myRecord != nil {
+				log.Errorf("error parsing table `%s`.`%s`. sql: %s",
+					s.myRecord.DBName, s.myRecord.TableName, s.myRecord.Sql)
+				log.Errorf("binlog info: start pos: %s:%d, end pos: %s:%d. thread id: %d",
+					s.myRecord.StartFile, s.myRecord.StartPosition,
+					s.myRecord.EndFile, s.myRecord.EndPosition,
+					s.myRecord.ThreadId)
+				log.Errorf("%#v", s.myRecord)
+			}
+			log.Errorf("current pos: %s", currentPosition.String())
+			log.Errorf("%#v", err)
+			s.appendErrorMessage(fmt.Sprintf("%#v", err))
+		}
+	}()
+
 	for {
 		e, err := logSync.GetEvent(context.Background())
 		if err != nil {
