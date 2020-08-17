@@ -12,7 +12,7 @@ jobs:
 
     docker:
       - image: circleci/golang:1.12
-      - image: circleci/mysql:5.7
+      - image: circleci/mysql:5.7.31
         command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
@@ -20,10 +20,11 @@ jobs:
     working_directory: /go/src/github.com/hanchuanchuan/goInception
 
     steps:
+      - checkout
       - run:
           name: Install mysql-client
-          command: sudo apt install default-mysql-client
-      - checkout
+          # command: sudo apt install default-mysql-client
+          command: sudo apt-get install default-mysql-client
       - run:
           name: Waiting for MySQL to be ready
           command: |
