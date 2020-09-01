@@ -349,6 +349,9 @@ osc_max_lag = 3
 # 类似--max-lag，检查集群暂停流量控制所花费的平均时间（仅适用于PXC 5.6及以上版本,会自动检测)
 osc_max_flow_ctl = -1
 
+# 对应参数pt-online-schema-change中的参数 --sleep 默认值：0.0
+osc_sleep = 0.0
+
 # 对应参数pt-online-schema-change中的参数 --set-vars lock_wait_timeout=?
 osc_lock_wait_timeout = 60
 
