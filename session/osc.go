@@ -132,7 +132,8 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString(strconv.Itoa(s.osc.OscMaxThreadRunning))
 	buf.WriteString(" ")
 
-	buf.WriteString(" --sleep=0.1 ")
+	buf.WriteString(" --sleep=")
+	buf.WriteString(fmt.Sprintf("%g", s.osc.OscSleep))
 
 	buf.WriteString(" --recurse=1 ")
 
