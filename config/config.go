@@ -403,7 +403,7 @@ type Osc struct {
 	// 对应参数pt-online-schema-change中的参数--[no]check-alter。默认值：ON
 	OscCheckAlter bool `toml:"osc_check_alter" json:"osc_check_alter"`
 
-	// 对应参数pt-online-schema-change中的参数 --sleep 默认值：0 (可设置为: 0.1、0.2、1、1.2 等)
+	// 对应参数pt-online-schema-change中的参数 --sleep 默认值：0.0
 	OscSleep float32 `toml:"osc_sleep" json:"osc_sleep"`
 
 	// 对应参数pt-online-schema-change中的参数 --set-vars lock_wait_timeout=60s
@@ -757,7 +757,7 @@ var defaultConf = Config{
 		OscRecursionMethod:         "processlist",
 		OscMaxLag:                  3,
 		OscMaxFlowCtl:              -1,
-		OscSleep:                   0,
+		OscSleep:                   0.0,
 		OscLockWaitTimeout:         60,
 		OscCheckAlter:              true,
 		OscCheckReplicationFilters: true,
