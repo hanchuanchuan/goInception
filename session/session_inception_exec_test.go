@@ -636,9 +636,20 @@ func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
 
 func (s *testSessionIncExecSuite) TestCreateView(c *C) {
 	sql := ""
-	sql = "drop table if exists t1;create table t1(id int primary key);create view v1 as select * from t1;"
+
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法创建视图'v1'."))
+		session.NewErr(session.ErrViewSupport, "v_1"))
+
+	config.GetGlobalConfig().Inc.EnableUseView = true
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = "create table t1(id int primary key);create view v_1 as select id from t1;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {

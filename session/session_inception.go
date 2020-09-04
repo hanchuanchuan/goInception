@@ -611,7 +611,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		s.checkDropIndex(node, currentSql)
 
 	case *ast.CreateViewStmt:
-		s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
+		s.checkCreateView(node, currentSql)
+		// s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
 	case *ast.ShowStmt:
 		if node.IsInception {
@@ -659,7 +660,6 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		return s.executeKillStmt(node)
 
 	case *ast.SetStmt:
-
 		s.checkSetStmt(node)
 
 	default:
@@ -1193,7 +1193,9 @@ func (s *session) executeRemoteCommand(record *Record, isTran bool) int {
 
 		*ast.CreateIndexStmt,
 		*ast.SetStmt,
-		*ast.DropIndexStmt:
+		*ast.DropIndexStmt,
+
+		*ast.CreateViewStmt:
 
 		s.executeRemoteStatement(record, isTran)
 
@@ -4565,6 +4567,50 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		s.myRecord.DDLRollback = fmt.Sprintf("DROP INDEX `%s` ON `%s`.`%s`;",
 			IndexName, t.Schema, t.Name)
 		s.alterRollbackBuffer = append(s.alterRollbackBuffer, rollbackSql)
+	}
+}
+
+func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
+	log.Debug("checkCreateView")
+
+	if !s.inc.EnableUseView {
+		s.appendErrorNo(ErrViewSupport, node.ViewName.Name)
+		return
+	}
+
+	// 校验列是否重复指定
+	if len(node.Cols) > 0 {
+		checkDup := map[string]bool{}
+		for _, c := range node.Cols {
+			if _, ok := checkDup[c.L]; ok {
+				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.String())
+			}
+			checkDup[c.L] = true
+		}
+	}
+
+	switch selectNode := node.Select.(type) {
+	case *ast.UnionStmt:
+		for _, sel := range selectNode.SelectList.Selects {
+			if sel.Fields != nil {
+				for _, field := range sel.Fields.Fields {
+					if field.WildCard != nil {
+						s.appendErrorNo(ER_SELECT_ONLY_STAR)
+					}
+				}
+			}
+		}
+		s.checkSelectItem(selectNode, false)
+
+	case *ast.SelectStmt:
+		if selectNode.Fields != nil {
+			for _, field := range selectNode.Fields.Fields {
+				if field.WildCard != nil {
+					s.appendErrorNo(ER_SELECT_ONLY_STAR)
+				}
+			}
+		}
+		s.checkSelectItem(selectNode, false)
 	}
 }
 

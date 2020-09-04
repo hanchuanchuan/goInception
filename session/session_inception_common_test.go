@@ -235,25 +235,36 @@ func (s *testCommon) tearDownTest(c *C) {
 	row := s.rows[s.getAffectedRows()-1]
 	sql := row[5]
 
-	exec := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;*/
-inception_magic_start;
-%s
-%s;
-inception_magic_commit;`
+	// 	exec := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;*/
+	// inception_magic_start;
+	// %s
+	// %s;
+	// inception_magic_commit;`
 	for _, name := range strings.Split(sql.(string), "\n") {
 		if strings.HasPrefix(name, "show tables") {
 			continue
 		}
 		n := strings.Replace(name, "'", "", -1)
-		res := s.tk.MustQueryInc(fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop table `"+n+"`"))
-		// log.Info(res.Rows())
-		c.Assert(s.getAffectedRows(), Equals, 2)
-		row := res.Rows()[s.getAffectedRows()-1]
-		c.Assert(row[2], Equals, "0", Commentf("%v", row))
-		c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
-		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
-		// log.Info(row[4])
-		// c.Assert(row[4].(string), IsNil)
+		// var res *testkit.Result
+		var sql string
+		if strings.HasPrefix(n, "v_") {
+			// res = s.tk.MustQueryInc(
+			// 	fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop view `"+n+"`"))
+			sql = "drop view test_inc.`" + n + "`"
+		} else {
+			// res = s.tk.MustQueryInc(
+			// 	fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop table "+s.useDB+".`"+n+"`"))
+			sql = "drop table test_inc.`" + n + "`"
+		}
+		res := s.db.Exec(sql)
+
+		c.Assert(res.Error, IsNil, Commentf("sql:%v", sql))
+
+		// c.Assert(s.getAffectedRows(), Equals, 2)
+		// row := res.Rows()[s.getAffectedRows()-1]
+		// c.Assert(row[2], Equals, "0", Commentf("%v", row))
+		// c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
+
 	}
 
 }
