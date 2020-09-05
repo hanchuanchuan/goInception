@@ -209,6 +209,7 @@ const (
 	ErrUseValueExpr
 	ErrUseIndexVisibility
 	ErrViewSupport
+	ErrViewColumnCount
 	ER_ERROR_LAST
 )
 
@@ -385,6 +386,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrUseValueExpr:                "Please confirm if you want to use value expression in where condition.",
 	ErrUseIndexVisibility:          "The back-end database does not support the index to specify the visible option.",
 	ErrViewSupport:                 "Not allowed to create or use views '%s'.",
+	ErrViewColumnCount:             "View's SELECT and view's field list have different column counts",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -553,6 +555,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrUseValueExpr:                        "请确认是否要在where条件中使用值表达式.",
 	ErrUseIndexVisibility:                  "后端数据库暂不支持索引指定visible选项",
 	ErrViewSupport:                         "不允许创建或使用视图 '%s'.",
+	ErrViewColumnCount:                     "视图的SELECT和视图字段列表具有不同的列数",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
