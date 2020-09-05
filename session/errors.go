@@ -208,6 +208,8 @@ const (
 	ErrImplicitTypeConversion
 	ErrUseValueExpr
 	ErrUseIndexVisibility
+	ErrViewSupport
+	ErrViewColumnCount
 	ER_ERROR_LAST
 )
 
@@ -383,6 +385,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrImplicitTypeConversion:      "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
 	ErrUseValueExpr:                "Please confirm if you want to use value expression in where condition.",
 	ErrUseIndexVisibility:          "The back-end database does not support the index to specify the visible option.",
+	ErrViewSupport:                 "Not allowed to create or use views '%s'.",
+	ErrViewColumnCount:             "View's SELECT and view's field list have different column counts",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -550,6 +554,8 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrImplicitTypeConversion:              "不允许隐式类型转换(列'%s.%s',类型'%s').",
 	ErrUseValueExpr:                        "请确认是否要在where条件中使用值表达式.",
 	ErrUseIndexVisibility:                  "后端数据库暂不支持索引指定visible选项",
+	ErrViewSupport:                         "不允许创建或使用视图 '%s'.",
+	ErrViewColumnCount:                     "视图的SELECT和视图字段列表具有不同的列数",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -1046,6 +1052,8 @@ func (e ErrorCode) String() string {
 		return "er_use_value_expr"
 	case ErrUseIndexVisibility:
 		return "er_use_index_visibility"
+	case ErrViewSupport:
+		return "er_view_support"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}
@@ -1115,6 +1123,12 @@ func TestCheckAuditSetting(cnf *config.Config) {
 		cnf.IncLevel.ErJsonTypeSupport = int8(GetErrorLevel(ErrJsonTypeSupport))
 	} else {
 		cnf.IncLevel.ErJsonTypeSupport = 0
+	}
+
+	if !cnf.Inc.EnableUseView {
+		cnf.IncLevel.ErrViewSupport = int8(GetErrorLevel(ErrViewSupport))
+	} else {
+		cnf.IncLevel.ErrViewSupport = 0
 	}
 
 	if cnf.Inc.EnablePKColumnsOnlyInt {
