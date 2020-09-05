@@ -4605,7 +4605,6 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 			if sel.Fields != nil {
 				for _, field := range sel.Fields.Fields {
 					if field.WildCard != nil {
-						// s.appendErrorNo(ER_SELECT_ONLY_STAR)
 						hasWildCard = true
 					}
 				}
@@ -4653,6 +4652,7 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 			Schema: node.ViewName.Schema.String(),
 			Name:   node.ViewName.Name.String(),
 			Fields: make([]FieldInfo, len(node.Cols)),
+			IsNew:  true,
 		}
 		if table.Schema == "" {
 			table.Schema = s.dbName
@@ -4661,6 +4661,7 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 		for index, field := range node.Cols {
 			table.Fields[index] = FieldInfo{
 				Field: field.String(),
+				IsNew: true,
 			}
 		}
 
@@ -4808,7 +4809,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	columnsCannotNull := map[string]bool{}
-
 	for _, c := range x.Columns {
 		found := false
 		for _, field := range table.Fields {
@@ -4826,7 +4826,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	if len(x.Lists) > 0 {
-
 		if s.inc.MaxInsertRows > 0 && len(x.Lists) > int(s.inc.MaxInsertRows) {
 			s.appendErrorNo(ER_INSERT_TOO_MUCH_ROWS,
 				len(x.Lists), s.inc.MaxInsertRows)
@@ -4871,21 +4870,19 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 
 		if sel != nil {
-
 			// 是否有星号列
-			isWildCard := false
+			hasWildCard := false
 			for _, f := range sel.Fields.Fields {
 				if f.WildCard != nil {
-					isWildCard = true
+					hasWildCard = true
 					break
 				}
 			}
 
-			if isWildCard {
+			if hasWildCard {
 				s.appendErrorNo(ER_SELECT_ONLY_STAR)
 
 				selectColumnCount, err := s.subSelectColumns(sel)
-
 				if err == nil && fieldCount != selectColumnCount {
 					s.appendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, 1)
 				}
@@ -4921,11 +4918,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 				t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 				if t != nil {
-					// if tblSource.AsName.L != "" {
-					// 	t.AsName = tblSource.AsName.O
-					// }
-					// tableInfoList = append(tableInfoList, t)
-
 					if tblSource.AsName.L != "" {
 						t.AsName = tblSource.AsName.O
 						tableInfoList = append(tableInfoList, t.copy())
