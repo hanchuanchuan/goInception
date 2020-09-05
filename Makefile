@@ -288,12 +288,11 @@ release:
 	@echo "$(CGREEN)Cross platform building for release ...$(CEND)"
 	@mkdir -p release
 	@for GOOS in darwin linux; do \
-		for GOARCH in amd64; do \
-			echo "Building $${GOOS}-$${GOARCH} ..."; \
-			GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
-			tar -czf release/goInception-$${GOOS}-amd64-${VERSION}.tar.gz goInception config/config.toml.default; \
-			rm -f goInception; \
-		done ;\
+		echo "Building $${GOOS}-amd64 ..."; \
+		GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
+		[ "$${GOOS}" == "darwin" ] && tar -czf release/goInception-macOS-${VERSION}.tar.gz goInception config/config.toml.default; \
+		[ "$${GOOS}" != "darwin" ] && tar -czf release/goInception-$${GOOS}-${VERSION}.tar.gz goInception config/config.toml.default; \
+		rm -f goInception; \
 	done
 
 .PHONY: release
@@ -301,13 +300,13 @@ release2:
 	@echo "$(CGREEN)Cross platform building for release ...$(CEND)"
 	@mkdir -p release
 	@for GOOS in darwin linux; do \
-		for GOARCH in amd64; do \
-			echo "Building $${GOOS}-$${GOARCH} ..."; \
-			GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
-			tar -czf release/goInception-$${GOOS}-amd64-${VERSION_EASY}.tar.gz goInception config/config.toml.default; \
-			rm -f goInception; \
-		done ;\
+		echo "Building $${GOOS}-amd64 ..."; \
+		GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
+		[ "$${GOOS}" == "darwin" ] && tar -czf release/goInception-macOS-${VERSION_EASY}.tar.gz goInception config/config.toml.default; \
+		[ "$${GOOS}" != "darwin" ] && tar -czf release/goInception-$${GOOS}-${VERSION_EASY}.tar.gz goInception config/config.toml.default; \
+		rm -f goInception; \
 	done
+
 
 docker:
 	@if [ ! -f bin/percona-toolkit.tar.gz ];then \
