@@ -339,6 +339,10 @@ type Inc struct {
 	// 要跳过的sql语句, 多个时以分号分隔
 	SkipSqls string `toml:"skip_sqls" json:"skip_sqls"`
 
+	// alter table子句忽略OSC工具.
+	// 格式为drop index,add column等,配置要跳过的子句格式,多个时以逗号分隔
+	IgnoreOscAlterStmt string `toml:"ignore_osc_alter_stmt" json:"ignore_osc_alter_stmt"`
+
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
 	// 0  表示关闭安全更新
