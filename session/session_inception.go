@@ -1417,10 +1417,12 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 
 	if record.useOsc {
 		if s.ghost.GhostOn {
-			log.Infof("con:%d use gh-ost", s.sessionVars.ConnectionID)
+			log.Infof("con:%d use gh-ost: %s",
+				s.sessionVars.ConnectionID, record.Sql)
 			s.mysqlExecuteAlterTableGhost(record)
 		} else {
-			log.Infof("con:%d use pt-osc", s.sessionVars.ConnectionID)
+			log.Infof("con:%d use pt-osc: %s",
+				s.sessionVars.ConnectionID, record.Sql)
 			s.mysqlExecuteAlterTableOsc(record)
 		}
 		record.ExecTimestamp = time.Now().Unix()
@@ -3028,15 +3030,52 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	s.mysqlShowTableStatus(table)
 	s.mysqlGetTableSize(table)
 
+	// 设置osc开关
+	s.checkAlterUseOsc(table)
+
 	// 如果修改了表名,则调整回滚语句
 	hasRenameTable := false
 	for _, alter := range node.Specs {
-		if alter.Tp != ast.AlterTableRenameTable {
-			s.checkAlterUseOsc(table)
-		} else {
+		if alter.Tp == ast.AlterTableRenameTable {
 			hasRenameTable = true
 			s.myRecord.useOsc = false
 			break
+		}
+	}
+
+	if s.myRecord.useOsc && !hasRenameTable {
+		ignoreOsc := false
+		for _, alter := range node.Specs {
+			switch alter.Tp {
+			case ast.AlterTableOption:
+				for _, opt := range alter.Options {
+					switch opt.Tp {
+					case ast.TableOptionCharset,
+						ast.TableOptionCollate,
+						ast.TableOptionComment:
+						ignoreOsc = true
+					}
+				}
+			}
+
+			if !ignoreOsc && s.inc.IgnoreOscAlterStmt != "" {
+				var builder strings.Builder
+				_ = alter.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
+				restoreSQL := builder.String()
+				for _, stmt := range strings.Split(s.inc.IgnoreOscAlterStmt, ",") {
+					stmt = strings.ToUpper(strings.TrimSpace(stmt))
+					if strings.HasPrefix(restoreSQL, stmt) {
+						ignoreOsc = true
+					}
+				}
+			}
+
+			if !ignoreOsc {
+				break
+			}
+		}
+		if ignoreOsc {
+			s.myRecord.useOsc = false
 		}
 	}
 
@@ -3165,6 +3204,14 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		}
 	}
 	s.alterRollbackBuffer = nil
+	// if !s.hasError() && s.myRecord.useOsc {
+	// 	s.myRecord.ErrLevel = uint8(Max(int(s.myRecord.ErrLevel), 1))
+	// 	if s.ghost.GhostOn {
+	// 		s.myRecord.Buf.WriteString("Will be executed using gh-ost.")
+	// 	} else {
+	// 		s.myRecord.Buf.WriteString("Will be executed using pt-osc.")
+	// 	}
+	// }
 }
 
 func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec) {
