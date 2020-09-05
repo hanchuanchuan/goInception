@@ -2197,9 +2197,34 @@ func (s *testSessionIncSuite) TestRenameTable(c *C) {
 
 func (s *testSessionIncSuite) TestCreateView(c *C) {
 
-	sql = "create table t1(id int primary key);create view v1 as select * from t1;"
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法创建视图'v1'."))
+		session.NewErr(session.ErrViewSupport, "v_1"))
+
+	config.GetGlobalConfig().Inc.EnableUseView = true
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	sql = "create table t1(id int primary key);create view v_1 as select id from t1;"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1(id,id) as select id,c1 from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_FIELD_SPECIFIED_TWICE, "id", "v_1"))
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1(id,c1,c2) as select id,c1 from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrViewColumnCount))
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1(id,c1,c2) as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR),
+		session.NewErr(session.ErrViewColumnCount))
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1 as select id,c1 from t1;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {

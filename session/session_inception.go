@@ -611,7 +611,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		s.checkDropIndex(node, currentSql)
 
 	case *ast.CreateViewStmt:
-		s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
+		s.checkCreateView(node, currentSql)
+		// s.appendErrorMessage(fmt.Sprintf("命令禁止! 无法创建视图'%s'.", node.ViewName.Name))
 
 	case *ast.ShowStmt:
 		if node.IsInception {
@@ -659,7 +660,6 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		return s.executeKillStmt(node)
 
 	case *ast.SetStmt:
-
 		s.checkSetStmt(node)
 
 	default:
@@ -830,6 +830,8 @@ func (s *session) checkSqlIsDDL(record *Record) bool {
 		*ast.DropTableStmt,
 		*ast.RenameTableStmt,
 		*ast.TruncateTableStmt,
+
+		*ast.CreateViewStmt,
 
 		// *ast.CreateDatabaseStmt,
 		// *ast.DropDatabaseStmt,
@@ -1193,7 +1195,9 @@ func (s *session) executeRemoteCommand(record *Record, isTran bool) int {
 
 		*ast.CreateIndexStmt,
 		*ast.SetStmt,
-		*ast.DropIndexStmt:
+		*ast.DropIndexStmt,
+
+		*ast.CreateViewStmt:
 
 		s.executeRemoteStatement(record, isTran)
 
@@ -2187,38 +2191,38 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 		if !s.inc.EnableDropTable {
 			s.appendErrorNo(ER_CANT_DROP_TABLE, t.Name)
-		} else {
+			continue
+		}
 
-			if t.Schema.O == "" {
-				t.Schema = model.NewCIStr(s.dbName)
+		if t.Schema.O == "" {
+			t.Schema = model.NewCIStr(s.dbName)
+		}
+
+		table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
+
+		//如果表不存在，但存在if existed，则跳过
+		if table == nil {
+			if !node.IfExists {
+				s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", t.Schema, t.Name))
+			}
+		} else {
+			if s.opt.Execute {
+				// 生成回滚语句
+				s.mysqlShowCreateTable(table, node.IsView)
 			}
 
-			table := s.getTableFromCache(t.Schema.O, t.Name.O, false)
+			if s.opt.Check {
+				// 获取表估计的受影响行数
+				s.mysqlShowTableStatus(table)
+			}
 
-			//如果表不存在，但存在if existed，则跳过
-			if table == nil {
-				if !node.IfExists {
-					s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, fmt.Sprintf("%s.%s", t.Schema, t.Name))
-				}
-			} else {
-				if s.opt.Execute {
-					// 生成回滚语句
-					s.mysqlShowCreateTable(table)
-				}
+			s.myRecord.TableInfo = table
 
-				if s.opt.Check {
-					// 获取表估计的受影响行数
-					s.mysqlShowTableStatus(table)
-				}
+			s.myRecord.TableInfo.IsDeleted = true
 
-				s.myRecord.TableInfo = table
-
-				s.myRecord.TableInfo.IsDeleted = true
-
-				if s.inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.inc.MaxDDLAffectRows) {
-					s.appendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
-						"Drop", s.myRecord.AffectedRows, s.inc.MaxDDLAffectRows)
-				}
+			if s.inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.inc.MaxDDLAffectRows) {
+				s.appendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
+					"Drop", s.myRecord.AffectedRows, s.inc.MaxDDLAffectRows)
 			}
 		}
 	}
@@ -2327,13 +2331,18 @@ func (s *session) mysqlGetTableSize(t *TableInfo) {
 }
 
 // mysqlShowCreateTable 生成回滚语句
-func (s *session) mysqlShowCreateTable(t *TableInfo) {
+func (s *session) mysqlShowCreateTable(t *TableInfo, isView bool) {
 
 	if t.IsNew {
 		return
 	}
 
-	sql := fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", t.Schema, t.Name)
+	var sql string
+	if isView {
+		sql = fmt.Sprintf("SHOW CREATE VIEW `%s`.`%s`;", t.Schema, t.Name)
+	} else {
+		sql = fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", t.Schema, t.Name)
+	}
 
 	var res string
 
@@ -4568,6 +4577,103 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	}
 }
 
+func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
+	log.Debug("checkCreateView")
+
+	if !s.inc.EnableUseView {
+		s.appendErrorNo(ErrViewSupport, node.ViewName.Name)
+		return
+	}
+
+	fieldCount := len(node.Cols)
+	// 校验列是否重复指定
+	if fieldCount > 0 {
+		checkDup := map[string]bool{}
+		for _, c := range node.Cols {
+			if _, ok := checkDup[c.L]; ok {
+				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.String(), node.ViewName.Name.String())
+			}
+			checkDup[c.L] = true
+		}
+	}
+
+	switch selectNode := node.Select.(type) {
+	case *ast.UnionStmt:
+		for _, sel := range selectNode.SelectList.Selects {
+			// 是否有星号列
+			hasWildCard := false
+			if sel.Fields != nil {
+				for _, field := range sel.Fields.Fields {
+					if field.WildCard != nil {
+						hasWildCard = true
+					}
+				}
+
+				if hasWildCard {
+					s.appendErrorNo(ER_SELECT_ONLY_STAR)
+
+					selectColumnCount, err := s.subSelectColumns(sel)
+					if err == nil && fieldCount > 0 && fieldCount != selectColumnCount {
+						s.appendErrorNo(ErrViewColumnCount)
+					}
+				} else if fieldCount > 0 && fieldCount != len(sel.Fields.Fields) {
+					// 判断字段数是否匹配
+					s.appendErrorNo(ErrViewColumnCount)
+				}
+			}
+		}
+		s.checkSelectItem(selectNode, false)
+
+	case *ast.SelectStmt:
+		if selectNode.Fields != nil {
+			// 是否有星号列
+			hasWildCard := false
+			for _, field := range selectNode.Fields.Fields {
+				if field.WildCard != nil {
+					hasWildCard = true
+				}
+			}
+			if hasWildCard {
+				s.appendErrorNo(ER_SELECT_ONLY_STAR)
+
+				selectColumnCount, err := s.subSelectColumns(selectNode)
+				if err == nil && fieldCount > 0 && fieldCount != selectColumnCount {
+					s.appendErrorNo(ErrViewColumnCount)
+				}
+			} else if fieldCount > 0 && fieldCount != len(selectNode.Fields.Fields) {
+				s.appendErrorNo(ErrViewColumnCount)
+			}
+		}
+		s.checkSelectItem(selectNode, false)
+	}
+
+	if !s.hasError() {
+		table := &TableInfo{
+			Schema: node.ViewName.Schema.String(),
+			Name:   node.ViewName.Name.String(),
+			Fields: make([]FieldInfo, len(node.Cols)),
+			IsNew:  true,
+		}
+		if table.Schema == "" {
+			table.Schema = s.dbName
+		}
+
+		for index, field := range node.Cols {
+			table.Fields[index] = FieldInfo{
+				Field: field.String(),
+				IsNew: true,
+			}
+		}
+
+		s.cacheNewTable(table)
+		s.myRecord.TableInfo = table
+
+		if s.opt.Execute {
+			s.myRecord.DDLRollback = fmt.Sprintf("DROP VIEW `%s`.`%s`;", table.Schema, table.Name)
+		}
+	}
+}
+
 func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkAddConstraint")
 
@@ -4703,7 +4809,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	columnsCannotNull := map[string]bool{}
-
 	for _, c := range x.Columns {
 		found := false
 		for _, field := range table.Fields {
@@ -4721,7 +4826,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	if len(x.Lists) > 0 {
-
 		if s.inc.MaxInsertRows > 0 && len(x.Lists) > int(s.inc.MaxInsertRows) {
 			s.appendErrorNo(ER_INSERT_TOO_MUCH_ROWS,
 				len(x.Lists), s.inc.MaxInsertRows)
@@ -4766,21 +4870,19 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 
 		if sel != nil {
-
 			// 是否有星号列
-			isWildCard := false
+			hasWildCard := false
 			for _, f := range sel.Fields.Fields {
 				if f.WildCard != nil {
-					isWildCard = true
+					hasWildCard = true
 					break
 				}
 			}
 
-			if isWildCard {
+			if hasWildCard {
 				s.appendErrorNo(ER_SELECT_ONLY_STAR)
 
 				selectColumnCount, err := s.subSelectColumns(sel)
-
 				if err == nil && fieldCount != selectColumnCount {
 					s.appendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, 1)
 				}
@@ -4816,11 +4918,6 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 
 				t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
 				if t != nil {
-					// if tblSource.AsName.L != "" {
-					// 	t.AsName = tblSource.AsName.O
-					// }
-					// tableInfoList = append(tableInfoList, t)
-
 					if tblSource.AsName.L != "" {
 						t.AsName = tblSource.AsName.O
 						tableInfoList = append(tableInfoList, t.copy())
