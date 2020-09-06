@@ -70,10 +70,11 @@ func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
 
 func (s *testSessionIncBackupSuite) TestCreateTableAsSelect(c *C) {
 	if !s.enforeGtidConsistency {
-		s.mustRunBackup(c, "drop table if exists t1,t2;create table t1(id int); create table t2 as select * from t1;")
+		s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
+		s.mustRunBackup(c, "create table t2 as select * from t1;")
 		row := s.rows[s.getAffectedRows()-1]
-		backup := s.query("t1", row[7].(string))
-		c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", s.rows))
+		backup := s.query("t2", row[7].(string))
+		c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t2`;", Commentf("%v", s.rows))
 	}
 }
 
