@@ -940,7 +940,17 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_PREFIX,
 			config.GetGlobalConfig().Inc.TablePrefix))
+}
 
+func (s *testSessionIncSuite) TestCreateTableAsSelect(c *C) {
+	if s.enforeGtidConsistency {
+		sql = "create table t1(id int primary key);create table t11 as select * from t1;"
+		s.testErrorCode(c, sql,
+			session.NewErrf("Statement violates GTID consistency: CREATE TABLE ... SELECT."))
+	} else {
+		sql = "create table t1(id int primary key);create table t11 as select * from t1;"
+		s.testErrorCode(c, sql)
+	}
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {

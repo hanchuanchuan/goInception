@@ -86,6 +86,8 @@ type testCommon struct {
 	innodbLargePrefix bool
 	// 时间戳类型是否需要明确指定默认值
 	explicitDefaultsForTimestamp bool
+	// 强制执行GTID一致性
+	enforeGtidConsistency bool
 	// 是否忽略大小写(lower_case_table_names为1和2时忽略,否则不忽略)
 	ignoreCase bool
 
@@ -551,7 +553,8 @@ func (s *testCommon) mysqlServerVersion() error {
 
 	var name, value string
 	sql := `show variables where Variable_name in
-		('explicit_defaults_for_timestamp','innodb_large_prefix','version','sql_mode','lower_case_table_names');`
+		('explicit_defaults_for_timestamp','innodb_large_prefix',
+		'version','sql_mode','lower_case_table_names','enforce_gtid_consistency');`
 	rows, err := s.db.Raw(sql).Rows()
 	if err != nil {
 		return err
@@ -596,9 +599,9 @@ func (s *testCommon) mysqlServerVersion() error {
 				s.ignoreCase = v > 0
 			}
 		case "explicit_defaults_for_timestamp":
-			if value == "ON" {
-				s.explicitDefaultsForTimestamp = true
-			}
+			s.explicitDefaultsForTimestamp = value == "ON" || value == "1"
+		case "enforce_gtid_consistency":
+			s.enforeGtidConsistency = value == "ON" || value == "1"
 		}
 	}
 
