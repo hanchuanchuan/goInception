@@ -2354,26 +2354,26 @@ func (s *session) mysqlShowCreateTable(t *TableInfo, isView bool) {
 		sql = fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`;", t.Schema, t.Name)
 	}
 
-	var res string
-
-	rows, err := s.raw(sql)
-	if rows != nil {
-		defer rows.Close()
+	type Object struct {
+		View  string `gorm:"Column:Create View"`
+		Table string `gorm:"Column:Create Table"`
 	}
 
-	if err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+	var rows []Object
+	if err := s.rawScan(sql, &rows); err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 			s.appendErrorMessage(myErr.Message)
 		} else {
 			s.appendErrorMessage(err.Error())
 		}
-	} else if rows != nil {
-
-		for rows.Next() {
-			rows.Scan(&res, &res)
+	}
+	if rows != nil {
+		row := rows[0]
+		if isView {
+			s.myRecord.DDLRollback = row.View
+		} else {
+			s.myRecord.DDLRollback = row.Table
 		}
-		s.myRecord.DDLRollback = res
 		s.myRecord.DDLRollback += ";"
 	}
 }
