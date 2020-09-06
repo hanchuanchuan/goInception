@@ -226,6 +226,14 @@ type session struct {
 	// 时间戳类型是否需要明确指定默认值
 	explicitDefaultsForTimestamp bool
 
+	// 强制执行GTID一致性.
+	// 当启用 enforce_gtid_consistency 功能的时候，MySQL只允许能够保障事务安全，并且能够被日志记录的SQL语句被执行，
+	// 像create table … select 和 create temporarytable语句，以及同时更新事务表和非事务表的SQL语句或事务都不允许执行
+	enforeGtidConsistency bool
+
+	// 数据库的GTID模式会影响enforce_gtid_consistency参数.
+	gtidMode string
+
 	// 判断kill操作在哪个阶段,如果是在执行阶段时,则不停止备份
 	killExecute bool
 
