@@ -625,7 +625,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 				return s.executeLocalShowLevels(node)
 			default:
 				log.Infof("%#v", node)
-				return nil, errors.New("不支持的语法类型")
+				return nil, errors.New(s.getErrorMessage(ER_NOT_SUPPORTED_YET))
 			}
 		} else {
 			s.executeInceptionShow(currentSql)
@@ -2370,34 +2370,6 @@ func (s *session) mysqlShowCreateTable(t *TableInfo, isView bool) {
 	}
 }
 
-// mysqlShowCreateDatabase 生成回滚语句
-func (s *session) mysqlShowCreateDatabase(name string) {
-
-	sql := fmt.Sprintf("SHOW CREATE DATABASE `%s`;", name)
-
-	var res string
-
-	rows, err := s.raw(sql)
-	if rows != nil {
-		defer rows.Close()
-	}
-
-	if err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.appendErrorMessage(myErr.Message)
-		} else {
-			s.appendErrorMessage(err.Error())
-		}
-	} else if rows != nil {
-		for rows.Next() {
-			rows.Scan(&res, &res)
-		}
-		s.myRecord.DDLRollback = res
-		s.myRecord.DDLRollback += ";"
-	}
-}
-
 func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	log.Debug("checkRenameTable")
@@ -2707,8 +2679,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 									if f.FnName.L == ast.CurrentTimestamp {
 										onUpdateTimestampCount += 1
 									}
-								} else {
-
 								}
 							}
 						}
@@ -3043,6 +3013,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		}
 	}
 
+	// 判断是否忽略osc工具
 	if s.myRecord.useOsc && !hasRenameTable {
 		ignoreOsc := false
 		for _, alter := range node.Specs {
@@ -3098,19 +3069,19 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		case ast.AlterTableOption:
 			if len(alter.Options) == 0 {
 				s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			} else {
+				s.checkTableOptions(alter.Options, node.Table.Name.String(), false)
 			}
-			s.checkTableOptions(alter.Options, node.Table.Name.String(), false)
+
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
 		case ast.AlterTableDropColumn:
-			// s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.OldColumnName.Name.O)
 			s.checkDropColumn(table, alter)
 
 		case ast.AlterTableAddConstraint:
 			s.checkAddConstraint(table, alter)
 
 		case ast.AlterTableDropPrimaryKey:
-			// s.AppendErrorNo(ER_CANT_DROP_FIELD_OR_KEY, alter.Name)
 			s.checkDropPrimaryKey(table, alter)
 		case ast.AlterTableDropIndex:
 			s.checkAlterTableDropIndex(table, alter.Name)
@@ -3120,8 +3091,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 		case ast.AlterTableModifyColumn:
 			s.checkModifyColumn(table, alter)
-		case ast.AlterTableChangeColumn:
 
+		case ast.AlterTableChangeColumn:
 			s.appendErrorNo(ErCantChangeColumn, alter.OldColumnName.String())
 
 			// 如果使用pt-osc,且非第一条语句使用了change命令,则禁止
@@ -3137,7 +3108,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			s.checkAlterTableAlterColumn(table, alter)
 
 		case ast.AlterTableRenameIndex:
-			if s.dbVersion < 50701 {
+			if s.dbVersion < 50700 {
 				s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 			} else {
 				s.checkAlterTableRenameIndex(table, alter)
@@ -4939,40 +4910,20 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			}
 
 			var tableList []*ast.TableSource
-			var tableInfoList []*TableInfo
 			tableList = extractTableList(x.Select, tableList)
 
 			// 判断select中是否有新表
 			haveNewTable := false
 			for _, tblSource := range tableList {
-				tblName, ok := tblSource.Source.(*ast.TableName)
-				if !ok {
-					cols := s.getSubSelectColumns(tblSource.Source)
-					if cols != nil {
-						rows := make([]FieldInfo, len(cols))
-						for i, colName := range cols {
-							rows[i].Field = colName
+				if tblName, ok := tblSource.Source.(*ast.TableName); ok {
+					t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
+					if t != nil {
+						if tblSource.AsName.L != "" {
+							t.AsName = tblSource.AsName.O
 						}
-						t := &TableInfo{
-							Schema: "",
-							Name:   tblSource.AsName.String(),
-							Fields: rows,
+						if t.IsNew {
+							haveNewTable = true
 						}
-						tableInfoList = append(tableInfoList, t)
-					}
-					continue
-				}
-
-				t := s.getTableFromCache(tblName.Schema.O, tblName.Name.O, true)
-				if t != nil {
-					if tblSource.AsName.L != "" {
-						t.AsName = tblSource.AsName.O
-						tableInfoList = append(tableInfoList, t.copy())
-					} else {
-						tableInfoList = append(tableInfoList, t)
-					}
-					if t.IsNew {
-						haveNewTable = true
 					}
 				}
 			}
@@ -5103,8 +5054,6 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 						totalFieldCount += 1
 					}
 				}
-			} else {
-				// return
 			}
 		}
 
@@ -5331,10 +5280,6 @@ func (s *session) checkDropDB(node *ast.DropDatabaseStmt, sql string) {
 	}
 
 	if s.checkDBExists(node.Name, !node.IfExists) {
-		// if s.opt.execute {
-		// 	// 生成回滚语句
-		// 	s.mysqlShowCreateDatabase(node.Name)
-		// }
 		s.dbCacheList[strings.ToLower(node.Name)].IsDeleted = true
 	}
 }
@@ -5440,29 +5385,6 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 }
 
 func (s *session) setVariableValue(t reflect.Type, values reflect.Value,
-	name string, value *ast.ValueExpr) error {
-
-	found := false
-	for i := 0; i < values.NumField(); i++ {
-		if values.Field(i).CanInterface() { //判断是否为可导出字段
-			if k := t.Field(i).Tag.Get("toml"); strings.EqualFold(k, name) ||
-				strings.EqualFold(t.Field(i).Name, name) {
-				err := s.setConfigValue(name, values.Field(i), &(value.Datum))
-				if err != nil {
-					return err
-				}
-				found = true
-				break
-			}
-		}
-	}
-	if !found {
-		return errors.New("无效参数")
-	}
-	return nil
-}
-
-func (s *session) setLevelValue(t reflect.Type, values reflect.Value,
 	name string, value *ast.ValueExpr) error {
 
 	found := false
@@ -5966,7 +5888,7 @@ func (s *session) executeInceptionShow(sql string) ([]sqlexec.RecordSet, error) 
 		buf.WriteString(":\n")
 
 		paramValues := strings.Repeat("? | ", colLength)
-		paramValues = strings.TrimRight(paramValues, " | ")
+		paramValues = strings.TrimRight(paramValues, "| ")
 
 		for rows.Next() {
 			// https://kylewbanks.com/blog/query-result-to-map-in-golang
@@ -6981,7 +6903,7 @@ func (s *session) appendErrorNo(number ErrorCode, values ...interface{}) {
 		return
 	}
 
-	var level uint8 = 2
+	var level uint8
 	if v, ok := s.incLevel[number.String()]; ok {
 		level = v
 	} else {
