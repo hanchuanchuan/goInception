@@ -301,7 +301,7 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 		s.appendErrorNo(ER_MULTIPLE_PRI_KEY)
 	}
 
-	if len(stmt.Cols) == 0 && stmt.ReferTable == nil {
+	if len(stmt.Cols) == 0 && stmt.ReferTable == nil && stmt.Select == nil {
 		s.appendErrorNo(ER_MUST_AT_LEAST_ONE_COLUMN)
 	}
 }

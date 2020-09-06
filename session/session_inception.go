@@ -1658,7 +1658,7 @@ func (s *session) mysqlServerVersion() {
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
 	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
-	'explicit_defaults_for_timestamp');`
+	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode');`
 
 	rows, err := s.raw(sql)
 	if rows != nil {
@@ -1724,6 +1724,10 @@ func (s *session) mysqlServerVersion() {
 				s.isClusterNode = (value == "ON" || value == "1")
 			case "explicit_defaults_for_timestamp":
 				s.explicitDefaultsForTimestamp = (value == "ON" || value == "1")
+			case "enforce_gtid_consistency":
+				s.enforeGtidConsistency = (value == "ON" || value == "1")
+			case "gtid_mode":
+				s.gtidMode = value
 			}
 		}
 
@@ -1734,6 +1738,10 @@ func (s *session) mysqlServerVersion() {
 			} else {
 				s.innodbLargePrefix = false
 			}
+		}
+
+		if !s.enforeGtidConsistency && strings.HasPrefix(s.gtidMode, "ON") {
+			s.enforeGtidConsistency = true
 		}
 
 		// log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
@@ -2720,8 +2728,46 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 		}
 
 		if node.Select != nil {
-			log.Error("暂不支持语法: ", sql)
-			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			if s.enforeGtidConsistency {
+				s.appendErrorMessage("Statement violates GTID consistency: CREATE TABLE ... SELECT.")
+			} else {
+				s.checkSelectItem(node.Select, false)
+
+				if s.myRecord.ErrLevel < 2 {
+					table = &TableInfo{
+						Schema: node.Table.Schema.String(),
+						Name:   node.Table.Name.String(),
+						Fields: make([]FieldInfo, len(node.Cols)),
+						IsNew:  true,
+					}
+					if table.Schema == "" {
+						table.Schema = s.dbName
+					}
+
+					if len(node.Cols) > 0 {
+						for index, field := range node.Cols {
+							table.Fields[index] = FieldInfo{
+								Field: field.Name.String(),
+								IsNew: true,
+							}
+						}
+					} else {
+						cols := s.getSubSelectColumns(node.Select)
+						table.Fields = make([]FieldInfo, len(cols))
+						for index, field := range cols {
+							table.Fields[index] = FieldInfo{
+								Field: field,
+								IsNew: true,
+							}
+						}
+					}
+
+					s.cacheNewTable(table)
+					s.myRecord.TableInfo = table
+				}
+				// log.Error("暂不支持语法: ", sql)
+				// s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			}
 		}
 
 		if node.ReferTable != nil || len(node.Cols) > 0 {
@@ -2882,7 +2928,7 @@ func (s *session) checkColumnsMustHaveindex(table *TableInfo) {
 		}
 
 		//col_name 在表中，并且没有索引
-		if inTable == true && haveIndex == false {
+		if inTable && !haveIndex {
 			mustHaveNotHaveIndexCol = append(mustHaveNotHaveIndexCol, col_name)
 		}
 	}
@@ -4676,10 +4722,21 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 			table.Schema = s.dbName
 		}
 
-		for index, field := range node.Cols {
-			table.Fields[index] = FieldInfo{
-				Field: field.String(),
-				IsNew: true,
+		if len(node.Cols) > 0 {
+			for index, field := range node.Cols {
+				table.Fields[index] = FieldInfo{
+					Field: field.String(),
+					IsNew: true,
+				}
+			}
+		} else {
+			cols := s.getSubSelectColumns(node.Select)
+			table.Fields = make([]FieldInfo, len(cols))
+			for index, field := range cols {
+				table.Fields[index] = FieldInfo{
+					Field: field,
+					IsNew: true,
+				}
 			}
 		}
 
@@ -5154,10 +5211,6 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 			tableList = extractTableList(sel.From.TableRefs, tableList)
 			// tableInfoList = s.getTableInfoByTableSource(tableList)
 
-			// if sel.From.TableRefs.On != nil {
-			// 	s.checkItem(sel.From.TableRefs.On.Expr, tableInfoList)
-			// }
-
 			for _, f := range sel.Fields.Fields {
 				if f.WildCard == nil {
 					// log.Infof("%#v", f)
@@ -5172,7 +5225,6 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 						}
 					}
 				} else {
-
 					db := f.WildCard.Schema.L
 					wildTable := f.WildCard.Table.L
 
@@ -5230,35 +5282,6 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 			}
 		}
 
-		// for _, t := range tableInfoList {
-		// 	log.Info(t.Name)
-		// }
-		// log.Infof("%#v", columns)
-
-		// if sel.Fields != nil {
-		// 	for _, field := range sel.Fields.Fields {
-		// 		if field.WildCard == nil {
-		// 			s.checkItem(field.Expr, tableInfoList)
-		// 		}
-		// 	}
-		// }
-
-		// if sel.GroupBy != nil {
-		// 	for _, item := range sel.GroupBy.Items {
-		// 		s.checkItem(item.Expr, tableInfoList)
-		// 	}
-		// }
-
-		// if sel.Having != nil {
-		// 	s.checkItem(sel.Having.Expr, tableInfoList)
-		// }
-
-		// if sel.OrderBy != nil {
-		// 	for _, item := range sel.OrderBy.Items {
-		// 		s.checkItem(item.Expr, tableInfoList)
-		// 	}
-		// }
-
 		return columns
 
 	default:
@@ -5267,7 +5290,6 @@ func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, sel)
 	}
 
-	// log.Infof("%#v", columns)
 	return columns
 }
 

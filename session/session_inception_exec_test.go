@@ -273,7 +273,14 @@ primary key(id)) comment 'test';`
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.T1"))
 	}
+}
 
+func (s *testSessionIncExecSuite) TestCreateTableAsSelect(c *C) {
+	if !s.enforeGtidConsistency {
+		s.mustRunExec(c, "drop table if exists t1,t2;create table t1(c1 int);")
+		sql = "create table t2 as select * from t1;"
+		s.testErrorCode(c, sql)
+	}
 }
 
 func (s *testSessionIncExecSuite) TestDropTable(c *C) {
