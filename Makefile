@@ -287,25 +287,26 @@ tools/bin/gosec: tools/check/go.mod
 release:
 	@echo "$(CGREEN)Cross platform building for release ...$(CEND)"
 	@mkdir -p release
-	@for GOOS in darwin linux; do \
-		echo "Building $${GOOS}-amd64 ..."; \
-		GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
-		[ "$${GOOS}" == "darwin" ] && tar -czf release/goInception-macOS-${VERSION}.tar.gz goInception config/config.toml.default; \
-		[ "$${GOOS}" != "darwin" ] && tar -czf release/goInception-$${GOOS}-${VERSION}.tar.gz goInception config/config.toml.default; \
-		rm -f goInception; \
-	done
+	@GOOS=darwin GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go
+	@tar -czf release/goInception-macOS-${VERSION}.tar.gz goInception config/config.toml.default
+	@rm -f goInception
+
+	@GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go
+	@tar -czf release/goInception-linux-${VERSION}.tar.gz goInception config/config.toml.default
+	@rm -f goInception
 
 .PHONY: release
 release2:
 	@echo "$(CGREEN)Cross platform building for release ...$(CEND)"
 	@mkdir -p release
-	@for GOOS in darwin linux; do \
-		echo "Building $${GOOS}-amd64 ..."; \
-		GOOS=$${GOOS} GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go; \
-		[ "$${GOOS}" == "darwin" ] && tar -czf release/goInception-macOS-${VERSION_EASY}.tar.gz goInception config/config.toml.default; \
-		[ "$${GOOS}" != "darwin" ] && tar -czf release/goInception-$${GOOS}-${VERSION_EASY}.tar.gz goInception config/config.toml.default; \
-		rm -f goInception; \
-	done
+
+	@GOOS=darwin GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go
+	@tar -czf release/goInception-macOS-${VERSION_EASY}.tar.gz goInception config/config.toml.default
+	@rm -f goInception
+
+	@GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)'  -o goInception tidb-server/main.go
+	@tar -czf release/goInception-linux-${VERSION_EASY}.tar.gz goInception config/config.toml.default
+	@rm -f goInception
 
 
 docker:
