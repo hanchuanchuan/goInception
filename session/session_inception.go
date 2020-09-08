@@ -7495,6 +7495,22 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 		}
 	}
 
+	if node.Having != nil || node.OrderBy != nil {
+		cols := s.getSubSelectColumns(node)
+		if cols != nil {
+			rows := make([]FieldInfo, len(cols))
+			for i, colName := range cols {
+				rows[i].Field = colName
+			}
+			t := &TableInfo{
+				Schema: "",
+				Name:   "",
+				Fields: rows,
+			}
+			tableInfoList = append(tableInfoList, t)
+		}
+	}
+
 	if node.Having != nil {
 		s.checkItem(node.Having.Expr, tableInfoList)
 	}

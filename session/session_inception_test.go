@@ -1999,6 +1999,15 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 		delete from t1 where c1 =1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrImplicitTypeConversion, "t1", "c1", "char"))
+
+	s.mustRunExec(c, `drop table if exists t1;CREATE TABLE t1 (
+			id bigint(20) AUTO_INCREMENT primary key,
+			goods_id bigint(20) unsigned NOT NULL DEFAULT '0' ,
+			sku_id bigint(20) unsigned NOT NULL DEFAULT '0'  ,
+			bar_code varchar(30) NOT NULL DEFAULT ''
+		  );`)
+	sql = "delete from t1 where id in (select id from (select any_value(id) as id,count(*) as num from t1 group by `goods_id`, `sku_id`, `bar_code` having num > 1) as t)"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
