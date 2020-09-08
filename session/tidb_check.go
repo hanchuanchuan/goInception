@@ -518,6 +518,12 @@ func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
 	if _, ok := expr.(*ast.AggregateFuncExpr); ok {
 		return
 	}
+	// AnyValue可以跳过only_full_group_by检查
+	// if f, ok := expr.(*ast.FuncCallExpr); ok {
+	// 	if f.FnName.L == ast.AnyValue {
+	// 		return
+	// 	}
+	// }
 	if c, ok := expr.(*ast.ColumnNameExpr); ok {
 		col := findColumnWithList(c, tables)
 		if col != nil {
