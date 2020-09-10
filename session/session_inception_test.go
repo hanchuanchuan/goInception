@@ -1605,6 +1605,18 @@ func (s *testSessionIncSuite) TestSelect(c *C) {
 	sql = `select id,c1 from t1 where c1 ="1";`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrImplicitTypeConversion, "t1", "c1", "int"))
+
+}
+
+func (s *testSessionIncSuite) TestSubSelect(c *C) {
+	config.GetGlobalConfig().Inc.EnableSelectStar = true
+
+	s.mustRunExec(c, `drop table if exists t1,t2;
+	CREATE TABLE t1(id INT,NAME VARCHAR(30));
+	CREATE TABLE t2(id INT ,salesid INT ,title VARCHAR(100));`)
+	sql = `SELECT a.id,a.title,(SELECT b.name FROM t1 b WHERE b.id = a.salesid) AS salesname
+	FROM t2 a;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestUpdate(c *C) {
