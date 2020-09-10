@@ -86,6 +86,8 @@ type testCommon struct {
 	innodbLargePrefix bool
 	// 时间戳类型是否需要明确指定默认值
 	explicitDefaultsForTimestamp bool
+	// 强制执行GTID一致性
+	enforeGtidConsistency bool
 	// 是否忽略大小写(lower_case_table_names为1和2时忽略,否则不忽略)
 	ignoreCase bool
 
@@ -235,25 +237,36 @@ func (s *testCommon) tearDownTest(c *C) {
 	row := s.rows[s.getAffectedRows()-1]
 	sql := row[5]
 
-	exec := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;*/
-inception_magic_start;
-%s
-%s;
-inception_magic_commit;`
+	// 	exec := `/*%s;--execute=1;--backup=0;--enable-ignore-warnings;*/
+	// inception_magic_start;
+	// %s
+	// %s;
+	// inception_magic_commit;`
 	for _, name := range strings.Split(sql.(string), "\n") {
 		if strings.HasPrefix(name, "show tables") {
 			continue
 		}
 		n := strings.Replace(name, "'", "", -1)
-		res := s.tk.MustQueryInc(fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop table `"+n+"`"))
-		// log.Info(res.Rows())
-		c.Assert(s.getAffectedRows(), Equals, 2)
-		row := res.Rows()[s.getAffectedRows()-1]
-		c.Assert(row[2], Equals, "0", Commentf("%v", row))
-		c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
-		// c.Assert(err, check.IsNil, check.Commentf("sql:%s, %v, error stack %v", sql, args, errors.ErrorStack(err)))
-		// log.Info(row[4])
-		// c.Assert(row[4].(string), IsNil)
+		// var res *testkit.Result
+		var sql string
+		if strings.HasPrefix(n, "v_") {
+			// res = s.tk.MustQueryInc(
+			// 	fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop view `"+n+"`"))
+			sql = "drop view test_inc.`" + n + "`"
+		} else {
+			// res = s.tk.MustQueryInc(
+			// 	fmt.Sprintf(exec, s.getAddr(), s.useDB, "drop table "+s.useDB+".`"+n+"`"))
+			sql = "drop table test_inc.`" + n + "`"
+		}
+		res := s.db.Exec(sql)
+
+		c.Assert(res.Error, IsNil, Commentf("sql:%v", sql))
+
+		// c.Assert(s.getAffectedRows(), Equals, 2)
+		// row := res.Rows()[s.getAffectedRows()-1]
+		// c.Assert(row[2], Equals, "0", Commentf("%v", row))
+		// c.Assert(row[3], Equals, "Execute Successfully", Commentf("%v", row))
+
 	}
 
 }
@@ -540,7 +553,8 @@ func (s *testCommon) mysqlServerVersion() error {
 
 	var name, value string
 	sql := `show variables where Variable_name in
-		('explicit_defaults_for_timestamp','innodb_large_prefix','version','sql_mode','lower_case_table_names');`
+		('explicit_defaults_for_timestamp','innodb_large_prefix',
+		'version','sql_mode','lower_case_table_names','enforce_gtid_consistency');`
 	rows, err := s.db.Raw(sql).Rows()
 	if err != nil {
 		return err
@@ -585,9 +599,9 @@ func (s *testCommon) mysqlServerVersion() error {
 				s.ignoreCase = v > 0
 			}
 		case "explicit_defaults_for_timestamp":
-			if value == "ON" {
-				s.explicitDefaultsForTimestamp = true
-			}
+			s.explicitDefaultsForTimestamp = value == "ON" || value == "1"
+		case "enforce_gtid_consistency":
+			s.enforeGtidConsistency = value == "ON" || value == "1"
 		}
 	}
 

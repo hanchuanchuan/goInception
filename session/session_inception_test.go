@@ -940,7 +940,17 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_PREFIX,
 			config.GetGlobalConfig().Inc.TablePrefix))
+}
 
+func (s *testSessionIncSuite) TestCreateTableAsSelect(c *C) {
+	if s.enforeGtidConsistency {
+		sql = "create table t1(id int primary key);create table t11 as select * from t1;"
+		s.testErrorCode(c, sql,
+			session.NewErrf("Statement violates GTID consistency: CREATE TABLE ... SELECT."))
+	} else {
+		sql = "create table t1(id int primary key);create table t11 as select * from t1;"
+		s.testErrorCode(c, sql)
+	}
 }
 
 func (s *testSessionIncSuite) TestDropTable(c *C) {
@@ -1989,6 +1999,15 @@ func (s *testSessionIncSuite) TestDelete(c *C) {
 		delete from t1 where c1 =1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrImplicitTypeConversion, "t1", "c1", "char"))
+
+	s.mustRunExec(c, `drop table if exists t1;CREATE TABLE t1 (
+			id bigint(20) AUTO_INCREMENT primary key,
+			goods_id bigint(20) unsigned NOT NULL DEFAULT '0' ,
+			sku_id bigint(20) unsigned NOT NULL DEFAULT '0'  ,
+			bar_code varchar(30) NOT NULL DEFAULT ''
+		  );`)
+	sql = "delete from t1 where id in (select id from (select any_value(id) as id,count(*) as num from t1 group by `goods_id`, `sku_id`, `bar_code` having num > 1) as t)"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
@@ -2197,9 +2216,34 @@ func (s *testSessionIncSuite) TestRenameTable(c *C) {
 
 func (s *testSessionIncSuite) TestCreateView(c *C) {
 
-	sql = "create table t1(id int primary key);create view v1 as select * from t1;"
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法创建视图'v1'."))
+		session.NewErr(session.ErrViewSupport, "v_1"))
+
+	config.GetGlobalConfig().Inc.EnableUseView = true
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	sql = "create table t1(id int primary key);create view v_1 as select id from t1;"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1(id,id) as select id,c1 from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_FIELD_SPECIFIED_TWICE, "id", "v_1"))
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1(id,c1,c2) as select id,c1 from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrViewColumnCount))
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1(id,c1,c2) as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR),
+		session.NewErr(session.ErrViewColumnCount))
+
+	sql = "create table t1(id int primary key,c1 int);create view v_1 as select id,c1 from t1;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
