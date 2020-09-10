@@ -566,7 +566,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 				}
 			}
 		}
-		s.checkSelectItem(node, false)
+		s.checkSelectItem(node, nil, false)
 		if s.opt.Execute {
 			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 		}
@@ -579,7 +579,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 				}
 			}
 		}
-		s.checkSelectItem(node, false)
+		s.checkSelectItem(node, nil, false)
 		if s.opt.Execute {
 			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 		}
@@ -2731,7 +2731,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			if s.enforeGtidConsistency {
 				s.appendErrorMessage("Statement violates GTID consistency: CREATE TABLE ... SELECT.")
 			} else {
-				s.checkSelectItem(node.Select, false)
+				s.checkSelectItem(node.Select, nil, false)
 
 				if s.myRecord.ErrLevel < 2 {
 					table = &TableInfo{
@@ -4686,7 +4686,7 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 				}
 			}
 		}
-		s.checkSelectItem(selectNode, false)
+		s.checkSelectItem(selectNode, nil, false)
 
 	case *ast.SelectStmt:
 		if selectNode.Fields != nil {
@@ -4708,7 +4708,7 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 				s.appendErrorNo(ErrViewColumnCount)
 			}
 		}
-		s.checkSelectItem(selectNode, false)
+		s.checkSelectItem(selectNode, nil, false)
 	}
 
 	if !s.hasError() {
@@ -4988,7 +4988,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			if !s.hasError() {
 				// 如果不是新建表时,则直接explain
 				if haveNewTable {
-					s.checkSelectItem(x.Select, sel.Where != nil)
+					s.checkSelectItem(x.Select, nil, sel.Where != nil)
 				} else {
 					var selectSql string
 					if table.IsNew || table.IsNewColumns || s.dbVersion < 50600 {
@@ -6471,7 +6471,7 @@ func (s *session) checkUpdate(node *ast.UpdateStmt, sql string) {
 				s.checkItem(l.Expr, tableInfoList)
 			}
 
-			s.checkSelectItem(node.TableRefs.TableRefs, node.Where != nil)
+			s.checkSelectItem(node.TableRefs.TableRefs, nil, node.Where != nil)
 			// if node.TableRefs.TableRefs.On != nil {
 			// 	s.checkItem(node.TableRefs.TableRefs.On.Expr, tableInfoList)
 			// }
@@ -6588,14 +6588,14 @@ func (s *session) checkItem(expr ast.ExprNode, tables []*TableInfo) bool {
 		s.checkItem(e.Expr, tables)
 
 	case *ast.SubqueryExpr:
-		s.checkSelectItem(e.Query, false)
+		s.checkSelectItem(e.Query, tables, false)
 
 	case *ast.CompareSubqueryExpr:
 		s.checkItem(e.L, tables)
 		s.checkItem(e.R, tables)
 
 	case *ast.ExistsSubqueryExpr:
-		s.checkSelectItem(e.Sel, false)
+		s.checkSelectItem(e.Sel, tables, false)
 
 	case *ast.IsNullExpr:
 		s.checkItem(e.Expr, tables)
@@ -7295,7 +7295,8 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 }
 
 // checkSelectItem 子句递归检查
-func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*TableInfo {
+func (s *session) checkSelectItem(node ast.ResultSetNode,
+	outerTables []*TableInfo, hasWhere bool) []*TableInfo {
 	if node == nil {
 		return nil
 	}
@@ -7313,15 +7314,15 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 		}
 
 		for _, sel := range stmt.Selects {
-			s.checkSubSelectItem(sel)
+			s.checkSubSelectItem(sel, outerTables)
 		}
 
 	case *ast.SelectStmt:
-		return s.checkSubSelectItem(x)
+		return s.checkSubSelectItem(x, outerTables)
 
 	case *ast.Join:
-		tableInfoList := s.checkSelectItem(x.Left, false)
-		tableInfoList = append(tableInfoList, s.checkSelectItem(x.Right, false)...)
+		tableInfoList := s.checkSelectItem(x.Left, nil, false)
+		tableInfoList = append(tableInfoList, s.checkSelectItem(x.Right, nil, false)...)
 
 		if x.On != nil {
 			s.checkItem(x.On.Expr, tableInfoList)
@@ -7345,7 +7346,7 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 			}
 			return nil
 		case *ast.SelectStmt:
-			s.checkSubSelectItem(tblSource)
+			s.checkSubSelectItem(tblSource, nil)
 
 			cols := s.getSubSelectColumns(tblSource)
 			if cols != nil {
@@ -7362,7 +7363,7 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 			}
 
 		case *ast.UnionStmt:
-			s.checkSelectItem(tblSource, false)
+			s.checkSelectItem(tblSource, nil, false)
 
 			cols := s.getSubSelectColumns(tblSource)
 			if cols != nil {
@@ -7379,7 +7380,7 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 			}
 
 		default:
-			return s.checkSelectItem(tblSource, false)
+			return s.checkSelectItem(tblSource, nil, false)
 		}
 
 	default:
@@ -7388,7 +7389,7 @@ func (s *session) checkSelectItem(node ast.ResultSetNode, hasWhere bool) []*Tabl
 	return nil
 }
 
-func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
+func (s *session) checkSubSelectItem(node *ast.SelectStmt, outerTables []*TableInfo) []*TableInfo {
 	log.Debug("checkSubSelectItem")
 
 	var tableList []*ast.TableSource
@@ -7422,7 +7423,7 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 			}
 		case *ast.SelectStmt:
 			// 递归审核子查询
-			s.checkSubSelectItem(x)
+			s.checkSubSelectItem(x, nil)
 
 			cols := s.getSubSelectColumns(x)
 			// log.Info(cols)
@@ -7440,7 +7441,7 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 			}
 		default:
 			log.Infof("con:%d %T", s.sessionVars.ConnectionID, x)
-			tableInfoList = append(tableInfoList, s.checkSelectItem(tblSource, false)...)
+			tableInfoList = append(tableInfoList, s.checkSelectItem(tblSource, nil, false)...)
 		}
 	}
 
@@ -7456,7 +7457,7 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt) []*TableInfo {
 		s.checkItem(node.From.TableRefs.On.Expr, tableInfoList)
 	}
 
-	s.checkItem(node.Where, tableInfoList)
+	s.checkItem(node.Where, append(tableInfoList, outerTables...))
 
 	// var outerTableList []*TableInfo
 	// if node.GroupBy != nil ||
