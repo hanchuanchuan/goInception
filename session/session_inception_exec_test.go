@@ -273,7 +273,14 @@ primary key(id)) comment 'test';`
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_TABLE_NOT_EXISTED_ERROR, "test_inc.T1"))
 	}
+}
 
+func (s *testSessionIncExecSuite) TestCreateTableAsSelect(c *C) {
+	if !s.enforeGtidConsistency {
+		s.mustRunExec(c, "drop table if exists t1,t2;create table t1(c1 int);")
+		sql = "create table t2 as select * from t1;"
+		s.testErrorCode(c, sql)
+	}
 }
 
 func (s *testSessionIncExecSuite) TestDropTable(c *C) {
@@ -548,6 +555,15 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 	sql = `create table t2(id int primary key,c1 int);
 			delete t1 from t1 inner join t2 where t2.c1 = 1;`
 	s.testErrorCode(c, sql)
+
+	s.mustRunExec(c, `drop table if exists t1;CREATE TABLE t1 (
+		id bigint(20) AUTO_INCREMENT primary key,
+		goods_id bigint(20) unsigned NOT NULL DEFAULT '0' ,
+		sku_id bigint(20) unsigned NOT NULL DEFAULT '0'  ,
+		bar_code varchar(30) NOT NULL DEFAULT ''
+	  );`)
+	sql = "delete from t1 where id in (select id from (select ANY_VALUE(id) as id,count(*) as num from t1 group by `goods_id`, `sku_id`, `bar_code`,id having num > 1) as t)"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncExecSuite) TestCreateDataBase(c *C) {
@@ -636,9 +652,20 @@ func (s *testSessionIncExecSuite) TestRenameTable(c *C) {
 
 func (s *testSessionIncExecSuite) TestCreateView(c *C) {
 	sql := ""
-	sql = "drop table if exists t1;create table t1(id int primary key);create view v1 as select * from t1;"
+
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
 	s.testErrorCode(c, sql,
-		session.NewErrf("命令禁止! 无法创建视图'v1'."))
+		session.NewErr(session.ErrViewSupport, "v_1"))
+
+	config.GetGlobalConfig().Inc.EnableUseView = true
+	sql = "create table t1(id int primary key);create view v_1 as select * from t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = "create table t1(id int primary key);create view v_1 as select id from t1;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {

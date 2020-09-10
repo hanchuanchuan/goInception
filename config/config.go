@@ -274,6 +274,7 @@ type Inc struct {
 	EnableForeignKey       bool `toml:"enable_foreign_key" json:"enable_foreign_key"`
 	EnableIdentiferKeyword bool `toml:"enable_identifer_keyword" json:"enable_identifer_keyword"`
 	EnableJsonType         bool `toml:"enable_json_type" json:"enable_json_type"`
+	EnableUseView          bool `toml:"enable_use_view" json:"enable_use_view"`
 	// 是否启用自定义审核级别设置
 	// EnableLevel bool `toml:"enable_level" json:"enable_level"`
 	// 是否启用最小化回滚SQL设置,当开启时,update语句中未变更的值不再记录到回滚语句中
@@ -345,6 +346,10 @@ type Inc struct {
 	SkipGrantTable bool `toml:"skip_grant_table" json:"skip_grant_table"`
 	// 要跳过的sql语句, 多个时以分号分隔
 	SkipSqls string `toml:"skip_sqls" json:"skip_sqls"`
+
+	// alter table子句忽略OSC工具.
+	// 格式为drop index,add column等,配置要跳过的子句格式,多个时以逗号分隔
+	IgnoreOscAlterStmt string `toml:"ignore_osc_alter_stmt" json:"ignore_osc_alter_stmt"`
 
 	// 安全更新是否开启.
 	// -1 表示不做操作,基于远端数据库 [默认值]
@@ -648,6 +653,7 @@ type IncLevel struct {
 	ErrJoinNoOnCondition            int8 `toml:"er_join_no_on_condition"`
 	ErrUseValueExpr                 int8 `toml:"er_use_value_expr"`
 	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
+	ErrViewSupport                  int8 `toml:"er_view_support"`
 }
 
 var defaultConf = Config{
@@ -858,6 +864,7 @@ var defaultConf = Config{
 		ErrJoinNoOnCondition:            1,
 		ErrUseValueExpr:                 1,
 		ErrWrongAndExpr:                 1,
+		ErrViewSupport:                  2,
 	},
 }
 

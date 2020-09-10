@@ -68,6 +68,29 @@ func (s *testSessionIncBackupSuite) TestCreateTable(c *C) {
 	c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t1`;", Commentf("%v", s.rows))
 }
 
+func (s *testSessionIncBackupSuite) TestCreateTableAsSelect(c *C) {
+	if !s.enforeGtidConsistency {
+		s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
+		s.mustRunBackup(c, "create table t2 as select * from t1;")
+		row := s.rows[s.getAffectedRows()-1]
+		backup := s.query("t2", row[7].(string))
+		c.Assert(backup, Equals, "DROP TABLE `test_inc`.`t2`;", Commentf("%v", s.rows))
+	}
+}
+
+func (s *testSessionIncBackupSuite) TestCreateView(c *C) {
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;create table t1(id int primary key);")
+
+	config.GetGlobalConfig().Inc.EnableUseView = true
+	sql = strings.Join([]string{
+		"create view v_1 as select * from t1;",
+	}, "\n")
+	s.mustRunBackup(c, sql)
+	s.assertRows(c, s.rows[1:],
+		"DROP VIEW `test_inc`.`v_1`;",
+	)
+}
+
 func (s *testSessionIncBackupSuite) TestDropTable(c *C) {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	s.mustRunBackup(c, "drop table if exists t1;create table t1(id int);")
