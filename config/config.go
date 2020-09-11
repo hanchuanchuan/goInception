@@ -300,6 +300,14 @@ type Inc struct {
 	// 		"max": 		使用explain结果中的最大值作为受影响行数
 	ExplainRule string `toml:"explain_rule" json:"explain_rule"`
 
+	// sql_mode, 默认值""
+	// 可选值: "", "STRICT_TRANS_TABLES", "STRICT_ALL_TABLES", "TRADITIONAL"
+	//      "":                         默认使用目标 MySQL 实例 sql_mode
+	//      "STRICT_TRANS_TABLES":      为事务性存储引擎以及可能的情况下为非事务性存储引擎启用严格的SQL模式
+	//      "STRICT_ALL_TABLES":        为所有存储引擎启用严格的SQL模式
+	//      "TRADITIONAL":              严格的SQL组合模式, 相当于STRICT_TRANS_TABLES， STRICT_ALL_TABLES， NO_ZERO_IN_DATE， NO_ZERO_DATE， ERROR_FOR_DIVISION_BY_ZERO， NO_AUTO_CREATE_USER，和 NO_ENGINE_SUBSTITUTION
+	SqlMode string `toml:"sql_mode" json:"sql_mode"`
+
 	// 全量日志
 	GeneralLog bool `toml:"general_log" json:"general_log"`
 	// 使用十六进制表示法转储二进制列
@@ -743,6 +751,7 @@ var defaultConf = Config{
 		DefaultCharset:   "utf8mb4",
 		MaxAllowedPacket: 4194304,
 		ExplainRule:      "first",
+		SqlMode:          "",
 
 		// 为配置方便,在config节点也添加相同参数
 		SkipGrantTable: true,
