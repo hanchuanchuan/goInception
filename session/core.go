@@ -441,6 +441,11 @@ func (s *session) checkOptions() error {
 			s.opt.middlewareDB, s.inc.DefaultCharset, s.inc.MaxAllowedPacket)
 	}
 
+	if s.inc.SqlMode != "" {
+		addr = fmt.Sprintf("%s&sql_mode=%s",
+			addr, s.inc.SqlMode)
+	}
+
 	db, err := gorm.Open("mysql", fmt.Sprintf("%s&autocommit=1", addr))
 
 	if err != nil {
