@@ -258,6 +258,8 @@ import (
 	any 		"ANY"
 	ascii		"ASCII"
 	autoIncrement	"AUTO_INCREMENT"
+	autoRandom      "AUTO_RANDOM"
+	autoRandomBase  "AUTO_RANDOM_BASE"
 	avgRowLength	"AVG_ROW_LENGTH"
 	avg		"AVG"
 	begin		"BEGIN"
@@ -1772,6 +1774,10 @@ ColumnOption:
 |	"COLLATE" CollationName
 	{
 		$$ = &ast.ColumnOption{Tp: ast.ColumnOptionCollate, StrValue: $2.(string)}
+	}
+|	"AUTO_RANDOM" OptFieldLen
+	{
+		$$ = &ast.ColumnOption{Tp: ast.ColumnOptionAutoRandom, AutoRandomBitLength: $2.(int)}
 	}
 
 GeneratedAlways: | "GENERATED" "ALWAYS"
@@ -3505,7 +3511,8 @@ UnReservedKeyword:
 | "NONE" | "SUPER" | "EXCLUSIVE" | "STATS_PERSISTENT" | "ROW_COUNT" | "COALESCE" | "MONTH" | "PROCESS" | "PROFILES"
 | "MICROSECOND" | "MINUTE" | "PLUGINS" | "QUERY" | "QUERIES" | "SECOND" | "SEPARATOR" | "SHARE" | "SHARED" | "SLOW" | "MAX_CONNECTIONS_PER_HOUR" | "MAX_QUERIES_PER_HOUR" | "MAX_UPDATES_PER_HOUR"
 | "MAX_USER_CONNECTIONS" | "REPLICATION" | "CLIENT" | "SLAVE" | "RELOAD" | "TEMPORARY" | "ROUTINE" | "EVENT" | "ALGORITHM" | "DEFINER" | "INVOKER" | "MERGE" | "TEMPTABLE" | "UNDEFINED" | "SECURITY" | "CASCADED" | "RECOVER" | "HISTORY" | "DIRECTORY" | "NODEGROUP"
-| "RTREE" | "INVISIBLE" | "VISIBLE" | "TYPE"
+| "RTREE" | "INVISIBLE" | "VISIBLE" | "TYPE" |	"AUTO_RANDOM"
+|	"AUTO_RANDOM_BASE"
 
 
 TiDBKeyword:
@@ -6625,6 +6632,10 @@ TableOption:
 	{
 		// Parse it but will ignore it.
 		$$ = &ast.TableOption{Tp: ast.TableOptionPackKeys}
+	}
+|	"AUTO_RANDOM_BASE" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionAutoRandomBase, UintValue: $3.(uint64)}
 	}
 
 StatsPersistentVal:
