@@ -69,12 +69,12 @@ build:
 	$(GOBUILD)
 
 goyacc:
-	$(GOBUILD) -o bin/goyacc parser/goyacc/main.go
+	@$(GOBUILD) -o bin/goyacc parser/goyacc/main.go
 
 parser: goyacc
 	bin/goyacc -o /dev/null parser/parser.y
-	bin/goyacc -o parser/parser.go parser/parser.y 2>&1 | egrep "(shift|reduce)/reduce" | awk '{print} END {if (NR > 0) {print "Find conflict in parser.y. Please check y.output for more information."; exit 1;}}'
-	rm -f y.output
+	@bin/goyacc -o parser/parser.go parser/parser.y 2>&1 | egrep "(shift|reduce)/reduce" | awk '{print} END {if (NR > 0) {print "Find conflict in parser.y. Please check y.output for more information."; exit 1;} else {print "SUCCESS!"}}'
+	@rm -f y.output
 
 	@if [ $(ARCH) = $(LINUX) ]; \
 	then \
