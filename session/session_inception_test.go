@@ -940,6 +940,13 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_PREFIX,
 			config.GetGlobalConfig().Inc.TablePrefix))
+
+	// tidb [v3.1.0 版本开始引入]
+	sql = "create table t1(a bigint primary key auto_random);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_TABLE_PREFIX,
+			config.GetGlobalConfig().Inc.TablePrefix))
+
 }
 
 func (s *testSessionIncSuite) TestCreateTableAsSelect(c *C) {

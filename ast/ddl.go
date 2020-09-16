@@ -398,6 +398,8 @@ const (
 	ColumnOptionCollate
 	ColumnOptionCheck
 	ColumnOptionColumnFormat
+	ColumnOptionStorage
+	ColumnOptionAutoRandom
 )
 
 var (
@@ -420,8 +422,9 @@ type ColumnOption struct {
 	// Stored is only for ColumnOptionGenerated, default is false.
 	Stored bool
 	// Refer is used for foreign key.
-	Refer    *ReferenceDef
-	StrValue string
+	Refer               *ReferenceDef
+	StrValue            string
+	AutoRandomBitLength int
 }
 
 // Restore implements Node interface.
@@ -478,6 +481,14 @@ func (n *ColumnOption) Restore(ctx *RestoreCtx) error {
 		}
 		ctx.WriteKeyWord("COLLATE ")
 		ctx.WritePlain(n.StrValue)
+	case ColumnOptionStorage:
+		ctx.WriteKeyWord("STORAGE ")
+		ctx.WriteKeyWord(n.StrValue)
+	case ColumnOptionAutoRandom:
+		ctx.WriteKeyWord("AUTO_RANDOM")
+		if n.AutoRandomBitLength != types.UnspecifiedLength {
+			ctx.WritePlainf("(%d)", n.AutoRandomBitLength)
+		}
 	default:
 		return errors.New("An error occurred while splicing ColumnOption")
 	}
@@ -1353,6 +1364,7 @@ const (
 	TableOptionCharset
 	TableOptionCollate
 	TableOptionAutoIncrement
+	TableOptionAutoRandomBase
 	TableOptionComment
 	TableOptionAvgRowLength
 	TableOptionCheckSum
@@ -1431,6 +1443,10 @@ func (n *TableOption) Restore(ctx *RestoreCtx) error {
 		ctx.WriteKeyWord(n.StrValue)
 	case TableOptionAutoIncrement:
 		ctx.WriteKeyWord("AUTO_INCREMENT ")
+		ctx.WritePlain("= ")
+		ctx.WritePlainf("%d", n.UintValue)
+	case TableOptionAutoRandomBase:
+		ctx.WriteKeyWord("AUTO_RANDOM_BASE ")
 		ctx.WritePlain("= ")
 		ctx.WritePlainf("%d", n.UintValue)
 	case TableOptionComment:
