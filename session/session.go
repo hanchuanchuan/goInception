@@ -254,6 +254,9 @@ type session struct {
 	lowerCaseTableNames int
 	// PXC集群节点
 	isClusterNode bool
+
+	// 是否检查歧义性. 在order by时忽略该检查,其他时候正常开启
+	checkAmbiguous bool
 }
 
 func (s *session) getMembufCap() int {
