@@ -548,6 +548,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	currentSql string) ([]sqlexec.RecordSet, error) {
 	log.Debug("processCommand")
 
+	s.checkAmbiguous = true
 	switch node := stmtNode.(type) {
 	case *ast.InsertStmt:
 		s.checkInsert(node, currentSql)
@@ -6676,7 +6677,9 @@ func (s *session) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) bool
 			for _, field := range t.Fields {
 				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
 					if found {
-						isAmbiguous = true
+						if s.checkAmbiguous {
+							isAmbiguous = true
+						}
 						break
 					}
 					found = true
@@ -7517,9 +7520,11 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt, outerTables []*TableI
 	}
 
 	if node.OrderBy != nil {
+		s.checkAmbiguous = false
 		for _, item := range node.OrderBy.Items {
 			s.checkItem(item.Expr, tableInfoList)
 		}
+		s.checkAmbiguous = true
 	}
 
 	return tableInfoList

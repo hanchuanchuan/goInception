@@ -1613,6 +1613,8 @@ func (s *testSessionIncSuite) TestSelect(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrImplicitTypeConversion, "t1", "c1", "int"))
 
+	sql = `select id from t1 order by id;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestSubSelect(c *C) {
