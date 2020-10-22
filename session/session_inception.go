@@ -278,10 +278,12 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.haveBegin = true
 					s.parseOptions(currentSql)
 
-					if s.opt.Print {
-						s.printSets = NewPrintSets()
-					} else if s.opt.split {
-						s.splitSets = NewSplitSets()
+					if s.opt != nil {
+						if s.opt.Print {
+							s.printSets = NewPrintSets()
+						} else if s.opt.split {
+							s.splitSets = NewSplitSets()
+						}
 					}
 
 					if s.myRecord.ErrLevel == 2 {
