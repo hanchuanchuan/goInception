@@ -232,7 +232,7 @@ func (s *testCommon) tearDownTest(c *C) {
 	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	s.runCheck("show tables")
-	c.Assert(int(s.getAffectedRows()), Equals, 2)
+	c.Assert(int(s.getAffectedRows()), GreaterEqual, 1)
 
 	row := s.rows[s.getAffectedRows()-1]
 	sql := row[5]
@@ -293,12 +293,11 @@ func (s *testCommon) runCheck(sql string) {
 		return
 	}
 
-	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
+	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;--db=test_inc;*/
 inception_magic_start;
-%s
 %s;
 inception_magic_commit;`
-	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, s.useDB, sql))
+	res := s.tk.MustQueryInc(fmt.Sprintf(a, s.getAddr(), s.realRowCount, sql))
 	s.rows = res.Rows()
 	return
 }
@@ -1022,4 +1021,8 @@ func (s *testCommon) testAffectedRows(c *C, affectedRows ...int) {
 			c.Assert(row[6], Equals, strconv.Itoa(affectedRow), Commentf("%v", row))
 		}
 	}
+}
+
+func (s *testCommon) getResultRows() [][]interface{} {
+	return s.rows
 }
