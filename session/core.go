@@ -462,6 +462,8 @@ func (s *session) checkOptions() error {
 
 	s.db = db
 
+	s.dbName = s.opt.db
+
 	if s.opt.Execute {
 		if s.opt.Backup && !s.checkBinlogIsOn() {
 			return errors.New("binlog日志未开启,无法备份!")
