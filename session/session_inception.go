@@ -5472,6 +5472,22 @@ func (s *session) checkInt64SystemVar(name, value string, min, max int64) (strin
 	return value, nil
 }
 
+func (s *session) checkFloat64SystemVar(name, value string, min, max float64) (string, error) {
+	val, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return value, ErrWrongTypeForVar.GenWithStackByArgs(name)
+	}
+	if val < min {
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%f", min), nil
+	}
+	if val > max {
+		s.sessionVars.StmtCtx.AppendWarning(ErrTruncatedWrongValue.GenWithStackByArgs(name, value))
+		return fmt.Sprintf("%f", max), nil
+	}
+	return value, nil
+}
+
 func (s *session) setConfigValue(name string, field reflect.Value, value *types.Datum) error {
 
 	sVal := ""
@@ -5507,6 +5523,15 @@ func (s *session) setConfigValue(name string, field reflect.Value, value *types.
 
 		v1, _ := strconv.ParseInt(v, 10, 64)
 		field.SetInt(v1)
+
+	case reflect.Float32.String(), reflect.Float64.String():
+		v, err := s.checkFloat64SystemVar(name, sVal, -math.MaxFloat64, math.MaxFloat64)
+		if err != nil {
+			return err
+		}
+
+		v1, _ := strconv.ParseFloat(v, 64)
+		field.SetFloat(v1)
 
 	case reflect.Bool.String():
 		if strings.EqualFold(sVal, "ON") || sVal == "1" ||
