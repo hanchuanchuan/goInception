@@ -2933,6 +2933,11 @@ func (s *testSessionIncSuite) TestSetSessionVariables(c *C) {
 		session.NewErrf("表 't1' 需要设置注释."),
 		session.NewErrf("Set comments for table 't2'."))
 
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	sql = `inception set osc_chunk_time = 1.1;;
+	create table t1(id int primary key);`
+	s.testErrorCode(c, sql)
+
 }
 
 // TestSetVariables 设置会话级变量进行审核
