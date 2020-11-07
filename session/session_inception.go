@@ -5488,10 +5488,18 @@ func (s *session) checkFloat64SystemVar(name, value string, min, max float64) (s
 	return value, nil
 }
 
-func (s *session) setConfigValue(name string, field reflect.Value, value *types.Datum) error {
+func (s *session) setConfigValue(name string, field reflect.Value, value *types.Datum) (err error) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			if err1 := r.(error); err1 != nil {
+				err = errors.Errorf("%v", err1)
+				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			}
+		}
+	}()
 
 	sVal := ""
-	var err error
 	if !value.IsNull() {
 		sVal, err = value.ToString()
 	}
@@ -5529,7 +5537,6 @@ func (s *session) setConfigValue(name string, field reflect.Value, value *types.
 		if err != nil {
 			return err
 		}
-
 		v1, _ := strconv.ParseFloat(v, 64)
 		field.SetFloat(v1)
 
