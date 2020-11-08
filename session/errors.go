@@ -210,6 +210,7 @@ const (
 	ErrUseIndexVisibility
 	ErrViewSupport
 	ErrViewColumnCount
+	ErrIncorrectDateTimeValue
 	ER_ERROR_LAST
 )
 
@@ -387,6 +388,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrUseIndexVisibility:          "The back-end database does not support the index to specify the visible option.",
 	ErrViewSupport:                 "Not allowed to create or use views '%s'.",
 	ErrViewColumnCount:             "View's SELECT and view's field list have different column counts",
+	ErrIncorrectDateTimeValue:      "Incorrect datetime value: '%v'(column '%s')",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -556,6 +558,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrUseIndexVisibility:                  "后端数据库暂不支持索引指定visible选项",
 	ErrViewSupport:                         "不允许创建或使用视图 '%s'.",
 	ErrViewColumnCount:                     "视图的SELECT和视图字段列表具有不同的列数",
+	ErrIncorrectDateTimeValue:              "不正确的时间:'%v'(列 '%s')",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -1054,6 +1057,8 @@ func (e ErrorCode) String() string {
 		return "er_use_index_visibility"
 	case ErrViewSupport:
 		return "er_view_support"
+	case ErrIncorrectDateTimeValue:
+		return "er_incorrect_datetime_value"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}

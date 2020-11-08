@@ -4887,6 +4887,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	columnsCannotNull := map[string]bool{}
+	columnsIsDate := map[string]byte{}
 	for _, c := range x.Columns {
 		found := false
 		for _, field := range table.Fields {
@@ -4895,6 +4896,19 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				if field.Null == "NO" && !strings.Contains(field.Extra, "auto_increment") {
 					columnsCannotNull[c.Name.L] = true
 				}
+				switch strings.ToLower(GetDataTypeBase(field.Type)) {
+				case "year":
+					columnsIsDate[c.Name.L] = mysql.TypeYear
+				case "date":
+					columnsIsDate[c.Name.L] = mysql.TypeDate
+				case "time":
+					columnsIsDate[c.Name.L] = mysql.TypeDuration
+				case "datetime":
+					columnsIsDate[c.Name.L] = mysql.TypeDatetime
+				case "timestamp":
+					columnsIsDate[c.Name.L] = mysql.TypeTimestamp
+				}
+
 				break
 			}
 		}
@@ -4924,7 +4938,25 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 						name := x.Columns[colIndex].Name.L
 						if _, ok := columnsCannotNull[name]; ok && v.Type.Tp == mysql.TypeNull {
 							s.appendErrorNo(ER_BAD_NULL_ERROR, x.Columns[colIndex], i+1)
+							continue
 						}
+
+						// check time format and value
+						if tp, ok := columnsIsDate[name]; ok {
+							_, err := GetTimeValue(s, v, tp, v.Type.Decimal)
+							if err != nil {
+								s.appendErrorNo(ErrIncorrectDateTimeValue, v.GetValue(), x.Columns[colIndex])
+								continue
+							}
+							// 二次校验是否为有效datetime
+							// t := d.GetMysqlTime()
+							// if _, err := t.Time.GoTime(time.Local); err != nil {
+							// 	log.Warning(err)
+							// 	s.appendErrorNo(ErrIncorrectDateTimeValue,v, x.Columns[colIndex])
+							// 	continue
+							// }
+						}
+
 					}
 				}
 			}
