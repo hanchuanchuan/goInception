@@ -654,6 +654,7 @@ type IncLevel struct {
 	ErrUseValueExpr                 int8 `toml:"er_use_value_expr"`
 	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
 	ErrViewSupport                  int8 `toml:"er_view_support"`
+	ErrIncorrectDateTimeValue       int8 `toml:"er_incorrect_datetime_value"`
 }
 
 var defaultConf = Config{
@@ -865,6 +866,7 @@ var defaultConf = Config{
 		ErrUseValueExpr:                 1,
 		ErrWrongAndExpr:                 1,
 		ErrViewSupport:                  2,
+		ErrIncorrectDateTimeValue:       2,
 	},
 }
 
