@@ -1593,6 +1593,28 @@ insert into t2 select id from t1;`
 	sql = `drop table if exists tt1;create table tt1(id int,c1 int);insert into tt1 select * from tt1;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_SELECT_ONLY_STAR))
+
+	// datetime format 验证
+	sql = `drop table if exists t1;
+		create table t1(id int auto_increment primary key,c1 date,c2 time,c3 datetime,c4 timestamp);`
+	s.mustRunExec(c, sql)
+
+	sql = `insert into t1(c1) values('2020-1-32');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrIncorrectDateTimeValue, "2020-1-32", "test_inc.t1.c1"))
+
+	sql = `insert into t1(c2) values('10:70');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrIncorrectDateTimeValue, "10:70", "test_inc.t1.c2"))
+
+	sql = `insert into t1(c3) values('2020-1-32');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrIncorrectDateTimeValue, "2020-1-32", "test_inc.t1.c3"))
+
+	sql = `insert into t1(c4) values('2020-1-32');`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrIncorrectDateTimeValue, "2020-1-32", "test_inc.t1.c4"))
+
 }
 
 func (s *testSessionIncSuite) TestSelect(c *C) {
