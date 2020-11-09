@@ -323,6 +323,7 @@ er_with_orderby_condition = 1
 er_use_value_expr = 1
 er_wrong_and_expr = 1
 er_view_support = 2
+er_incorrect_datetime_value = 2
 
 [osc]
 
