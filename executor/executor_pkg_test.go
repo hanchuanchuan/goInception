@@ -61,7 +61,7 @@ func (msm *mockSessionManager) AddOscProcess(p *util.OscProcessInfo) {
 }
 
 // ShowOscProcessList 返回osc进程列表
-func (msm *mockSessionManager) ShowOscProcessList() map[string]*util.OscProcessInfo {
+func (msm *mockSessionManager) ShowOscProcessList() map[string]util.OscProcessInfo {
 	return nil
 }
 

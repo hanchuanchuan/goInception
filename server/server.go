@@ -407,6 +407,10 @@ func (s *Server) kickIdleConnection() {
 
 // AddOscProcess 添加osc进程
 func (s *Server) AddOscProcess(p *util.OscProcessInfo) {
+	if s.rwlock == nil {
+		s.rwlock = &sync.RWMutex{}
+		s.oscProcessList = make(map[string]*util.OscProcessInfo)
+	}
 	s.rwlock.RLock()
 	s.oscProcessList[p.Sqlsha1] = p
 	s.rwlock.RUnlock()
@@ -414,6 +418,10 @@ func (s *Server) AddOscProcess(p *util.OscProcessInfo) {
 
 // ShowOscProcessList 返回osc进程列表
 func (s *Server) ShowOscProcessList() map[string]util.OscProcessInfo {
+	if s.rwlock == nil {
+		s.rwlock = &sync.RWMutex{}
+		s.oscProcessList = make(map[string]*util.OscProcessInfo)
+	}
 	s.rwlock.RLock()
 	rs := make(map[string]util.OscProcessInfo, len(s.oscProcessList))
 	for key, client := range s.oscProcessList {
