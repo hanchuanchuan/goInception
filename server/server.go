@@ -36,6 +36,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+
 	// For pprof
 	_ "net/http/pprof"
 	"sync"
@@ -406,12 +407,34 @@ func (s *Server) kickIdleConnection() {
 
 // AddOscProcess 添加osc进程
 func (s *Server) AddOscProcess(p *util.OscProcessInfo) {
+	s.rwlock.RLock()
 	s.oscProcessList[p.Sqlsha1] = p
+	s.rwlock.RUnlock()
 }
 
 // ShowOscProcessList 返回osc进程列表
-func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
-	return s.oscProcessList
+func (s *Server) ShowOscProcessList() map[string]util.OscProcessInfo {
+	s.rwlock.RLock()
+	rs := make(map[string]util.OscProcessInfo, len(s.oscProcessList))
+	for key, client := range s.oscProcessList {
+		pi := util.OscProcessInfo{
+			ID:         client.ID,
+			ConnID:     client.ConnID,
+			Schema:     client.Schema,
+			Table:      client.Table,
+			Command:    client.Command,
+			Sqlsha1:    client.Sqlsha1,
+			Percent:    client.Percent,
+			RemainTime: client.RemainTime,
+			Info:       client.Info,
+			Killed:     client.Killed,
+			IsGhost:    client.IsGhost,
+			Pause:      client.Pause,
+		}
+		rs[key] = pi
+	}
+	s.rwlock.RUnlock()
+	return rs
 }
 
 // Server error codes.

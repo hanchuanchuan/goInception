@@ -5853,7 +5853,7 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 	if node.Sqlsha1 == "" {
 
 		var keys []int
-		all := make(map[uint64]*util.OscProcessInfo, len(pl))
+		all := make(map[uint64]util.OscProcessInfo, len(pl))
 		for _, pi := range pl {
 			keys = append(keys, int(pi.ID))
 			all[pi.ID] = pi
