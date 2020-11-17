@@ -540,6 +540,7 @@ var tokenMap = map[string]int{
 	"YEAR_MONTH":               yearMonth,
 	"ZEROFILL":                 zerofill,
 
+	"INC":                    inception,
 	"INCEPTION":              inception,
 	"INCEPTION_MAGIC_START":  inception_magic_start,
 	"INCEPTION_MAGIC_COMMIT": inception_magic_commit,
@@ -596,6 +597,7 @@ var aliases = map[string]string{
 	"POINT":      "GEOMETRY",
 	"LINESTRING": "GEOMETRY",
 	"POLYGON":    "GEOMETRY",
+	"INC":        "INCEPTION",
 	// "GET":     "SHOW",
 }
 
