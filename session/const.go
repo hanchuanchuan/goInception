@@ -308,6 +308,7 @@ var Keywords = map[string]bool{
 	"IGNORE_SERVER_IDS":             true,
 	"IMPORT":                        true,
 	"IN":                            true,
+	"INC":                           true,
 	"INCEPTION":                     true,
 	"INCEPTION_MAGIC_COMMIT":        true,
 	"INCEPTION_MAGIC_START":         true,
