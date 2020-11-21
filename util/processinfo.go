@@ -14,6 +14,7 @@
 package util
 
 import (
+	"sync"
 	"time"
 )
 
@@ -49,7 +50,7 @@ type SessionManager interface {
 	// 添加osc进程
 	AddOscProcess(p *OscProcessInfo)
 	// 返回osc进程列表
-	ShowOscProcessList() map[string]OscProcessInfo
+	ShowOscProcessList() map[string]*OscProcessInfo
 }
 
 // ProcessOperation Process operation
@@ -83,4 +84,6 @@ type OscProcessInfo struct {
 	Pause   bool
 
 	PanicAbort chan ProcessOperation
+
+	RW *sync.RWMutex
 }
