@@ -7723,23 +7723,7 @@ func (s *session) cleanup() {
 	if s.sessionManager == nil {
 		return
 	}
-	// 执行完成或中止后清理osc进程信息
-	pl := s.sessionManager.ShowOscProcessList()
-	if len(pl) == 0 {
-		return
-	}
-	oscList := []string{}
-	for _, pi := range pl {
-		if pi.ConnID == s.sessionVars.ConnectionID {
-			oscList = append(oscList, pi.Sqlsha1)
-		}
-	}
-
-	if len(oscList) > 0 {
-		for _, sha1 := range oscList {
-			delete(pl, sha1)
-		}
-	}
+	s.sessionManager.KillOscProcess(s.sessionVars.ConnectionID)
 }
 
 func (s *session) checkSetStmt(node *ast.SetStmt) {
