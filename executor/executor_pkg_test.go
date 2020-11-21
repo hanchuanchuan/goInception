@@ -65,6 +65,10 @@ func (msm *mockSessionManager) ShowOscProcessList() map[string]*util.OscProcessI
 	return nil
 }
 
+func (msm *mockSessionManager) KillOscProcess(connectionID uint64) {
+
+}
+
 func (s *testExecSuite) TestShowProcessList(c *C) {
 	// Compose schema.
 	names := []string{"Id", "User", "Host", "db", "Command", "Time", "State", "Info", "Mem"}

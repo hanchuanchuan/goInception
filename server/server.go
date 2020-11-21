@@ -136,7 +136,7 @@ func (s *Server) skipAuth() bool {
 
 func (s *Server) InitOscProcessList() {
 	if s.oscProcessList == nil {
-		s.oscProcessList = make(map[string]*util.OscProcessInfo, 0)
+		s.oscProcessList = make(map[string]*util.OscProcessInfo)
 	}
 }
 
@@ -414,6 +414,35 @@ func (s *Server) AddOscProcess(p *util.OscProcessInfo) {
 	s.rwlock.Lock()
 	s.oscProcessList[p.Sqlsha1] = p
 	s.rwlock.Unlock()
+}
+
+// KillOscProcess Kill当前会话的Osc进程
+func (s *Server) KillOscProcess(connectionID uint64) {
+	if s.rwlock == nil {
+		s.rwlock = &sync.RWMutex{}
+		s.oscProcessList = make(map[string]*util.OscProcessInfo)
+		return
+	}
+	s.rwlock.Lock()
+	defer s.rwlock.Unlock()
+
+	// 执行完成或中止后清理osc进程信息
+	pl := s.oscProcessList
+	if len(pl) == 0 {
+		return
+	}
+	oscList := []string{}
+	for _, pi := range pl {
+		if pi.ConnID == connectionID {
+			oscList = append(oscList, pi.Sqlsha1)
+		}
+	}
+
+	if len(oscList) > 0 {
+		for _, sha1 := range oscList {
+			delete(pl, sha1)
+		}
+	}
 }
 
 // ShowOscProcessList 返回osc进程列表
