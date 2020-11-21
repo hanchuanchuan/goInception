@@ -411,38 +411,41 @@ func (s *Server) AddOscProcess(p *util.OscProcessInfo) {
 		s.rwlock = &sync.RWMutex{}
 		s.oscProcessList = make(map[string]*util.OscProcessInfo)
 	}
-	s.rwlock.RLock()
+	s.rwlock.Lock()
 	s.oscProcessList[p.Sqlsha1] = p
-	s.rwlock.RUnlock()
+	s.rwlock.Unlock()
 }
 
 // ShowOscProcessList 返回osc进程列表
-func (s *Server) ShowOscProcessList() map[string]util.OscProcessInfo {
+func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
 	if s.rwlock == nil {
 		s.rwlock = &sync.RWMutex{}
 		s.oscProcessList = make(map[string]*util.OscProcessInfo)
 	}
 	s.rwlock.RLock()
-	rs := make(map[string]util.OscProcessInfo, len(s.oscProcessList))
-	for key, client := range s.oscProcessList {
-		pi := util.OscProcessInfo{
-			ID:         client.ID,
-			ConnID:     client.ConnID,
-			Schema:     client.Schema,
-			Table:      client.Table,
-			Command:    client.Command,
-			Sqlsha1:    client.Sqlsha1,
-			Percent:    client.Percent,
-			RemainTime: client.RemainTime,
-			Info:       client.Info,
-			Killed:     client.Killed,
-			IsGhost:    client.IsGhost,
-			Pause:      client.Pause,
-		}
-		rs[key] = pi
-	}
-	s.rwlock.RUnlock()
-	return rs
+	defer s.rwlock.RUnlock()
+	return s.oscProcessList
+
+	// rs := make(map[string]*util.OscProcessInfo, len(s.oscProcessList))
+	// for key, client := range s.oscProcessList {
+	// 	// pi := util.OscProcessInfo{
+	// 	// 	ID:         client.ID,
+	// 	// 	ConnID:     client.ConnID,
+	// 	// 	Schema:     client.Schema,
+	// 	// 	Table:      client.Table,
+	// 	// 	Command:    client.Command,
+	// 	// 	Sqlsha1:    client.Sqlsha1,
+	// 	// 	Percent:    client.Percent,
+	// 	// 	RemainTime: client.RemainTime,
+	// 	// 	Info:       client.Info,
+	// 	// 	Killed:     client.Killed,
+	// 	// 	IsGhost:    client.IsGhost,
+	// 	// 	Pause:      client.Pause,
+	// 	// }
+	// 	rs[key] = client
+	// }
+	// s.rwlock.RUnlock()
+	// return rs
 }
 
 // Server error codes.

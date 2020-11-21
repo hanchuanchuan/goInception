@@ -523,6 +523,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		Info:       "",
 		IsGhost:    true,
 		PanicAbort: make(chan util.ProcessOperation),
+		RW:         &sync.RWMutex{},
 	}
 	s.sessionManager.AddOscProcess(p)
 
@@ -666,6 +667,7 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		RemainTime: "",
 		Info:       "",
 		PanicAbort: make(chan util.ProcessOperation),
+		RW:         &sync.RWMutex{},
 	}
 	s.sessionManager.AddOscProcess(p)
 
@@ -742,6 +744,10 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 
 func (s *session) mysqlAnalyzeOscOutput(out string, p *util.OscProcessInfo) {
 	firsts := regOscPercent.FindStringSubmatch(out)
+
+	p.RW.Lock()
+	defer p.RW.Unlock()
+
 	// log.Info(p.Killed)
 	if len(firsts) < 3 {
 		if strings.HasPrefix(out, "Successfully altered") {
@@ -779,10 +785,12 @@ func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
 	if remain == "due" {
 		remain = ""
 	}
+	p.RW.Lock()
+	defer p.RW.Unlock()
+
 	p.Percent = pct
 	p.RemainTime = remain
 	p.Info = strings.TrimSpace(out)
-
 }
 
 func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {

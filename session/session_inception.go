@@ -5853,7 +5853,7 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 	if node.Sqlsha1 == "" {
 
 		var keys []int
-		all := make(map[uint64]util.OscProcessInfo, len(pl))
+		all := make(map[uint64]*util.OscProcessInfo, len(pl))
 		for _, pi := range pl {
 			keys = append(keys, int(pi.ID))
 			all[pi.ID] = pi
@@ -5862,6 +5862,7 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 
 		for _, k := range keys {
 			if pi, ok := all[uint64(k)]; ok {
+				pi.RW.RLock()
 				data := []interface{}{
 					pi.Schema,
 					pi.Table,
@@ -5871,10 +5872,12 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 					pi.RemainTime,
 					pi.Info,
 				}
+				pi.RW.RUnlock()
 				res.appendRow(data)
 			}
 		}
 	} else if pi, ok := pl[node.Sqlsha1]; ok {
+		pi.RW.RLock()
 		data := []interface{}{
 			pi.Schema,
 			pi.Table,
@@ -5884,6 +5887,7 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 			pi.RemainTime,
 			pi.Info,
 		}
+		pi.RW.RUnlock()
 		res.appendRow(data)
 	} else {
 		s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not found"))
@@ -5897,6 +5901,8 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
+		pi.RW.Lock()
+		defer pi.RW.Unlock()
 		if pi.Killed {
 			s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 		} else {
@@ -5916,6 +5922,9 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
+		pi.RW.Lock()
+		defer pi.RW.Unlock()
+
 		if !pi.IsGhost {
 			return nil, errors.New("pt-osc process not support pause")
 		}
@@ -5937,6 +5946,9 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 	pl := s.sessionManager.ShowOscProcessList()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
+		pi.RW.Lock()
+		defer pi.RW.Unlock()
+
 		if !pi.IsGhost {
 			return nil, errors.New("pt-osc process not support resume")
 		}
