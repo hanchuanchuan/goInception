@@ -3163,6 +3163,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 				s.checkAlterTableRenameIndex(table, alter)
 			}
 
+		case ast.AlterTableAddPartitions,
+			ast.AlterTableCoalescePartitions,
+			ast.AlterTableDropPartition,
+			ast.AlterTableTruncatePartition:
+			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+
 		case ast.AlterTableLock,
 			ast.AlterTableAlgorithm,
 			ast.AlterTableForce:
