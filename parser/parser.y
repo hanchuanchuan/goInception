@@ -181,6 +181,7 @@ import (
 	numericType		"NUMERIC"
 	nvarcharType		"NVARCHAR"
 	on			"ON"
+	optimize          "OPTIMIZE"
 	option			"OPTION"
 	or			"OR"
 	order			"ORDER"
@@ -306,6 +307,7 @@ import (
 	delayKeyWrite	"DELAY_KEY_WRITE"
 	directory	"DIRECTORY"
 	disable		"DISABLE"
+	discard               "DISCARD"
 	do		"DO"
 	duplicate	"DUPLICATE"
 	dynamic		"DYNAMIC"
@@ -316,6 +318,7 @@ import (
 	enum 		"ENUM"
 	event		"EVENT"
 	events		"EVENTS"
+	exchange              "EXCHANGE"
 	escape 		"ESCAPE"
 	exclusive       "EXCLUSIVE"
 	execute		"EXECUTE"
@@ -331,6 +334,8 @@ import (
 	history		"HISTORY"
 	hour		"HOUR"
 	identified	"IDENTIFIED"
+	importKwd             "IMPORT"
+	imports               "IMPORTS"
 	isolation	"ISOLATION"
 	indexes		"INDEXES"
 	invisible	"INVISIBLE"
@@ -377,6 +382,7 @@ import (
 	recover 	"RECOVER"
 	redundant	"REDUNDANT"
 	reload		"RELOAD"
+	repair                "REPAIR"
 	repeatable	"REPEATABLE"
 	replication	"REPLICATION"
 	reverse		"REVERSE"
@@ -424,6 +430,7 @@ import (
 	uncommitted	"UNCOMMITTED"
 	unknown 	"UNKNOWN"
 	user		"USER"
+	validation            "VALIDATION"
 	undefined	"UNDEFINED"
 	value		"VALUE"
 	variables	"VARIABLES"
@@ -431,6 +438,7 @@ import (
 	view		"VIEW"
 	visible		"VISIBLE"
 	warnings	"WARNINGS"
+	without               "WITHOUT"
 	identSQLErrors	"ERRORS"
 	week		"WEEK"
 	yearType	"YEAR"
@@ -617,6 +625,7 @@ import (
 
 %type   <item>
 	AdminShowSlow			"Admin Show Slow statement"
+	AllOrPartitionNameList                 "All or partition name list"
 	AlgorithmClause			"Alter table algorithm"
 	AlterTableOptionListOpt		"alter table option list opt"
 	AlterTableSpec			"Alter table specification"
@@ -754,6 +763,7 @@ import (
 	OnUpdateOpt			"optional ON UPDATE clause"
 	OptGConcatSeparator		"optional GROUP_CONCAT SEPARATOR"
 	ReferOpt			"reference option"
+	ReorganizePartitionRuleOpt             "optional reorganize partition partition list and definitions"
 	RowFormat			"Row format option"
 	RowValue			"Row value"
 	SelectLockOpt			"FOR UPDATE or LOCK IN SHARE MODE,"
@@ -829,6 +839,8 @@ import (
 	WhenClauseList		"When clause list"
 	WithReadLockOpt		"With Read Lock opt"
 	WithGrantOptionOpt	"With Grant Option opt"
+	WithValidation                         "with validation"
+	WithValidationOpt                      "optional with validation"
 	ElseOpt			"Optional else clause"
 	Type			"Types"
 
@@ -931,6 +943,12 @@ import (
 %precedence createTableSelect
 %precedence lowerThanKey
 %precedence key
+%precedence lowerThanLocal
+%precedence local
+%precedence lowerThanRemove
+%precedence remove
+%precedence lowerThenOrder
+%precedence order
 
 %left   join straightJoin inner cross left right full natural
 /* A dummy token to force the priority of TableRef production in a join. */
@@ -1058,12 +1076,98 @@ AlterTableSpec:
 	{
 		$$ = &ast.AlterTableSpec{Tp: ast.AlterTableDropPrimaryKey}
 	}
-|	"DROP" "PARTITION" Identifier
+|	"DROP" "PARTITION" IfExists PartitionNameList %prec lowerThanComma
 	{
 		$$ = &ast.AlterTableSpec{
-			Tp: ast.AlterTableDropPartition,
-			Name: $3,
+			IfExists:       $3.(bool),
+			Tp:             ast.AlterTableDropPartition,
+			PartitionNames: $4.([]model.CIStr),
+			Name: $4.([]model.CIStr)[0].String(),
 		}
+	}
+//|	"DROP" "PARTITION" Identifier
+//	{
+//		$$ = &ast.AlterTableSpec{
+//			Tp:             ast.AlterTableDropPartition,
+//			Name: $3,
+//		}
+//	}
+|	"EXCHANGE" "PARTITION" Identifier "WITH" "TABLE" TableName WithValidationOpt
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp:             ast.AlterTableExchangePartition,
+			PartitionNames: []model.CIStr{model.NewCIStr($3)},
+			NewTable:       $6.(*ast.TableName),
+			WithValidation: $7.(bool),
+		}
+	}
+|	"TRUNCATE" "PARTITION" AllOrPartitionNameList
+	{
+		ret := &ast.AlterTableSpec{
+			Tp: ast.AlterTableTruncatePartition,
+		}
+		if $3 == nil {
+			ret.OnAllPartitions = true
+			yylex.AppendError(yylex.Errorf("The TRUNCATE PARTITION ALL clause is parsed but ignored by all storage engines."))
+			return 1
+		} else {
+			ret.PartitionNames = $3.([]model.CIStr)
+		}
+		$$ = ret
+	}
+|	"OPTIMIZE" "PARTITION" NoWriteToBinLogAliasOpt AllOrPartitionNameList
+	{
+		ret := &ast.AlterTableSpec{
+			NoWriteToBinlog: $3.(bool),
+			Tp:              ast.AlterTableOptimizePartition,
+		}
+		if $4 == nil {
+			ret.OnAllPartitions = true
+		} else {
+			ret.PartitionNames = $4.([]model.CIStr)
+		}
+		$$ = ret
+	}
+|	"REPAIR" "PARTITION" NoWriteToBinLogAliasOpt AllOrPartitionNameList
+	{
+		ret := &ast.AlterTableSpec{
+			NoWriteToBinlog: $3.(bool),
+			Tp:              ast.AlterTableRepairPartition,
+		}
+		if $4 == nil {
+			ret.OnAllPartitions = true
+		} else {
+			ret.PartitionNames = $4.([]model.CIStr)
+		}
+		$$ = ret
+	}
+|	"IMPORT" "PARTITION" AllOrPartitionNameList "TABLESPACE"
+	{
+		ret := &ast.AlterTableSpec{
+			Tp: ast.AlterTableImportPartitionTablespace,
+		}
+		if $3 == nil {
+			ret.OnAllPartitions = true
+		} else {
+			ret.PartitionNames = $3.([]model.CIStr)
+		}
+		$$ = ret
+		yylex.AppendError(yylex.Errorf("The IMPORT PARTITION TABLESPACE clause is parsed but ignored by all storage engines."))
+		return 1
+	}
+|	"DISCARD" "PARTITION" AllOrPartitionNameList "TABLESPACE"
+	{
+		ret := &ast.AlterTableSpec{
+			Tp: ast.AlterTableDiscardPartitionTablespace,
+		}
+		if $3 == nil {
+			ret.OnAllPartitions = true
+		} else {
+			ret.PartitionNames = $3.([]model.CIStr)
+		}
+		$$ = ret
+		yylex.AppendError(yylex.Errorf("The DISCARD PARTITION TABLESPACE clause is parsed but ignored by all storage engines."))
+		return 1
 	}
 |	"DROP" KeyOrIndex Identifier
 	{
@@ -1181,6 +1285,47 @@ AlterTableSpec:
 AlterAlgorithm:
 	"DEFAULT" | "INPLACE" | "COPY"
 
+ReorganizePartitionRuleOpt:
+	/* empty */ %prec lowerThanRemove
+	{
+		ret := &ast.AlterTableSpec{
+			Tp:              ast.AlterTableReorganizePartition,
+			OnAllPartitions: true,
+		}
+		$$ = ret
+	}
+|	PartitionNameList "INTO" '(' PartitionDefinitionList ')'
+	{
+		ret := &ast.AlterTableSpec{
+			Tp:              ast.AlterTableReorganizePartition,
+			PartitionNames:  $1.([]model.CIStr),
+			PartDefinitions: $4.([]*ast.PartitionDefinition),
+		}
+		$$ = ret
+	}
+
+AllOrPartitionNameList:
+	"ALL"
+	{
+		$$ = nil
+	}
+|	PartitionNameList %prec lowerThanComma
+
+WithValidationOpt:
+	{
+		$$ = true
+	}
+|	WithValidation
+
+WithValidation:
+	"WITH" "VALIDATION"
+	{
+		$$ = true
+	}
+|	"WITHOUT" "VALIDATION"
+	{
+		$$ = false
+	}
 
 AlgorithmClause:
 	"ALGORITHM" EqOpt "DEFAULT"
@@ -3511,7 +3656,15 @@ UnReservedKeyword:
 | "NONE" | "SUPER" | "EXCLUSIVE" | "STATS_PERSISTENT" | "ROW_COUNT" | "COALESCE" | "MONTH" | "PROCESS" | "PROFILES"
 | "MICROSECOND" | "MINUTE" | "PLUGINS" | "QUERY" | "QUERIES" | "SECOND" | "SEPARATOR" | "SHARE" | "SHARED" | "SLOW" | "MAX_CONNECTIONS_PER_HOUR" | "MAX_QUERIES_PER_HOUR" | "MAX_UPDATES_PER_HOUR"
 | "MAX_USER_CONNECTIONS" | "REPLICATION" | "CLIENT" | "SLAVE" | "RELOAD" | "TEMPORARY" | "ROUTINE" | "EVENT" | "ALGORITHM" | "DEFINER" | "INVOKER" | "MERGE" | "TEMPTABLE" | "UNDEFINED" | "SECURITY" | "CASCADED" | "RECOVER" | "HISTORY" | "DIRECTORY" | "NODEGROUP"
-| "RTREE" | "INVISIBLE" | "VISIBLE" | "TYPE" |	"AUTO_RANDOM"
+|	"VALIDATION"
+|	"WITHOUT"
+| "RTREE"
+|	"EXCHANGE"
+|	"REPAIR"
+|	"IMPORT"
+|	"IMPORTS"
+|	"DISCARD"
+| "INVISIBLE" | "VISIBLE" | "TYPE" |	"AUTO_RANDOM"
 |	"AUTO_RANDOM_BASE"
 
 
@@ -6357,6 +6510,7 @@ FlushOption:
 	}
 
 NoWriteToBinLogAliasOpt:
+	%prec lowerThanLocal
 	{
 		$$ = false
 	}

@@ -265,17 +265,25 @@ func validRangePartitionType(col *table.Column) bool {
 }
 
 // checkDropTablePartition checks if the partition exists and does not allow deleting the last existing partition in the table.
-func checkDropTablePartition(meta *model.TableInfo, partName string) error {
-	oldDefs := meta.Partition.Definitions
-	for _, def := range oldDefs {
-		if strings.EqualFold(def.Name.L, strings.ToLower(partName)) {
-			if len(oldDefs) == 1 {
-				return errors.Trace(ErrDropLastPartition)
+func checkDropTablePartition(meta *model.TableInfo, partLowerNames []string) error {
+	pi := meta.Partition
+	oldDefs := pi.Definitions
+	for _, pn := range partLowerNames {
+		found := false
+		for _, def := range oldDefs {
+			if def.Name.L == pn {
+				found = true
+				break
 			}
-			return nil
+		}
+		if !found {
+			return errors.Trace(ErrDropPartitionNonExistent.GenWithStackByArgs(pn))
 		}
 	}
-	return errors.Trace(ErrDropPartitionNonExistent.GenWithStackByArgs(partName))
+	if len(oldDefs) == len(partLowerNames) {
+		return errors.Trace(ErrDropLastPartition)
+	}
+	return nil
 }
 
 // removePartitionInfo each ddl job deletes a partition.
@@ -302,12 +310,21 @@ func onDropTablePartition(t *meta.Meta, job *model.Job) (ver int64, _ error) {
 		job.State = model.JobStateCancelled
 		return ver, errors.Trace(err)
 	}
+	var partNames []string
+	if partName == "" {
+		if err := job.DecodeArgs(&partNames); err != nil {
+			job.State = model.JobStateCancelled
+			return ver, errors.Trace(err)
+		}
+	} else {
+		partNames = []string{strings.ToLower(partName)}
+	}
 	tblInfo, err := getTableInfo(t, job, job.SchemaID)
 	if err != nil {
 		return ver, errors.Trace(err)
 	}
 	// If an error occurs, it returns that it cannot delete all partitions or that the partition doesn't exist.
-	err = checkDropTablePartition(tblInfo, partName)
+	err = checkDropTablePartition(tblInfo, partNames)
 	if err != nil {
 		job.State = model.JobStateCancelled
 		return ver, errors.Trace(err)
