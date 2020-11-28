@@ -16,6 +16,7 @@ package ast
 import (
 	"strings"
 
+	"github.com/hanchuanchuan/goInception/format"
 	. "github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -1638,12 +1639,36 @@ const (
 	AlterTableRenameIndex
 	AlterTableForce
 	AlterTableAddPartitions
+	AlterTableAlterPartition
 	AlterTableCoalescePartitions
 	AlterTableDropPartition
 	AlterTableTruncatePartition
 	AlterTablePartition
 	AlterTableEnableKeys
 	AlterTableDisableKeys
+	AlterTableRemovePartitioning
+	AlterTableWithValidation
+	AlterTableWithoutValidation
+	AlterTableSecondaryLoad
+	AlterTableSecondaryUnload
+	AlterTableRebuildPartition
+	AlterTableReorganizePartition
+	AlterTableCheckPartitions
+	AlterTableExchangePartition
+	AlterTableOptimizePartition
+	AlterTableRepairPartition
+	AlterTableImportPartitionTablespace
+	AlterTableDiscardPartitionTablespace
+	AlterTableAlterCheck
+	AlterTableDropCheck
+	AlterTableImportTablespace
+	AlterTableDiscardTablespace
+	AlterTableIndexInvisible
+	// TODO: Add more actions
+	AlterTableOrderByColumns
+	// AlterTableSetTiFlashReplica uses to set the table TiFlash replica.
+	AlterTableSetTiFlashReplica
+	AlterTablePlacement
 
 // TODO: Add more actions
 )
@@ -1744,6 +1769,9 @@ type AlterTableSpec struct {
 	// see https://mariadb.com/kb/en/library/alter-table/
 	IfNotExists bool
 
+	NoWriteToBinlog bool
+	OnAllPartitions bool
+
 	Tp              AlterTableType
 	Name            string
 	Constraint      *Constraint
@@ -1760,8 +1788,11 @@ type AlterTableSpec struct {
 	Partition       *PartitionOptions
 	PartitionNames  []model.CIStr
 	PartDefinitions []*PartitionDefinition
+	WithValidation  bool
 	Num             uint64
 	Visibility      IndexVisibility
+	PlacementSpecs  []*PlacementSpec
+	Writeable       bool
 }
 
 // Restore implements Node interface.
@@ -1907,25 +1938,117 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 			ctx.WriteKeyWord(" PARTITIONS ")
 			ctx.WritePlainf("%d", n.Num)
 		}
+	case AlterTableAlterPartition:
+		if len(n.PartitionNames) != 1 {
+			return errors.Errorf("Maybe partition options are combined.")
+		}
+
+		ctx.WriteKeyWord("ALTER PARTITION ")
+		ctx.WriteName(n.PartitionNames[0].O)
+		ctx.WritePlain(" ")
+
+		for i, spec := range n.PlacementSpecs {
+			if i != 0 {
+				ctx.WritePlain(", ")
+			}
+			if err := spec.Restore(ctx); err != nil {
+				return errors.Annotatef(err, "An error occurred while restore AlterTableSpec.PlacementSpecs[%d]", i)
+			}
+		}
 	case AlterTableCoalescePartitions:
 		ctx.WriteKeyWord("COALESCE PARTITION ")
 		ctx.WritePlainf("%d", n.Num)
-	case AlterTableDropPartition:
-		ctx.WriteKeyWord("DROP PARTITION ")
-		for i, name := range n.PartitionNames {
-			if i != 0 {
-				ctx.WritePlain(",")
-			}
-			ctx.WriteName(name.O)
-		}
+	// case AlterTableDropPartition:
+	// 	ctx.WriteKeyWord("DROP PARTITION ")
+	// 	if n.IfExists {
+	// 		ctx.WriteKeyWord("IF EXISTS ")
+	// 	}
+	// 	for i, name := range n.PartitionNames {
+	// 		if i != 0 {
+	// 			ctx.WritePlain(",")
+	// 		}
+	// 		ctx.WriteName(name.O)
+	// 	}
 	case AlterTableTruncatePartition:
 		ctx.WriteKeyWord("TRUNCATE PARTITION ")
+		if n.OnAllPartitions {
+			ctx.WriteKeyWord("ALL")
+			return nil
+		}
 		for i, name := range n.PartitionNames {
 			if i != 0 {
 				ctx.WritePlain(",")
 			}
 			ctx.WriteName(name.O)
 		}
+	case AlterTableCheckPartitions:
+		ctx.WriteKeyWord("CHECK PARTITION ")
+		if n.OnAllPartitions {
+			ctx.WriteKeyWord("ALL")
+			return nil
+		}
+		for i, name := range n.PartitionNames {
+			if i != 0 {
+				ctx.WritePlain(",")
+			}
+			ctx.WriteName(name.O)
+		}
+	case AlterTableOptimizePartition:
+		ctx.WriteKeyWord("OPTIMIZE PARTITION ")
+		if n.NoWriteToBinlog {
+			ctx.WriteKeyWord("NO_WRITE_TO_BINLOG ")
+		}
+		if n.OnAllPartitions {
+			ctx.WriteKeyWord("ALL")
+			return nil
+		}
+		for i, name := range n.PartitionNames {
+			if i != 0 {
+				ctx.WritePlain(",")
+			}
+			ctx.WriteName(name.O)
+		}
+	case AlterTableRepairPartition:
+		ctx.WriteKeyWord("REPAIR PARTITION ")
+		if n.NoWriteToBinlog {
+			ctx.WriteKeyWord("NO_WRITE_TO_BINLOG ")
+		}
+		if n.OnAllPartitions {
+			ctx.WriteKeyWord("ALL")
+			return nil
+		}
+		for i, name := range n.PartitionNames {
+			if i != 0 {
+				ctx.WritePlain(",")
+			}
+			ctx.WriteName(name.O)
+		}
+	case AlterTableImportPartitionTablespace:
+		ctx.WriteKeyWord("IMPORT PARTITION ")
+		if n.OnAllPartitions {
+			ctx.WriteKeyWord("ALL")
+		} else {
+			for i, name := range n.PartitionNames {
+				if i != 0 {
+					ctx.WritePlain(",")
+				}
+				ctx.WriteName(name.O)
+			}
+		}
+		ctx.WriteKeyWord(" TABLESPACE")
+	case AlterTableDiscardPartitionTablespace:
+		ctx.WriteKeyWord("DISCARD PARTITION ")
+		if n.OnAllPartitions {
+			ctx.WriteKeyWord("ALL")
+		} else {
+			for i, name := range n.PartitionNames {
+				if i != 0 {
+					ctx.WritePlain(",")
+				}
+				ctx.WriteName(name.O)
+			}
+		}
+		ctx.WriteKeyWord(" TABLESPACE")
 	case AlterTablePartition:
 		if err := n.Partition.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Partition")
@@ -2606,5 +2729,88 @@ func (n *RecoverTableStmt) Accept(v Visitor) (Node, bool) {
 		}
 		n.Table = node.(*TableName)
 	}
+	return v.Leave(n)
+}
+
+type PlacementActionType int
+
+const (
+	PlacementAdd PlacementActionType = iota + 1
+	PlacementAlter
+	PlacementDrop
+)
+
+type PlacementRole int
+
+const (
+	PlacementRoleNone PlacementRole = iota
+	PlacementRoleLeader
+	PlacementRoleFollower
+	PlacementRoleLearner
+	PlacementRoleVoter
+)
+
+type PlacementSpec struct {
+	node
+
+	Tp          PlacementActionType
+	Constraints string
+	Role        PlacementRole
+	Replicas    uint64
+}
+
+func (n *PlacementSpec) restoreRole(ctx *format.RestoreCtx) error {
+	ctx.WriteKeyWord(" ROLE")
+	ctx.WritePlain("=")
+	switch n.Role {
+	case PlacementRoleFollower:
+		ctx.WriteKeyWord("FOLLOWER")
+	case PlacementRoleLeader:
+		ctx.WriteKeyWord("LEADER")
+	case PlacementRoleLearner:
+		ctx.WriteKeyWord("LEARNER")
+	case PlacementRoleVoter:
+		ctx.WriteKeyWord("VOTER")
+	default:
+		return errors.Errorf("invalid PlacementRole: %d", n.Role)
+	}
+	return nil
+}
+
+func (n *PlacementSpec) Restore(ctx *format.RestoreCtx) error {
+	switch n.Tp {
+	case PlacementAdd:
+		ctx.WriteKeyWord("ADD PLACEMENT POLICY ")
+	case PlacementAlter:
+		ctx.WriteKeyWord("ALTER PLACEMENT POLICY ")
+	case PlacementDrop:
+		ctx.WriteKeyWord("DROP PLACEMENT POLICY")
+		if n.Role != PlacementRoleNone {
+			return n.restoreRole(ctx)
+		}
+		return nil
+	default:
+		return errors.Errorf("invalid PlacementActionType: %d", n.Tp)
+	}
+
+	ctx.WriteKeyWord("CONSTRAINTS")
+	ctx.WritePlain("=")
+	ctx.WriteString(n.Constraints)
+
+	if err := n.restoreRole(ctx); err != nil {
+		return err
+	}
+
+	ctx.WriteKeyWord(" REPLICAS")
+	ctx.WritePlainf("=%d", n.Replicas)
+	return nil
+}
+
+func (n *PlacementSpec) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*PlacementSpec)
 	return v.Leave(n)
 }

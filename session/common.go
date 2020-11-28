@@ -209,6 +209,9 @@ type TableInfo struct {
 	// 索引
 	Indexes []*IndexInfo
 
+	// 分区信息
+	Partitions []*PartitionInfo
+
 	// 是否已删除
 	IsDeleted bool
 	// 备份库是否已创建
@@ -245,6 +248,20 @@ type IndexInfo struct {
 	Seq        int    `gorm:"Column:Seq_in_index"`
 	ColumnName string `gorm:"Column:Column_name"`
 	IndexType  string `gorm:"Column:Index_type"`
+
+	IsDeleted bool `gorm:"-"`
+}
+
+// PartitionInfo 分区信息
+type PartitionInfo struct {
+	gorm.Model
+
+	Table           string `gorm:"Column:Table"`
+	PartName        string `gorm:"Column:PARTITION_NAME"`
+	PartMethod      string `gorm:"Column:PARTITION_METHOD"`
+	PartExpression  string `gorm:"Column:PARTITION_EXPRESSION"`
+	PartDescription string `gorm:"Column:PARTITION_DESCRIPTION"`
+	TableRows       int    `gorm:"Column:TABLE_ROWS"`
 
 	IsDeleted bool `gorm:"-"`
 }

@@ -1355,9 +1355,22 @@ func (d *ddl) DropTablePartition(ctx sessionctx.Context, ident ast.Ident, spec *
 	if meta.GetPartitionInfo() == nil {
 		return errors.Trace(ErrPartitionMgmtOnNonpartitioned)
 	}
-	err = checkDropTablePartition(meta, spec.Name)
+
+	partNames := make([]string, len(spec.PartitionNames))
+	if spec.Name == "" {
+		for i, partCIName := range spec.PartitionNames {
+			partNames[i] = partCIName.L
+		}
+	} else {
+		partNames = []string{strings.ToLower(spec.Name)}
+	}
+	err = checkDropTablePartition(meta, partNames)
 	if err != nil {
 		return errors.Trace(err)
+	}
+	partName := spec.Name
+	if partName == "" {
+		partName = partNames[0]
 	}
 
 	job := &model.Job{
@@ -1365,7 +1378,7 @@ func (d *ddl) DropTablePartition(ctx sessionctx.Context, ident ast.Ident, spec *
 		TableID:    meta.ID,
 		Type:       model.ActionDropTablePartition,
 		BinlogInfo: &model.HistoryInfo{},
-		Args:       []interface{}{spec.Name},
+		Args:       []interface{}{partName},
 	}
 
 	err = d.doDDLJob(ctx, job)
