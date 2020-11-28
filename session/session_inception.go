@@ -3164,9 +3164,18 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			}
 
 		case ast.AlterTableAddPartitions,
+			ast.AlterTableAlterPartition,
 			ast.AlterTableCoalescePartitions,
 			ast.AlterTableDropPartition,
-			ast.AlterTableTruncatePartition:
+			ast.AlterTableTruncatePartition,
+			ast.AlterTableRebuildPartition,
+			ast.AlterTableReorganizePartition,
+			ast.AlterTableCheckPartitions,
+			ast.AlterTableExchangePartition,
+			ast.AlterTableOptimizePartition,
+			ast.AlterTableRepairPartition,
+			ast.AlterTableImportPartitionTablespace,
+			ast.AlterTableDiscardPartitionTablespace:
 			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
 
 		case ast.AlterTableLock,
