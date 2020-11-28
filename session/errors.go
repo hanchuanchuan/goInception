@@ -211,6 +211,9 @@ const (
 	ErrViewSupport
 	ErrViewColumnCount
 	ErrIncorrectDateTimeValue
+	ErrSameNamePartition
+	ErrRepeatConstDefinition
+	ErrPartitionNotExisted
 	ER_ERROR_LAST
 )
 
@@ -389,6 +392,9 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrViewSupport:                 "Not allowed to create or use views '%s'.",
 	ErrViewColumnCount:             "View's SELECT and view's field list have different column counts",
 	ErrIncorrectDateTimeValue:      "Incorrect datetime value: '%v'(column '%s')",
+	ErrSameNamePartition:           "Duplicate partition name %-.192s",
+	ErrRepeatConstDefinition:       "Duplicate partition constant definition: '%v'",
+	ErrPartitionNotExisted:         "Partition '%-.64s' does not exist",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -559,6 +565,9 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrViewSupport:                         "不允许创建或使用视图 '%s'.",
 	ErrViewColumnCount:                     "视图的SELECT和视图字段列表具有不同的列数",
 	ErrIncorrectDateTimeValue:              "不正确的时间:'%v'(列 '%s')",
+	ErrSameNamePartition:                   "分区名重复: %-.192s",
+	ErrRepeatConstDefinition:               "重复的分区范围定义: '%v'",
+	ErrPartitionNotExisted:                 "分区 '%-.64s' 不存在",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -1059,6 +1068,12 @@ func (e ErrorCode) String() string {
 		return "er_view_support"
 	case ErrIncorrectDateTimeValue:
 		return "er_incorrect_datetime_value"
+	case ErrSameNamePartition:
+		return "er_same_name_partition"
+	case ErrRepeatConstDefinition:
+		return "er_repeat_const_definition"
+	case ErrPartitionNotExisted:
+		return "er_partition_not_existed"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}

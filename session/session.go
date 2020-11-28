@@ -1339,6 +1339,8 @@ func createSession(store kv.Storage) (*session, error) {
 		lowerCaseTableNames: 1,
 	}
 
+	// s.sessionVars.EnableTablePartition = true
+
 	if plannercore.PreparedPlanCacheEnabled() {
 		s.preparedPlanCache = kvcache.NewSimpleLRUCache(plannercore.PreparedPlanCacheCapacity)
 	}

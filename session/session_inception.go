@@ -2726,10 +2726,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			}
 		}
 
-		if node.Partition != nil {
-			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
-		}
-
 		if node.Select != nil {
 			if s.enforeGtidConsistency {
 				s.appendErrorMessage("Statement violates GTID consistency: CREATE TABLE ... SELECT.")
@@ -2801,6 +2797,17 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			if len(node.Cols) > 0 && table == nil {
 				s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.Table.Name.O)
 				return
+			}
+		}
+	}
+
+	if node.Partition != nil {
+		if !s.inc.EnablePartitionTable {
+			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+		} else {
+			s.checkPartitionNameUnique(node.Partition.Definitions)
+			if !s.hasError() {
+				s.buildPartitionInfo(node.Partition, table)
 			}
 		}
 	}
@@ -2991,6 +2998,42 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 	return table
 }
 
+func (s *session) buildPartitionInfo(def *ast.PartitionOptions,
+	t *TableInfo) []*PartitionInfo {
+	log.Debug("buildPartitionInfo")
+
+	parts := make([]*PartitionInfo, len(def.Definitions))
+	for index, part := range def.Definitions {
+		p := &PartitionInfo{
+			Table:      t.Name,
+			PartName:   part.Name.String(),
+			PartMethod: def.PartitionMethod.Tp.String(),
+		}
+		switch clause := part.Clause.(type) {
+		case *ast.PartitionDefinitionClauseIn:
+			if clause.Values == nil {
+				continue
+			}
+			partValues := make([]string, 0)
+			for _, values := range clause.Values {
+				for _, v := range values {
+					key := fmt.Sprintf("%v", v.GetValue())
+					partValues = append(partValues, key)
+				}
+			}
+			p.PartDescription = strings.Join(partValues, ",")
+
+		case *ast.PartitionDefinitionClauseLessThan:
+			for _, v := range clause.Exprs {
+				p.PartDescription = fmt.Sprintf("%v", v.GetValue())
+				break
+			}
+		}
+		parts[index] = p
+	}
+	return parts
+}
+
 func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	log.Debug("checkAlterTable")
 
@@ -3163,10 +3206,23 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 				s.checkAlterTableRenameIndex(table, alter)
 			}
 
-		case ast.AlterTableAddPartitions,
-			ast.AlterTableAlterPartition,
+		case ast.AlterTableAddPartitions:
+			if !s.inc.EnablePartitionTable {
+				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+			} else {
+				s.fetchPartitionFromDB(table)
+				s.checkPartitionNameUnique(alter.PartDefinitions)
+				s.checkPartitionNameExists(table, alter.PartDefinitions)
+			}
+		case ast.AlterTableDropPartition:
+			if !s.inc.EnablePartitionTable {
+				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+			} else {
+				s.fetchPartitionFromDB(table)
+				s.checkPartitionDrop(table, alter.PartitionNames)
+			}
+		case ast.AlterTableAlterPartition,
 			ast.AlterTableCoalescePartitions,
-			ast.AlterTableDropPartition,
 			ast.AlterTableTruncatePartition,
 			ast.AlterTableRebuildPartition,
 			ast.AlterTableReorganizePartition,
@@ -3177,6 +3233,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			ast.AlterTableImportPartitionTablespace,
 			ast.AlterTableDiscardPartitionTablespace:
 			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+			s.fetchPartitionFromDB(table)
 
 		case ast.AlterTableLock,
 			ast.AlterTableAlgorithm,
@@ -6964,6 +7021,26 @@ func (s *session) queryTableFromDB(db string, tableName string, reportNotExists 
 		return nil
 	}
 	return rows
+}
+
+func (s *session) fetchPartitionFromDB(t *TableInfo) error {
+	if t.IsNew || t.IsDeleted || t.Partitions != nil {
+		return nil
+	}
+
+	var rows []*PartitionInfo
+	sql := "SELECT PARTITION_NAME, PARTITION_METHOD, PARTITION_EXPRESSION, PARTITION_DESCRIPTION, TABLE_ROWS FROM INFORMATION_SCHEMA.PARTITIONS WHERE TABLE_SCHEMA = ? AND TABLE_NAME= ?"
+	if err := s.rawDB(&rows, sql, t.Schema, t.Name); err != nil {
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.appendErrorMessage(myErr.Message + ".")
+		} else {
+			s.appendErrorMessage(err.Error() + ".")
+		}
+		return err
+	}
+	t.Partitions = rows
+	return nil
 }
 
 func (s *session) queryIndexFromDB(db string, tableName string, reportNotExists bool) []*IndexInfo {
