@@ -154,6 +154,28 @@ func (s *session) rawScan(sqlStr string, dest interface{}) (err error) {
 	return
 }
 
+// Raw 执行sql语句,连接失败时自动重连,自动重置当前数据库
+func (s *session) rawDB(dest interface{}, sqlStr string, values ...interface{}) (err error) {
+	// 连接断开无效时,自动重试
+	for i := 0; i < maxBadConnRetries; i++ {
+		err = s.db.Raw(sqlStr, values...).Scan(dest).Error
+		if err == nil {
+			return
+		}
+		if err == mysqlDriver.ErrInvalidConn {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			err1 := s.initConnection()
+			if err1 != nil {
+				return err1
+			}
+			s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+			continue
+		}
+		return
+	}
+	return
+}
+
 // initConnection 连接失败时自动重连,重连后重置当前数据库
 func (s *session) initConnection() (err error) {
 	name := s.dbName
