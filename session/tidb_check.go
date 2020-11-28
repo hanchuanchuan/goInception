@@ -18,16 +18,19 @@
 package session
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"reflect"
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/pingcap/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -536,6 +539,107 @@ func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
 			if reflect.DeepEqual(gbyExpr, expr) {
 				return
 			}
+		}
+	}
+}
+
+func (s *session) checkPartitionNameUnique(defs []*ast.PartitionDefinition) {
+	partNames := make(map[string]struct{})
+	listRanges := make(map[string]struct{})
+	for _, oldPar := range defs {
+		log.Infof("oldPar: %#v", oldPar)
+		log.Infof("oldPar.Name: %#v", oldPar.Name.String())
+
+		switch clause := oldPar.Clause.(type) {
+		case *ast.PartitionDefinitionClauseIn:
+			if clause.Values == nil {
+				continue
+			}
+			for _, values := range clause.Values {
+				for _, v := range values {
+					// key := fmt.Sprintf("%v", v.GetValue())
+					var buf bytes.Buffer
+					v.Format(&buf)
+					key := buf.String()
+					if _, ok := listRanges[key]; !ok {
+						listRanges[key] = struct{}{}
+					} else {
+						s.appendErrorNo(ErrRepeatConstDefinition, key)
+						break
+					}
+				}
+			}
+		case *ast.PartitionDefinitionClauseLessThan:
+			for _, v := range clause.Exprs {
+				var buf bytes.Buffer
+				v.Format(&buf)
+				key := buf.String()
+				if _, ok := listRanges[key]; !ok {
+					listRanges[key] = struct{}{}
+				} else {
+					s.appendErrorNo(ErrRepeatConstDefinition, key)
+					break
+				}
+			}
+		}
+
+		if _, ok := partNames[oldPar.Name.L]; !ok {
+			partNames[oldPar.Name.L] = struct{}{}
+		} else {
+			s.appendErrorNo(ErrSameNamePartition, oldPar.Name.String())
+			break
+		}
+	}
+}
+
+func (s *session) checkPartitionNameExists(t *TableInfo, defs []*ast.PartitionDefinition) {
+	for _, part := range defs {
+		partDescription := ""
+		switch clause := part.Clause.(type) {
+		case *ast.PartitionDefinitionClauseIn:
+			if clause.Values == nil {
+				continue
+			}
+			partValues := make([]string, 0)
+			for _, values := range clause.Values {
+				for _, v := range values {
+					key := fmt.Sprintf("%v", v.GetValue())
+					partValues = append(partValues, key)
+				}
+			}
+			partDescription = strings.Join(partValues, ",")
+
+		case *ast.PartitionDefinitionClauseLessThan:
+			for _, v := range clause.Exprs {
+				partDescription = fmt.Sprintf("%v", v.GetValue())
+				break
+			}
+		}
+
+		for _, oldPart := range t.Partitions {
+			if strings.EqualFold(part.Name.String(), oldPart.PartName) {
+				s.appendErrorNo(ErrSameNamePartition, oldPart.PartName)
+				break
+			}
+			if partDescription != "" &&
+				strings.EqualFold(partDescription, oldPart.PartDescription) {
+				s.appendErrorNo(ErrRepeatConstDefinition, partDescription)
+			}
+		}
+	}
+}
+
+func (s *session) checkPartitionDrop(t *TableInfo, parts []model.CIStr) {
+	for _, part := range parts {
+		found := false
+		for _, oldPart := range t.Partitions {
+			if strings.EqualFold(part.String(), oldPart.PartName) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.appendErrorNo(ErrPartitionNotExisted, part.String())
 		}
 	}
 }
