@@ -19,9 +19,12 @@ goInception是一个集审核、执行、备份及生成回滚语句于一身的
 **[更新日志](https://github.com/hanchuanchuan/inc-docs/blob/master/changelog.md)**
 
 
+----
+
 ### 安装说明
 
-##### 二进制免安装
+
+#### 二进制免安装
 
 [goInception下载](https://github.com/hanchuanchuan/goInception/releases)
 
@@ -32,7 +35,7 @@ docker pull hanchuanchuan/goinception
 ```
 
 
-##### 源码编译
+#### 源码编译
 
 ***注意: 若采用源码编译,须有golang基础!***
 
@@ -45,6 +48,8 @@ go build -o goInception tidb-server/main.go
 
 ./goInception -config=config/config.toml
 ```
+
+----
 
 #### 关联SQL审核平台 `已集成goInception`
 
