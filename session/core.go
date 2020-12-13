@@ -20,6 +20,7 @@ package session
 import (
 	"bytes"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -89,6 +90,9 @@ func NewInception() *session {
 
 // init 初始化map
 func (s *session) init() {
+
+	// printMemStats()
+
 	s.dbName = ""
 	s.haveBegin = false
 	s.haveCommit = false
@@ -134,6 +138,13 @@ func (s *session) clear() {
 	s.threadID = 0
 	s.isClusterNode = false
 
+	for key, t := range s.tableCacheList {
+		t.Indexes = nil
+		t.Fields = nil
+		t.Partitions = nil
+		delete(s.tableCacheList, key)
+	}
+
 	s.tableCacheList = nil
 	s.dbCacheList = nil
 	s.backupDBCacheList = nil
@@ -145,6 +156,17 @@ func (s *session) clear() {
 	s.recordSets = nil
 	s.printSets = nil
 	s.splitSets = nil
+
+	s.statsCollector = nil
+	s.opt = nil
+	s.ch = nil
+	s.chBackupRecord = nil
+	s.insertBuffer = nil
+	s.statistics = nil
+	s.alterRollbackBuffer = nil
+
+	// runtime.GC()
+	// printMemStats()
 }
 
 func (s *session) Audit(ctx context.Context, sql string) ([]Record, error) {
@@ -513,4 +535,11 @@ func (s *session) checkOptions() error {
 	}
 
 	return nil
+}
+
+func printMemStats() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	log.Errorf("Alloc = %vMB TotalAlloc = %vMB Sys = %vMB NumGC = %v\n",
+		m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
 }
