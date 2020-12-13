@@ -240,6 +240,10 @@ func (r *recordSet) NewChunk() *chunk.Chunk {
 
 func (r *recordSet) Close() error {
 	r.cursor = 0
+	for index := range r.data {
+		r.data[index] = nil
+	}
+	r.data = nil
 	return nil
 }
 
@@ -390,10 +394,22 @@ func (s *MyRecordSets) Rows() []sqlexec.RecordSet {
 
 	for _, r := range s.records {
 		s.setFields(r)
+
+		r.Buf = nil
+		if r.TableInfo != nil {
+			t := r.TableInfo
+			t.Indexes = nil
+			t.Fields = nil
+			t.Partitions = nil
+
+			r.TableInfo = nil
+		}
+		r.MultiTables = nil
+		r.Sql = ""
+		r.Type = nil
 	}
 
 	s.records = nil
-
 	return []sqlexec.RecordSet{s.rc}
 }
 
