@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql/driver"
 	"encoding/hex"
 	"fmt"
@@ -232,6 +233,13 @@ func (s *session) parserBinlog(ctx context.Context) {
 		UseDecimal: true,
 		// RawModeEnabled:  p.cfg.RawMode,
 		// SemiSyncEnabled: p.cfg.SemiSync,
+	}
+
+	if s.opt.ssl != "" {
+		switch s.opt.ssl {
+		case "preferred", "true", "required":
+			cfg.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+		}
 	}
 
 	b := replication.NewBinlogSyncer(cfg)
