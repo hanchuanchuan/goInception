@@ -308,7 +308,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 		}
 
 		// log.Errorf("binlog pos: %d", int(currentPosition.Pos))
-		// log.Errorf("binlog pos: %v", e.Header.EventType.String())
+		// log.Errorf("binlog type: %#v,%#v", e.Header.EventType, e.Header.EventType.String())
 		// log.Errorf("currentThreadID: %v", currentThreadID)
 		// e.Dump(os.Stdout)
 		// os.Stdout.Sync()
@@ -389,11 +389,14 @@ func (s *session) parserBinlog(ctx context.Context) {
 			// if (record.StageStatus == StatusExecFail && record.AffectedRows > 0) ||
 			// 	record.StageStatus == StatusExecOK || record.StageStatus == StatusBackupFail {
 			if record.AffectedRows > 0 {
-				record.StageStatus = StatusBackupOK
+				if changeRows >= record.AffectedRows {
+					record.StageStatus = StatusBackupOK
+				}
 			}
 
 			record.BackupCostTime = fmt.Sprintf("%.3f", time.Since(startTime).Seconds())
 
+			changeRows = 0
 			next := s.getNextBackupRecord()
 			if next != nil {
 				startPosition = mysql.Position{Name: next.StartFile,
