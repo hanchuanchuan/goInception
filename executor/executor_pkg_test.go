@@ -60,8 +60,15 @@ func (msm *mockSessionManager) AddOscProcess(p *util.OscProcessInfo) {
 
 }
 
+func (msm *mockSessionManager) OscLock()   {}
+func (msm *mockSessionManager) OscUnLock() {}
+
 // ShowOscProcessList 返回osc进程列表
 func (msm *mockSessionManager) ShowOscProcessList() map[string]*util.OscProcessInfo {
+	return nil
+}
+
+func (msm *mockSessionManager) ShowOscProcessListWithWrite() map[string]*util.OscProcessInfo {
 	return nil
 }
 

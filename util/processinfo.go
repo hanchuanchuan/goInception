@@ -51,6 +51,9 @@ type SessionManager interface {
 	AddOscProcess(p *OscProcessInfo)
 	// 返回osc进程列表
 	ShowOscProcessList() map[string]*OscProcessInfo
+	ShowOscProcessListWithWrite() map[string]*OscProcessInfo
+	OscLock()
+	OscUnLock()
 	// Kill当前会话的Osc进程
 	KillOscProcess(connectionID uint64)
 }

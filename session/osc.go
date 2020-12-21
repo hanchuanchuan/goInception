@@ -549,6 +549,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 				buf.WriteString(line)
 				buf.WriteString("\n")
 
+				p.RW.Lock()
 				s.mysqlAnalyzeGhostOutput(line, p)
 				if p.Killed {
 					migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
@@ -562,6 +563,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 
 					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
 				}
+				p.RW.Unlock()
 			}
 			if done {
 				break
@@ -691,7 +693,9 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 			}
 			buf.WriteString(line)
 			buf.WriteString("\n")
+			p.RW.Lock()
 			s.mysqlAnalyzeOscOutput(line, p)
+			p.RW.Unlock()
 		}
 	}
 
@@ -745,9 +749,6 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 func (s *session) mysqlAnalyzeOscOutput(out string, p *util.OscProcessInfo) {
 	firsts := regOscPercent.FindStringSubmatch(out)
 
-	p.RW.Lock()
-	defer p.RW.Unlock()
-
 	// log.Info(p.Killed)
 	if len(firsts) < 3 {
 		if strings.HasPrefix(out, "Successfully altered") {
@@ -785,8 +786,6 @@ func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
 	if remain == "due" {
 		remain = ""
 	}
-	p.RW.Lock()
-	defer p.RW.Unlock()
 
 	p.Percent = pct
 	p.RemainTime = remain
