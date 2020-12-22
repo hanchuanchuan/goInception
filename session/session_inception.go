@@ -5934,7 +5934,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 
 		for _, k := range keys {
 			if pi, ok := all[uint64(k)]; ok {
-				pi.RW.RLock()
 				data := []interface{}{
 					pi.Schema,
 					pi.Table,
@@ -5944,7 +5943,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 					pi.RemainTime,
 					pi.Info,
 				}
-				pi.RW.RUnlock()
 				res.appendRow(data)
 			}
 		}
