@@ -5934,7 +5934,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 
 		for _, k := range keys {
 			if pi, ok := all[uint64(k)]; ok {
-				pi.RW.RLock()
 				data := []interface{}{
 					pi.Schema,
 					pi.Table,
@@ -5944,7 +5943,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 					pi.RemainTime,
 					pi.Info,
 				}
-				pi.RW.RUnlock()
 				res.appendRow(data)
 			}
 		}
@@ -5970,7 +5968,9 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 }
 
 func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
-	pl := s.sessionManager.ShowOscProcessList()
+	s.sessionManager.OscLock()
+	defer s.sessionManager.OscUnLock()
+	pl := s.sessionManager.ShowOscProcessListWithWrite()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
 		pi.RW.Lock()
@@ -5991,7 +5991,9 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 }
 
 func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
-	pl := s.sessionManager.ShowOscProcessList()
+	s.sessionManager.OscLock()
+	defer s.sessionManager.OscUnLock()
+	pl := s.sessionManager.ShowOscProcessListWithWrite()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
 		pi.RW.Lock()
@@ -6015,7 +6017,9 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 }
 
 func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
-	pl := s.sessionManager.ShowOscProcessList()
+	s.sessionManager.OscLock()
+	defer s.sessionManager.OscUnLock()
+	pl := s.sessionManager.ShowOscProcessListWithWrite()
 
 	if pi, ok := pl[node.Sqlsha1]; ok {
 		pi.RW.Lock()
