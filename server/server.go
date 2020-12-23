@@ -445,7 +445,29 @@ func (s *Server) KillOscProcess(connectionID uint64) {
 	}
 }
 
-// ShowOscProcessList 返回osc进程列表
+func (s *Server) OscLock() {
+	if s.rwlock == nil {
+		s.rwlock = &sync.RWMutex{}
+	}
+	s.rwlock.Lock()
+}
+
+func (s *Server) OscUnLock() {
+	s.rwlock.Unlock()
+}
+
+// ShowOscProcessListWithWrite 返回osc进程列表用于暂停等操作
+func (s *Server) ShowOscProcessListWithWrite() map[string]*util.OscProcessInfo {
+	// if s.rwlock == nil {
+	// 	s.rwlock = &sync.RWMutex{}
+	// 	s.oscProcessList = make(map[string]*util.OscProcessInfo)
+	// }
+	// s.rwlock.RLock()
+	// defer s.rwlock.RUnlock()
+	return s.oscProcessList
+}
+
+// ShowOscProcessList 返回只读的osc进程列表
 func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
 	if s.rwlock == nil {
 		s.rwlock = &sync.RWMutex{}
@@ -453,28 +475,26 @@ func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
 	}
 	s.rwlock.RLock()
 	defer s.rwlock.RUnlock()
-	return s.oscProcessList
 
-	// rs := make(map[string]*util.OscProcessInfo, len(s.oscProcessList))
-	// for key, client := range s.oscProcessList {
-	// 	// pi := util.OscProcessInfo{
-	// 	// 	ID:         client.ID,
-	// 	// 	ConnID:     client.ConnID,
-	// 	// 	Schema:     client.Schema,
-	// 	// 	Table:      client.Table,
-	// 	// 	Command:    client.Command,
-	// 	// 	Sqlsha1:    client.Sqlsha1,
-	// 	// 	Percent:    client.Percent,
-	// 	// 	RemainTime: client.RemainTime,
-	// 	// 	Info:       client.Info,
-	// 	// 	Killed:     client.Killed,
-	// 	// 	IsGhost:    client.IsGhost,
-	// 	// 	Pause:      client.Pause,
-	// 	// }
-	// 	rs[key] = client
-	// }
-	// s.rwlock.RUnlock()
-	// return rs
+	rs := make(map[string]*util.OscProcessInfo, len(s.oscProcessList))
+	for key, client := range s.oscProcessList {
+		pi := util.OscProcessInfo{
+			ID:         client.ID,
+			ConnID:     client.ConnID,
+			Schema:     client.Schema,
+			Table:      client.Table,
+			Command:    client.Command,
+			Sqlsha1:    client.Sqlsha1,
+			Percent:    client.Percent,
+			RemainTime: client.RemainTime,
+			Info:       client.Info,
+			Killed:     client.Killed,
+			IsGhost:    client.IsGhost,
+			Pause:      client.Pause,
+		}
+		rs[key] = &pi
+	}
+	return rs
 }
 
 // Server error codes.

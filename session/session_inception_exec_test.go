@@ -14,15 +14,19 @@
 package session_test
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/session"
+	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -703,11 +707,11 @@ func (s *testSessionIncExecSuite) TestShowVariables(c *C) {
 	sql := ""
 	sql = "inception show variables;"
 	s.tk.MustQueryInc(sql)
-	c.Assert(s.tk.Se.AffectedRows(), GreaterEqual, uint64(102))
+	c.Assert(s.getAffectedRows(), GreaterEqual, 102)
 
 	sql = "inception get variables;"
 	s.tk.MustQueryInc(sql)
-	c.Assert(s.tk.Se.AffectedRows(), GreaterEqual, uint64(102))
+	c.Assert(s.getAffectedRows(), GreaterEqual, 102)
 
 	sql = "inception show variables like 'backup_password';"
 	res := s.tk.MustQueryInc(sql)
@@ -717,30 +721,57 @@ func (s *testSessionIncExecSuite) TestShowVariables(c *C) {
 	}
 }
 
-// 无法审核，原因是需要自己做SetSessionManager
-// func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
-// 	sql := ""
-// 	sql = "inception show processlist;"
-// 	tk.MustQueryInc(sql)
-// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, 1)
+func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
+	sql := ""
+	sql = "inception show processlist;"
+	s.tk.MustQueryInc(sql)
+	// c.Assert(s.getAffectedRows(), GreaterEqual, 1)
 
-// 	sql = "inception get processlist;"
-// 	tk.MustQueryInc(sql)
-// 	c.Assert(tk.Se.AffectedRows(), GreaterEqual, 1)
+	sql = "inception get processlist;"
+	s.tk.MustQueryInc(sql)
+	// c.Assert(s.getAffectedRows(), GreaterEqual, 1)
+}
 
-// 	sql = "inception show variables like 'backup_password';"
-// 	res := s.tk.MustQueryInc(sql)
-// 	row := res.Rows()[s.getAffectedRows()-1]
-// 	if row[1].(string) != "" {
-// 		c.Assert(row[1].(string)[:1], Equals, "*")
-// 	}
-// }
+func (s *testSessionIncExecSuite) TestShowOscProcesslist(c *C) {
+	sm := s.tk.Se.GetSessionManager()
+	oscConnID := 1
+	sm.AddOscProcess(&util.OscProcessInfo{
+		ID:         uint64(oscConnID),
+		ConnID:     1024,
+		Schema:     "test",
+		Table:      "test",
+		Command:    "select 1",
+		Percent:    0,
+		RemainTime: "",
+		Sqlsha1:    fmt.Sprintf("%v", oscConnID),
+		Info:       "",
+		IsGhost:    true,
+		PanicAbort: make(chan util.ProcessOperation),
+		RW:         &sync.RWMutex{},
+	})
+
+	sql := ""
+	sql = "inception get osc processlist;"
+	s.tk.MustQueryInc(sql)
+	c.Assert(s.getAffectedRows(), GreaterEqual, 1)
+
+	sql = "inc get osc processlist;"
+	result := s.tk.MustQueryInc(sql)
+	c.Assert(s.getAffectedRows(), GreaterEqual, 1)
+	// result.Check(testkit.Rows("max_keys 10"))
+	log.Errorf("%#v", result.Rows())
+	resBuff := bytes.NewBufferString("")
+	for _, row := range result.Rows() {
+		fmt.Fprintf(resBuff, "%s\n", row)
+	}
+	c.Assert(resBuff.String(), Equals, "[test test select 1 1 0  ]\n")
+}
 
 func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
 	sql := ""
 	sql = "inception show variables;"
 	s.tk.MustQueryInc(sql)
-	c.Assert(s.tk.Se.AffectedRows(), GreaterEqual, uint64(102))
+	c.Assert(s.getAffectedRows(), GreaterEqual, 102)
 
 	// 不区分session和global.所有会话全都global级别
 	s.tk.MustExecInc("inception set global max_keys = 20;")

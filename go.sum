@@ -93,6 +93,8 @@ github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3 h1:PerDKRFKM
 github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3/go.mod h1:yesOnuUOFQAhST5vPY4nbZsb/huCgGGXlipJsBn0b3o=
 github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114083508-62a578b91654 h1:PRc0l9OaUyPNPoMo0nruucADDwpFZkVvxMbGCZXpjFg=
 github.com/hanchuanchuan/gh-ost v1.0.49-0.20200114083508-62a578b91654/go.mod h1:9NockcUOKVL+JLrnCsXtpRAuPseKoMVqfDmn251PbG0=
+github.com/hanchuanchuan/gh-ost v1.0.49-0.20201222013153-74d72bd169c2 h1:XMdSuvNLE+LpM7jXw5tP7hs8Mdfl9F5ADg59JOAhMqQ=
+github.com/hanchuanchuan/gh-ost v1.0.49-0.20201222013153-74d72bd169c2/go.mod h1:9NockcUOKVL+JLrnCsXtpRAuPseKoMVqfDmn251PbG0=
 github.com/hanchuanchuan/go-mysql v0.0.0-20200114082439-6d0d8d3a982e h1:IjLlaPxsWKkYuePu8Ed2YbHLuBAuKLW6lclhmeq2A6I=
 github.com/hanchuanchuan/go-mysql v0.0.0-20200114082439-6d0d8d3a982e/go.mod h1:HJV3Ej7p/Ck/htb5F5VwYAHDL02jA4J6uAufArtmsos=
 github.com/hanchuanchuan/golib v0.0.0-20200113085747-47643bc243f1 h1:h4yTn7Lu9roQdSZezhf8BwMi3R/KWikL6xV02rmZj6Q=
