@@ -478,6 +478,7 @@ func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
 
 	rs := make(map[string]*util.OscProcessInfo, len(s.oscProcessList))
 	for key, client := range s.oscProcessList {
+		client.RW.Lock()
 		pi := util.OscProcessInfo{
 			ID:         client.ID,
 			ConnID:     client.ConnID,
@@ -492,6 +493,7 @@ func (s *Server) ShowOscProcessList() map[string]*util.OscProcessInfo {
 			IsGhost:    client.IsGhost,
 			Pause:      client.Pause,
 		}
+		client.RW.Unlock()
 		rs[key] = &pi
 	}
 	return rs

@@ -528,91 +528,88 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	s.sessionManager.AddOscProcess(p)
 
 	// defer func() {
-	// 	// 执行完成或中止后清理osc进程信息
-	// 	pl := s.sessionManager.ShowOscProcessList()
-	// 	delete(pl, p.Sqlsha1)
+	// 	log.Error("complete -------")
+	// 	log.Errorf("defer runtime.NumGoroutine: %v", runtime.NumGoroutine())
 	// }()
 
-	done := false
 	buf := bytes.NewBufferString("")
 	migrator := logic.NewMigrator(migrationContext)
 
+	stop := make(chan bool)
+
+	// log.Errorf("start runtime.NumGoroutine: %v", runtime.NumGoroutine())
+
 	//实时循环读取输出流中的一行内容
 	f := func(reader *bufio.Reader) {
-		statusTick := time.Tick(100 * time.Millisecond)
-		for range statusTick {
-			for {
+		statusTick := time.NewTicker(500 * time.Millisecond)
+	FOR:
+		for {
+			<-statusTick.C
+
+			select {
+			case <-stop:
+				break FOR
+			default:
 				line, err2 := reader.ReadString('\n')
 				if err2 != nil || io.EOF == err2 || line == "" {
-					break
+					// 此处不要中止for循环，仅跳过当次循环
+					continue
 				}
 				buf.WriteString(line)
 				buf.WriteString("\n")
-
-				p.RW.Lock()
-				s.mysqlAnalyzeGhostOutput(line, p)
-				if p.Killed {
-					migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
-						p.Percent, p.RemainTime)
-
-					done = true
-				} else if p.Pause && migrationContext.ThrottleCommandedByUser == 0 {
-
-					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
-				} else if !p.Pause && migrationContext.ThrottleCommandedByUser == 1 {
-
-					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
+				if ok := s.mysqlAnalyzeGhostOutput(line, p); ok {
+					statusTick.Stop()
+					break FOR
 				}
-				p.RW.Unlock()
-			}
-			if done {
-				break
 			}
 		}
-	}
 
-	// log.Debugf("%#v", migrationContext)
+		// log.Error("end reader -------")
+		// log.Errorf("defer runtime.NumGoroutine: %v", runtime.NumGoroutine())
+	}
 
 	migrator.Log = bytes.NewBufferString("")
 
 	// 监听Kill操作
-	// go func() {
-	// 	oper := <-p.PanicAbort
-	// 	switch oper {
-	// 	case util.ProcessOperationKill:
-	// 		migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
-	// 			p.Percent, p.RemainTime)
-	// 		done = true
-	// 	case util.ProcessOperationPause:
-	// 		if migrationContext.ThrottleCommandedByUser == 0 {
-	// 			atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
-	// 		}
-	// 	case util.ProcessOperationResume:
-	// 		if migrationContext.ThrottleCommandedByUser == 1 {
-	// 			atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
-	// 		}
-	// 	}
-	// }()
+	go func() {
+		for oper := range p.PanicAbort {
+			p.RW.Lock()
+			switch oper {
+			case util.ProcessOperationKill:
+				migrationContext.PanicAbort <- fmt.Errorf("Execute has been abort in percent: %d, remain time: %s",
+					p.Percent, p.RemainTime)
+				p.Killed = true
+				if _, ok := <-stop; ok {
+					stop <- true
+				}
+			case util.ProcessOperationPause:
+				p.Pause = true
+				if migrationContext.ThrottleCommandedByUser == 0 {
+					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 1)
+				}
+			case util.ProcessOperationResume:
+				p.Pause = false
+				if migrationContext.ThrottleCommandedByUser == 1 {
+					atomic.StoreInt64(&migrationContext.ThrottleCommandedByUser, 0)
+				}
+			}
+			p.RW.Unlock()
+		}
+
+		// log.Error("end panic -------")
+		// log.Errorf("defer runtime.NumGoroutine: %v", runtime.NumGoroutine())
+	}()
 	go f(bufio.NewReader(migrator.Log))
-
-	// if config.GetGlobalConfig().Log.Level == "debug" ||
-	// 	config.GetGlobalConfig().Log.Level == "info" {
-	// 	ghostlog.SetLevel(ghostlog.INFO)
-	// } else {
-	// 	ghostlog.SetLevel(ghostlog.ERROR)
-	// }
-
-	// ghostlog.SetOutput(log.StandardLogger().Out)
-	// ghostlog.SetLevel(ghostlog.DEBUG)
 
 	if err := migrator.Migrate(); err != nil {
 		log.Error(err)
-		done = true
 		s.appendErrorMessage(err.Error())
 	}
 
+	s.sessionManager.OscLock()
 	close(p.PanicAbort)
-	done = true
+	close(stop)
+	s.sessionManager.OscUnLock()
 
 	if s.hasError() {
 		r.StageStatus = StatusExecFail
@@ -693,9 +690,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 			}
 			buf.WriteString(line)
 			buf.WriteString("\n")
-			p.RW.Lock()
+
 			s.mysqlAnalyzeOscOutput(line, p)
-			p.RW.Unlock()
 		}
 	}
 
@@ -703,11 +699,15 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 	go func() {
 		oper := <-p.PanicAbort
 		if oper == util.ProcessOperationKill {
+			p.RW.Lock()
+			p.Killed = true
+			p.RW.Unlock()
 			if err := cmd.Process.Kill(); err != nil {
 				s.appendErrorMessage(err.Error())
 			} else {
-				s.appendErrorMessage(fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
-					p.Percent, p.RemainTime))
+				s.appendErrorMessage(
+					fmt.Sprintf("Execute has been abort in percent: %d, remain time: %s",
+						p.Percent, p.RemainTime))
 			}
 		}
 	}()
@@ -748,6 +748,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 
 func (s *session) mysqlAnalyzeOscOutput(out string, p *util.OscProcessInfo) {
 	firsts := regOscPercent.FindStringSubmatch(out)
+	p.RW.Lock()
+	defer p.RW.Unlock()
 
 	// log.Info(p.Killed)
 	if len(firsts) < 3 {
@@ -769,9 +771,12 @@ func (s *session) mysqlAnalyzeOscOutput(out string, p *util.OscProcessInfo) {
 
 }
 
-func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
+func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) (complete bool) {
 	firsts := regGhostPercent.FindStringSubmatch(out)
-	// log.Info(p.Killed)
+
+	p.RW.Lock()
+	defer p.RW.Unlock()
+
 	if len(firsts) < 3 {
 		// if strings.HasPrefix(out, "Successfully altered") {
 		// 	p.Percent = 100
@@ -787,9 +792,15 @@ func (s *session) mysqlAnalyzeGhostOutput(out string, p *util.OscProcessInfo) {
 		remain = ""
 	}
 
+	if pct >= 100 {
+		pct = 100
+		complete = true
+	}
+
 	p.Percent = pct
 	p.RemainTime = remain
 	p.Info = strings.TrimSpace(out)
+	return
 }
 
 func (s *session) getAlterTablePostPart(sql string, isPtOSC bool) string {
