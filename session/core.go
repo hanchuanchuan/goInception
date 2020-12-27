@@ -93,6 +93,8 @@ func (s *session) init() {
 
 	// printMemStats()
 
+	// log.Errorf("init runtime.NumGoroutine: %v", runtime.NumGoroutine())
+
 	s.dbName = ""
 	s.haveBegin = false
 	s.haveCommit = false
