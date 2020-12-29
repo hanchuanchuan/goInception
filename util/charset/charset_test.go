@@ -48,7 +48,7 @@ func (s *testCharsetSuite) TestValidCharset(c *C) {
 		{"latin1", "latin1_bin", true},
 		{"utf8", "utf8_invalid_ci", false},
 		{"utf16", "utf16_bin", false},
-		{"gb2312", "gb2312_chinese_ci", false},
+		{"gb2312", "gb2312_chinese_ci", true},
 	}
 	for _, tt := range tests {
 		testValidCharset(c, tt.cs, tt.co, tt.succ)

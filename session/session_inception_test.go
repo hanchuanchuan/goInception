@@ -592,6 +592,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql)
 
 	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.EnableSetCollation = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
 	sql = "create table t1(a int) character set latin1;"
 	s.testErrorCode(c, sql,
@@ -601,6 +602,21 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"),
 		session.NewErrf("Unknown charset %s.", "latin123"))
+
+	sql = "create table t1(a int) character set gbk;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+
+	sql = "create table t1(a int) character set gbk collate gbk_bin;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"))
+
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4,gbk"
+
+	sql = "create table t1(a int) character set gbk collate gbk_bin;"
+	s.testErrorCode(c, sql)
+	sql = "create table t1(a int) character set gbk;"
+	s.testErrorCode(c, sql)
 
 	// 外键
 	sql = "create table test_error_code (a int not null ,b int not null,c int not null, d int not null, foreign key (b, c) references product(id));"
