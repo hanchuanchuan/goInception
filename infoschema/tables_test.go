@@ -147,7 +147,9 @@ func (s *testSuite) TestCharacterSetCollations(c *C) {
 
 	// The description column is not important
 	tk.MustQuery("SELECT default_collate_name, maxlen FROM information_schema.character_sets ORDER BY character_set_name").Check(
-		testkit.Rows("ascii_bin 1", "binary 1", "latin1_bin 1", "utf8_bin 3", "utf8mb4_bin 4"))
+		testkit.Rows("ascii_bin 1", "binary 1",
+			"gb2312_chinese_ci 3", "gbk_chinese_ci 3",
+			"latin1_bin 1", "utf8_bin 3", "utf8mb4_bin 4"))
 
 	// The is_default column is not important
 	// but the id's are used by client libraries and must be stable
