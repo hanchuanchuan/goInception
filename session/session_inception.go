@@ -5980,12 +5980,10 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 			return nil, errors.New("osc process not aborted")
 		} else {
 			pi.PanicAbort <- util.ProcessOperationKill
+			return nil, nil
 		}
-	} else {
-		return nil, errors.New("osc process not found")
 	}
-
-	return nil, nil
+	return nil, errors.New("osc process not found")
 }
 
 func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
@@ -6006,12 +6004,10 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 			return nil, errors.New("osc process has been paused")
 		} else {
 			pi.PanicAbort <- util.ProcessOperationPause
+			return nil, nil
 		}
-	} else {
-		return nil, errors.New("osc process not found")
 	}
-
-	return nil, nil
+	return nil, errors.New("osc process not found")
 }
 
 func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.RecordSet, error) {
@@ -6029,15 +6025,13 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 
 		if pi.Pause {
 			pi.PanicAbort <- util.ProcessOperationResume
+			return nil, nil
 		} else {
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
 			return nil, errors.New("osc process not paused")
 		}
-	} else {
-		return nil, errors.New("osc process not found")
 	}
-
-	return nil, nil
+	return nil, errors.New("osc process not found")
 }
 
 func (s *session) executeInceptionShow(sql string) ([]sqlexec.RecordSet, error) {
