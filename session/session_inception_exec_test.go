@@ -732,7 +732,7 @@ func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
 	// c.Assert(s.getAffectedRows(), GreaterEqual, 1)
 }
 
-func (s *testSessionIncExecSuite) TestShowOscProcesslist(c *C) {
+func (s *testSessionIncExecSuite) ignoreTestShowOscProcesslist(c *C) {
 	sm := s.tk.Se.GetSessionManager()
 
 	go func() {
