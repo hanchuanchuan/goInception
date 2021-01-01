@@ -20,13 +20,13 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -734,16 +734,22 @@ func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
 
 func (s *testSessionIncExecSuite) TestShowOscProcesslist(c *C) {
 	sm := s.tk.Se.GetSessionManager()
-	oscConnID := 1
+
+	go func() {
+		<-time.NewTimer(time.Minute).C
+		c.Fatal("TestShowOscProcesslist is timeout 60s")
+	}()
+
+	sqlsha1 := "*EF80A7086FC120D173E95699A9DDB828FCA51111"
 	sm.AddOscProcess(&util.OscProcessInfo{
-		ID:         uint64(oscConnID),
+		ID:         1,
 		ConnID:     1024,
 		Schema:     "test",
 		Table:      "test",
 		Command:    "select 1",
 		Percent:    0,
 		RemainTime: "",
-		Sqlsha1:    fmt.Sprintf("%v", oscConnID),
+		Sqlsha1:    sqlsha1,
 		Info:       "",
 		IsGhost:    true,
 		PanicAbort: make(chan util.ProcessOperation),
@@ -758,13 +764,76 @@ func (s *testSessionIncExecSuite) TestShowOscProcesslist(c *C) {
 	sql = "inc get osc processlist;"
 	result := s.tk.MustQueryInc(sql)
 	c.Assert(s.getAffectedRows(), GreaterEqual, 1)
-	// result.Check(testkit.Rows("max_keys 10"))
-	log.Errorf("%#v", result.Rows())
+
 	resBuff := bytes.NewBufferString("")
 	for _, row := range result.Rows() {
 		fmt.Fprintf(resBuff, "%s\n", row)
 	}
-	c.Assert(resBuff.String(), Equals, "[test test select 1 1 0  ]\n")
+	c.Assert(resBuff.String(), Equals, "[test test select 1 *EF80A7086FC120D173E95699A9DDB828FCA51111 0  ]\n")
+
+	// --- kill ---
+	sqlsha1 = "*EF80A7086FC120D173E95699A9DDB828FCA52222"
+	p2 := &util.OscProcessInfo{
+		ID:         2,
+		ConnID:     1024,
+		Schema:     "test",
+		Table:      "test",
+		Command:    "select 1",
+		Percent:    0,
+		RemainTime: "",
+		Sqlsha1:    sqlsha1,
+		Info:       "",
+		IsGhost:    true,
+		PanicAbort: make(chan util.ProcessOperation),
+		RW:         &sync.RWMutex{},
+	}
+	sm.AddOscProcess(p2)
+
+	defer func() {
+		if p2.PanicAbort != nil {
+			close(p2.PanicAbort)
+		}
+	}()
+
+	go func() {
+		for oper := range p2.PanicAbort {
+			p2.RW.Lock()
+			switch oper {
+			case util.ProcessOperationKill:
+				p2.Killed = true
+			case util.ProcessOperationPause:
+				p2.Pause = true
+			case util.ProcessOperationResume:
+				p2.Pause = false
+			}
+			p2.RW.Unlock()
+		}
+	}()
+
+	var err error
+	sql = `inc pause osc '%s'`
+	_, err = s.tk.ExecInc(fmt.Sprintf(sql, sqlsha1))
+	c.Assert(err, IsNil)
+
+	sql = `inc pause osc '123'`
+	_, err = s.tk.ExecInc(sql)
+	c.Assert(err, NotNil)
+
+	sql = `inc resume osc '%s'`
+	_, err = s.tk.ExecInc(fmt.Sprintf(sql, sqlsha1))
+	c.Assert(err, IsNil)
+
+	sql = `inc kill osc '%s'`
+	_, err = s.tk.ExecInc(fmt.Sprintf(sql, sqlsha1))
+	c.Assert(err, IsNil)
+
+	sql = `inc kill osc '%s'`
+	_, err = s.tk.ExecInc(fmt.Sprintf(sql, sqlsha1))
+	c.Assert(err, NotNil)
+
+	sql = `inc kill osc '123'`
+	_, err = s.tk.ExecInc(sql)
+	c.Assert(err, NotNil)
 }
 
 func (s *testSessionIncExecSuite) TestSetVariables(c *C) {
