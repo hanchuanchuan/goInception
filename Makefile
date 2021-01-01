@@ -97,7 +97,7 @@ check-setup:tools/bin/revive tools/bin/goword tools/bin/gometalinter tools/bin/g
 # @which retool >/dev/null 2>&1 || go get github.com/twitchtv/retool
 # @retool sync
 
-check: check-setup fmt lint vet
+check: check-setup fmt lint vet fmt-parser
 
 # These need to be fixed before they can be ran regularly
 check-fail: goword check-static check-slow
@@ -106,6 +106,14 @@ fmt:
 	@echo "gofmt (simplify)"
 	@gofmt -s -l -w $(FILES) 2>&1 | $(FAIL_ON_STDOUT)
 
+# hintparser_golden.y
+fmt-parser: bin/goyacc parser_golden.y
+	@echo "gofmt (simplify)"
+	@gofmt -s -l -w . 2>&1 | awk '{print} END{if(NR>0) {exit 1}}'
+
+%arser_golden.y: parser/%arser.y
+	@bin/goyacc -fmt -fmtout $@ $<
+	@(git diff --no-index --exit-code $< $@ && rm $@) || (mv $@ $< && >&2 echo "formatted $<" && exit 1)
 
 goword:tools/bin/goword
 	tools/bin/goword $(FILES) 2>&1 | $(FAIL_ON_STDOUT)
