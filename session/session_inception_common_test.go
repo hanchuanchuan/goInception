@@ -45,7 +45,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var _ = Suite(&testCommon{})
+// var _ = Suite(&testCommon{})
 
 // 数据库类型
 const (
@@ -63,9 +63,9 @@ func init() {
 	flag.BoolVar(&isAPI, "api", false, "test api interface")
 }
 
-func TestCommonTest(t *testing.T) {
-	TestingT(t)
-}
+// func TestCommonTest(t *testing.T) {
+// 	TestingT(t)
+// }
 
 type testCommon struct {
 	cluster   *mocktikv.Cluster

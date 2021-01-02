@@ -20,7 +20,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/session"
@@ -732,16 +731,11 @@ func (s *testSessionIncExecSuite) TestShowProcesslist(c *C) {
 	// c.Assert(s.getAffectedRows(), GreaterEqual, 1)
 }
 
-func (s *testSessionIncExecSuite) ignoreTestShowOscProcesslist(c *C) {
+func (s *testSessionIncExecSuite) TestShowOscProcesslist1(c *C) {
 	sm := s.tk.Se.GetSessionManager()
 
-	go func() {
-		<-time.NewTimer(time.Minute).C
-		c.Fatal("TestShowOscProcesslist is timeout 60s")
-	}()
-
 	sqlsha1 := "*EF80A7086FC120D173E95699A9DDB828FCA51111"
-	sm.AddOscProcess(&util.OscProcessInfo{
+	p := &util.OscProcessInfo{
 		ID:         1,
 		ConnID:     1024,
 		Schema:     "test",
@@ -754,13 +748,10 @@ func (s *testSessionIncExecSuite) ignoreTestShowOscProcesslist(c *C) {
 		IsGhost:    true,
 		PanicAbort: make(chan util.ProcessOperation),
 		RW:         &sync.RWMutex{},
-	})
+	}
+	sm.AddOscProcess(p)
 
 	sql := ""
-	sql = "inception get osc processlist;"
-	s.tk.MustQueryInc(sql)
-	c.Assert(s.getAffectedRows(), GreaterEqual, 1)
-
 	sql = "inc get osc processlist;"
 	result := s.tk.MustQueryInc(sql)
 	c.Assert(s.getAffectedRows(), GreaterEqual, 1)
@@ -772,41 +763,24 @@ func (s *testSessionIncExecSuite) ignoreTestShowOscProcesslist(c *C) {
 	c.Assert(resBuff.String(), Equals, "[test test select 1 *EF80A7086FC120D173E95699A9DDB828FCA51111 0  ]\n")
 
 	// --- kill ---
-	sqlsha1 = "*EF80A7086FC120D173E95699A9DDB828FCA52222"
-	p2 := &util.OscProcessInfo{
-		ID:         2,
-		ConnID:     1024,
-		Schema:     "test",
-		Table:      "test",
-		Command:    "select 1",
-		Percent:    0,
-		RemainTime: "",
-		Sqlsha1:    sqlsha1,
-		Info:       "",
-		IsGhost:    true,
-		PanicAbort: make(chan util.ProcessOperation),
-		RW:         &sync.RWMutex{},
-	}
-	sm.AddOscProcess(p2)
-
 	defer func() {
-		if p2.PanicAbort != nil {
-			close(p2.PanicAbort)
+		if p.PanicAbort != nil {
+			close(p.PanicAbort)
 		}
 	}()
 
 	go func() {
-		for oper := range p2.PanicAbort {
-			p2.RW.Lock()
+		for oper := range p.PanicAbort {
+			p.RW.Lock()
 			switch oper {
 			case util.ProcessOperationKill:
-				p2.Killed = true
+				p.Killed = true
 			case util.ProcessOperationPause:
-				p2.Pause = true
+				p.Pause = true
 			case util.ProcessOperationResume:
-				p2.Pause = false
+				p.Pause = false
 			}
-			p2.RW.Unlock()
+			p.RW.Unlock()
 		}
 	}()
 
