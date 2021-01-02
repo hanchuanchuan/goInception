@@ -771,6 +771,7 @@ func (s *testSessionIncExecSuite) TestShowOscProcesslist1(c *C) {
 
 	go func() {
 		for oper := range p.PanicAbort {
+			sm.OscLock()
 			p.RW.Lock()
 			switch oper {
 			case util.ProcessOperationKill:
@@ -781,6 +782,7 @@ func (s *testSessionIncExecSuite) TestShowOscProcesslist1(c *C) {
 				p.Pause = false
 			}
 			p.RW.Unlock()
+			sm.OscUnLock()
 		}
 	}()
 
