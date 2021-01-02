@@ -762,6 +762,8 @@ func (s *testSessionIncExecSuite) TestShowOscProcesslist1(c *C) {
 	}
 	c.Assert(resBuff.String(), Equals, "[test test select 1 *EF80A7086FC120D173E95699A9DDB828FCA51111 0  ]\n")
 
+	return
+
 	// --- kill ---
 	defer func() {
 		if p.PanicAbort != nil {
