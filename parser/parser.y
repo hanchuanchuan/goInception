@@ -729,6 +729,7 @@ import (
 	LinesTerminated               "Lines terminated by"
 	LocalOpt                      "Local opt"
 	LockClause                    "Alter table lock clause"
+	LockType                               "Table locks type"
 	MaxNumBuckets                 "Max number of buckets"
 	NumLiteral                    "Num/Int/Float/Decimal Literal"
 	NoWriteToBinLogAliasOpt       "NO_WRITE_TO_BINLOG alias LOCAL or empty"
@@ -910,7 +911,6 @@ import (
 	NationalOpt       "National option"
 	CharsetKw         "charset or charater set"
 	CommaOpt          "optional comma"
-	LockType          "Table locks type"
 	logAnd            "logical and operator"
 	logOr             "logical or operator"
 	LinearOpt         "linear or empty"
@@ -8117,11 +8117,17 @@ LinesTerminated:
 
 UnlockTablesStmt:
 	"UNLOCK" TablesTerminalSym
-	{}
+	{
+		$$ = &ast.UnlockTablesStmt{}
+	}
 
 LockTablesStmt:
 	"LOCK" TablesTerminalSym TableLockList
-	{}
+	{
+		$$ = &ast.LockTablesStmt{
+			TableLocks: $3.([]ast.TableLock),
+		}
+	}
 
 TablesTerminalSym:
 	"TABLES"
@@ -8129,15 +8135,40 @@ TablesTerminalSym:
 
 TableLock:
 	TableName LockType
+	{
+		$$ = ast.TableLock{
+			Table: $1.(*ast.TableName),
+			Type:  $2.(model.TableLockType),
+		}
+	}
 
 LockType:
 	"READ"
+	{
+		$$ = model.TableLockRead
+	}
 |	"READ" "LOCAL"
+	{
+		$$ = model.TableLockReadLocal
+	}
 |	"WRITE"
+	{
+		$$ = model.TableLockWrite
+	}
+|	"WRITE" "LOCAL"
+	{
+		$$ = model.TableLockWriteLocal
+	}
 
 TableLockList:
 	TableLock
+	{
+		$$ = []ast.TableLock{$1.(ast.TableLock)}
+	}
 |	TableLockList ',' TableLock
+	{
+		$$ = append($1.([]ast.TableLock), $3.(ast.TableLock))
+	}
 
 KillStmt:
 	KillOrKillTiDB NUM

@@ -173,6 +173,40 @@ type TableInfo struct {
 	Compression string `json:"compression"`
 }
 
+// TableLockType is the type of the table lock.
+type TableLockType byte
+
+const (
+	TableLockNone TableLockType = iota
+	// TableLockRead means the session with this lock can read the table (but not write it).
+	// Multiple sessions can acquire a READ lock for the table at the same time.
+	// Other sessions can read the table without explicitly acquiring a READ lock.
+	TableLockRead
+	// TableLockReadLocal is not supported.
+	TableLockReadLocal
+	// TableLockWrite means only the session with this lock has write/read permission.
+	// Only the session that holds the lock can access the table. No other session can access it until the lock is released.
+	TableLockWrite
+	// TableLockWriteLocal means the session with this lock has write/read permission, and the other session still has read permission.
+	TableLockWriteLocal
+)
+
+func (t TableLockType) String() string {
+	switch t {
+	case TableLockNone:
+		return "NONE"
+	case TableLockRead:
+		return "READ"
+	case TableLockReadLocal:
+		return "READ LOCAL"
+	case TableLockWriteLocal:
+		return "WRITE LOCAL"
+	case TableLockWrite:
+		return "WRITE"
+	}
+	return ""
+}
+
 // GetPartitionInfo returns the partition information.
 func (t *TableInfo) GetPartitionInfo() *PartitionInfo {
 	if t.Partition != nil && t.Partition.Enable {
