@@ -182,7 +182,7 @@ const (
 	ER_PRIMARY_CANT_HAVE_NULL
 	ErrCantRemoveAllFields
 	ErrNotFoundTableInfo
-	ErrNotFoundThreadId
+	ErrMariaDBRollbackWarn
 	ErrNotFoundMasterStatus
 	ErrNonUniqTable
 	ErrWrongUsage
@@ -362,7 +362,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_PRIMARY_CANT_HAVE_NULL:              "All parts of a PRIMARY KEY must be NOT NULL; if you need NULL in a key, use UNIQUE instead",
 	ErrCantRemoveAllFields:                 "You can't delete all columns with ALTER TABLE; use DROP TABLE instead",
 	ErrNotFoundTableInfo:                   "Skip backup because there is no table structure information.",
-	ErrNotFoundThreadId:                    "MariaDB v%d not supported yet,please confirm that the rollback sql is correct",
+	ErrMariaDBRollbackWarn:                 "MariaDB v%d not supported yet,please confirm that the rollback sql is correct",
 	ErrNotFoundMasterStatus:                "Can't found master binlog position.",
 	ErrNonUniqTable:                        "Not unique table/alias: '%-.192s'.", // mysql.MySQLErrName[mysql.ErrNonuniqTable],
 	ErrWrongUsage:                          "Incorrect usage of %s and %s.",
@@ -542,7 +542,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_PRIMARY_CANT_HAVE_NULL:              "主键的所有列必须为NOT NULL,如需要NULL列,请改用唯一索引",
 	ErrCantRemoveAllFields:                 "禁止删除表的所有列.",
 	ErrNotFoundTableInfo:                   "没有表结构信息,跳过备份.",
-	ErrNotFoundThreadId:                    "MariaDB v%d 对回滚支持不完美,请注意确认回滚语句是否正确",
+	ErrMariaDBRollbackWarn:                 "MariaDB v%d 对回滚支持不完美,请注意确认回滚语句是否正确",
 	ErrNotFoundMasterStatus:                "无法获取master binlog信息.",
 	ErrNonUniqTable:                        "表名或别名: '%-.192s' 不唯一.",
 	ErrDataTooLong:                         "数据过长!(列 '%s',行 '%d')",
@@ -625,7 +625,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErCantChangeColumnPosition,
 		ErCantChangeColumn,
 		ErrNotFoundTableInfo,
-		ErrNotFoundThreadId,
+		ErrMariaDBRollbackWarn,
 		ErrTableCollationNotSupport,
 		ER_DATETIME_DEFAULT,
 		ErrWrongAndExpr,
@@ -1022,8 +1022,8 @@ func (e ErrorCode) String() string {
 		return "er_cant_remove_all_fields"
 	case ErrNotFoundTableInfo:
 		return "er_not_found_table_info"
-	case ErrNotFoundThreadId:
-		return "er_not_found_thread_id"
+	case ErrMariaDBRollbackWarn:
+		return "er_mariadb_rollback_warn"
 	case ErrNotFoundMasterStatus:
 		return "er_not_found_master_status"
 	case ErrNonUniqTable:

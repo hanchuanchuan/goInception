@@ -45,14 +45,19 @@ backup_port = 0
 backup_user = ""
 backup_password = ""
 
+enable_zero_date = true
 enable_nullable = true
 enable_drop_table = false
 enable_set_engine = true
+enable_timestamp_type=true
 enable_change_column = true
 
 check_timestamp_count = true
 check_table_comment = false
 check_column_comment = false
+
+check_float_double = false
+check_identifier_upper = false
 
 # 审核列类型变更
 check_column_type_change = true
@@ -87,6 +92,8 @@ sql_safe_updates = -1
 # > 0 值表示，会话在执行SQL 时获取锁超时的时间
 lock_wait_timeout = -1
 
+skip_grant_table = true
+
 support_charset = "utf8,utf8mb4"
 support_engine = "innodb"
 
@@ -94,6 +101,72 @@ lang = "en-US"
 
 # 全量日志
 general_log = false
+
+default_charset = "utf8mb4"
+max_allowed_packet = 4194304
+
+[inc_level]
+er_alter_table_once = 1
+er_auto_incr_id_warning = 1
+er_autoinc_unsigned = 1
+er_blob_cant_have_default = 1
+er_cant_change_column = 1
+er_cant_change_column_position = 1
+er_cant_set_charset = 1
+er_cant_set_collation = 1
+er_cant_set_engine = 1
+er_change_column_type = 1
+er_change_too_much_rows = 1
+er_char_to_varchar_len = 1
+er_charset_on_column = 1
+er_column_have_no_comment = 1
+er_datetime_default = 1
+er_float_double_to_decimal = 2
+er_foreign_key = 2
+er_ident_use_keyword = 1
+er_implicit_type_conversion = 1
+er_inc_init_err = 1
+er_index_name_idx_prefix = 1
+er_index_name_uniq_prefix = 1
+er_insert_too_much_rows = 1
+er_invalid_data_type = 1
+er_invalid_ident = 1
+er_mariadb_rollback_warn = 1
+er_join_no_on_condition = 1
+er_json_type_support = 2
+er_must_have_columns = 1
+er_columns_must_have_index = 1
+er_columns_must_have_index_type_err = 1
+er_no_where_condition = 1
+er_not_allowed_nullable = 1
+er_ordery_by_rand = 1
+er_partition_not_allowed = 1
+er_pk_cols_not_int = 1
+er_pk_too_many_parts = 1
+er_select_only_star = 1
+er_set_data_type_int_bigint = 2
+er_table_charset_must_null = 1
+er_table_charset_must_utf8 = 1
+er_table_must_have_comment = 1
+er_table_must_have_pk = 1
+er_table_prefix = 1
+er_text_not_nullable_error = 1
+er_timestamp_default = 1
+er_too_many_key_parts = 1
+er_too_many_keys = 1
+er_too_much_auto_datetime_cols = 2
+er_too_much_auto_timestamp_cols = 2
+er_udpate_too_much_rows = 1
+er_use_enum = 1
+er_use_text_or_blob = 2
+er_with_default_add_column = 1
+er_with_insert_field = 1
+er_with_limit_condition = 1
+er_with_orderby_condition = 1
+er_use_value_expr = 1
+er_wrong_and_expr = 1
+er_view_support = 2
+er_incorrect_datetime_value = 2
 
 [osc]
 
@@ -140,6 +213,9 @@ osc_check_alter = true
 
 # 对应参数pt-online-schema-change中的参数--[no]check-replication-filters。默认值：ON
 osc_check_replication_filters = true
+
+# 检查是否为添加唯一索引,如果是,则禁止
+osc_check_unique_key_change = true
 
 # 对应参数pt-online-schema-change中的参数--[no]drop-old-table。默认值：ON
 osc_drop_old_table = true
@@ -191,63 +267,3 @@ ghost_exponential_backoff_max_interval = 64
 ghost_dml_batch_size = 10
 ghost_ok_to_drop_table = true
 ghost_skip_foreign_key_checks = true
-
-[inc_level]
-er_alter_table_once = 1
-er_auto_incr_id_warning = 1
-er_autoinc_unsigned = 1
-er_blob_cant_have_default = 1
-er_cant_change_column = 1
-er_cant_change_column_position = 1
-er_cant_set_charset = 1
-er_cant_set_collation = 1
-er_cant_set_engine = 1
-er_change_column_type = 1
-er_change_too_much_rows = 1
-er_char_to_varchar_len = 1
-er_charset_on_column = 1
-er_column_have_no_comment = 1
-er_datetime_default = 1
-er_foreign_key = 2
-er_ident_use_keyword = 1
-er_implicit_type_conversion = 1
-er_inc_init_err = 1
-er_index_name_idx_prefix = 1
-er_index_name_uniq_prefix = 1
-er_insert_too_much_rows = 1
-er_invalid_data_type = 1
-er_invalid_ident = 1
-er_join_no_on_condition = 1
-er_json_type_support = 2
-er_must_have_columns = 1
-er_columns_must_have_index = 1
-er_columns_must_have_index_type_err = 1
-er_no_where_condition = 1
-er_not_allowed_nullable = 1
-er_ordery_by_rand = 1
-er_partition_not_allowed = 1
-er_pk_cols_not_int = 1
-er_pk_too_many_parts = 1
-er_select_only_star = 1
-er_set_data_type_int_bigint = 2
-er_table_charset_must_null = 1
-er_table_charset_must_utf8 = 1
-er_table_must_have_comment = 1
-er_table_must_have_pk = 1
-er_table_prefix = 1
-er_text_not_nullable_error = 1
-er_timestamp_default = 1
-er_too_many_key_parts = 1
-er_too_many_keys = 1
-er_too_much_auto_datetime_cols = 2
-er_too_much_auto_timestamp_cols = 2
-er_udpate_too_much_rows = 1
-er_use_enum = 1
-er_use_text_or_blob = 2
-er_with_default_add_column = 1
-er_with_insert_field = 1
-er_with_limit_condition = 1
-er_with_orderby_condition = 1
-er_wrong_and_expr = 1
-er_view_support = 2
-er_incorrect_datetime_value = 2
