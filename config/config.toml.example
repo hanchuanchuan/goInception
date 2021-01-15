@@ -1,10 +1,7 @@
-# TiDB Configuration.
+# GoIncepiton Configuration.
 
-# TiDB server host.
+# server host.
 host = "0.0.0.0"
-
-# tidb server advertise IP.
-advertise-address = ""
 
 # TiDB server port.
 port = 4000
@@ -204,6 +201,12 @@ write-timeout = "15s"
 ignore-error = false
 
 [inc]
+
+backup_host = ""
+backup_port = 0
+backup_user = ""
+backup_password = ""
+
 enable_zero_date = true
 enable_nullable = true
 enable_drop_table = false
@@ -240,7 +243,7 @@ explain_rule = "first"
 #      "TRADITIONAL":              严格的SQL组合模式, 相当于STRICT_TRANS_TABLES， STRICT_ALL_TABLES， NO_ZERO_IN_DATE， NO_ZERO_DATE， ERROR_FOR_DIVISION_BY_ZERO， NO_AUTO_CREATE_USER，和 NO_ENGINE_SUBSTITUTION
 sql_mode = ""
 
-# 安全更新是否开启.
+# 安全更新是否开启(mysql自身的功能).
 # -1 表示不做操作,基于远端数据库 [默认值]
 # 0  表示关闭安全更新
 # 1  表示开启安全更新
@@ -280,6 +283,7 @@ er_char_to_varchar_len = 1
 er_charset_on_column = 1
 er_column_have_no_comment = 1
 er_datetime_default = 1
+er_float_double_to_decimal = 2
 er_foreign_key = 2
 er_ident_use_keyword = 1
 er_implicit_type_conversion = 1
@@ -289,6 +293,7 @@ er_index_name_uniq_prefix = 1
 er_insert_too_much_rows = 1
 er_invalid_data_type = 1
 er_invalid_ident = 1
+er_mariadb_rollback_warn = 1
 er_join_no_on_condition = 1
 er_json_type_support = 2
 er_must_have_columns = 1
@@ -408,6 +413,8 @@ osc_bin_dir = "/usr/local/bin"
 
 
 [ghost]
+
+ghost_on = false
 ghost_allow_on_master = true
 ghost_assume_rbr = true
 ghost_chunk_size = 1000

@@ -463,7 +463,7 @@ func (s *session) checkFilter(event *replication.RowsEvent,
 
 	if currentThreadID == 0 && s.dbType == DBTypeMariaDB {
 		if record.ErrLevel != 1 {
-			record.appendErrorNo(s.inc.Lang, ErrNotFoundThreadId, s.dbVersion)
+			record.appendErrorNo(s.inc.Lang, ErrMariaDBRollbackWarn, s.dbVersion)
 		}
 		return true
 	} else if record.ThreadId != currentThreadID {
@@ -504,7 +504,7 @@ func (s *session) checkUpdateFilter(event *replication.RowsEvent,
 
 	if currentThreadID == 0 && s.dbType == DBTypeMariaDB {
 		if record.ErrLevel != 1 {
-			record.appendErrorNo(s.inc.Lang, ErrNotFoundThreadId, s.dbVersion)
+			record.appendErrorNo(s.inc.Lang, ErrMariaDBRollbackWarn, s.dbVersion)
 		}
 		return true, multiTable
 	} else if record.ThreadId != currentThreadID {

@@ -596,27 +596,30 @@ type Ghost struct {
 }
 
 type IncLevel struct {
-	ER_ALTER_TABLE_ONCE             int8 `toml:"er_alter_table_once"`
-	ER_AUTO_INCR_ID_WARNING         int8 `toml:"er_auto_incr_id_warning"`
-	ER_AUTOINC_UNSIGNED             int8 `toml:"er_autoinc_unsigned"`
-	ER_BLOB_CANT_HAVE_DEFAULT       int8 `toml:"er_blob_cant_have_default"`
-	ER_CANT_SET_CHARSET             int8 `toml:"er_cant_set_charset"`
-	ER_CANT_SET_COLLATION           int8 `toml:"er_cant_set_collation"`
-	ER_CANT_SET_ENGINE              int8 `toml:"er_cant_set_engine"`
-	ER_CHANGE_COLUMN_TYPE           int8 `toml:"er_change_column_type"`
-	ER_CHANGE_TOO_MUCH_ROWS         int8 `toml:"er_change_too_much_rows"`
-	ER_CHAR_TO_VARCHAR_LEN          int8 `toml:"er_char_to_varchar_len"`
-	ER_CHARSET_ON_COLUMN            int8 `toml:"er_charset_on_column"`
-	ER_COLUMN_HAVE_NO_COMMENT       int8 `toml:"er_column_have_no_comment"`
-	ER_DATETIME_DEFAULT             int8 `toml:"er_datetime_default"`
-	ER_FOREIGN_KEY                  int8 `toml:"er_foreign_key"`
-	ER_IDENT_USE_KEYWORD            int8 `toml:"er_ident_use_keyword"`
-	ER_INC_INIT_ERR                 int8 `toml:"er_inc_init_err"`
+	ER_ALTER_TABLE_ONCE       int8 `toml:"er_alter_table_once"`
+	ER_AUTO_INCR_ID_WARNING   int8 `toml:"er_auto_incr_id_warning"`
+	ER_AUTOINC_UNSIGNED       int8 `toml:"er_autoinc_unsigned"`
+	ER_BLOB_CANT_HAVE_DEFAULT int8 `toml:"er_blob_cant_have_default"`
+	ER_CANT_SET_CHARSET       int8 `toml:"er_cant_set_charset"`
+	ER_CANT_SET_COLLATION     int8 `toml:"er_cant_set_collation"`
+	ER_CANT_SET_ENGINE        int8 `toml:"er_cant_set_engine"`
+	ER_CHANGE_COLUMN_TYPE     int8 `toml:"er_change_column_type"`
+	ER_CHANGE_TOO_MUCH_ROWS   int8 `toml:"er_change_too_much_rows"`
+	ER_CHAR_TO_VARCHAR_LEN    int8 `toml:"er_char_to_varchar_len"`
+	ER_CHARSET_ON_COLUMN      int8 `toml:"er_charset_on_column"`
+	ER_COLUMN_HAVE_NO_COMMENT int8 `toml:"er_column_have_no_comment"`
+	ER_DATETIME_DEFAULT       int8 `toml:"er_datetime_default"`
+	ErrFloatDoubleToDecimal   int8 `toml:"er_float_double_to_decimal"`
+	ER_FOREIGN_KEY            int8 `toml:"er_foreign_key"`
+	ER_IDENT_USE_KEYWORD      int8 `toml:"er_ident_use_keyword"`
+	ER_INC_INIT_ERR           int8 `toml:"er_inc_init_err"`
+
 	ER_INDEX_NAME_IDX_PREFIX        int8 `toml:"er_index_name_idx_prefix"`
 	ER_INDEX_NAME_UNIQ_PREFIX       int8 `toml:"er_index_name_uniq_prefix"`
 	ER_INSERT_TOO_MUCH_ROWS         int8 `toml:"er_insert_too_much_rows"`
 	ER_INVALID_DATA_TYPE            int8 `toml:"er_invalid_data_type"`
 	ER_INVALID_IDENT                int8 `toml:"er_invalid_ident"`
+	ErrMariaDBRollbackWarn          int8 `toml:"er_mariadb_rollback_warn"`
 	ER_MUST_HAVE_COLUMNS            int8 `toml:"er_must_have_columns"`
 	ErrColumnsMustHaveIndex         int8 `toml:"er_columns_must_have_index"`
 	ErrColumnsMustHaveIndexTypeErr  int8 `toml:"er_columns_must_have_index_type_err"`
@@ -821,6 +824,7 @@ var defaultConf = Config{
 		ER_CHARSET_ON_COLUMN:            1,
 		ER_COLUMN_HAVE_NO_COMMENT:       1,
 		ER_DATETIME_DEFAULT:             1,
+		ErrFloatDoubleToDecimal:         2,
 		ER_FOREIGN_KEY:                  2,
 		ER_IDENT_USE_KEYWORD:            1,
 		ER_INC_INIT_ERR:                 1,
@@ -829,6 +833,7 @@ var defaultConf = Config{
 		ER_INSERT_TOO_MUCH_ROWS:         1,
 		ER_INVALID_DATA_TYPE:            1,
 		ER_INVALID_IDENT:                1,
+		ErrMariaDBRollbackWarn:          1,
 		ER_MUST_HAVE_COLUMNS:            1,
 		ErrColumnsMustHaveIndex:         1,
 		ErrColumnsMustHaveIndexTypeErr:  1,
