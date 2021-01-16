@@ -1,3 +1,4 @@
+# GoIncepiton Configuration.
 
 # IP地址
 host = "0.0.0.0"
@@ -92,6 +93,7 @@ sql_safe_updates = -1
 # > 0 值表示，会话在执行SQL 时获取锁超时的时间
 lock_wait_timeout = -1
 
+# 是否跳过goinception用户权限校验, 默认跳过
 skip_grant_table = true
 
 support_charset = "utf8,utf8mb4"
