@@ -155,7 +155,8 @@ func (s *testCommon) initSetUp(c *C) {
 	cfg := config.GetGlobalConfig()
 	_, localFile, _, _ := runtime.Caller(0)
 	localFile = path.Dir(localFile)
-	configFile := path.Join(localFile[0:len(localFile)-len("session")], "config/config.toml.example")
+	configFile := path.Join(localFile[0:len(localFile)-len("session")],
+		"config/config.toml.default")
 	c.Assert(cfg.Load(configFile), IsNil)
 
 	inc := &config.GetGlobalConfig().Inc
