@@ -86,12 +86,6 @@ func GetPrewriteValue(ctx sessionctx.Context, createIfNotExists bool) *binlog.Pr
 var skipBinlog uint32
 var ignoreError uint32
 
-// DisableSkipBinlogFlag disable the skipBinlog flag.
-func DisableSkipBinlogFlag() {
-	atomic.StoreUint32(&skipBinlog, 0)
-	log.Warn("[binloginfo] disable the skipBinlog flag")
-}
-
 // SetIgnoreError sets the ignoreError flag, this function called when TiDB start
 // up and find config.Binlog.IgnoreError is true.
 func SetIgnoreError(on bool) {

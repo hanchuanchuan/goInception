@@ -19,25 +19,11 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/model"
-	"github.com/hanchuanchuan/goInception/session"
 )
 
 // StatsHandler is the handler for dumping statistics.
 type StatsHandler struct {
 	do *domain.Domain
-}
-
-func (s *Server) newStatsHandler() *StatsHandler {
-	store, ok := s.driver.(*TiDBDriver)
-	if !ok {
-		panic("Illegal driver")
-	}
-
-	do, err := session.GetDomain(store.store)
-	if err != nil {
-		panic("Failed to get domain")
-	}
-	return &StatsHandler{do}
 }
 
 func (sh StatsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {

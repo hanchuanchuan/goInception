@@ -392,7 +392,6 @@ func (s *testBinlogSuite) TestZIgnoreError(c *C) {
 	s.pump.mu.Lock()
 	s.pump.mu.mockFail = false
 	s.pump.mu.Unlock()
-	binloginfo.DisableSkipBinlogFlag()
 	binloginfo.SetIgnoreError(false)
 }
 

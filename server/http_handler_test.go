@@ -14,9 +14,7 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/hanchuanchuan/goInception/config"
@@ -145,79 +143,6 @@ func (ts *HTTPHandlerTestSuite) TestRegionIndexRangeWithStartNoLimit(c *C) {
 	c.Assert(r.last.IsRecord, IsTrue)
 	c.Assert(r.getRecordFrame(3, "", ""), NotNil)
 	c.Assert(r.getIndexFrame(8, 1, "", "", ""), NotNil)
-}
-
-func (ts *HTTPHandlerTestSuite) TestRegionsAPI(c *C) {
-	ts.startServer(c)
-	defer ts.stopServer(c)
-	resp, err := http.Get("http://127.0.0.1:10090/tables/information_schema/SCHEMATA/regions")
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
-
-	var data TableRegions
-	err = decoder.Decode(&data)
-	c.Assert(err, IsNil)
-	c.Assert(len(data.RecordRegions) > 0, IsTrue)
-
-	// list region
-	for _, region := range data.RecordRegions {
-		c.Assert(regionContainsTable(c, region.ID, data.TableID), IsTrue)
-	}
-}
-
-func regionContainsTable(c *C, regionID uint64, tableID int64) bool {
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:10090/regions/%d", regionID))
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
-	var data RegionDetail
-	err = decoder.Decode(&data)
-	c.Assert(err, IsNil)
-	for _, index := range data.Frames {
-		if index.TableID == tableID {
-			return true
-		}
-	}
-	return false
-}
-
-func (ts *HTTPHandlerTestSuite) TestListTableRegionsWithError(c *C) {
-	ts.startServer(c)
-	defer ts.stopServer(c)
-	resp, err := http.Get("http://127.0.0.1:10090/tables/fdsfds/aaa/regions")
-	c.Assert(err, IsNil)
-	defer resp.Body.Close()
-	c.Assert(resp.StatusCode, Equals, http.StatusBadRequest)
-}
-
-func (ts *HTTPHandlerTestSuite) TestGetRegionByIDWithError(c *C) {
-	ts.startServer(c)
-	defer ts.stopServer(c)
-	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:10090/regions/xxx"))
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusBadRequest)
-	defer resp.Body.Close()
-}
-
-func (ts *HTTPHandlerTestSuite) TestRegionsFromMeta(c *C) {
-	ts.startServer(c)
-	defer ts.stopServer(c)
-	resp, err := http.Get("http://127.0.0.1:10090/regions/meta")
-	c.Assert(err, IsNil)
-	defer resp.Body.Close()
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-
-	// Verify the resp body.
-	decoder := json.NewDecoder(resp.Body)
-	metas := make([]RegionMeta, 0)
-	err = decoder.Decode(&metas)
-	c.Assert(err, IsNil)
-	for _, meta := range metas {
-		c.Assert(meta.ID != 0, IsTrue)
-	}
 }
 
 func (ts *HTTPHandlerTestSuite) startServer(c *C) {
