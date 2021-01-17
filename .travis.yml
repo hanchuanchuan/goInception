@@ -25,8 +25,8 @@ addons:
 # dist: trusty
 
 services:
-# - docker
-- mysql
+  # - docker
+  - mysql
 
 # SHORT=1 跳过goInception审核和执行测试
 
@@ -34,7 +34,6 @@ env:
   - TRAVIS_COVERAGE=0
   # - TRAVIS_COVERAGE=1
   # - TRAVIS_COVERAGE=0 API=1
-
 
 # install:
 #   - netstat -nltp
@@ -85,7 +84,8 @@ before_install:
   - ps -ef|grep mysql
 
 script:
-  - sudo [ ! -f "/usr/local/bin/pt-online-schema-change" ] && sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
+  # - sudo [ ! -f "/usr/local/bin/pt-online-schema-change" ] && sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
+  - sudo cp ./bin/pt-online-schema-change  /usr/local/bin/pt-online-schema-change
   - sudo chmod +x /usr/local/bin/pt-online-schema-change
   # - sudo apt-get install -y --no-install-recommends --no-install-suggests libdbi-perl libdbd-mysql-perl
 
