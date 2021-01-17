@@ -15,7 +15,6 @@ package server
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -29,7 +28,6 @@ import (
 	"github.com/hanchuanchuan/goInception/kv"
 	tmysql "github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/util/logutil"
-	"github.com/hanchuanchuan/goInception/util/printer"
 	. "github.com/pingcap/check"
 	log "github.com/sirupsen/logrus"
 )
@@ -717,18 +715,6 @@ func runTestResultFieldTableIsNull(c *C) {
 		dbt.mustExec("create table test (c int);")
 		dbt.mustExec("explain select * from test;")
 	})
-}
-
-func runTestStatusAPI(c *C) {
-	resp, err := http.Get("http://127.0.0.1:10090/status")
-	c.Assert(err, IsNil)
-	defer resp.Body.Close()
-	decoder := json.NewDecoder(resp.Body)
-	var data status
-	err = decoder.Decode(&data)
-	c.Assert(err, IsNil)
-	c.Assert(data.Version, Equals, tmysql.ServerVersion)
-	c.Assert(data.GitHash, Equals, printer.TiDBGitHash)
 }
 
 func runTestMultiStatements(c *C) {

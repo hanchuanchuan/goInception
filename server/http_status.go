@@ -15,17 +15,11 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
 
 	"github.com/gorilla/mux"
-	"github.com/hanchuanchuan/goInception/kv"
-	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/hanchuanchuan/goInception/terror"
-	"github.com/hanchuanchuan/goInception/util/printer"
-	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,38 +32,6 @@ func (s *Server) startStatusHTTP() {
 func (s *Server) startHTTPServer() {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/status", s.handleStatus).Name("Status")
-
-	// HTTP path for dump statistics.
-	router.Handle("/stats/dump/{db}/{table}", s.newStatsHandler()).Name("StatsDump")
-
-	router.Handle("/settings", settingsHandler{}).Name("Settings")
-	router.Handle("/binlog/recover", binlogRecover{}).Name("BinlogRecover")
-
-	tikvHandlerTool := s.newTikvHandlerTool()
-	router.Handle("/schema", schemaHandler{tikvHandlerTool}).Name("Schema")
-	router.Handle("/schema/{db}", schemaHandler{tikvHandlerTool})
-	router.Handle("/schema/{db}/{table}", schemaHandler{tikvHandlerTool})
-	router.Handle("/tables/{colID}/{colTp}/{colFlag}/{colLen}", valueHandler{})
-	router.Handle("/ddl/history", ddlHistoryJobHandler{tikvHandlerTool}).Name("DDL_History")
-	router.Handle("/ddl/owner/resign", ddlResignOwnerHandler{tikvHandlerTool.store.(kv.Storage)}).Name("DDL_Owner_Resign")
-
-	// HTTP path for get server info.
-	router.Handle("/info", serverInfoHandler{tikvHandlerTool}).Name("Info")
-	router.Handle("/info/all", allServerInfoHandler{tikvHandlerTool}).Name("InfoALL")
-	if s.cfg.Store == "tikv" {
-		// HTTP path for tikv.
-		router.Handle("/tables/{db}/{table}/regions", tableHandler{tikvHandlerTool, opTableRegions})
-		router.Handle("/tables/{db}/{table}/scatter", tableHandler{tikvHandlerTool, opTableScatter})
-		router.Handle("/tables/{db}/{table}/stop-scatter", tableHandler{tikvHandlerTool, opStopTableScatter})
-		router.Handle("/tables/{db}/{table}/disk-usage", tableHandler{tikvHandlerTool, opTableDiskUsage})
-		router.Handle("/regions/meta", regionHandler{tikvHandlerTool}).Name("RegionsMeta")
-		router.Handle("/regions/{regionID}", regionHandler{tikvHandlerTool})
-		router.Handle("/mvcc/key/{db}/{table}/{handle}", mvccTxnHandler{tikvHandlerTool, opMvccGetByKey})
-		router.Handle("/mvcc/txn/{startTS}/{db}/{table}", mvccTxnHandler{tikvHandlerTool, opMvccGetByTxn})
-		router.Handle("/mvcc/hex/{hexKey}", mvccTxnHandler{tikvHandlerTool, opMvccGetByHex})
-		router.Handle("/mvcc/index/{db}/{table}/{index}/{handle}", mvccTxnHandler{tikvHandlerTool, opMvccGetByIdx})
-	}
 	addr := fmt.Sprintf(":%d", s.cfg.Status.StatusPort)
 	if s.cfg.Status.StatusPort == 0 {
 		addr = defaultStatusAddr
@@ -107,7 +69,7 @@ func (s *Server) startHTTPServer() {
 	httpRouterPage.WriteString("<tr><td><a href='/debug/pprof/'>Debug</a><td></tr>")
 	httpRouterPage.WriteString("</table></body></html>")
 	router.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
-		_, err = responseWriter.Write([]byte(httpRouterPage.String()))
+		_, err = responseWriter.Write(httpRouterPage.Bytes())
 		if err != nil {
 			log.Error("Http index page error ", err)
 		}
@@ -124,30 +86,5 @@ func (s *Server) startHTTPServer() {
 
 	if err != nil {
 		log.Info(err)
-	}
-}
-
-// status of TiDB.
-type status struct {
-	Connections int    `json:"connections"`
-	Version     string `json:"version"`
-	GitHash     string `json:"git_hash"`
-}
-
-func (s *Server) handleStatus(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	st := status{
-		Connections: s.ConnectionCount(),
-		Version:     mysql.ServerVersion,
-		GitHash:     printer.TiDBGitHash,
-	}
-	js, err := json.Marshal(st)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error("Encode json error", err)
-	} else {
-		_, err = w.Write(js)
-		terror.Log(errors.Trace(err))
 	}
 }
