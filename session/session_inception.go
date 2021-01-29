@@ -592,6 +592,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 
 	case *ast.CreateDatabaseStmt:
 		s.checkCreateDB(node, currentSql)
+	case *ast.AlterDatabaseStmt:
+		s.checkAlterDB(node, currentSql)
 	case *ast.DropDatabaseStmt:
 		s.checkDropDB(node, currentSql)
 
@@ -1189,6 +1191,7 @@ func (s *session) executeRemoteCommand(record *Record, isTran bool) int {
 	case *ast.UseStmt,
 		*ast.CreateDatabaseStmt,
 		*ast.DropDatabaseStmt,
+		*ast.AlterDatabaseStmt,
 
 		*ast.CreateTableStmt,
 		*ast.AlterTableStmt,
@@ -6136,6 +6139,25 @@ func (s *session) checkCreateDB(node *ast.CreateDatabaseStmt, sql string) {
 		// if s.opt.execute {
 		// 	s.myRecord.DDLRollback = fmt.Sprintf("DROP DATABASE `%s`;", node.Name)
 		// }
+	}
+}
+
+func (s *session) checkAlterDB(node *ast.AlterDatabaseStmt, sql string) {
+	log.Debug("checkAlterDB")
+
+	if s.checkDBExists(node.Name, true) {
+		if !s.inc.EnableAlterDatabase {
+			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		}
+
+		for _, opt := range node.Options {
+			switch opt.Tp {
+			case ast.DatabaseOptionCharset:
+				s.checkCharset(opt.Value)
+			case ast.DatabaseOptionCollate:
+				s.checkCollation(opt.Value)
+			}
+		}
 	}
 }
 
