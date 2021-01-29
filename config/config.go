@@ -259,6 +259,7 @@ type Inc struct {
 
 	// 连接服务器的默认字符集,默认值为utf8mb4
 	DefaultCharset              string `toml:"default_charset" json:"default_charset"`
+	EnableAlterDatabase         bool   `toml:"enable_alter_database" json:"enable_alter_database"`
 	EnableAutoIncrementUnsigned bool   `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
 	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`

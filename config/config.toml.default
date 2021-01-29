@@ -46,6 +46,7 @@ backup_port = 0
 backup_user = ""
 backup_password = ""
 
+enable_alter_database = false
 enable_zero_date = true
 enable_nullable = true
 enable_drop_table = false
@@ -179,7 +180,7 @@ osc_print_none = false
 # 对应参数pt-online-schema-change中的参数--print。默认值：OFF
 osc_print_sql = false
 
-# 全局的OSC开关，默认是打开的，如果想要关闭则设置为OFF，这样就会直接修改。默认值：OFF
+# 全局的OSC开关。默认值：OFF
 osc_on = false
 
 # 这个参数实际上是一个OSC开关，如果设置为0，则全部ALTER语句都使用OSC方式，
