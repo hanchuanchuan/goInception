@@ -590,6 +590,7 @@ import (
 	CreateViewStmt       "CREATE VIEW  stetement"
 	CreateUserStmt       "CREATE User statement"
 	CreateDatabaseStmt   "Create Database Statement"
+	AlterDatabaseStmt   "Alter Database Statement"
 	CreateIndexStmt      "CREATE INDEX statement"
 	DoStmt               "Do statement"
 	DropDatabaseStmt     "DROP DATABASE statement"
@@ -2300,6 +2301,37 @@ IndexKeyTypeOpt:
 	{
 		$$ = ast.IndexKeyTypeFullText
 	}
+
+
+/**************************************AlterDatabaseStmt***************************************
+ * See https://dev.mysql.com/doc/refman/5.7/en/alter-database.html
+ * 'ALTER DATABASE ... UPGRADE DATA DIRECTORY NAME' is not supported yet.
+ *
+ *  ALTER {DATABASE | SCHEMA} [db_name]
+ *   alter_specification ...
+ *
+ *  alter_specification:
+ *   [DEFAULT] CHARACTER SET [=] charset_name
+ * | [DEFAULT] COLLATE [=] collation_name
+ * | [DEFAULT] ENCRYPTION [=] {'Y' | 'N'}
+ *******************************************************************************************/
+ AlterDatabaseStmt:
+	"ALTER" DatabaseSym DBName DatabaseOptionList
+	{
+		$$ = &ast.AlterDatabaseStmt{
+			Name:                 $3.(string),
+			AlterDefaultDatabase: false,
+			Options:              $4.([]*ast.DatabaseOption),
+		}
+	}
+// |	"ALTER" DatabaseSym DatabaseOptionList
+// 	{
+// 		$$ = &ast.AlterDatabaseStmt{
+// 			Name:                 "",
+// 			AlterDefaultDatabase: true,
+// 			Options:              $3.([]*ast.DatabaseOption),
+// 		}
+// 	}
 
 /*******************************************************************
  *
@@ -6725,6 +6757,7 @@ Statement:
 |	ExecuteStmt
 |	ExplainStmt
 |	CreateDatabaseStmt
+|   AlterDatabaseStmt
 |	CreateIndexStmt
 |	CreateTableStmt
 |	CreateViewStmt
