@@ -2299,6 +2299,30 @@ func (s *testSessionIncSuite) TestCreateDataBase(c *C) {
 	s.testErrorCode(c, sql)
 }
 
+func (s *testSessionIncSuite) TestAlterDataBase(c *C) {
+	config.GetGlobalConfig().Inc.EnableAlterDatabase = false
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
+	// 不存在
+	sql = "alter database test_inc12345 default character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_DB_NOT_EXISTED_ERROR, "test_inc12345"))
+
+	sql = "alter database test_inc default character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_NOT_SUPPORTED_YET))
+
+	config.GetGlobalConfig().Inc.EnableAlterDatabase = true
+
+	sql = "alter database test_inc default character set utf8;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrCharsetNotSupport, "utf8mb4"))
+
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	sql = "alter database test_inc default character set utf8;"
+	s.testErrorCode(c, sql)
+
+}
+
 func (s *testSessionIncSuite) TestTimestampColumn(c *C) {
 	sql := ""
 

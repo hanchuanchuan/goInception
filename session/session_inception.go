@@ -6148,6 +6148,7 @@ func (s *session) checkAlterDB(node *ast.AlterDatabaseStmt, sql string) {
 	if s.checkDBExists(node.Name, true) {
 		if !s.inc.EnableAlterDatabase {
 			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			return
 		}
 
 		for _, opt := range node.Options {
