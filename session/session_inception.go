@@ -6316,16 +6316,29 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 		if s.inc.ExplainRule == "max" {
 			r.AffectedRows = 0
 			for _, row := range rows {
-				if row.Count > 0 && row.Rows == 0 {
-					row.Rows = int(row.Count)
+				if row.Rows == 0 {
+					if row.Count != "" {
+						if f, err := strconv.ParseFloat(row.Count, 64); err == nil {
+							row.Rows = int(f)
+						}
+					} else if row.EstRows > 0 {
+						row.Rows = int(row.EstRows)
+					}
 				}
 				r.AffectedRows = Max(r.AffectedRows, row.Rows)
 			}
 		} else {
-			if rows[0].Count > 0 && rows[0].Rows == 0 {
-				rows[0].Rows = int(rows[0].Count)
+			row := rows[0]
+			if row.Rows == 0 {
+				if row.Count != "" {
+					if f, err := strconv.ParseFloat(row.Count, 64); err == nil {
+						row.Rows = int(f)
+					}
+				} else if row.EstRows > 0 {
+					row.Rows = int(row.EstRows)
+				}
 			}
-			r.AffectedRows = rows[0].Rows
+			r.AffectedRows = row.Rows
 		}
 
 		if newRecord != nil {

@@ -173,7 +173,9 @@ type ExplainInfo struct {
 	Extra        string  `gorm:"Column:Extra"`
 
 	// TiDB的Explain预估行数存储在Count中
-	Count float32 `gorm:"Column:count"`
+	Count string `gorm:"Column:count"`
+	// TiDB (v4.0及之后)的Explain预估行数存储在Count中
+	EstRows float64 `gorm:"Column:estRows"`
 }
 
 // FieldInfo 字段信息
