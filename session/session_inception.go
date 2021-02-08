@@ -668,8 +668,10 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		s.checkSetStmt(node)
 
 	default:
-		log.Infof("无匹配类型:%T\n", stmtNode)
-		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		log.Warnf("无匹配类型:%T\n", stmtNode)
+		if !s.inc.EnableAnyStatement {
+			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		}
 	}
 
 	s.mysqlComputeSqlSha1(s.myRecord)
@@ -1208,8 +1210,12 @@ func (s *session) executeRemoteCommand(record *Record, isTran bool) int {
 		s.executeRemoteStatement(record, isTran)
 
 	default:
-		log.Infof("无匹配类型: %T\n", node)
-		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		log.Warnf("无匹配类型: %T\n", node)
+		if s.inc.EnableAnyStatement {
+			s.executeRemoteStatement(record, isTran)
+		} else {
+			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		}
 	}
 
 	return int(record.ErrLevel)
@@ -5462,9 +5468,10 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 
 		// t := reflect.TypeOf(cnf.Inc)
 		// values := reflect.ValueOf(&cnf.Inc).Elem()
-		prefix := strings.ToLower(v.Name)
-		if strings.Contains(prefix, "_") {
-			prefix = strings.Split(prefix, "_")[0]
+		variableName := strings.ToLower(v.Name)
+		var prefix string
+		if strings.Contains(variableName, "_") {
+			prefix = strings.Split(variableName, "_")[0]
 		}
 
 		var err error
@@ -5494,8 +5501,9 @@ func (s *session) executeInceptionSet(node *ast.InceptionSetStmt, sql string) ([
 			}
 
 		default:
-			if prefix == "version" {
-				return nil, errors.New("只读变量")
+			if prefix == "version" || variableName == "enable_any_statement" {
+				return nil, errors.New(
+					fmt.Sprintf("Variable '%s' is a read only variable", v.Name))
 			}
 			var object *config.Inc
 			if v.IsGlobal {
@@ -5759,7 +5767,7 @@ func (s *session) executeLocalShowProcesslist(node *ast.ShowStmt) ([]sqlexec.Rec
 				pi.DestUser,
 				pi.DestHost,
 				pi.DestPort,
-				pi.Host,
+				fmt.Sprintf("%s@%s", pi.User, pi.Host),
 				pi.Command,
 				pi.OperState,
 				int64(time.Since(pi.Time) / time.Second),
@@ -7861,7 +7869,9 @@ func (s *session) checkSetStmt(node *ast.SetStmt) {
 				s.appendErrorNo(ErrCharsetNotSupport, "utf8,utf8mb4")
 			}
 		} else {
-			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			if !s.inc.EnableAnyStatement {
+				s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			}
 			continue
 		}
 	}

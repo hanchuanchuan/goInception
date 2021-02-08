@@ -258,9 +258,11 @@ type Inc struct {
 	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
 
 	// 连接服务器的默认字符集,默认值为utf8mb4
-	DefaultCharset              string `toml:"default_charset" json:"default_charset"`
-	EnableAlterDatabase         bool   `toml:"enable_alter_database" json:"enable_alter_database"`
-	EnableAutoIncrementUnsigned bool   `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
+	DefaultCharset      string `toml:"default_charset" json:"default_charset"`
+	EnableAlterDatabase bool   `toml:"enable_alter_database" json:"enable_alter_database"`
+	// 允许执行任意语法类型.该设置有安全要求,仅支持配置文件方式设置
+	EnableAnyStatement          bool `toml:"enable_any_statement" json:"enable_any_statement"`
+	EnableAutoIncrementUnsigned bool `toml:"enable_autoincrement_unsigned" json:"enable_autoincrement_unsigned"`
 	// 允许blob,text,json列设置为NOT NULL
 	EnableBlobNotNull   bool `toml:"enable_blob_not_null" json:"enable_blob_not_null"`
 	EnableBlobType      bool `toml:"enable_blob_type" json:"enable_blob_type"`
@@ -740,6 +742,7 @@ var defaultConf = Config{
 		EnableSetEngine:       true,
 		CheckTableComment:     false,
 		CheckColumnComment:    false,
+		EnableAnyStatement:    false,
 		EnableChangeColumn:    true,
 		CheckTimestampCount:   true,
 		EnableTimeStampType:   true,
