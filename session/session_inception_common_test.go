@@ -23,17 +23,20 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/kv"
+	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/parser"
 	"github.com/hanchuanchuan/goInception/server"
 	"github.com/hanchuanchuan/goInception/session"
 	"github.com/hanchuanchuan/goInception/store/mockstore"
 	"github.com/hanchuanchuan/goInception/store/mockstore/mocktikv"
+	"github.com/hanchuanchuan/goInception/util/auth"
 	"github.com/hanchuanchuan/goInception/util/logutil"
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	"github.com/hanchuanchuan/goInception/util/testleak"
@@ -151,6 +154,15 @@ func (s *testCommon) initSetUp(c *C) {
 	s.tk.Se.SetSessionManager(server)
 
 	s.session = s.tk.Se
+	vars := s.session.GetSessionVars()
+	if vars.User == nil {
+		vars.User = &auth.UserIdentity{
+			Username: "root",
+			Hostname: "127.0.0.1",
+		}
+	}
+	// 重新设置进程信息,写入user@host
+	s.session.SetProcessInfo("", time.Now(), mysql.ComQuery)
 
 	cfg := config.GetGlobalConfig()
 	_, localFile, _, _ := runtime.Caller(0)
