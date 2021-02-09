@@ -117,7 +117,7 @@ func (s *session) init() {
 		if tmp := s.processInfo.Load(); tmp != nil {
 			if pi, ok := tmp.(util.ProcessInfo); ok {
 				if pi.User != "root" {
-					log.Errorf("user: %s", pi.User)
+					log.Warnf("Insufficient permissions to enable any statement! user: %s", pi.User)
 					s.inc.EnableAnyStatement = false
 				}
 			}
