@@ -111,6 +111,18 @@ func (s *session) init() {
 	s.osc = config.GetGlobalConfig().Osc
 	s.ghost = config.GetGlobalConfig().Ghost
 
+	// 在开启goinception鉴权时.非root用户禁止启用EnableAnyStatement功能
+	// if !s.inc.SkipGrantTable {}
+	if s.inc.EnableAnyStatement {
+		if tmp := s.processInfo.Load(); tmp != nil {
+			if pi, ok := tmp.(util.ProcessInfo); ok {
+				if pi.User != "root" {
+					log.Warnf("Insufficient permissions to enable any statement! user: %s", pi.User)
+					s.inc.EnableAnyStatement = false
+				}
+			}
+		}
+	}
 	s.inc.Lang = strings.Replace(strings.ToLower(s.inc.Lang), "-", "_", 1)
 
 	s.sqlFingerprint = nil

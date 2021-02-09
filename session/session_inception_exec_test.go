@@ -1026,3 +1026,17 @@ func (s *testSessionIncExecSuite) TestWhereCondition(c *C) {
 	`
 	s.mustRunExec(c, sql)
 }
+
+func (s *testSessionIncExecSuite) TestExecAnyStatement(c *C) {
+	sql := ""
+	config.GetGlobalConfig().Inc.EnableAnyStatement = true
+	config.GetGlobalConfig().Inc.EnableDropTable = false
+
+	sql = "drop table if exists t1;create table t1(id int);drop table t1;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CANT_DROP_TABLE, "t1"))
+
+	s.mustRunExec(c, "set global binlog_format = ROW;")
+	s.mustRunExec(c, "create user test1@'127.0.0.1' identified by '123';")
+	s.mustRunExec(c, "drop user test1@'127.0.0.1';")
+}
