@@ -863,6 +863,7 @@ func (s *session) SetProcessInfo(sql string, t time.Time, command byte) {
 		Info:      sql,
 		OperState: "INIT",
 	}
+	log.Errorf("s.sessionVars.User: %#v", s.sessionVars.User)
 	if s.sessionVars.User != nil {
 		pi.User = s.sessionVars.User.Username
 		pi.Host = s.sessionVars.User.Hostname
