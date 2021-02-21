@@ -365,6 +365,11 @@ type Inc struct {
 	// > 0 值表示，会话在执行SQL 时获取锁超时的时间
 	LockWaitTimeout int `toml:"lock_wait_timeout" json:"lock_wait_timeout"`
 
+	// 设置检测SQL时，会话变量
+	// -1 表示不做操作，基于远端数据库【默认值】
+	// > 0 值表示，会话在检测SQL的超时的时间
+	CheckMaxExecutionTime int `toml:"check_max_execution_time" json:"check_max_execution_time"`
+
 	// 支持的字符集
 	SupportCharset string `toml:"support_charset" json:"support_charset"`
 
@@ -750,6 +755,7 @@ var defaultConf = Config{
 		CheckIdentifierUpper:  false,
 		SqlSafeUpdates:        -1,
 		LockWaitTimeout:       -1,
+		CheckMaxExecutionTime: -1,
 		SupportCharset:        "utf8,utf8mb4",
 		SupportEngine:         "innodb",
 		Lang:                  "en-US",

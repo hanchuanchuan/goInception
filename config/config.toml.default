@@ -94,6 +94,11 @@ sql_safe_updates = -1
 # > 0 值表示，会话在执行SQL 时获取锁超时的时间
 lock_wait_timeout = -1
 
+# 设置检测SQL时，会话变量
+# -1 表示不做操作，基于远端数据库【默认值】
+# > 0 值表示，会话在检测SQL的超时的时间
+check_max_execution_time = -1
+
 # 是否跳过goinception用户权限校验, 默认跳过
 skip_grant_table = true
 

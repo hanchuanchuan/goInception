@@ -544,6 +544,11 @@ func (s *session) checkOptions() error {
 	s.setSqlSafeUpdates()
 	s.setLockWaitTimeout()
 
+	// 设置检测语句的执行时间
+	if s.opt.Check && s.dbType == DBTypeMysql && s.dbVersion >= 50708 {
+		s.setCheckMaxExecutionTime()
+	}
+
 	if s.opt.Backup && s.dbType == DBTypeTiDB {
 		s.appendErrorMessage("TiDB暂不支持备份功能.")
 	}

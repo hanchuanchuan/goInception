@@ -1921,6 +1921,26 @@ func (s *session) setLockWaitTimeout() {
 	}
 }
 
+func (s *session) setCheckMaxExecutionTime() {
+	log.Debug("setCheckMaxExecutionTime")
+
+	var sql string
+	if s.inc.CheckMaxExecutionTime > 0 {
+		sql = fmt.Sprintf("set session max_execution_time=%d;", s.inc.CheckMaxExecutionTime)
+	} else {
+		return
+	}
+
+	if _, err := s.exec(sql, true); err != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.appendErrorMessage(myErr.Message)
+		} else {
+			s.appendErrorMessage(err.Error())
+		}
+	}
+}
+
 func (s *session) checkBinlogIsOn() bool {
 	log.Debug("checkBinlogIsOn")
 
@@ -6463,7 +6483,10 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 				s.getRealRowCount(sql, sqlId)
 			}
 		}
-		return
+		// 真实影响行数大于0时才返回，实际是为了忽略真实影响行数获取时的错误
+		if s.myRecord.AffectedRows > 0 {
+			return
+		}
 	}
 
 	if s.dbVersion < 50600 {
