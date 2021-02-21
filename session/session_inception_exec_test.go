@@ -971,6 +971,35 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 	s.testErrorCode(c, sql)
 }
 
+// 测试忽略指定的Alter语句
+func (s *testSessionIncExecSuite) TestIgnoreOscAlterStmt(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	savedOsc := config.GetGlobalConfig().Osc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+		config.GetGlobalConfig().Osc = savedOsc
+	}()
+
+	config.GetGlobalConfig().Inc.IgnoreOscAlterStmt = "drop index,drop partition"
+	config.GetGlobalConfig().Osc.OscMinTableSize = 0
+	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Ghost.GhostOn = true
+
+	sql := "drop table if exists t1;create table t1(id int auto_increment primary key, c1 int, key ix(c1));"
+	s.mustRunExec(c, sql)
+
+	// drop index
+	sql = "alter table t1 drop index ix;"
+	s.testErrorCode(c, sql)
+
+	sql = "drop table if exists t1;create table t1(id int auto_increment primary key, c1 int, key ix(c1));"
+	s.mustRunExec(c, sql)
+
+	// drop index,add index
+	sql = "alter table t1 drop index ix,add index ix2(c1);"
+	s.testErrorCode(c, sql)
+}
+
 // TestDisplayWidth 测试列指定长度参数
 func (s *testSessionIncExecSuite) TestDisplayWidth(c *C) {
 	sql := ""
