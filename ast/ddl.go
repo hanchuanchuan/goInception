@@ -2020,17 +2020,17 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 	case AlterTableCoalescePartitions:
 		ctx.WriteKeyWord("COALESCE PARTITION ")
 		ctx.WritePlainf("%d", n.Num)
-	// case AlterTableDropPartition:
-	// 	ctx.WriteKeyWord("DROP PARTITION ")
-	// 	if n.IfExists {
-	// 		ctx.WriteKeyWord("IF EXISTS ")
-	// 	}
-	// 	for i, name := range n.PartitionNames {
-	// 		if i != 0 {
-	// 			ctx.WritePlain(",")
-	// 		}
-	// 		ctx.WriteName(name.O)
-	// 	}
+	case AlterTableDropPartition:
+		ctx.WriteKeyWord("DROP PARTITION ")
+		if n.IfExists {
+			ctx.WriteKeyWord("IF EXISTS ")
+		}
+		for i, name := range n.PartitionNames {
+			if i != 0 {
+				ctx.WritePlain(",")
+			}
+			ctx.WriteName(name.O)
+		}
 	case AlterTableTruncatePartition:
 		ctx.WriteKeyWord("TRUNCATE PARTITION ")
 		if n.OnAllPartitions {
