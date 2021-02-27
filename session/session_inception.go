@@ -5934,7 +5934,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 	res := NewOscProcessListSets(len(pl), node.Sqlsha1 != "")
 
 	if node.Sqlsha1 == "" {
-
 		var keys []int
 		all := make(map[uint64]*util.OscProcessInfo, len(pl))
 		for _, pi := range pl {
@@ -5958,7 +5957,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 			}
 		}
 	} else if pi, ok := pl[node.Sqlsha1]; ok {
-		pi.RW.RLock()
 		data := []interface{}{
 			pi.Schema,
 			pi.Table,
@@ -5968,7 +5966,6 @@ func (s *session) executeLocalShowOscProcesslist(node *ast.ShowOscStmt) ([]sqlex
 			pi.RemainTime,
 			pi.Info,
 		}
-		pi.RW.RUnlock()
 		res.appendRow(data)
 	} else {
 		s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not found"))
