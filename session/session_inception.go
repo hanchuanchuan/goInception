@@ -2979,15 +2979,20 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 		}
 	}
 
-	if character != "" && collation == "" {
-		var err error
-		collation, err = charset.GetDefaultCollation(character)
-		if err != nil {
-			s.appendErrorMessage(err.Error())
-		}
-	} else if character != "" && collation != "" {
-		if !charset.ValidCharsetAndCollation(character, collation) {
-			s.appendErrorMessage("字符集和排序规则不匹配!")
+	if character != "" {
+		if collation == "" {
+			var ok bool
+			if collation, ok = mysql.Charsets[character]; !ok {
+				s.appendErrorNo(ErrUnknownCharset, character)
+			}
+		} else {
+			if !charset.ValidCharsetAndCollation(character, collation) {
+				s.appendErrorMessage("字符集和排序规则不匹配!")
+			} else {
+				if collation == "utf8mb4_0900_ai_ci" && s.dbVersion < 80000 {
+					s.appendErrorMessage("Collation utf8mb4_0900_ai_ci is only supported after mysql 8.0")
+				}
+			}
 		}
 	}
 
