@@ -67,6 +67,7 @@ const (
 	ER_SELECT_ONLY_STAR
 	ER_ORDERY_BY_RAND
 	ER_ID_IS_UPER
+	ErrUnknownCharset
 	ER_UNKNOWN_COLLATION
 	ER_INVALID_DATA_TYPE
 	ER_NOT_ALLOWED_NULLABLE
@@ -246,6 +247,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_SELECT_ONLY_STAR:                    "Select only star is not allowed.",
 	ER_ORDERY_BY_RAND:                      "Order by rand is not allowed in select statement.",
 	ER_ID_IS_UPER:                          "Identifier is not allowed to been upper-case.",
+	ErrUnknownCharset:                      "Unknown charset: '%s'.",
 	ER_UNKNOWN_COLLATION:                   "Unknown collation: '%s'.",
 	ER_INVALID_DATA_TYPE:                   "Not supported data type on field: '%s'.",
 	ER_NOT_ALLOWED_NULLABLE:                "Column '%s' in table '%s' is not allowed to been nullable.",
@@ -426,6 +428,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_SELECT_ONLY_STAR:                 "不允许'select *'语法.",
 	ER_ORDERY_BY_RAND:                   "不允许'Order by rand'语法.",
 	ER_ID_IS_UPER:                       "标识符不允许大写.",
+	ErrUnknownCharset:                   "未知的字符集: '%s'.",
 	ER_UNKNOWN_COLLATION:                "未知的排序规则: '%s'.",
 	ER_INVALID_DATA_TYPE:                "列 '%s' 数据类型不支持.",
 	ER_NOT_ALLOWED_NULLABLE:             "列 '%s' 不允许为null(表 '%s').",
@@ -617,6 +620,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_TOO_MANY_KEYS,
 		ER_UDPATE_TOO_MUCH_ROWS,
 		ER_CHANGE_TOO_MUCH_ROWS,
+		ErrUnknownCharset,
 		ER_UNKNOWN_COLLATION,
 		ER_USE_ENUM,
 		ER_WITH_DEFAULT_ADD_COLUMN,
@@ -792,6 +796,8 @@ func (e ErrorCode) String() string {
 		return "er_ordery_by_rand"
 	case ER_ID_IS_UPER:
 		return "er_id_is_uper"
+	case ErrUnknownCharset:
+		return "er_unknown_charset"
 	case ER_UNKNOWN_COLLATION:
 		return "er_unknown_collation"
 	case ER_INVALID_DATA_TYPE:

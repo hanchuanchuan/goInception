@@ -601,7 +601,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table t1(a int) character set latin123;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"),
-		session.NewErrf("Unknown charset %s.", "latin123"))
+		session.NewErr(session.ErrUnknownCharset, "latin123"))
 
 	sql = "create table t1(a int) character set gbk;"
 	s.testErrorCode(c, sql,
