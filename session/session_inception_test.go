@@ -2740,7 +2740,18 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 	sql = `create table t1(id int,c1 varchar(20)) character set utf8 COLLATE utf8_bin;`
 	s.testErrorCode(c, sql)
 
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	config.GetGlobalConfig().Inc.SupportCollation = "utf8_general_ci,utf8mb4_general_ci,utf8mb4_0900_ai_ci"
+	sql = `create table t1(id int,c1 varchar(20)) DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_0900_ai_ci;`
+	if s.DBVersion >= 80000 {
+		s.testErrorCode(c, sql)
+	} else {
+		s.testErrorCode(c, sql,
+			session.NewErrf("Collation utf8mb4_0900_ai_ci is only supported after mysql 8.0."))
+	}
+
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8"
+	config.GetGlobalConfig().Inc.SupportCollation = ""
 	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8_bin;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8"),
