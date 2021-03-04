@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-16.04
     steps:
       # - name: show mysql info
       #   run: ls -l /etc/my* || true
