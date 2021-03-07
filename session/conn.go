@@ -71,7 +71,7 @@ func (s *session) raw(sqlStr string) (rows *sql.Rows, err error) {
 			if err1 != nil {
 				return rows, err1
 			}
-			s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+			s.appendErrorMessage(err.Error())
 			continue
 		} else {
 			return
@@ -88,17 +88,32 @@ func (s *session) exec(sqlStr string, retry bool) (res sql.Result, err error) {
 		if err == nil {
 			return
 		}
-		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sqlStr)
+		log.Errorf("con:%d [retry:%v] %v sql:%s",
+			s.sessionVars.ConnectionID, i, err, sqlStr)
+
 		if err == mysqlDriver.ErrInvalidConn {
 			err1 := s.initConnection()
 			if err1 != nil {
 				return res, err1
 			}
 			if retry {
-				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+				s.appendWarningMessage(err.Error())
 				continue
 			} else {
 				return
+			}
+		}
+
+		// 连接超时时自动重连数据库. 仅在超时设置超过10min时开启该功能
+		if s.inc.WaitTimeout >= 600 {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok &&
+				myErr.Number == 1046 && s.dbName != "" {
+				err1 := s.initConnection()
+				if err1 != nil {
+					return res, err1
+				}
+				s.appendWarningMessage("Database timeout reconnect.")
+				continue
 			}
 		}
 		return
@@ -121,7 +136,7 @@ func (s *session) execDDL(sqlStr string, retry bool) (res sql.Result, err error)
 				return res, err1
 			}
 			if retry {
-				s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+				s.appendWarningMessage(err.Error())
 				continue
 			} else {
 				return
@@ -146,7 +161,7 @@ func (s *session) rawScan(sqlStr string, dest interface{}) (err error) {
 			if err1 != nil {
 				return err1
 			}
-			s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+			s.appendErrorMessage(err.Error())
 			continue
 		}
 		return
@@ -168,7 +183,7 @@ func (s *session) rawDB(dest interface{}, sqlStr string, values ...interface{}) 
 			if err1 != nil {
 				return err1
 			}
-			s.appendErrorMessage(mysqlDriver.ErrInvalidConn.Error())
+			s.appendErrorMessage(err.Error())
 			continue
 		}
 		return
@@ -193,7 +208,7 @@ func (s *session) initConnection() (err error) {
 		if err == nil {
 			// 连接重连时,清除线程ID缓存
 			// s.threadID = 0
-			log.Infof("con:%d 数据库断开重连", s.sessionVars.ConnectionID)
+			log.Infof("con:%d Database timeout reconnect", s.sessionVars.ConnectionID)
 			return
 		}
 
