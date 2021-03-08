@@ -98,6 +98,16 @@ type Record struct {
 	MultiTables map[string]*TableInfo
 }
 
+func (r *Record) appendWarningMessage(msg string) {
+	r.ErrLevel = uint8(Max(int(r.ErrLevel), int(1)))
+
+	r.Buf.WriteString(msg)
+	if !strings.HasSuffix(msg, ".") && !strings.HasSuffix(msg, "!") {
+		r.Buf.WriteString(".")
+	}
+	r.Buf.WriteString("\n")
+}
+
 func (r *Record) appendErrorMessage(msg string) {
 	r.ErrLevel = 2
 

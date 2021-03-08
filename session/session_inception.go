@@ -7122,6 +7122,18 @@ func (s *session) appendErrorMessage(msg string) {
 	s.myRecord.appendErrorMessage(msg)
 }
 
+func (s *session) appendWarningMessage(msg string) {
+	if s.stage != StageCheck && s.recordSets.MaxLevel == 0 {
+		if s.stage == StageBackup {
+			s.myRecord.Buf.WriteString("Backup: ")
+		} else if s.stage == StageExec {
+			s.myRecord.Buf.WriteString("Execute: ")
+		}
+	}
+	s.myRecord.appendWarningMessage(msg)
+	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
+}
+
 func (s *session) appendWarning(number ErrorCode, values ...interface{}) {
 	if s.stage == StageBackup {
 		s.myRecord.Buf.WriteString("Backup: ")
