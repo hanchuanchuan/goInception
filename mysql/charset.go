@@ -57,6 +57,8 @@ var CharsetIDs = map[string]uint8{
 	"geostd8":  92,
 	"cp932":    95,
 	"eucjpms":  97,
+
+	"gb18030": 98,
 }
 
 // Charsets maps charset name to its default collation name.
@@ -77,6 +79,7 @@ var Charsets = map[string]string{
 	"euckr":    "euckr_korean_ci",
 	"koi8u":    "koi8u_general_ci",
 	"gb2312":   "gb2312_chinese_ci",
+	"gb18030":  "gb18030_chinese_ci",
 	"greek":    "greek_general_ci",
 	"cp1250":   "cp1250_general_ci",
 	"gbk":      "gbk_chinese_ci",
@@ -325,6 +328,8 @@ var Collations = map[uint8]string{
 	246: "utf8mb4_unicode_520_ci",
 	247: "utf8mb4_vietnamese_ci",
 	255: "utf8mb4_0900_ai_ci",
+
+	248: "gb18030_chinese_ci",
 }
 
 // CollationNames maps MySQL default collation name to its ID
@@ -549,6 +554,7 @@ var CollationNames = map[string]uint8{
 	"utf8mb4_unicode_520_ci":   246,
 	"utf8mb4_vietnamese_ci":    247,
 	"utf8mb4_0900_ai_ci":       255,
+	"gb18030_chinese_ci":       248,
 }
 
 // MySQL collation information.
