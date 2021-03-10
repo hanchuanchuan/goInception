@@ -65,6 +65,7 @@ var charsetInfos = []*Charset{
 	{CharsetBin, CollationBin, make(map[string]*Collation), "binary", 1},
 	{"gbk", "gbk_chinese_ci", make(map[string]*Collation), "GBK", 3},
 	{"gb2312", "gb2312_chinese_ci", make(map[string]*Collation), "GB2312", 3},
+	{"gb18030", "gb18030_chinese_ci", make(map[string]*Collation), "GB18030", 3},
 }
 
 // All the names supported collations should be in the following table.
@@ -441,6 +442,7 @@ var collations = []*Collation{
 	{245, "utf8mb4", "utf8mb4_croatian_ci", false},
 	{246, "utf8mb4", "utf8mb4_unicode_520_ci", false},
 	{247, "utf8mb4", "utf8mb4_vietnamese_ci", false},
+	{248, "gb18030", "gb18030_chinese_ci", false},
 	{255, "utf8mb4", "utf8mb4_0900_ai_ci", false},
 }
 
