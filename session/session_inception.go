@@ -3123,6 +3123,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	if s.myRecord.useOsc && !hasRenameTable {
 		ignoreOsc := false
 		for _, alter := range node.Specs {
+			ignoreOsc = false
 			switch alter.Tp {
 			case ast.AlterTableOption:
 				for _, opt := range alter.Options {
