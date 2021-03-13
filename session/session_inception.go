@@ -698,6 +698,7 @@ func (s *session) executeCommit(ctx context.Context) {
 	}
 
 	s.modifyWaitTimeout()
+	s.modifyMaxExecutionTime()
 
 	if s.opt.Backup {
 		if !s.checkBinlogIsOn() {
@@ -1853,6 +1854,29 @@ func (s *session) modifyWaitTimeout() {
 	log.Debug("modifyWaitTimeout")
 
 	sql := fmt.Sprintf("set session wait_timeout=%d;", s.inc.WaitTimeout)
+
+	if _, err := s.exec(sql, true); err != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.appendErrorMessage(myErr.Message)
+		} else {
+			s.appendErrorMessage(err.Error())
+		}
+	}
+}
+
+func (s *session) modifyMaxExecutionTime() {
+	if s.inc.MaxExecutionTime <= 0 {
+		return
+	}
+	log.Debug("modifyMaxExecutionTime")
+
+	var sql string
+	if s.dbVersion < 50708 || s.dbType == DBTypeMariaDB {
+		sql = fmt.Sprintf("set session max_statement_time=%d;", s.inc.MaxExecutionTime)
+	} else {
+		sql = fmt.Sprintf("set session max_execution_time=%d;", s.inc.MaxExecutionTime)
+	}
 
 	if _, err := s.exec(sql, true); err != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)

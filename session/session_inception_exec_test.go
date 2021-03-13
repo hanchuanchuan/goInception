@@ -1069,3 +1069,28 @@ func (s *testSessionIncExecSuite) TestExecAnyStatement(c *C) {
 	s.mustRunExec(c, "create user test1@'127.0.0.1' identified by '123';")
 	s.mustRunExec(c, "drop user test1@'127.0.0.1';")
 }
+
+func (s *testSessionIncExecSuite) TestMaxExecutionTime(c *C) {
+	saved := config.GetGlobalConfig().Inc
+	savedOsc := config.GetGlobalConfig().Osc
+	defer func() {
+		config.GetGlobalConfig().Inc = saved
+		config.GetGlobalConfig().Osc = savedOsc
+	}()
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+	config.GetGlobalConfig().Osc.OscOn = true
+	config.GetGlobalConfig().Ghost.GhostOn = false
+	config.GetGlobalConfig().Osc.OscMinTableSize = 0
+	config.GetGlobalConfig().Inc.MaxExecutionTime = 1
+
+	sql := "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int);"
+	s.mustRunExec(c, sql)
+
+	// 删除后添加列
+	sql = `# 这是一条注释
+		alter table t1 drop column c1;alter table t1 add column c1 varchar(20);`
+	s.testErrorCode(c, sql)
+}
