@@ -374,9 +374,11 @@ type Inc struct {
 
 	// 支持的存储引擎,多个时以分号分隔
 	SupportEngine string `toml:"support_engine" json:"support_engine"`
-	// 远端数据库等待超时时间，单位:秒
+	// 远端数据库等待超时时间, 单位:秒
 	WaitTimeout int `toml:"wait_timeout" json:"wait_timeout"`
 
+	// 远端数据库最大执行时间, 单位:秒
+	MaxExecutionTime int `toml:"max_execution_time" json:"max_execution_time"`
 	// 版本信息
 	Version string `toml:"version" json:"version"`
 }
