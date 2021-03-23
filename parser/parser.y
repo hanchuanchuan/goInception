@@ -1024,7 +1024,9 @@ AlterTableSpec:
 	{
 		op := &ast.AlterTableSpec{
 			Tp:      ast.AlterTableOption,
-			Options: []*ast.TableOption{{Tp: ast.TableOptionCharset, StrValue: $4.(string)}},
+			Options: []*ast.TableOption{{Tp: ast.TableOptionCharset,
+			StrValue: $4.(string),
+			UintValue: ast.TableOptionCharsetWithConvertTo}},
 		}
 		if $5 != "" {
 			op.Options = append(op.Options, &ast.TableOption{Tp: ast.TableOptionCollate, StrValue: $5.(string)})
@@ -6918,7 +6920,8 @@ TableOption:
 	}
 |	DefaultKwdOpt CharsetKw EqOpt CharsetName
 	{
-		$$ = &ast.TableOption{Tp: ast.TableOptionCharset, StrValue: $4.(string)}
+		$$ = &ast.TableOption{Tp: ast.TableOptionCharset, StrValue: $4.(string),
+			UintValue: ast.TableOptionCharsetWithoutConvertTo}
 	}
 |	DefaultKwdOpt "COLLATE" EqOpt CollationName
 	{

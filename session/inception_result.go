@@ -430,9 +430,8 @@ func (s *MyRecordSets) All() []*Record {
 func (s *MyRecordSets) Next() *Record {
 	if s.cursor == s.count {
 		return nil
-	} else {
-		s.cursor++
 	}
+	s.cursor++
 	return s.records[s.cursor-1]
 }
 
