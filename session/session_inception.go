@@ -3152,8 +3152,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			case ast.AlterTableOption:
 				for _, opt := range alter.Options {
 					switch opt.Tp {
-					case ast.TableOptionCharset,
-						ast.TableOptionCollate,
+					case ast.TableOptionCharset:
+						if opt.UintValue == ast.TableOptionCharsetWithoutConvertTo {
+							ignoreOsc = true
+						}
+					case ast.TableOptionCollate,
 						ast.TableOptionComment:
 						ignoreOsc = true
 					}
