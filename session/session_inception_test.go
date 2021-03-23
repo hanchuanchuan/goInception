@@ -3069,6 +3069,11 @@ func (s *testSessionIncSuite) TestGetAlterTablePostPart(c *C) {
 		},
 		{
 			"alter table tb_archery default character set utf8 collate utf8_bin;",
+			"CHARACTER SET UTF8 COLLATE UTF8_BIN",
+			"CHARACTER SET UTF8 COLLATE UTF8_BIN",
+		},
+		{
+			"alter table tb_archery convert to character set utf8 collate utf8_bin;",
 			"CONVERT TO CHARACTER SET UTF8 COLLATE UTF8_BIN",
 			"CONVERT TO CHARACTER SET UTF8 COLLATE UTF8_BIN",
 		},
