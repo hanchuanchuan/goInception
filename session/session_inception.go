@@ -2418,45 +2418,64 @@ func (s *session) checkRenameTable(node *ast.RenameTableStmt, sql string) {
 
 	log.Debug("checkRenameTable")
 
-	originTable := s.getTableFromCache(node.OldTable.Schema.O, node.OldTable.Name.O, true)
-	if originTable == nil {
-		s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, node.OldTable.Name.O)
-	}
-
-	table := s.getTableFromCache(node.NewTable.Schema.O, node.NewTable.Name.O, false)
-	if table != nil {
-		s.appendErrorNo(ER_TABLE_EXISTS_ERROR, node.NewTable.Name.O)
-	}
-
-	s.checkKeyWords(node.NewTable.Schema.O)
-
-	if s.hasError() {
-		return
-	}
-
-	// 旧表存在,新建不存在时
-	if originTable != nil && table == nil {
-		table = originTable.copy()
-
-		table.Name = node.NewTable.Name.O
-		if node.NewTable.Schema.O == "" {
-			table.Schema = s.dbName
-		} else {
-			table.Schema = node.NewTable.Schema.O
+	rollback := make([]string, len(node.TableToTables))
+	for index, rename := range node.TableToTables {
+		originTable := s.getTableFromCache(rename.OldTable.Schema.O, rename.OldTable.Name.O, true)
+		if originTable == nil {
+			s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR, rename.OldTable.Name.O)
 		}
-		s.cacheNewTable(table)
-		s.myRecord.TableInfo = table
 
-		if s.opt.Execute {
-			s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE `%s`.`%s` TO `%s`.`%s`;",
-				table.Schema, table.Name, originTable.Schema, originTable.Name)
+		table := s.getTableFromCache(rename.NewTable.Schema.O, rename.NewTable.Name.O, false)
+		if table != nil {
+			s.appendErrorNo(ER_TABLE_EXISTS_ERROR, rename.NewTable.Name.O)
+		}
+
+		s.checkKeyWords(rename.NewTable.Schema.O)
+
+		if s.hasError() {
+			return
+		}
+
+		// 旧表存在,新建不存在时
+		if originTable != nil && table == nil {
+			table = originTable.copy()
+
+			table.Name = rename.NewTable.Name.O
+			if rename.NewTable.Schema.O == "" {
+				table.Schema = s.dbName
+			} else {
+				table.Schema = rename.NewTable.Schema.O
+			}
+			s.cacheNewTable(table)
+			s.myRecord.TableInfo = table
+
+			if s.opt.Execute {
+				rollback[index] = fmt.Sprintf("`%s`.`%s` TO `%s`.`%s`",
+					table.Schema, table.Name, originTable.Schema, originTable.Name)
+			}
+		}
+
+		if originTable != nil {
+			// rename后旧表标记删除
+			originTable.IsDeleted = true
 		}
 	}
-
-	if originTable != nil {
-		// rename后旧表标记删除
-		originTable.IsDeleted = true
+	if len(rollback) > 0 {
+		s.myRecord.DDLRollback = fmt.Sprintf("RENAME TABLE %s;",
+			strings.Join(Reverse(rollback), ","))
 	}
+}
+
+// Reverse 数组倒序
+func Reverse(arr []string) []string {
+	var temp string
+	length := len(arr)
+	for i := 0; i < length/2; i++ {
+		temp = (arr)[i]
+		(arr)[i] = (arr)[length-1-i]
+		(arr)[length-1-i] = temp
+	}
+	return arr
 }
 
 func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
