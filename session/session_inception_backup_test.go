@@ -782,6 +782,14 @@ func (s *testSessionIncBackupSuite) TestRenameTable(c *C) {
 	backup = s.query("t1", row[7].(string))
 	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` RENAME TO `test_inc`.`t2`;", Commentf("%v", s.rows))
 
+	s.mustRunExec(c, `drop table if exists t1,t2,t1_old;
+	create table t1(id int primary key);
+	create table t2(id int primary key);`)
+	s.mustRunBackup(c, "rename table t1 to t1_old,t2 to t1;")
+	row = s.rows[s.getAffectedRows()-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "RENAME TABLE `test_inc`.`t1` TO `test_inc`.`t2`,`test_inc`.`t1_old` TO `test_inc`.`t1`;", Commentf("%v", s.rows))
+
 }
 
 func (s *testSessionIncBackupSuite) TestAlterTableCreateIndex(c *C) {
