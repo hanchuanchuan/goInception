@@ -192,10 +192,20 @@ type FieldInfo struct {
 	Privileges string  `gorm:"Column:Privileges"`
 	Comment    string  `gorm:"Column:Comment"`
 
-	IsDeleted bool `gorm:"-"`
-	IsNew     bool `gorm:"-"`
+	IsDeleted   bool  `gorm:"-"`
+	IsNew       bool  `gorm:"-"`
+	isGenerated *bool `gorm:"-"`
 
 	Tp *types.FieldType `gorm:"-"`
+}
+
+func (f *FieldInfo) IsGenerated() bool {
+	if f.isGenerated == nil {
+		v := strings.Contains(f.Extra, "VIRTUAL GENERATED") ||
+			strings.Contains(f.Extra, "STORED GENERATED")
+		f.isGenerated = &v
+	}
+	return *f.isGenerated
 }
 
 // TableInfo 表结构.
@@ -238,6 +248,9 @@ type TableInfo struct {
 
 	// 字符集&排序规则
 	Collation string
+
+	// 有效列数，移除已删除列和生成列
+	effectiveFieldCount int
 }
 
 // IndexInfo 索引信息
@@ -275,6 +288,25 @@ type DBInfo struct {
 	IsDeleted bool
 	// 是否为新增
 	IsNew bool
+}
+
+// EffectiveFieldCount 有效列数，移除已删除列和生成列
+func (t *TableInfo) EffectiveFieldCount() (count int) {
+	if t == nil {
+		return
+	}
+
+	if t.effectiveFieldCount > 0 {
+		return t.effectiveFieldCount
+	}
+
+	for _, f := range t.Fields {
+		if !f.IsDeleted && !f.IsGenerated() {
+			count++
+		}
+	}
+	t.effectiveFieldCount = count
+	return
 }
 
 func (t *TableInfo) copy() *TableInfo {

@@ -601,12 +601,12 @@ func (s *session) generateInsertSql(t *TableInfo, e *replication.RowsEvent,
 	c := "`%s`"
 	template := "INSERT INTO `%s`.`%s`(%s) VALUES(%s)"
 	for i, col := range t.Fields {
-		if i < int(e.ColumnCount) {
+		if i < int(e.ColumnCount) && !col.IsGenerated() {
 			columnNames = append(columnNames, fmt.Sprintf(c, col.Field))
 		}
 	}
 
-	paramValues := strings.Repeat("?,", int(e.ColumnCount))
+	paramValues := strings.Repeat("?,", t.EffectiveFieldCount())
 	paramValues = strings.TrimRight(paramValues, ",")
 
 	sql := fmt.Sprintf(template, e.Table.Schema, e.Table.Table,
@@ -616,6 +616,9 @@ func (s *session) generateInsertSql(t *TableInfo, e *replication.RowsEvent,
 
 		var vv []driver.Value
 		for i, d := range rows {
+			if t.Fields[i].IsGenerated() {
+				continue
+			}
 			if t.Fields[i].isUnsigned() {
 				d = processValue(d, GetDataTypeBase(t.Fields[i].Type))
 			}
@@ -777,7 +780,7 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 			// 日志是minimal模式时, 只取有值的新列
 			// && uint8(e.ColumnBitmap2[i/8])&(1<<(uint(i)%8)) == uint8(e.ColumnBitmap2[i/8])
 
-			if i < int(e.ColumnCount) {
+			if i < int(e.ColumnCount) && !col.IsGenerated() {
 				sets = append(sets, fmt.Sprintf(setValue, col.Field))
 			}
 		}
@@ -815,6 +818,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 					}
 					// 最小化模式下,列如果相等则省略
 					if !equal {
+						if t.Fields[j].IsGenerated() {
+							continue
+						}
 						if t.Fields[j].isUnsigned() {
 							d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 						}
@@ -824,6 +830,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 						}
 					}
 				} else {
+					if t.Fields[j].IsGenerated() {
+						continue
+					}
 					if t.Fields[j].isUnsigned() {
 						d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 					}
@@ -836,6 +845,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 			for j, d := range rows {
 				if t.hasPrimary {
 					if _, ok := t.primarys[j]; ok {
+						if t.Fields[j].IsGenerated() {
+							continue
+						}
 						if t.Fields[j].isUnsigned() {
 							d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 						}
@@ -850,6 +862,9 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 						}
 					}
 				} else {
+					if t.Fields[j].IsGenerated() {
+						continue
+					}
 					if t.Fields[j].isUnsigned() {
 						d = processValue(d, GetDataTypeBase(t.Fields[j].Type))
 					}
