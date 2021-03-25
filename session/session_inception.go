@@ -7544,6 +7544,13 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 			field.Tp.Flag |= mysql.OnUpdateNowFlag
 		case ast.ColumnOptionCollate:
 			c.Collation = op.StrValue
+		case ast.ColumnOptionGenerated:
+			if op.Stored {
+				c.Extra += "STORED"
+			} else {
+				c.Extra += "VIRTUAL"
+			}
+			c.Extra += " GENERATED"
 		}
 	}
 
