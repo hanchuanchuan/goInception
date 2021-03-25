@@ -1055,3 +1055,40 @@ func (s *testSessionIncBackupSuite) TestEmptyUseDB(c *C) {
 
 	s.mustRunExec(c, `drop table if exists test_inc.t1;`)
 }
+
+func (s *testSessionIncBackupSuite) TestGenerateColumns(c *C) {
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	sql := ""
+
+	// 删除后添加列
+	sql = "drop table if exists t1;"
+	s.mustRunExec(c, sql)
+
+	sql = `-- 创建测试表
+	CREATE TABLE t1 (
+	id int(10) unsigned NOT NULL    comment "主键",
+	c1 int(10) NOT NULL default 1 comment "c1",
+	jdoc json DEFAULT NULL comment "json类型字段",
+	project varchar(30) GENERATED ALWAYS AS (json_unquote(json_extract(jdoc,'$."project"'))) VIRTUAL NOT NULL comment "json生成虚拟列",
+	c2 int(11) GENERATED ALWAYS AS ((c1 + 1)) STORED comment "json生成虚拟列"
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 comment '生成虚拟列表delete回滚测试';
+
+	-- 写入测试数据
+	INSERT INTO test_inc.t1(id,jdoc,c1) VALUES(1,'{"project": "goInception"}',100);
+
+	update test_inc.t1 set c1 = 200 where id > 0;
+
+	-- delete删除测试
+	DELETE FROM t1 WHERE id=1;`
+	s.mustRunBackup(c, sql)
+
+	s.assertRows(c, s.rows[1:],
+		"DROP TABLE `test_inc`.`t1`;",
+		"DELETE FROM `test_inc`.`t1` WHERE `id`=1 AND `c1`=100 AND `jdoc`='{\\\"project\\\":\\\"goInception\\\"}' AND `project`='goInception' AND `c2`=101;",
+		"UPDATE `test_inc`.`t1` SET `id`=1, `c1`=100, `jdoc`='{\\\"project\\\":\\\"goInception\\\"}' WHERE `id`=1 AND `c1`=200 AND `jdoc`='{\\\"project\\\":\\\"goInception\\\"}';",
+		"INSERT INTO `test_inc`.`t1`(`id`,`c1`,`jdoc`) VALUES(1,200,'{\\\"project\\\":\\\"goInception\\\"}');",
+	)
+}
