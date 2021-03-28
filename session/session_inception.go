@@ -2550,6 +2550,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			}
 
 			hasComment := false
+			var tableDefaultCharset string
 			for _, opt := range node.Options {
 				switch opt.Tp {
 				case ast.TableOptionEngine:
@@ -2559,6 +2560,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 						s.appendErrorNo(ER_CANT_SET_ENGINE, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
+					tableDefaultCharset = opt.StrValue
 					if s.inc.EnableSetCharset {
 						s.checkCharset(opt.StrValue)
 					} else {
@@ -2715,9 +2717,24 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				currentDatetimeCount := 0
 				onUpdateDatetimeCount := 0
 
+				// process column default charset
+				if tableDefaultCharset != "" {
+					for _, field := range node.Cols {
+						tp := field.Tp
+						if tp == nil {
+							continue
+						}
+						switch tp.Tp {
+						case mysql.TypeVarchar:
+							if field.Tp.Charset == "" {
+								field.Tp.Charset = tableDefaultCharset
+							}
+						}
+					}
+				}
+
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
-
 					for _, op := range field.Options {
 						switch op.Tp {
 						case ast.ColumnOptionPrimaryKey:
@@ -2781,6 +2798,17 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				s.cacheNewTable(table)
 				s.myRecord.TableInfo = table
+
+				if s.myRecord.ErrLevel == 2 {
+					// check table row size
+					var length int
+					for _, field := range table.Fields {
+						length += field.getDataLength(s.dbVersion, s.databaseCharset)
+					}
+					if length > mysql.MaxFieldVarCharLength {
+						s.appendErrorMessage(fmt.Sprintf("Row size too large. The maximum row size for the used table type, not counting BLOBs, is %v. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs", mysql.MaxFieldVarCharLength))
+					}
+				}
 			}
 		}
 
