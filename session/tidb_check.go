@@ -341,7 +341,7 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		// TODO: Change TableOption parser to parse collate.
 		// Reference https://github.com/hanchuanchuan/goInception/blob/b091e828cfa1d506b014345fb8337e424a4ab905/ddl/ddl_api.go#L185-L204
 		if len(tp.Charset) == 0 {
-			cs = mysql.DefaultCharset
+			cs = s.databaseCharset
 		}
 		desc, err := charset.GetCharsetDesc(cs)
 		if err != nil {

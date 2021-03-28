@@ -1671,7 +1671,8 @@ func (s *session) mysqlServerVersion() {
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
 	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
-	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode');`
+	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode',
+	'character_set_database');`
 
 	rows, err := s.raw(sql)
 	if rows != nil {
@@ -1741,6 +1742,8 @@ func (s *session) mysqlServerVersion() {
 				s.enforeGtidConsistency = (value == "ON" || value == "1")
 			case "gtid_mode":
 				s.gtidMode = value
+			case "character_set_database":
+				s.databaseCharset = value
 			}
 		}
 
@@ -1757,6 +1760,9 @@ func (s *session) mysqlServerVersion() {
 			s.enforeGtidConsistency = true
 		}
 
+		if s.databaseCharset == "" {
+			s.databaseCharset = s.inc.DefaultCharset
+		}
 		// log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
 	}
 
@@ -4595,7 +4601,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				s.appendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
-			columnIndexLength := foundField.getDataBytes(s.dbVersion, s.inc.DefaultCharset)
+			columnIndexLength := foundField.getDataBytes(s.dbVersion, s.databaseCharset)
 
 			// Length must be specified for BLOB and TEXT column indexes.
 			// if types.IsTypeBlob(col.FieldType.Tp) && ic.Length == types.UnspecifiedLength {
@@ -4628,7 +4634,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 					Collation: foundField.Collation,
 				}
 
-				columnIndexLength = tmpField.getDataLength(s.dbVersion, s.inc.DefaultCharset)
+				columnIndexLength = tmpField.getDataLength(s.dbVersion, s.databaseCharset)
 				keyMaxLen += columnIndexLength
 
 				// bysPerChar := 3
