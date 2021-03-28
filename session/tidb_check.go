@@ -309,7 +309,7 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 }
 
-func (s *session) checkColumn(colDef *ast.ColumnDef) error {
+func (s *session) checkColumn(colDef *ast.ColumnDef) {
 	// Check column name.
 	cName := colDef.Name.Name.String()
 	if isIncorrectName(cName) {
@@ -343,11 +343,17 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		if len(tp.Charset) == 0 {
 			cs = s.databaseCharset
 		}
-		desc, err := charset.GetCharsetDesc(cs)
-		if err != nil {
-			return errors.Trace(err)
+		if _, ok := charSets[strings.ToLower(cs)]; ok {
+			bysPerChar := charSets[strings.ToLower(cs)]
+			maxFlen /= bysPerChar
+		} else {
+			desc, err := charset.GetCharsetDesc(cs)
+			if err != nil {
+				s.appendErrorMessage(err.Error())
+			}
+			maxFlen /= desc.Maxlen
 		}
-		maxFlen /= desc.Maxlen
+
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
 			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
 		}
@@ -394,7 +400,6 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 	default:
 		// TODO: Add more types.
 	}
-	return nil
 }
 
 // func (s *session) checkNonUniqTableAlias(stmt *ast.Join, tableAliases map[string]interface{}) {
