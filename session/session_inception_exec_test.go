@@ -889,6 +889,26 @@ func (s *testSessionIncExecSuite) TestAlterTable(c *C) {
 
 }
 
+func (s *testSessionIncExecSuite) TestTableCharsetCollation(c *C) {
+	sql := ""
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableSetCollation = true
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.EnableColumnCharset = true
+
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	config.GetGlobalConfig().Inc.SupportCollation = "utf8_bin,utf8mb4_bin"
+	if s.DBVersion >= 50700 {
+		sql = `create table t1(id int primary key,c1 varchar(20),white_list VARCHAR (16000)) character set utf8mb4 COLLATE utf8mb4_bin;`
+		s.testErrorCode(c, sql)
+	} else {
+		sql = `create table t1(id int primary key,c1 varchar(20),white_list VARCHAR (20000)) character set utf8 COLLATE utf8_bin;`
+		s.testErrorCode(c, sql)
+	}
+}
+
 func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	savedOsc := config.GetGlobalConfig().Osc

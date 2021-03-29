@@ -1671,7 +1671,8 @@ func (s *session) mysqlServerVersion() {
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
 	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
-	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode');`
+	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode',
+	'character_set_database');`
 
 	rows, err := s.raw(sql)
 	if rows != nil {
@@ -1741,6 +1742,8 @@ func (s *session) mysqlServerVersion() {
 				s.enforeGtidConsistency = (value == "ON" || value == "1")
 			case "gtid_mode":
 				s.gtidMode = value
+			case "character_set_database":
+				s.databaseCharset = value
 			}
 		}
 
@@ -1757,6 +1760,9 @@ func (s *session) mysqlServerVersion() {
 			s.enforeGtidConsistency = true
 		}
 
+		if s.databaseCharset == "" {
+			s.databaseCharset = s.inc.DefaultCharset
+		}
 		// log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
 	}
 
@@ -2711,7 +2717,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
-
 					for _, op := range field.Options {
 						switch op.Tp {
 						case ast.ColumnOptionPrimaryKey:
@@ -2775,6 +2780,17 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				s.cacheNewTable(table)
 				s.myRecord.TableInfo = table
+
+				if s.myRecord.ErrLevel == 2 {
+					// check table row size
+					var length int
+					for _, field := range table.Fields {
+						length += field.getDataLength(s.dbVersion, s.databaseCharset)
+					}
+					if length > mysql.MaxFieldVarCharLength {
+						s.appendErrorMessage(fmt.Sprintf("Row size too large. The maximum row size for the used table type, not counting BLOBs, is %v. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs", mysql.MaxFieldVarCharLength))
+					}
+				}
 			}
 		}
 
@@ -4088,7 +4104,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.appendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
 	}
 
-	s.checkColumn(field)
+	s.checkColumn(field, t.Collation)
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
 	//        is_timestamp_type(field->sql_type) && !field->def &&
 	//        (field->flags & NOT_NULL_FLAG) &&
@@ -4595,7 +4611,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				s.appendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
-			columnIndexLength := foundField.getDataBytes(s.dbVersion, s.inc.DefaultCharset)
+			columnIndexLength := foundField.getDataBytes(s.dbVersion, s.databaseCharset)
 
 			// Length must be specified for BLOB and TEXT column indexes.
 			// if types.IsTypeBlob(col.FieldType.Tp) && ic.Length == types.UnspecifiedLength {
@@ -4628,7 +4644,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 					Collation: foundField.Collation,
 				}
 
-				columnIndexLength = tmpField.getDataLength(s.dbVersion, s.inc.DefaultCharset)
+				columnIndexLength = tmpField.getDataLength(s.dbVersion, s.databaseCharset)
 				keyMaxLen += columnIndexLength
 
 				// bysPerChar := 3
