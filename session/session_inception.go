@@ -2550,7 +2550,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			}
 
 			hasComment := false
-			var tableDefaultCharset string
 			for _, opt := range node.Options {
 				switch opt.Tp {
 				case ast.TableOptionEngine:
@@ -2560,7 +2559,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 						s.appendErrorNo(ER_CANT_SET_ENGINE, node.Table.Name.O)
 					}
 				case ast.TableOptionCharset:
-					tableDefaultCharset = opt.StrValue
 					if s.inc.EnableSetCharset {
 						s.checkCharset(opt.StrValue)
 					} else {
@@ -2716,22 +2714,6 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				currentDatetimeCount := 0
 				onUpdateDatetimeCount := 0
-
-				// process column default charset
-				if tableDefaultCharset != "" {
-					for _, field := range node.Cols {
-						tp := field.Tp
-						if tp == nil {
-							continue
-						}
-						switch tp.Tp {
-						case mysql.TypeVarchar:
-							if field.Tp.Charset == "" {
-								field.Tp.Charset = tableDefaultCharset
-							}
-						}
-					}
-				}
 
 				for _, field := range node.Cols {
 					s.mysqlCheckField(table, field)
@@ -4122,7 +4104,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.appendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
 	}
 
-	s.checkColumn(field)
+	s.checkColumn(field, t.Collation)
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
 	//        is_timestamp_type(field->sql_type) && !field->def &&
 	//        (field->flags & NOT_NULL_FLAG) &&
