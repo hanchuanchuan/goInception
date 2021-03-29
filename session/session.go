@@ -252,6 +252,9 @@ type session struct {
 	innodbLargePrefix bool
 	// 目标数据库的lower-case-table-names设置, 默认值为1,即不区分大小写
 	lowerCaseTableNames int
+	// 远程数据库默认字符集
+	databaseCharset string
+
 	// PXC集群节点
 	isClusterNode bool
 

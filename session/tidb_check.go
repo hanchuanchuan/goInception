@@ -309,7 +309,7 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 }
 
-func (s *session) checkColumn(colDef *ast.ColumnDef) error {
+func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string) {
 	// Check column name.
 	cName := colDef.Name.Name.String()
 	if isIncorrectName(cName) {
@@ -323,7 +323,7 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 	// Check column type.
 	tp := colDef.Tp
 	if tp == nil {
-		return nil
+		return
 	}
 	if tp.Flen > math.MaxUint32 {
 		s.appendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", cName, math.MaxUint32))
@@ -341,13 +341,28 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 		// TODO: Change TableOption parser to parse collate.
 		// Reference https://github.com/hanchuanchuan/goInception/blob/b091e828cfa1d506b014345fb8337e424a4ab905/ddl/ddl_api.go#L185-L204
 		if len(tp.Charset) == 0 {
-			cs = mysql.DefaultCharset
+			if tableCharset != "" {
+				if strings.Contains(tableCharset, "_") {
+					tableCharset = strings.SplitN(tableCharset, "_", 2)[0]
+				}
+				cs = tableCharset
+			} else {
+				cs = s.databaseCharset
+			}
 		}
-		desc, err := charset.GetCharsetDesc(cs)
-		if err != nil {
-			return errors.Trace(err)
+		// log.Errorf("field: %#v,cs: %v", colDef, cs)
+		if _, ok := charSets[strings.ToLower(cs)]; ok {
+			bysPerChar := charSets[strings.ToLower(cs)]
+			maxFlen /= bysPerChar
+		} else {
+			desc, err := charset.GetCharsetDesc(cs)
+			if err != nil {
+				s.appendErrorMessage(err.Error())
+				return
+			}
+			maxFlen /= desc.Maxlen
 		}
-		maxFlen /= desc.Maxlen
+
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
 			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
 		}
@@ -394,7 +409,6 @@ func (s *session) checkColumn(colDef *ast.ColumnDef) error {
 	default:
 		// TODO: Add more types.
 	}
-	return nil
 }
 
 // func (s *session) checkNonUniqTableAlias(stmt *ast.Join, tableAliases map[string]interface{}) {
