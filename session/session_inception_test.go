@@ -667,6 +667,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 		session.NewErr(session.ER_TOO_LONG_KEY, "PRIMARY", indexMaxLength))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
+	config.GetGlobalConfig().Inc.EnableColumnCharset = true
 	// 索引长度
 	sql = "create table test_error_code_3(a text, unique (a(3073)));"
 	s.testErrorCode(c, sql,
@@ -2763,6 +2764,19 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 		session.NewErr(session.ErrCharsetNotSupport, "utf8"),
 		session.NewErr(session.ErrCollationNotSupport, "utf8_bin"))
 
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
+	config.GetGlobalConfig().Inc.SupportCollation = "utf8_bin,utf8mb4_bin"
+	if s.DBVersion >= 50700 {
+		sql = `create table t1(id int primary key,c1 varchar(20),white_list VARCHAR (18000)) character set utf8mb4 COLLATE utf8mb4_bin;`
+		s.testErrorCode(c, sql,
+			session.NewErrf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead.", "white_list", 16383),
+			session.NewErrf("Row size too large. The maximum row size for the used table type, not counting BLOBs, is 65535. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs."))
+	} else {
+		sql = `create table t1(id int primary key,c1 varchar(20),white_list VARCHAR (30000)) character set utf8 COLLATE utf8_bin;`
+		s.testErrorCode(c, sql,
+			session.NewErrf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead.", "white_list", 16383),
+			session.NewErrf("Row size too large. The maximum row size for the used table type, not counting BLOBs, is 65535. This includes storage overhead, check the manual. You have to change some columns to TEXT or BLOBs."))
+	}
 }
 
 func (s *testSessionIncSuite) TestForeignKey(c *C) {
