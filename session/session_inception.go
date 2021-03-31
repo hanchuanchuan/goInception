@@ -4807,7 +4807,8 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 		checkDup := map[string]bool{}
 		for _, c := range node.Cols {
 			if _, ok := checkDup[c.L]; ok {
-				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.String(), node.ViewName.Name.String())
+				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE,
+					c.String(), node.ViewName.Name.String())
 			}
 			checkDup[c.L] = true
 		}
@@ -5030,7 +5031,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	for _, c := range node.Columns {
 		if _, ok := checkDup[c.Name.L]; ok {
 			s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.Name, c.Table)
-			continue
+			return
 		}
 		checkDup[c.Name.L] = true
 
@@ -5088,35 +5089,37 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				if v, ok := vv.(*ast.ValueExpr); ok {
 					// name := node.Columns[colIndex].Name.L
 					name := strings.ToLower(fields[colIndex].Field)
-					if _, ok := columnsCannotNull[name]; ok && v.Type.Tp == mysql.TypeNull {
-						s.appendErrorNo(ER_BAD_NULL_ERROR, node.Columns[colIndex], i+1)
-						continue
-					}
-
-					// check time format and value
-					if tp, ok := columnsIsDate[name]; ok {
-						_, err := GetTimeValue(s, v, tp, v.Type.Decimal)
-						if err != nil {
-							s.appendErrorNo(ErrIncorrectDateTimeValue, v.GetValue(), node.Columns[colIndex])
+					if v.Type.Tp == mysql.TypeNull {
+						if _, ok := columnsCannotNull[name]; ok {
+							s.appendErrorNo(ER_BAD_NULL_ERROR, node.Columns[colIndex], i+1)
 							continue
 						}
-						// 二次校验是否为有效datetime
-						// t := d.GetMysqlTime()
-						// if _, err := t.Time.GoTime(time.Local); err != nil {
-						// 	log.Warning(err)
-						// 	s.appendErrorNo(ErrIncorrectDateTimeValue,v, x.Columns[colIndex])
-						// 	continue
-						// }
-					} else if s.sessionVars.StrictSQLMode && colIndex < len(fields) {
-						if !types.IsTypeNumeric(v.Type.Tp) {
-							fieldType := GetDataTypeBase(fields[colIndex].Type)
-							switch fieldType {
-							case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
-								"bigint", "decimal", "float", "double", "real":
-								if !IsNumeric(v.GetValue()) {
-									s.appendErrorMessage(
-										fmt.Sprintf("Incorrect integer value: '%v' for column '%s' at row %v",
-											v.GetValue(), fields[colIndex].Field, i+1))
+					} else {
+						// check time format and value
+						if tp, ok := columnsIsDate[name]; ok {
+							_, err := GetTimeValue(s, v, tp, v.Type.Decimal)
+							if err != nil {
+								s.appendErrorNo(ErrIncorrectDateTimeValue, v.GetValue(), node.Columns[colIndex])
+								continue
+							}
+							// 二次校验是否为有效datetime
+							// t := d.GetMysqlTime()
+							// if _, err := t.Time.GoTime(time.Local); err != nil {
+							// 	log.Warning(err)
+							// 	s.appendErrorNo(ErrIncorrectDateTimeValue,v, x.Columns[colIndex])
+							// 	continue
+							// }
+						} else if s.sessionVars.StrictSQLMode && colIndex < len(fields) {
+							if !types.IsTypeNumeric(v.Type.Tp) {
+								fieldType := GetDataTypeBase(fields[colIndex].Type)
+								switch fieldType {
+								case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
+									"bigint", "decimal", "float", "double", "real":
+									if !IsNumeric(v.GetValue()) {
+										s.appendErrorMessage(
+											fmt.Sprintf("Incorrect integer value: '%v' for column '%s' at row %v",
+												v.GetValue(), fields[colIndex].Field, i+1))
+									}
 								}
 							}
 						}
