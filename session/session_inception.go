@@ -4807,7 +4807,8 @@ func (s *session) checkCreateView(node *ast.CreateViewStmt, sql string) {
 		checkDup := map[string]bool{}
 		for _, c := range node.Cols {
 			if _, ok := checkDup[c.L]; ok {
-				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.String(), node.ViewName.Name.String())
+				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE,
+					c.String(), node.ViewName.Name.String())
 			}
 			checkDup[c.L] = true
 		}
@@ -4990,17 +4991,15 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	// 	return
 	// }
 
-	x := node
-
-	fieldCount := len(x.Columns)
+	fieldCount := len(node.Columns)
 
 	if fieldCount == 0 {
 		s.appendErrorNo(ER_WITH_INSERT_FIELD)
 	}
 
-	t := getSingleTableName(x.Table)
+	t := getSingleTableName(node.Table)
 
-	for _, c := range x.Columns {
+	for _, c := range node.Columns {
 		if c.Schema.O == "" {
 			c.Schema = model.NewCIStr(s.dbName)
 		}
@@ -5014,30 +5013,28 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		return
 	}
 
-	// 校验列是否重复指定
-	if fieldCount > 0 {
-		checkDup := map[string]bool{}
-		for _, c := range x.Columns {
-			if _, ok := checkDup[c.Name.L]; ok {
-				s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.Name, c.Table)
-			}
-			checkDup[c.Name.L] = true
-		}
-	}
-
 	s.myRecord.TableInfo = table
+	fields := make([]FieldInfo, 0, fieldCount)
 	if fieldCount == 0 {
-		// fieldCount = len(table.Fields)
 		for _, field := range table.Fields {
 			if !field.IsDeleted {
 				fieldCount += 1
+				fields = append(fields, field)
 			}
 		}
 	}
 
 	columnsCannotNull := map[string]bool{}
 	columnsIsDate := map[string]byte{}
-	for _, c := range x.Columns {
+	// 校验列是否重复指定
+	checkDup := map[string]bool{}
+	for _, c := range node.Columns {
+		if _, ok := checkDup[c.Name.L]; ok {
+			s.appendErrorNo(ER_FIELD_SPECIFIED_TWICE, c.Name, c.Table)
+			return
+		}
+		checkDup[c.Name.L] = true
+
 		found := false
 		for _, field := range table.Fields {
 			if strings.EqualFold(field.Field, c.Name.O) && !field.IsDeleted {
@@ -5057,7 +5054,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				case "timestamp":
 					columnsIsDate[c.Name.L] = mysql.TypeTimestamp
 				}
-
+				fields = append(fields, field)
 				break
 			}
 		}
@@ -5066,35 +5063,43 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 		}
 	}
 
-	if len(x.Lists) > 0 {
-		if s.inc.MaxInsertRows > 0 && len(x.Lists) > int(s.inc.MaxInsertRows) {
+	// log.Errorf("fieldCount: %v", fieldCount)
+	// log.Errorf("fields len: %#v", len(fields))
+	// log.Errorf("fields: %#v", fields)
+	if len(node.Lists) > 0 {
+		if s.inc.MaxInsertRows > 0 && len(node.Lists) > int(s.inc.MaxInsertRows) {
 			s.appendErrorNo(ER_INSERT_TOO_MUCH_ROWS,
-				len(x.Lists), s.inc.MaxInsertRows)
+				len(node.Lists), s.inc.MaxInsertRows)
 		}
 
 		// 审核列数是否匹配,是否为not null字段指定了NULL值
-		for i, list := range x.Lists {
+		for i, list := range node.Lists {
 			if len(list) == 0 {
 				s.appendErrorNo(ER_WITH_INSERT_VALUES)
-			} else if len(list) != fieldCount {
+				continue
+			}
+			if len(list) != len(fields) {
 				s.appendErrorNo(ER_WRONG_VALUE_COUNT_ON_ROW, i+1)
-			} else if len(x.Columns) > 0 {
-				for colIndex, vv := range list {
+				continue
+			}
 
-					s.checkItem(vv, []*TableInfo{table})
+			for colIndex, vv := range list {
+				s.checkItem(vv, []*TableInfo{table})
 
-					if v, ok := vv.(*ast.ValueExpr); ok {
-						name := x.Columns[colIndex].Name.L
-						if _, ok := columnsCannotNull[name]; ok && v.Type.Tp == mysql.TypeNull {
-							s.appendErrorNo(ER_BAD_NULL_ERROR, x.Columns[colIndex], i+1)
+				if v, ok := vv.(*ast.ValueExpr); ok {
+					// name := node.Columns[colIndex].Name.L
+					name := strings.ToLower(fields[colIndex].Field)
+					if v.Type.Tp == mysql.TypeNull {
+						if _, ok := columnsCannotNull[name]; ok {
+							s.appendErrorNo(ER_BAD_NULL_ERROR, node.Columns[colIndex], i+1)
 							continue
 						}
-
+					} else {
 						// check time format and value
 						if tp, ok := columnsIsDate[name]; ok {
 							_, err := GetTimeValue(s, v, tp, v.Type.Decimal)
 							if err != nil {
-								s.appendErrorNo(ErrIncorrectDateTimeValue, v.GetValue(), x.Columns[colIndex])
+								s.appendErrorNo(ErrIncorrectDateTimeValue, v.GetValue(), node.Columns[colIndex])
 								continue
 							}
 							// 二次校验是否为有效datetime
@@ -5104,14 +5109,26 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 							// 	s.appendErrorNo(ErrIncorrectDateTimeValue,v, x.Columns[colIndex])
 							// 	continue
 							// }
+						} else if s.sessionVars.StrictSQLMode && colIndex < len(fields) {
+							if !types.IsTypeNumeric(v.Type.Tp) {
+								fieldType := GetDataTypeBase(fields[colIndex].Type)
+								switch fieldType {
+								case "bit", "tinyint", "smallint", "mediumint", "int", "integer",
+									"bigint", "decimal", "float", "double", "real":
+									if !IsNumeric(v.GetValue()) {
+										s.appendErrorMessage(
+											fmt.Sprintf("Incorrect integer value: '%v' for column '%s' at row %v",
+												v.GetValue(), fields[colIndex].Field, i+1))
+									}
+								}
+							}
 						}
-
 					}
 				}
 			}
 		}
-		s.myRecord.AffectedRows = len(x.Lists)
-	} else if x.Select == nil {
+		s.myRecord.AffectedRows = len(node.Lists)
+	} else if node.Select == nil {
 		s.appendErrorNo(ER_WITH_INSERT_VALUES)
 	}
 
@@ -5120,10 +5137,10 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 	}
 
 	// insert select 语句
-	if x.Select != nil {
-		sel, ok := x.Select.(*ast.SelectStmt)
+	if node.Select != nil {
+		sel, ok := node.Select.(*ast.SelectStmt)
 		if !ok {
-			if u, ok := x.Select.(*ast.UnionStmt); ok {
+			if u, ok := node.Select.(*ast.UnionStmt); ok {
 				sel = u.SelectList.Selects[0]
 			}
 		}
@@ -5151,7 +5168,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			}
 
 			var tableList []*ast.TableSource
-			tableList = extractTableList(x.Select, tableList)
+			tableList = extractTableList(node.Select, tableList)
 
 			// 判断select中是否有新表
 			haveNewTable := false
@@ -5172,7 +5189,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 			if !s.hasError() {
 				// 如果不是新建表时,则直接explain
 				if haveNewTable {
-					s.checkSelectItem(x.Select, nil, sel.Where != nil)
+					s.checkSelectItem(node.Select, nil, sel.Where != nil)
 				} else {
 					var selectSql string
 					if table.IsNew || table.IsNewColumns || s.dbVersion < 50600 {
@@ -7572,7 +7589,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 
 	if c.Collation == "" && t.Collation != "" {
 		// 字符串类型才需要排序规则
-		switch strings.ToLower(GetDataTypeBase(c.Type)) {
+		switch GetDataTypeBase(c.Type) {
 		case "char", "binary", "varchar", "varbinary", "enum", "set",
 			"geometry", "point", "linestring", "polygon",
 			"tinytext", "text", "mediumtext", "longtext":
