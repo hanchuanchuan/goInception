@@ -47,7 +47,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway v1.5.1 // indirect
-	github.com/hanchuanchuan/gh-ost v1.0.49-0.20210108114224-5b0649eef2ce
+	github.com/hanchuanchuan/gh-ost v1.0.49-0.20210117111015-ca873c0b5ca6
 	github.com/hanchuanchuan/go-mysql v0.0.0-20200114082439-6d0d8d3a982e
 	github.com/imroc/req v0.2.3
 	github.com/jinzhu/gorm v1.9.2
@@ -71,8 +71,6 @@ require (
 	github.com/pingcap/errors v0.11.0
 	github.com/pingcap/goleveldb v0.0.0-20171020122428-b9ff6c35079e
 	github.com/pingcap/kvproto v0.0.0-20181206061346-54cf0a0dfe55
-	github.com/pingcap/log v0.0.0-20210317133921-96f4fcab92a4
-	github.com/pingcap/parser v0.0.0-20190506092653-e336082eb825
 	github.com/pingcap/pd v2.1.0+incompatible
 	github.com/pingcap/tipb v0.0.0-20190428032612-535e1abaa330
 	github.com/pkg/errors v0.9.0 // indirect
