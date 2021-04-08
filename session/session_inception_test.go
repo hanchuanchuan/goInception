@@ -340,6 +340,20 @@ inception_magic_start;use test_inc;create table t1(id int);`, s.getAddr()))
 	c.Assert(row[4], Equals, "Must end with commit.")
 }
 
+func (s *testSessionIncSuite) TestSQLSyntax(c *C) {
+	sql := ""
+
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+
+	sql = "create table t1(id int);create table t1(id int)`;"
+	s.testErrorCode(c, sql, session.NewErrf("line 1 column 48 near \"`\" "))
+
+	sql = "alter table t1 add column c1 int comment '123'`;"
+	s.testErrorCode(c, sql,
+		session.NewErrf("line 1 column 47 near \"`\" "))
+}
+
 func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql := ""
 

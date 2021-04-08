@@ -60,6 +60,7 @@ jobs:
 
       - setup_remote_docker:
           docker_layer_caching: false
+          version: 19.03.13
       - run:
           name: Publish Docker Image to Docker Hub
           command: |

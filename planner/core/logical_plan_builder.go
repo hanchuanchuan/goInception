@@ -1579,14 +1579,27 @@ func (b *PlanBuilder) unfoldWildStar(p LogicalPlan, selectFields []*ast.SelectFi
 
 func (b *PlanBuilder) pushTableHints(hints []*ast.TableOptimizerHint) bool {
 	var sortMergeTables, INLJTables, hashJoinTables []model.CIStr
+	f := func(tables []ast.HintTable) (result []model.CIStr) {
+		for _, t := range tables {
+			var str string
+			if t.DBName.O != "" {
+				str += t.DBName.O + "."
+			}
+			if t.TableName.O != "" {
+				str += t.TableName.O + "."
+			}
+			result = append(result, model.NewCIStr(str))
+		}
+		return result
+	}
 	for _, hint := range hints {
 		switch hint.HintName.L {
 		case TiDBMergeJoin:
-			sortMergeTables = append(sortMergeTables, hint.Tables...)
+			sortMergeTables = append(sortMergeTables, f(hint.Tables)...)
 		case TiDBIndexNestedLoopJoin:
-			INLJTables = append(INLJTables, hint.Tables...)
+			INLJTables = append(INLJTables, f(hint.Tables)...)
 		case TiDBHashJoin:
-			hashJoinTables = append(hashJoinTables, hint.Tables...)
+			hashJoinTables = append(hashJoinTables, f(hint.Tables)...)
 		default:
 			// ignore hints that not implemented
 		}
