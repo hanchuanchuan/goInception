@@ -915,6 +915,13 @@ const (
 	ErrUnsupportedReloadPluginVar = 8019
 	ErrTableLocked                = 8020
 
+	// TiDB self-defined errors.
+	ErrWarnOptimizerHintUnsupportedHint = 8061
+	ErrWarnOptimizerHintInvalidToken    = 8062
+	ErrWarnMemoryQuotaOverflow          = 8063
+	ErrWarnOptimizerHintParseError      = 8064
+	ErrWarnOptimizerHintInvalidInteger  = 8065
+
 	// TiKV/PD errors.
 	ErrPDServerTimeout    = 9001
 	ErrTiKVServerTimeout  = 9002

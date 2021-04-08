@@ -18,7 +18,6 @@ import (
 	"unicode"
 
 	"github.com/hanchuanchuan/goInception/mysql"
-	"github.com/hanchuanchuan/goInception/util/testleak"
 	. "github.com/pingcap/check"
 )
 
@@ -28,7 +27,6 @@ type testLexerSuite struct {
 }
 
 func (s *testLexerSuite) TestTokenID(c *C) {
-	defer testleak.AfterTest(c)()
 	for str, tok := range tokenMap {
 		l := NewScanner(str)
 		var v yySymType
@@ -38,7 +36,6 @@ func (s *testLexerSuite) TestTokenID(c *C) {
 }
 
 func (s *testLexerSuite) TestSingleChar(c *C) {
-	defer testleak.AfterTest(c)()
 	table := []byte{'|', '&', '-', '+', '*', '/', '%', '^', '~', '(', ',', ')'}
 	for _, tok := range table {
 		l := NewScanner(string(tok))
@@ -54,7 +51,6 @@ type testCaseItem struct {
 }
 
 func (s *testLexerSuite) TestSingleCharOther(c *C) {
-	defer testleak.AfterTest(c)()
 	table := []testCaseItem{
 		{"AT", identifier},
 		{"?", paramMarker},
@@ -66,7 +62,6 @@ func (s *testLexerSuite) TestSingleCharOther(c *C) {
 }
 
 func (s *testLexerSuite) TestAtLeadingIdentifier(c *C) {
-	defer testleak.AfterTest(c)()
 	table := []testCaseItem{
 		{"@", singleAtIdentifier},
 		{"@''", singleAtIdentifier},
@@ -83,12 +78,15 @@ func (s *testLexerSuite) TestAtLeadingIdentifier(c *C) {
 		{"@@session.test", doubleAtIdentifier},
 		{"@@local.test", doubleAtIdentifier},
 		{"@@test", doubleAtIdentifier},
+		{"@@global.`test`", doubleAtIdentifier},
+		{"@@session.`test`", doubleAtIdentifier},
+		{"@@local.`test`", doubleAtIdentifier},
+		{"@@`test`", doubleAtIdentifier},
 	}
 	runTest(c, table)
 }
 
 func (s *testLexerSuite) TestUnderscoreCS(c *C) {
-	defer testleak.AfterTest(c)()
 	var v yySymType
 	scanner := NewScanner(`_utf8"string"`)
 	tok := scanner.Lex(&v)
@@ -104,7 +102,6 @@ func (s *testLexerSuite) TestUnderscoreCS(c *C) {
 }
 
 func (s *testLexerSuite) TestLiteral(c *C) {
-	defer testleak.AfterTest(c)()
 	table := []testCaseItem{
 		{`'''a'''`, stringLit},
 		{`''a''`, stringLit},
@@ -116,6 +113,7 @@ func (s *testLexerSuite) TestLiteral(c *C) {
 		{"132.313", decLit},
 		{"132.3e231", floatLit},
 		{"132.3e-231", floatLit},
+		{"001e-12", floatLit},
 		{"23416", intLit},
 		{"123test", identifier},
 		{"123" + string(unicode.ReplacementChar) + "xxx", identifier},
@@ -129,6 +127,7 @@ func (s *testLexerSuite) TestLiteral(c *C) {
 		{"\\N", null},
 		{".*", int('.')},       // `.`, `*`
 		{".1_t_1_x", int('.')}, // `.`, `1_t_1_x`
+		{"9e9e", floatLit},     // 9e9e = 9e9 + e
 		// Issue #3954
 		{".1e23", floatLit}, // `.1e23`
 		{".123", decLit},    // `.123`
@@ -160,12 +159,10 @@ func runTest(c *C, table []testCaseItem) {
 }
 
 func (s *testLexerSuite) TestComment(c *C) {
-	defer testleak.AfterTest(c)()
-
+	SpecialCommentsController.Register("test")
 	table := []testCaseItem{
 		{"-- select --\n1", intLit},
 		{"/*!40101 SET character_set_client = utf8 */;", set},
-		{"/*+ BKA(t1) */", hintBegin},
 		{"/* SET character_set_client = utf8 */;", int(';')},
 		{"/* some comments */ SELECT ", selectKwd},
 		{`-- comment continues to the end of line
@@ -178,12 +175,16 @@ SELECT`, selectKwd},
 		{"--\tSELECT", 0},
 		{"--\r\nSELECT", selectKwd},
 		{"--", 0},
+
+		// The odd behavior of '*/' inside conditional comment is the same as
+		// that of MySQL.
+		{"/*T![unsupported] '*/0 -- ' */", intLit}, // equivalent to 0
+		{"/*T![test] '*/0 -- ' */", stringLit},     // equivalent to '*/0 -- '
 	}
 	runTest(c, table)
 }
 
 func (s *testLexerSuite) TestscanQuotedIdent(c *C) {
-	defer testleak.AfterTest(c)()
 	l := NewScanner("`fk`")
 	l.r.peek()
 	tok, pos, lit := scanQuotedIdent(l)
@@ -193,7 +194,6 @@ func (s *testLexerSuite) TestscanQuotedIdent(c *C) {
 }
 
 func (s *testLexerSuite) TestscanString(c *C) {
-	defer testleak.AfterTest(c)()
 	table := []struct {
 		raw    string
 		expect string
@@ -229,7 +229,6 @@ func (s *testLexerSuite) TestscanString(c *C) {
 }
 
 func (s *testLexerSuite) TestIdentifier(c *C) {
-	defer testleak.AfterTest(c)()
 	replacementString := string(unicode.ReplacementChar) + "xxx"
 	table := [][2]string{
 		{`哈哈`, "哈哈"},
@@ -239,6 +238,15 @@ func (s *testLexerSuite) TestIdentifier(c *C) {
 		{"1_x", "1_x"},
 		{"0_x", "0_x"},
 		{replacementString, replacementString},
+		{"9e", "9e"},
+		{"0b", "0b"},
+		{"0b123", "0b123"},
+		{"0b1ab", "0b1ab"},
+		{"0B01", "0B01"},
+		{"0x", "0x"},
+		{"0x7fz3", "0x7fz3"},
+		{"023a4", "023a4"},
+		{"9eTSs", "9eTSs"},
 		{fmt.Sprintf("t1%cxxx", 0), "t1"},
 	}
 	l := &Scanner{}
@@ -256,7 +264,7 @@ func (s *testLexerSuite) TestSpecialComment(c *C) {
 	tok, pos, lit := l.scan()
 	c.Assert(tok, Equals, identifier)
 	c.Assert(lit, Equals, "select")
-	c.Assert(pos, Equals, Pos{0, 0, 9})
+	c.Assert(pos, Equals, Pos{0, 9, 9})
 
 	tok, pos, lit = l.scan()
 	c.Assert(tok, Equals, intLit)
@@ -264,28 +272,128 @@ func (s *testLexerSuite) TestSpecialComment(c *C) {
 	c.Assert(pos, Equals, Pos{1, 1, 16})
 }
 
+func (s *testLexerSuite) TestFeatureIDsComment(c *C) {
+	SpecialCommentsController.Register("auto_rand")
+	l := NewScanner("/*T![auto_rand] auto_random(5) */")
+	tok, pos, lit := l.scan()
+	c.Assert(tok, Equals, identifier)
+	c.Assert(lit, Equals, "auto_random")
+	c.Assert(pos, Equals, Pos{0, 16, 16})
+	tok, pos, lit = l.scan()
+	c.Assert(tok, Equals, int('('))
+	tok, pos, lit = l.scan()
+	c.Assert(lit, Equals, "5")
+	c.Assert(pos, Equals, Pos{0, 28, 28})
+	tok, pos, lit = l.scan()
+	c.Assert(tok, Equals, int(')'))
+
+	l = NewScanner("/*T![unsupported_feature] unsupported(123) */")
+	tok, pos, lit = l.scan()
+	c.Assert(tok, Equals, 0)
+}
+
 func (s *testLexerSuite) TestOptimizerHint(c *C) {
-	l := NewScanner("  /*+ BKA(t1) */")
+	l := NewScanner("SELECT /*+ BKA(t1) */ 0;")
 	tokens := []struct {
-		tok int
-		lit string
-		pos int
+		tok   int
+		ident string
+		pos   int
 	}{
-		{hintBegin, "", 2},
-		{identifier, "BKA", 6},
-		{int('('), "(", 9},
-		{identifier, "t1", 10},
-		{int(')'), ")", 12},
-		{hintEnd, "", 14},
+		{selectKwd, "SELECT", 0},
+		{hintComment, "/*+ BKA(t1) */", 7},
+		{intLit, "0", 22},
+		{';', ";", 23},
 	}
 	for i := 0; ; i++ {
-		tok, pos, lit := l.scan()
+		var sym yySymType
+		tok := l.Lex(&sym)
 		if tok == 0 {
 			return
 		}
 		c.Assert(tok, Equals, tokens[i].tok, Commentf("%d", i))
-		c.Assert(lit, Equals, tokens[i].lit, Commentf("%d", i))
-		c.Assert(pos.Offset, Equals, tokens[i].pos, Commentf("%d", i))
+		c.Assert(sym.ident, Equals, tokens[i].ident, Commentf("%d", i))
+		c.Assert(sym.offset, Equals, tokens[i].pos, Commentf("%d", i))
+	}
+}
+
+func (s *testLexerSuite) TestOptimizerHintAfterCertainKeywordOnly(c *C) {
+	SpecialCommentsController.Register("test")
+	tests := []struct {
+		input  string
+		tokens []int
+	}{
+		{
+			input:  "SELECT /*+ hint */ *",
+			tokens: []int{selectKwd, hintComment, '*', 0},
+		},
+		{
+			input:  "UPDATE /*+ hint */",
+			tokens: []int{update, hintComment, 0},
+		},
+		{
+			input:  "INSERT /*+ hint */",
+			tokens: []int{insert, hintComment, 0},
+		},
+		{
+			input:  "REPLACE /*+ hint */",
+			tokens: []int{replace, hintComment, 0},
+		},
+		{
+			input:  "DELETE /*+ hint */",
+			tokens: []int{deleteKwd, hintComment, 0},
+		},
+		{
+			input:  "CREATE /*+ hint */",
+			tokens: []int{create, hintComment, 0},
+		},
+		{
+			input:  "/*+ hint */ SELECT *",
+			tokens: []int{selectKwd, '*', 0},
+		},
+		{
+			input:  "SELECT /* comment */ /*+ hint */ *",
+			tokens: []int{selectKwd, hintComment, '*', 0},
+		},
+		{
+			input:  "SELECT * /*+ hint */",
+			tokens: []int{selectKwd, '*', 0},
+		},
+		{
+			input:  "SELECT /*T![test] * */ /*+ hint */",
+			tokens: []int{selectKwd, '*', 0},
+		},
+		{
+			input:  "SELECT /*T![unsupported] * */ /*+ hint */",
+			tokens: []int{selectKwd, hintComment, 0},
+		},
+		{
+			input:  "SELECT /*+ hint1 */ /*+ hint2 */ *",
+			tokens: []int{selectKwd, hintComment, '*', 0},
+		},
+		{
+			input:  "SELECT * FROM /*+ hint */",
+			tokens: []int{selectKwd, '*', from, 0},
+		},
+		{
+			input:  "`SELECT` /*+ hint */",
+			tokens: []int{identifier, 0},
+		},
+		{
+			input:  "'SELECT' /*+ hint */",
+			tokens: []int{stringLit, 0},
+		},
+	}
+
+	for _, tc := range tests {
+		scanner := NewScanner(tc.input)
+		var sym yySymType
+		for i := 0; ; i++ {
+			tok := scanner.Lex(&sym)
+			c.Assert(tok, Equals, tc.tokens[i], Commentf("input = [%s], i = %d", tc.input, i))
+			if tok == 0 {
+				break
+			}
+		}
 	}
 }
 
@@ -351,13 +459,171 @@ func (s *testLexerSuite) TestSQLModeANSIQuotes(c *C) {
 }
 
 func (s *testLexerSuite) TestIllegal(c *C) {
-	defer testleak.AfterTest(c)()
 	table := []testCaseItem{
-		{"'", 0},
-		{"'fu", 0},
-		{"'\\n", 0},
-		{"'\\", 0},
+		{"'", invalid},
+		{"'fu", invalid},
+		{"'\\n", invalid},
+		{"'\\", invalid},
 		{fmt.Sprintf("%c", 0), invalid},
+		{"`", invalid},
+		{`"`, invalid},
+		{"@`", invalid},
+		{"@'", invalid},
+		{`@"`, invalid},
+		{"@@`", invalid},
+		{"@@global.`", invalid},
 	}
 	runTest(c, table)
+}
+
+func (s *testLexerSuite) TestVersionDigits(c *C) {
+	tests := []struct {
+		input    string
+		min      int
+		max      int
+		nextChar rune
+	}{
+		{
+			input:    "12345",
+			min:      5,
+			max:      5,
+			nextChar: unicode.ReplacementChar,
+		},
+		{
+			input:    "12345xyz",
+			min:      5,
+			max:      5,
+			nextChar: 'x',
+		},
+		{
+			input:    "1234xyz",
+			min:      5,
+			max:      5,
+			nextChar: '1',
+		},
+		{
+			input:    "123456",
+			min:      5,
+			max:      5,
+			nextChar: '6',
+		},
+		{
+			input:    "1234",
+			min:      5,
+			max:      5,
+			nextChar: '1',
+		},
+		{
+			input:    "",
+			min:      5,
+			max:      5,
+			nextChar: unicode.ReplacementChar,
+		},
+		{
+			input:    "1234567xyz",
+			min:      5,
+			max:      6,
+			nextChar: '7',
+		},
+		{
+			input:    "12345xyz",
+			min:      5,
+			max:      6,
+			nextChar: 'x',
+		},
+		{
+			input:    "12345",
+			min:      5,
+			max:      6,
+			nextChar: unicode.ReplacementChar,
+		},
+		{
+			input:    "1234xyz",
+			min:      5,
+			max:      6,
+			nextChar: '1',
+		},
+	}
+
+	scanner := NewScanner("")
+	for _, t := range tests {
+		comment := Commentf("input = %s", t.input)
+		scanner.reset(t.input)
+		scanner.scanVersionDigits(t.min, t.max)
+		nextChar := scanner.r.readByte()
+		c.Assert(nextChar, Equals, t.nextChar, comment)
+	}
+}
+
+func (s *testLexerSuite) TestFeatureIDs(c *C) {
+	tests := []struct {
+		input      string
+		featureIDs []string
+		nextChar   rune
+	}{
+		{
+			input:      "[feature]",
+			featureIDs: []string{"feature"},
+			nextChar:   unicode.ReplacementChar,
+		},
+		{
+			input:      "[feature] xx",
+			featureIDs: []string{"feature"},
+			nextChar:   ' ',
+		},
+		{
+			input:      "[feature1,feature2]",
+			featureIDs: []string{"feature1", "feature2"},
+			nextChar:   unicode.ReplacementChar,
+		},
+		{
+			input:      "[feature1,feature2,feature3]",
+			featureIDs: []string{"feature1", "feature2", "feature3"},
+			nextChar:   unicode.ReplacementChar,
+		},
+		{
+			input:      "[id_en_ti_fier]",
+			featureIDs: []string{"id_en_ti_fier"},
+			nextChar:   unicode.ReplacementChar,
+		},
+		{
+			input:      "[invalid,    whitespace]",
+			featureIDs: nil,
+			nextChar:   '[',
+		},
+		{
+			input:      "[unclosed_brac",
+			featureIDs: nil,
+			nextChar:   '[',
+		},
+		{
+			input:      "unclosed_brac]",
+			featureIDs: nil,
+			nextChar:   'u',
+		},
+		{
+			input:      "[invalid_comma,]",
+			featureIDs: nil,
+			nextChar:   '[',
+		},
+		{
+			input:      "[,]",
+			featureIDs: nil,
+			nextChar:   '[',
+		},
+		{
+			input:      "[]",
+			featureIDs: nil,
+			nextChar:   '[',
+		},
+	}
+	scanner := NewScanner("")
+	for _, t := range tests {
+		comment := Commentf("input = %s", t.input)
+		scanner.reset(t.input)
+		featureIDs := scanner.scanFeatureIDs()
+		c.Assert(featureIDs, DeepEquals, t.featureIDs, comment)
+		nextChar := scanner.r.readByte()
+		c.Assert(nextChar, Equals, t.nextChar, comment)
+	}
 }
