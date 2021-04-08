@@ -137,7 +137,7 @@ func (s *testStateChangeSuite) TestTwoStates(c *C) {
 	testInfo.sqlInfos[1].cases[2].expectedCompileErr = unknownColErr
 	testInfo.sqlInfos[1].cases[3].expectedCompileErr = unknownColErr
 	testInfo.sqlInfos[2].sql = "update t set c2 = 'c2_update'"
-	testInfo.sqlInfos[3].sql = "replace into t values(5, 'e', 'N', '2017-07-05')'"
+	testInfo.sqlInfos[3].sql = "replace into t values(5, 'e', 'N', '2017-07-05')"
 	testInfo.sqlInfos[3].cases[4].expectedCompileErr = errors.New("Column count doesn't match value count at row 1")
 	alterTableSQL := "alter table t add column d3 enum('a', 'b') not null default 'a' after c3"
 	s.test(c, "", alterTableSQL, testInfo)
@@ -160,7 +160,7 @@ func (s *testStateChangeSuite) test(c *C, tableName, alterTableSQL string, testI
 	prevState := model.StateNone
 	var checkErr error
 	err = testInfo.parseSQLs(s.p)
-	c.Assert(err, IsNil, Commentf("error stack %v", errors.ErrorStack(err)))
+	c.Assert(err, IsNil, Commentf("(sql:%v) error stack %v", s.p, errors.ErrorStack(err)))
 	times := 0
 	callback.OnJobUpdatedExported = func(job *model.Job) {
 		if job.SchemaState == prevState || checkErr != nil || times >= 3 {
@@ -570,7 +570,7 @@ func (s *testStateChangeSuite) TestShowIndex(c *C) {
 	c.Assert(err, IsNil)
 
 	_, err = s.se.Execute(context.Background(), `create table tr(
-		id int, name varchar(50), 
+		id int, name varchar(50),
 		purchased date
 	)
 	partition by range( year(purchased) ) (

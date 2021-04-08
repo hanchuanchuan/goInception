@@ -17,7 +17,6 @@ import (
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/util/charset"
-	"github.com/hanchuanchuan/goInception/util/hack"
 )
 
 func isLetter(ch rune) bool {
@@ -83,13 +82,14 @@ func init() {
 	// set root trie node's token to invalid, so when input match nothing
 	// in the trie, invalid will be the default return token.
 	ruleTable.token = invalid
-	initTokenByte('*', int('*'))
 	initTokenByte('/', int('/'))
 	initTokenByte('+', int('+'))
 	initTokenByte('>', int('>'))
 	initTokenByte('<', int('<'))
 	initTokenByte('(', int('('))
 	initTokenByte(')', int(')'))
+	initTokenByte('[', int('['))
+	initTokenByte(']', int(']'))
 	initTokenByte(';', int(';'))
 	initTokenByte(',', int(','))
 	initTokenByte('&', int('&'))
@@ -120,6 +120,7 @@ func init() {
 
 	initTokenFunc("@", startWithAt)
 	initTokenFunc("/", startWithSlash)
+	initTokenFunc("*", startWithStar)
 	initTokenFunc("-", startWithDash)
 	initTokenFunc("#", startWithSharp)
 	initTokenFunc("Xx", startWithXx)
@@ -596,6 +597,24 @@ var btFuncTokenMap = map[string]int{
 	"VAR_SAMP":     builtinVarSamp,
 }
 
+var windowFuncTokenMap = map[string]int{
+	// "CUME_DIST":    cumeDist,
+	// "DENSE_RANK":   denseRank,
+	// "FIRST_VALUE":  firstValue,
+	// "GROUPS":       groups,
+	// "LAG":          lag,
+	// "LAST_VALUE":   lastValue,
+	// "LEAD":         lead,
+	// "NTH_VALUE":    nthValue,
+	// "NTILE":        ntile,
+	// "OVER":         over,
+	// "PERCENT_RANK": percentRank,
+	// "RANK":         rank,
+	// "ROWS":         rows,
+	// "ROW_NUMBER":   rowNumber,
+	// "WINDOW":       window,
+}
+
 // aliases are strings directly map to another string and use the same token.
 var aliases = map[string]string{
 	"SCHEMA":     "DATABASE",
@@ -607,6 +626,92 @@ var aliases = map[string]string{
 	"POLYGON":    "GEOMETRY",
 	"INC":        "INCEPTION",
 	// "GET":     "SHOW",
+}
+
+// hintedTokens is a set of tokens which recognizes a hint.
+// According to https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html,
+// only SELECT, INSERT, REPLACE, UPDATE and DELETE accept optimizer hints.
+// additionally we support CREATE and PARTITION for hints at table creation.
+var hintedTokens = map[int]struct{}{
+	selectKwd: {},
+	insert:    {},
+	replace:   {},
+	update:    {},
+	deleteKwd: {},
+	create:    {},
+	partition: {},
+}
+
+var hintTokenMap = map[string]int{
+	// MySQL 8.0 hint names
+	"JOIN_FIXED_ORDER":      hintJoinFixedOrder,
+	"JOIN_ORDER":            hintJoinOrder,
+	"JOIN_PREFIX":           hintJoinPrefix,
+	"JOIN_SUFFIX":           hintJoinSuffix,
+	"BKA":                   hintBKA,
+	"NO_BKA":                hintNoBKA,
+	"BNL":                   hintBNL,
+	"NO_BNL":                hintNoBNL,
+	"HASH_JOIN":             hintHashJoin,
+	"NO_HASH_JOIN":          hintNoHashJoin,
+	"MERGE":                 hintMerge,
+	"NO_MERGE":              hintNoMerge,
+	"INDEX_MERGE":           hintIndexMerge,
+	"NO_INDEX_MERGE":        hintNoIndexMerge,
+	"MRR":                   hintMRR,
+	"NO_MRR":                hintNoMRR,
+	"NO_ICP":                hintNoICP,
+	"NO_RANGE_OPTIMIZATION": hintNoRangeOptimization,
+	"SKIP_SCAN":             hintSkipScan,
+	"NO_SKIP_SCAN":          hintNoSkipScan,
+	"SEMIJOIN":              hintSemijoin,
+	"NO_SEMIJOIN":           hintNoSemijoin,
+	"MAX_EXECUTION_TIME":    hintMaxExecutionTime,
+	"SET_VAR":               hintSetVar,
+	"RESOURCE_GROUP":        hintResourceGroup,
+	"QB_NAME":               hintQBName,
+
+	// TiDB hint names
+	"AGG_TO_COP":              hintAggToCop,
+	"IGNORE_PLAN_CACHE":       hintIgnorePlanCache,
+	"HASH_AGG":                hintHashAgg,
+	"IGNORE_INDEX":            hintIgnoreIndex,
+	"INL_HASH_JOIN":           hintInlHashJoin,
+	"INL_JOIN":                hintInlJoin,
+	"INL_MERGE_JOIN":          hintInlMergeJoin,
+	"MEMORY_QUOTA":            hintMemoryQuota,
+	"NO_SWAP_JOIN_INPUTS":     hintNoSwapJoinInputs,
+	"QUERY_TYPE":              hintQueryType,
+	"READ_CONSISTENT_REPLICA": hintReadConsistentReplica,
+	"READ_FROM_STORAGE":       hintReadFromStorage,
+	"MERGE_JOIN":              hintSMJoin,
+	"STREAM_AGG":              hintStreamAgg,
+	"SWAP_JOIN_INPUTS":        hintSwapJoinInputs,
+	"USE_INDEX_MERGE":         hintUseIndexMerge,
+	"USE_INDEX":               hintUseIndex,
+	"USE_PLAN_CACHE":          hintUsePlanCache,
+	"USE_TOJA":                hintUseToja,
+	"TIME_RANGE":              hintTimeRange,
+	"USE_CASCADES":            hintUseCascades,
+
+	// TiDB hint aliases
+	"TIDB_HJ":   hintHashJoin,
+	"TIDB_INLJ": hintInlJoin,
+	"TIDB_SMJ":  hintSMJoin,
+
+	// Other keywords
+	"OLAP":            hintOLAP,
+	"OLTP":            hintOLTP,
+	"TIKV":            hintTiKV,
+	"TIFLASH":         hintTiFlash,
+	"FALSE":           hintFalse,
+	"TRUE":            hintTrue,
+	"MB":              hintMB,
+	"GB":              hintGB,
+	"DUPSWEEDOUT":     hintDupsWeedOut,
+	"FIRSTMATCH":      hintFirstMatch,
+	"LOOSESCAN":       hintLooseScan,
+	"MATERIALIZATION": hintMaterialization,
 }
 
 func (s *Scanner) isTokenIdentifier(lit string, offset int) int {
@@ -630,7 +735,7 @@ func (s *Scanner) isTokenIdentifier(lit string, offset int) int {
 		}
 	}
 
-	checkBtFuncToken, tokenStr := false, hack.String(data)
+	checkBtFuncToken := false
 	if s.r.peek() == '(' {
 		checkBtFuncToken = true
 	} else if s.sqlMode.HasIgnoreSpaceMode() {
@@ -640,11 +745,14 @@ func (s *Scanner) isTokenIdentifier(lit string, offset int) int {
 		}
 	}
 	if checkBtFuncToken {
-		if tok := btFuncTokenMap[tokenStr]; tok != 0 {
+		if tok := btFuncTokenMap[string(data)]; tok != 0 {
 			return tok
 		}
 	}
-	tok := tokenMap[tokenStr]
+	tok, ok := tokenMap[string(data)]
+	if !ok && s.supportWindowFunc {
+		tok = windowFuncTokenMap[string(data)]
+	}
 	return tok
 }
 
@@ -662,6 +770,41 @@ func handleIdent(lval *yySymType) int {
 	}
 	lval.ident = cs
 	return underscoreCS
+}
+
+// SpecialCommentsController controls whether special comments like `/*T![xxx] yyy */`
+// can be parsed as `yyy`. To add such rules, please use SpecialCommentsController.Register().
+// For example:
+//     SpecialCommentsController.Register("30100");
+// Now the parser will treat
+//   select a, /*T![30100] mysterious_keyword */ from t;
+// and
+//   select a, mysterious_keyword from t;
+// equally.
+// Similar special comments without registration are ignored by parser.
+var SpecialCommentsController = specialCommentsCtrl{
+	supportedFeatures: map[string]struct{}{},
+}
+
+type specialCommentsCtrl struct {
+	supportedFeatures map[string]struct{}
+}
+
+func (s *specialCommentsCtrl) Register(featureID string) {
+	s.supportedFeatures[featureID] = struct{}{}
+}
+
+func (s *specialCommentsCtrl) Unregister(featureID string) {
+	delete(s.supportedFeatures, featureID)
+}
+
+func (s *specialCommentsCtrl) ContainsAll(featureIDs []string) bool {
+	for _, f := range featureIDs {
+		if _, found := s.supportedFeatures[f]; !found {
+			return false
+		}
+	}
+	return true
 }
 
 // GetKeywords is 自定义函数,返回所有的关键字

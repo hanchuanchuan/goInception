@@ -919,4 +919,11 @@ var MySQLErrName = map[uint16]string{
 	ErrRegionUnavailable:  "Region is unavailable",
 	ErrGCTooEarly:         "GC life time is shorter than transaction duration, transaction starts at %v, GC safe point is %v",
 	ErrWriteConflict:      "Write conflict, txnStartTS=%d, conflictStartTS=%d, conflictCommitTS=%d, key=%s",
+
+	// TiDB errors.
+	ErrWarnOptimizerHintInvalidInteger:  "integer value is out of range in '%s'",
+	ErrWarnOptimizerHintUnsupportedHint: "Optimizer hint %s is not supported by TiDB and is ignored",
+	ErrWarnOptimizerHintInvalidToken:    "Cannot use %s '%s' (tok = %d) in an optimizer hint",
+	ErrWarnMemoryQuotaOverflow:          "Max value of MEMORY_QUOTA is %d bytes, ignore this invalid limit",
+	ErrWarnOptimizerHintParseError:      "Optimizer hint syntax error at %v",
 }
