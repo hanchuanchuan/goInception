@@ -63,6 +63,7 @@ import (
 	invalid            "a special token never used by parser, used by lexer to indicate error"
 	hintBegin          "hintBegin is a virtual token for optimizer hint grammar"
 	hintEnd            "hintEnd is a virtual token for optimizer hint grammar"
+	hintComment        "an optimizer hint"
 	andand             "&&"
 	pipes              "||"
 
@@ -590,7 +591,7 @@ import (
 	CreateViewStmt       "CREATE VIEW  stetement"
 	CreateUserStmt       "CREATE User statement"
 	CreateDatabaseStmt   "Create Database Statement"
-	AlterDatabaseStmt   "Alter Database Statement"
+	AlterDatabaseStmt    "Alter Database Statement"
 	CreateIndexStmt      "CREATE INDEX statement"
 	DoStmt               "Do statement"
 	DropDatabaseStmt     "DROP DATABASE statement"
@@ -730,7 +731,7 @@ import (
 	LinesTerminated               "Lines terminated by"
 	LocalOpt                      "Local opt"
 	LockClause                    "Alter table lock clause"
-	LockType                               "Table locks type"
+	LockType                      "Table locks type"
 	MaxNumBuckets                 "Max number of buckets"
 	NumLiteral                    "Num/Int/Float/Decimal Literal"
 	NoWriteToBinLogAliasOpt       "NO_WRITE_TO_BINLOG alias LOCAL or empty"
@@ -879,9 +880,7 @@ import (
 	NumList                       "Some numbers"
 	LengthNum                     "Field length num(uint64)"
 	HintTableList                 "Table list in optimizer hint"
-	TableOptimizerHintOpt         "Table level optimizer hint"
 	TableOptimizerHints           "Table level optimizer hints"
-	TableOptimizerHintList        "Table level optimizer hint list"
 
 %type	<ident>
 	AsOpt             "AS or EmptyString"
@@ -1023,10 +1022,10 @@ AlterTableSpec:
 |	"CONVERT" "TO" CharsetKw CharsetName OptCollate
 	{
 		op := &ast.AlterTableSpec{
-			Tp:      ast.AlterTableOption,
+			Tp: ast.AlterTableOption,
 			Options: []*ast.TableOption{{Tp: ast.TableOptionCharset,
-			StrValue: $4.(string),
-			UintValue: ast.TableOptionCharsetWithConvertTo}},
+				StrValue:  $4.(string),
+				UintValue: ast.TableOptionCharsetWithConvertTo}},
 		}
 		if $5 != "" {
 			op.Options = append(op.Options, &ast.TableOption{Tp: ast.TableOptionCollate, StrValue: $5.(string)})
@@ -2304,7 +2303,6 @@ IndexKeyTypeOpt:
 		$$ = ast.IndexKeyTypeFullText
 	}
 
-
 /**************************************AlterDatabaseStmt***************************************
  * See https://dev.mysql.com/doc/refman/5.7/en/alter-database.html
  * 'ALTER DATABASE ... UPGRADE DATA DIRECTORY NAME' is not supported yet.
@@ -2317,7 +2315,7 @@ IndexKeyTypeOpt:
  * | [DEFAULT] COLLATE [=] collation_name
  * | [DEFAULT] ENCRYPTION [=] {'Y' | 'N'}
  *******************************************************************************************/
- AlterDatabaseStmt:
+AlterDatabaseStmt:
 	"ALTER" DatabaseSym DBName DatabaseOptionList
 	{
 		$$ = &ast.AlterDatabaseStmt{
@@ -2326,14 +2324,6 @@ IndexKeyTypeOpt:
 			Options:              $4.([]*ast.DatabaseOption),
 		}
 	}
-// |	"ALTER" DatabaseSym DatabaseOptionList
-// 	{
-// 		$$ = &ast.AlterDatabaseStmt{
-// 			Name:                 "",
-// 			AlterDefaultDatabase: true,
-// 			Options:              $3.([]*ast.DatabaseOption),
-// 		}
-// 	}
 
 /*******************************************************************
  *
@@ -5685,9 +5675,14 @@ TableOptimizerHints:
 	{
 		$$ = nil
 	}
-|	hintBegin TableOptimizerHintList hintEnd
+|	hintComment
 	{
-		$$ = $2
+		hints, warns := parser.parseHint($1)
+		for _, w := range warns {
+			yylex.AppendError(w)
+			parser.lastErrorAsWarn()
+		}
+		$$ = hints
 	}
 
 HintTableList:
@@ -5698,34 +5693,6 @@ HintTableList:
 |	HintTableList ',' Identifier
 	{
 		$$ = append($1.([]model.CIStr), model.NewCIStr($3))
-	}
-
-TableOptimizerHintList:
-	TableOptimizerHintOpt
-	{
-		$$ = []*ast.TableOptimizerHint{$1.(*ast.TableOptimizerHint)}
-	}
-|	TableOptimizerHintList TableOptimizerHintOpt
-	{
-		$$ = append($1.([]*ast.TableOptimizerHint), $2.(*ast.TableOptimizerHint))
-	}
-
-TableOptimizerHintOpt:
-	tidbSMJ '(' HintTableList ')'
-	{
-		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), Tables: $3.([]model.CIStr)}
-	}
-|	tidbINLJ '(' HintTableList ')'
-	{
-		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), Tables: $3.([]model.CIStr)}
-	}
-|	tidbHJ '(' HintTableList ')'
-	{
-		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), Tables: $3.([]model.CIStr)}
-	}
-|	maxExecutionTime '(' NUM ')'
-	{
-		$$ = &ast.TableOptimizerHint{HintName: model.NewCIStr($1), MaxExecutionTime: getUint64FromNUM($3)}
 	}
 
 SelectStmtCalcFoundRows:
@@ -6759,7 +6726,7 @@ Statement:
 |	ExecuteStmt
 |	ExplainStmt
 |	CreateDatabaseStmt
-|   AlterDatabaseStmt
+|	AlterDatabaseStmt
 |	CreateIndexStmt
 |	CreateTableStmt
 |	CreateViewStmt

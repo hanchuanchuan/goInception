@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hanchuanchuan/goInception/format"
 	. "github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
@@ -2018,35 +2019,122 @@ type TableOptimizerHint struct {
 	// Table hints has no schema info
 	// It allows only table name or alias (if table has an alias)
 	HintName model.CIStr
-	Tables   []model.CIStr
+	// HintData is the payload of the hint. The actual type of this field
+	// is defined differently as according `HintName`. Define as following:
+	//
+	// Statement Execution Time Optimizer Hints
+	// See https://dev.mysql.com/doc/refman/5.7/en/optimizer-hints.html#optimizer-hints-execution-time
+	// - MAX_EXECUTION_TIME  => uint64
+	// - MEMORY_QUOTA        => int64
+	// - QUERY_TYPE          => model.CIStr
+	//
+	// Time Range is used to hint the time range of inspection tables
+	// e.g: select /*+ time_range('','') */ * from information_schema.inspection_result.
+	// - TIME_RANGE          => ast.HintTimeRange
+	// - READ_FROM_STORAGE   => model.CIStr
+	// - USE_TOJA            => bool
+	HintData interface{}
+	// QBName is the default effective query block of this hint.
+	QBName  model.CIStr
+	Tables  []HintTable
+	Indexes []model.CIStr
 	// Statement Execution Time Optimizer Hints
 	// See https://dev.mysql.com/doc/refman/5.7/en/optimizer-hints.html#optimizer-hints-execution-time
 	MaxExecutionTime uint64
 }
 
+// HintTimeRange is the payload of `TIME_RANGE` hint
+type HintTimeRange struct {
+	From string
+	To   string
+}
+
+// HintTable is table in the hint. It may have query block info.
+type HintTable struct {
+	DBName    model.CIStr
+	TableName model.CIStr
+	QBName    model.CIStr
+}
+
+func (ht *HintTable) Restore(ctx *format.RestoreCtx) {
+	if ht.DBName.L != "" {
+		ctx.WriteName(ht.DBName.String())
+		ctx.WriteKeyWord(".")
+	}
+	ctx.WriteName(ht.TableName.String())
+	if ht.QBName.L != "" {
+		ctx.WriteKeyWord("@")
+		ctx.WriteName(ht.QBName.String())
+	}
+}
+
 // Restore implements Node interface.
-func (n *TableOptimizerHint) Restore(ctx *RestoreCtx) error {
+func (n *TableOptimizerHint) Restore(ctx *format.RestoreCtx) error {
 	ctx.WriteKeyWord(n.HintName.String())
 	ctx.WritePlain("(")
-
+	if n.QBName.L != "" {
+		if n.HintName.L != "qb_name" {
+			ctx.WriteKeyWord("@")
+		}
+		ctx.WriteName(n.QBName.String())
+	}
 	// Hints without args except query block.
 	switch n.HintName.L {
-	case "hash_agg", "stream_agg", "agg_to_cop", "read_consistent_replica", "no_index_merge", "qb_name":
+	case "hash_agg", "stream_agg", "agg_to_cop", "read_consistent_replica", "no_index_merge", "qb_name", "ignore_plan_cache":
 		ctx.WritePlain(")")
 		return nil
 	}
-
+	if n.QBName.L != "" {
+		ctx.WritePlain(" ")
+	}
 	// Hints with args except query block.
 	switch n.HintName.L {
 	case "max_execution_time":
-		ctx.WritePlainf("%d", n.MaxExecutionTime)
-	case "tidb_hj", "tidb_smj", "tidb_inlj", "hash_join", "sm_join", "inl_join":
+		ctx.WritePlainf("%d", n.HintData.(uint64))
+	case "tidb_hj", "tidb_smj", "tidb_inlj", "hash_join", "merge_join", "inl_join":
 		for i, table := range n.Tables {
 			if i != 0 {
 				ctx.WritePlain(", ")
 			}
-			ctx.WriteName(table.String())
+			table.Restore(ctx)
 		}
+	case "use_index", "ignore_index", "use_index_merge":
+		n.Tables[0].Restore(ctx)
+		ctx.WritePlain(" ")
+		for i, index := range n.Indexes {
+			if i != 0 {
+				ctx.WritePlain(", ")
+			}
+			ctx.WriteName(index.String())
+		}
+	case "use_toja", "use_cascades":
+		if n.HintData.(bool) {
+			ctx.WritePlain("TRUE")
+		} else {
+			ctx.WritePlain("FALSE")
+		}
+	case "query_type":
+		ctx.WriteKeyWord(n.HintData.(model.CIStr).String())
+	case "memory_quota":
+		ctx.WritePlainf("%d MB", n.HintData.(int64)/1024/1024)
+	case "read_from_storage":
+		ctx.WriteKeyWord(n.HintData.(model.CIStr).String())
+		for i, table := range n.Tables {
+			if i == 0 {
+				ctx.WritePlain("[")
+			}
+			table.Restore(ctx)
+			if i == len(n.Tables)-1 {
+				ctx.WritePlain("]")
+			} else {
+				ctx.WritePlain(", ")
+			}
+		}
+	case "time_range":
+		hintData := n.HintData.(HintTimeRange)
+		ctx.WriteString(hintData.From)
+		ctx.WritePlain(", ")
+		ctx.WriteString(hintData.To)
 	}
 	ctx.WritePlain(")")
 	return nil
