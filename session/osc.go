@@ -205,6 +205,152 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 }
 
+func (s *session) mysqlExecuteWithGhost(r *Record) {
+
+	err := os.Setenv("PATH", fmt.Sprintf("%s%s%s",
+		s.osc.OscBinDir, string(os.PathListSeparator), os.Getenv("PATH")))
+	if err != nil {
+		log.Error(err)
+		s.appendErrorMessage(err.Error())
+		return
+	}
+
+	if _, err := exec.LookPath("gh-ost"); err != nil {
+		log.Error(err)
+		s.appendErrorMessage(err.Error())
+		return
+	}
+
+	buf := bytes.NewBufferString("gh-ost")
+
+	buf.WriteString(" --alter \"")
+	buf.WriteString(s.getAlterTablePostPart(r.Sql, true))
+
+	if s.hasError() {
+		return
+	}
+
+	buf.WriteString("\" ")
+	if s.osc.OscPrintSql {
+		buf.WriteString(" --print ")
+	}
+
+	// RDS数据库需要做特殊处理
+	var masterHost string
+	if s.ghost.GhostAliyunRds && s.ghost.GhostAssumeMasterHost == "" {
+		masterHost = fmt.Sprintf("%s:%d", s.opt.Host, s.opt.Port)
+	} else {
+		masterHost = s.ghost.GhostAssumeMasterHost
+	}
+
+	buf.WriteString(fmt.Sprintf(" --assume-master-host=%s", masterHost))
+	buf.WriteString(fmt.Sprintf(" --exact-rowcount=%t", s.ghost.GhostExactRowcount))
+	buf.WriteString(fmt.Sprintf(" --concurrent-rowcount=%t", s.ghost.GhostConcurrentRowcount))
+	buf.WriteString(fmt.Sprintf(" --allow-on-master=%t", s.ghost.GhostAllowOnMaster))
+	buf.WriteString(fmt.Sprintf(" --allow-master-master=%t", s.ghost.GhostAllowMasterMaster))
+	buf.WriteString(fmt.Sprintf(" --allow-nullable-unique-key=%t", s.ghost.GhostAllowNullableUniqueKey))
+	buf.WriteString(fmt.Sprintf(" --approve-renamed-columns=%t",
+		s.ghost.GhostApproveRenamedColumns))
+	buf.WriteString(fmt.Sprintf(" --tungsten=%t", s.ghost.GhostTungsten))
+	buf.WriteString(fmt.Sprintf(" --discard-foreign-keys=%t", s.ghost.GhostDiscardForeignKeys))
+	buf.WriteString(fmt.Sprintf(" --skip-foreign-key-checks=%t", s.ghost.GhostSkipForeignKeyChecks))
+	buf.WriteString(fmt.Sprintf(" --aliyun-rds=%t", s.ghost.GhostAliyunRds))
+	buf.WriteString(fmt.Sprintf(" --gcp=%t", s.ghost.GhostGcp))
+	buf.WriteString(fmt.Sprintf(" --ok-to-drop-table=%t", s.ghost.GhostOkToDropTable))
+	buf.WriteString(fmt.Sprintf(" --initially-drop-old-table=%t", s.ghost.GhostInitiallyDropOldTable))
+	buf.WriteString(fmt.Sprintf(" --initially-drop-ghost-table=%t", s.ghost.GhostInitiallyDropGhostTable))
+	buf.WriteString(fmt.Sprintf(" --cut-over=%s", s.ghost.GhostCutOver))
+	buf.WriteString(fmt.Sprintf(" --force-named-cut-over=%t", s.ghost.GhostForceNamedCutOver))
+	buf.WriteString(fmt.Sprintf(" --assume-rbr=%t", s.ghost.GhostAssumeRbr))
+	buf.WriteString(fmt.Sprintf(" --cut-over-exponential-backoff=%t", s.ghost.GhostCutOverExponentialBackoff))
+	buf.WriteString(fmt.Sprintf(" --exponential-backoff-max-interval=%d", s.ghost.GhostExponentialBackoffMaxInterval))
+	buf.WriteString(fmt.Sprintf(" --chunk-size=%d", s.ghost.GhostChunkSize))
+	buf.WriteString(fmt.Sprintf(" --dml-batch-size=%d", s.ghost.GhostDmlBatchSize))
+	buf.WriteString(fmt.Sprintf(" --default-retries=%d", s.ghost.GhostDefaultRetries))
+	buf.WriteString(fmt.Sprintf(" --cut-over-lock-timeout-seconds=%d", s.ghost.GhostCutOverLockTimeoutSeconds))
+	buf.WriteString(fmt.Sprintf(" --nice-ratio=%f", s.ghost.GhostNiceRatio))
+	buf.WriteString(fmt.Sprintf(" --max-lag-millis=%d", s.ghost.GhostMaxLagMillis))
+	buf.WriteString(fmt.Sprintf(" --replication-lag-query=%s", s.ghost.GhostReplicationLagQuery))
+	if s.ghost.GhostThrottleControlReplicas != "" {
+		buf.WriteString(fmt.Sprintf(" --throttle-control-replicas=%s", s.ghost.GhostThrottleControlReplicas))
+	}
+	if s.ghost.GhostThrottleQuery != "" {
+		buf.WriteString(fmt.Sprintf(" --throttle-query=%s", s.ghost.GhostThrottleQuery))
+	}
+	if s.ghost.GhostThrottleHTTP != "" {
+		buf.WriteString(fmt.Sprintf(" --throttle-http=%s", s.ghost.GhostThrottleHTTP))
+	}
+
+	buf.WriteString(fmt.Sprintf(" --heartbeat-interval-millis=%d", s.ghost.GhostHeartbeatIntervalMillis))
+	buf.WriteString(fmt.Sprintf(" --throttle-flag-file=%s", s.ghost.GhostThrottleFlagFile))
+	buf.WriteString(fmt.Sprintf(" --throttle-additional-flag-file=%s", s.ghost.GhostThrottleAdditionalFlagFile))
+	buf.WriteString(fmt.Sprintf(" --postpone-cut-over-flag-file=%s", s.ghost.GhostPostponeCutOverFlagFile))
+	buf.WriteString(fmt.Sprintf(" --initially-drop-socket-file=%t", s.ghost.GhostInitiallyDropSocketFile))
+
+	socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.Host, s.opt.Port,
+		r.TableInfo.Schema, r.TableInfo.Name)
+	if len(socketFile) > 100 {
+		// 字符串过长时转换为hash值
+		host := truncateString(s.opt.Host, 30)
+		dbName := truncateString(r.TableInfo.Schema, 30)
+		tableName := truncateString(r.TableInfo.Name, 30)
+		socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", host, s.opt.Port,
+			dbName, tableName)
+		if len(socketFile) > 100 {
+			socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s.sock", host, s.opt.Port,
+				dbName, tableName)
+		}
+	}
+	buf.WriteString(fmt.Sprintf(" --serve-socket-file=%s", socketFile))
+
+	buf.WriteString(fmt.Sprintf(" --replica-server-id=%d",
+		2000100000+uint(s.sessionVars.ConnectionID%10000)))
+	buf.WriteString(fmt.Sprintf(" --critical-load-interval-millis=%d", s.ghost.GhostCriticalLoadIntervalMillis))
+	buf.WriteString(fmt.Sprintf(" --critical-load-hibernate-seconds=%d", s.ghost.GhostCriticalLoadHibernateSeconds))
+
+	if s.ghost.GhostForceTableNames != "" {
+		buf.WriteString(fmt.Sprintf(" --force-table-names=%s", s.ghost.GhostForceTableNames))
+	}
+
+	buf.WriteString(" --critical-load='")
+	buf.WriteString("Threads_running=")
+	buf.WriteString(strconv.Itoa(s.osc.OscCriticalThreadRunning))
+	buf.WriteString(",threads_connected=")
+	buf.WriteString(strconv.Itoa(s.osc.OscCriticalThreadConnected))
+	buf.WriteString("' ")
+
+	buf.WriteString(" --max-load='")
+	buf.WriteString("Threads_running=")
+	buf.WriteString(strconv.Itoa(s.osc.OscMaxThreadRunning))
+	buf.WriteString(",threads_connected=")
+	buf.WriteString(strconv.Itoa(s.osc.OscMaxThreadConnected))
+	buf.WriteString("' ")
+
+	buf.WriteString(" --execute ")
+
+	buf.WriteString(" --user=\"")
+	buf.WriteString(s.opt.User)
+	buf.WriteString("\" --password='")
+	buf.WriteString(strings.Replace(s.opt.Password, "'", "'\"'\"'", -1))
+	buf.WriteString("' --host=")
+	buf.WriteString(s.opt.Host)
+	buf.WriteString(" --port=")
+	buf.WriteString(strconv.Itoa(s.opt.Port))
+
+	buf.WriteString(" --database='")
+	buf.WriteString(r.TableInfo.Schema)
+	buf.WriteString("' --table='")
+	buf.WriteString(r.TableInfo.Name)
+	buf.WriteString("'")
+
+	str := buf.String()
+
+	log.Infof("sh: %s", str)
+
+	s.execCommand(r, "sh", []string{"-c", str})
+
+}
+
 func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	migrationContext := base.NewMigrationContext()
 	// flag.StringVar(&migrationContext.InspectorConnectionConfig.Key.Hostname, "host", "127.0.0.1", "MySQL hostname (preferably a replica, not the master)")
@@ -691,7 +837,14 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 			buf.WriteString(line)
 			buf.WriteString("\n")
 
-			s.mysqlAnalyzeOscOutput(line, p)
+			if s.ghost.GhostOn {
+				if ok := s.mysqlAnalyzeGhostOutput(line, p); ok {
+					wg.Done()
+					break
+				}
+			} else {
+				s.mysqlAnalyzeOscOutput(line, p)
+			}
 		}
 	}
 

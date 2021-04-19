@@ -1432,7 +1432,8 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 		if s.ghost.GhostOn {
 			log.Infof("con:%d use gh-ost: %s",
 				s.sessionVars.ConnectionID, record.Sql)
-			s.mysqlExecuteAlterTableGhost(record)
+			// s.mysqlExecuteAlterTableGhost(record)
+			s.mysqlExecuteWithGhost(record)
 		} else {
 			log.Infof("con:%d use pt-osc: %s",
 				s.sessionVars.ConnectionID, record.Sql)
