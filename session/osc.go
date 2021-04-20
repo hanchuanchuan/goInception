@@ -201,8 +201,7 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 
 	str := buf.String()
 
-	s.execCommand(r, "sh", []string{"-c", str})
-
+	s.execCommand(r, "", "sh", []string{"-c", str})
 }
 
 func (s *session) mysqlExecuteWithGhost(r *Record) {
@@ -347,7 +346,7 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 
 	log.Infof("sh: %s", str)
 
-	s.execCommand(r, "sh", []string{"-c", str})
+	s.execCommand(r, socketFile, "sh", []string{"-c", str})
 
 }
 
@@ -770,7 +769,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	}
 }
 
-func (s *session) execCommand(r *Record, commandName string, params []string) bool {
+func (s *session) execCommand(r *Record, socketFile string, commandName string, params []string) bool {
 	//函数返回一个*Cmd，用于使用给出的参数执行name指定的程序
 	cmd := exec.Command(commandName, params...)
 
@@ -811,6 +810,8 @@ func (s *session) execCommand(r *Record, commandName string, params []string) bo
 		Percent:    0,
 		RemainTime: "",
 		Info:       "",
+		IsGhost:    socketFile != "",
+		SocketFile: socketFile,
 		PanicAbort: make(chan util.ProcessOperation),
 		RW:         &sync.RWMutex{},
 	}
