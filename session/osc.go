@@ -200,7 +200,6 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString("'")
 
 	str := buf.String()
-
 	s.execCommand(r, "", "sh", []string{"-c", str})
 }
 
@@ -299,7 +298,23 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 				dbName, tableName)
 		}
 	}
+
+	if _, err := os.Stat(socketFile); err == nil {
+		s.appendErrorMessage("listen unix socket file already in use")
+		return
+	} else if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		s.appendErrorMessage(err.Error())
+		return
+	}
+
 	buf.WriteString(fmt.Sprintf(" --serve-socket-file=%s", socketFile))
+
+	panicFile := fmt.Sprintf("%s.panic", strings.TrimRight(socketFile, ".sock"))
+	buf.WriteString(fmt.Sprintf(" --panic-flag-file=%s", panicFile))
+
+	// 清理panic file
+	os.Remove(panicFile)
 
 	buf.WriteString(fmt.Sprintf(" --replica-server-id=%d",
 		2000100000+uint(s.sessionVars.ConnectionID%10000)))
@@ -342,11 +357,8 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 	buf.WriteString("'")
 
 	str := buf.String()
-
-	log.Infof("sh: %s", str)
-
+	// log.Info(str)
 	s.execCommand(r, socketFile, "sh", []string{"-c", str})
-
 }
 
 func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
@@ -834,17 +846,21 @@ func (s *session) execCommand(r *Record, socketFile string, commandName string, 
 				wg.Done()
 				break
 			}
-			buf.WriteString(line)
-			buf.WriteString("\n")
 
 			if s.ghost.GhostOn {
+				if strings.Contains("[info]", line) {
+					continue
+				}
+				buf.WriteString(line)
 				if ok := s.mysqlAnalyzeGhostOutput(line, p); ok {
 					wg.Done()
 					break
 				}
 			} else {
+				buf.WriteString(line)
 				s.mysqlAnalyzeOscOutput(line, p)
 			}
+			buf.WriteString("\n")
 		}
 	}
 
