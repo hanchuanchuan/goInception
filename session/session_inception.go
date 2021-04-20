@@ -6080,7 +6080,25 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 			return nil, errors.New("osc process not aborted")
 		} else {
-			pi.PanicAbort <- util.ProcessOperationKill
+			if pi.SocketFile == "" {
+				pi.PanicAbort <- util.ProcessOperationKill
+			} else {
+				panicFile := fmt.Sprintf("%s.panic", strings.TrimRight(pi.SocketFile, ".sock"))
+				f, err := os.Create(panicFile)
+				if err != nil {
+					log.Error(err)
+					return nil, fmt.Errorf("Unable to create panic file, operation failed: %s", err.Error())
+				}
+				f.Close()
+				// clean panic file
+				go func() {
+					timeTickerChan := time.Tick(time.Second * 10)
+					for {
+						<-timeTickerChan
+						os.Remove(panicFile)
+					}
+				}()
+			}
 			return nil, nil
 		}
 	}
@@ -6104,19 +6122,22 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
 			return nil, errors.New("osc process has been paused")
 		} else {
-			// pi.PanicAbort <- util.ProcessOperationPause
 			// echo throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
 			// echo no-throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
-			if _, err := os.Stat(pi.SocketFile); err != nil {
-				log.Error(err)
-				return nil, fmt.Errorf("The socket file was not found, the operation failed")
+			if pi.SocketFile == "" {
+				pi.PanicAbort <- util.ProcessOperationPause
+			} else {
+				if _, err := os.Stat(pi.SocketFile); err != nil {
+					log.Error(err)
+					return nil, fmt.Errorf("The socket file was not found, the operation failed")
+				}
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("echo throttle | nc -U %s", pi.SocketFile))
+				if err := cmd.Run(); err != nil {
+					err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
+					log.Error(err)
+				}
+				pi.Pause = true
 			}
-			cmd := exec.Command("sh", "-c", fmt.Sprintf("echo throttle | nc -U %s", pi.SocketFile))
-			if err := cmd.Run(); err != nil {
-				err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
-				log.Error(err)
-			}
-			pi.Pause = true
 			return nil, nil
 		}
 	}
@@ -6137,17 +6158,20 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 		}
 
 		if pi.Pause {
-			// pi.PanicAbort <- util.ProcessOperationResume
-			if _, err := os.Stat(pi.SocketFile); err != nil {
-				log.Error(err)
-				return nil, fmt.Errorf("The socket file was not found, the operation failed")
+			if pi.SocketFile == "" {
+				pi.PanicAbort <- util.ProcessOperationResume
+			} else {
+				if _, err := os.Stat(pi.SocketFile); err != nil {
+					log.Error(err)
+					return nil, fmt.Errorf("The socket file was not found, the operation failed")
+				}
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("echo no-throttle | nc -U %s", pi.SocketFile))
+				if err := cmd.Run(); err != nil {
+					err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
+					log.Error(err)
+				}
+				pi.Pause = false
 			}
-			cmd := exec.Command("sh", "-c", fmt.Sprintf("echo no-throttle | nc -U %s", pi.SocketFile))
-			if err := cmd.Run(); err != nil {
-				err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
-				log.Error(err)
-			}
-			pi.Pause = false
 			return nil, nil
 		} else {
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
