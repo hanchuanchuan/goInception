@@ -598,6 +598,9 @@ type Ghost struct {
 	// 告诉gh-ost你正在运行的是一个tungsten-replication拓扑结构。
 	GhostTungsten            bool   `toml:"ghost_tungsten"`
 	GhostReplicationLagQuery string `toml:"ghost_replication_lag_query"`
+
+	// gh-ost所在目录，当设置该参数时，则启用二进制gh-ost
+	GhostBinDir string `toml:"ghost_bin_dir" json:"ghost_bin_dir"`
 }
 
 type IncLevel struct {
