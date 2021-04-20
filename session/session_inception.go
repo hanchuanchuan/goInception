@@ -1432,10 +1432,15 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 
 	if record.useOsc {
 		if s.ghost.GhostOn {
-			log.Infof("con:%d use gh-ost: %s",
-				s.sessionVars.ConnectionID, record.Sql)
-			// s.mysqlExecuteAlterTableGhost(record)
-			s.mysqlExecuteWithGhost(record)
+			if s.ghost.GhostBinDir != "" {
+				log.Infof("con:%d use binary gh-ost: %s",
+					s.sessionVars.ConnectionID, record.Sql)
+				s.mysqlExecuteWithGhost(record)
+			} else {
+				log.Infof("con:%d use gh-ost: %s",
+					s.sessionVars.ConnectionID, record.Sql)
+				s.mysqlExecuteAlterTableGhost(record)
+			}
 		} else {
 			log.Infof("con:%d use pt-osc: %s",
 				s.sessionVars.ConnectionID, record.Sql)

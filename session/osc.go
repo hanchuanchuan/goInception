@@ -205,9 +205,8 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 }
 
 func (s *session) mysqlExecuteWithGhost(r *Record) {
-
 	err := os.Setenv("PATH", fmt.Sprintf("%s%s%s",
-		s.osc.OscBinDir, string(os.PathListSeparator), os.Getenv("PATH")))
+		s.ghost.GhostBinDir, string(os.PathListSeparator), os.Getenv("PATH")))
 	if err != nil {
 		log.Error(err)
 		s.appendErrorMessage(err.Error())
