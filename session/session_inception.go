@@ -3381,14 +3381,18 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		}
 	}
 	s.alterRollbackBuffer = nil
-	// if !s.hasError() && s.myRecord.useOsc {
-	// 	s.myRecord.ErrLevel = uint8(Max(int(s.myRecord.ErrLevel), 1))
-	// 	if s.ghost.GhostOn {
-	// 		s.myRecord.Buf.WriteString("Will be executed using gh-ost.")
-	// 	} else {
-	// 		s.myRecord.Buf.WriteString("Will be executed using pt-osc.")
-	// 	}
-	// }
+
+	if !s.hasError() && s.myRecord.useOsc && s.ghost.GhostOn && s.opt.Execute {
+		socketFile := s.getSocketFile(s.myRecord)
+		if _, err := os.Stat(socketFile); err == nil {
+			s.appendErrorMessage("listen unix socket file already in use")
+			return
+		} else if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.appendErrorMessage(err.Error())
+			return
+		}
+	}
 }
 
 func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec) {
@@ -6080,6 +6084,10 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 			return nil, errors.New("osc process not aborted")
 		} else {
+			if pi.Percent >= 100 {
+				return nil, errors.New("osc change has been completed")
+			}
+
 			if pi.SocketFile == "" {
 				pi.PanicAbort <- util.ProcessOperationKill
 			} else {
@@ -6091,13 +6099,9 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 				}
 				f.Close()
 				// clean panic file
-				go func() {
-					timeTickerChan := time.Tick(time.Second * 10)
-					for {
-						<-timeTickerChan
-						os.Remove(panicFile)
-					}
-				}()
+				go time.AfterFunc(time.Second*10, func() {
+					os.Remove(panicFile)
+				})
 			}
 			return nil, nil
 		}
