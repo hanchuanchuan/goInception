@@ -989,6 +989,11 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 
 	sql = "alter table t1 add column `c5` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";  -- 测试注释"
 	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Ghost.GhostBinDir = "/usr/local/bin"
+
+	sql = "alter table t1 add column `c6` varchar(20) comment \"!@#$%^&*()_+[]{}\\|;:',.<>/?\";  -- 测试注释"
+	s.testErrorCode(c, sql)
 }
 
 // 测试忽略指定的Alter语句
