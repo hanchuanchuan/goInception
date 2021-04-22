@@ -357,6 +357,10 @@ docker:
 	@if [ ! -f bin/pt-online-schema-change ];then \
 		wget -O bin/pt-online-schema-change percona.com/get/pt-online-schema-change; \
 	fi
+	@if [ ! -f bin/gh-ost ];then \
+		wget -O bin/gh-ost.tar.gz https://github.com/github/gh-ost/releases/download/v1.1.0/gh-ost-binary-linux-20200828140552.tar.gz; \
+		tar -zxvf bin/gh-ost.tar.gz -C bin/; \
+	fi
 	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags '-s -w $(LDFLAGS)' -o bin/goInception tidb-server/main.go
 	v1=$(shell git tag | awk -F'-' '{print $1}' |tail -1) && docker build -t hanchuanchuan/goinception:$${v1} . \
 	&& docker tag hanchuanchuan/goinception:$${v1} hanchuanchuan/goinception:latest

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"sort"
@@ -1430,9 +1432,15 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 
 	if record.useOsc {
 		if s.ghost.GhostOn {
-			log.Infof("con:%d use gh-ost: %s",
-				s.sessionVars.ConnectionID, record.Sql)
-			s.mysqlExecuteAlterTableGhost(record)
+			if s.ghost.GhostBinDir != "" {
+				log.Infof("con:%d use binary gh-ost: %s",
+					s.sessionVars.ConnectionID, record.Sql)
+				s.mysqlExecuteWithGhost(record)
+			} else {
+				log.Infof("con:%d use gh-ost: %s",
+					s.sessionVars.ConnectionID, record.Sql)
+				s.mysqlExecuteAlterTableGhost(record)
+			}
 		} else {
 			log.Infof("con:%d use pt-osc: %s",
 				s.sessionVars.ConnectionID, record.Sql)
@@ -3373,14 +3381,18 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		}
 	}
 	s.alterRollbackBuffer = nil
-	// if !s.hasError() && s.myRecord.useOsc {
-	// 	s.myRecord.ErrLevel = uint8(Max(int(s.myRecord.ErrLevel), 1))
-	// 	if s.ghost.GhostOn {
-	// 		s.myRecord.Buf.WriteString("Will be executed using gh-ost.")
-	// 	} else {
-	// 		s.myRecord.Buf.WriteString("Will be executed using pt-osc.")
-	// 	}
-	// }
+
+	if !s.hasError() && s.myRecord.useOsc && s.ghost.GhostOn && s.opt.Execute {
+		socketFile := s.getSocketFile(s.myRecord)
+		if _, err := os.Stat(socketFile); err == nil {
+			s.appendErrorMessage("listen unix socket file already in use")
+			return
+		} else if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.appendErrorMessage(err.Error())
+			return
+		}
+	}
 }
 
 func (s *session) checkAlterTableAlterColumn(t *TableInfo, c *ast.AlterTableSpec) {
@@ -6072,7 +6084,25 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 			return nil, errors.New("osc process not aborted")
 		} else {
-			pi.PanicAbort <- util.ProcessOperationKill
+			if pi.Percent >= 100 {
+				return nil, errors.New("osc change has been completed")
+			}
+
+			if pi.SocketFile == "" {
+				pi.PanicAbort <- util.ProcessOperationKill
+			} else {
+				panicFile := fmt.Sprintf("%s.panic", strings.TrimRight(pi.SocketFile, ".sock"))
+				f, err := os.Create(panicFile)
+				if err != nil {
+					log.Error(err)
+					return nil, fmt.Errorf("Unable to create panic file, operation failed: %s", err.Error())
+				}
+				f.Close()
+				// clean panic file
+				go time.AfterFunc(time.Second*10, func() {
+					os.Remove(panicFile)
+				})
+			}
 			return nil, nil
 		}
 	}
@@ -6096,7 +6126,22 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
 			return nil, errors.New("osc process has been paused")
 		} else {
-			pi.PanicAbort <- util.ProcessOperationPause
+			// echo throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
+			// echo no-throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
+			if pi.SocketFile == "" {
+				pi.PanicAbort <- util.ProcessOperationPause
+			} else {
+				if _, err := os.Stat(pi.SocketFile); err != nil {
+					log.Error(err)
+					return nil, fmt.Errorf("The socket file was not found, the operation failed")
+				}
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("echo throttle | nc -U %s", pi.SocketFile))
+				if err := cmd.Run(); err != nil {
+					err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
+					log.Error(err)
+				}
+				pi.Pause = true
+			}
 			return nil, nil
 		}
 	}
@@ -6117,7 +6162,20 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 		}
 
 		if pi.Pause {
-			pi.PanicAbort <- util.ProcessOperationResume
+			if pi.SocketFile == "" {
+				pi.PanicAbort <- util.ProcessOperationResume
+			} else {
+				if _, err := os.Stat(pi.SocketFile); err != nil {
+					log.Error(err)
+					return nil, fmt.Errorf("The socket file was not found, the operation failed")
+				}
+				cmd := exec.Command("sh", "-c", fmt.Sprintf("echo no-throttle | nc -U %s", pi.SocketFile))
+				if err := cmd.Run(); err != nil {
+					err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
+					log.Error(err)
+				}
+				pi.Pause = false
+			}
 			return nil, nil
 		} else {
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))

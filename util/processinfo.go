@@ -90,5 +90,8 @@ type OscProcessInfo struct {
 
 	PanicAbort chan ProcessOperation
 
+	// gh-ost serve-socket-file
+	SocketFile string
+
 	RW *sync.RWMutex
 }
