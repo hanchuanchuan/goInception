@@ -198,6 +198,10 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 	buf.WriteString(",t='")
 	buf.WriteString(r.TableInfo.Name)
 	buf.WriteString("'")
+	if s.opt.Port != 3306 {
+		buf.WriteString(",P=")
+		buf.WriteString(strconv.Itoa(s.opt.Port))
+	}
 
 	str := buf.String()
 	_ = s.execCommand(r, "", "sh", []string{"-c", str})
