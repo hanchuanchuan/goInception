@@ -6469,8 +6469,10 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 						if f, err := strconv.ParseFloat(row.Count, 64); err == nil {
 							row.Rows = int(f)
 						}
-					} else if row.EstRows > 0 {
-						row.Rows = int(row.EstRows)
+					} else if row.EstRows != "" {
+						if v, err := strconv.Atoi(row.EstRows); err == nil {
+							row.Rows = v
+						}
 					}
 				}
 				r.AffectedRows = Max(r.AffectedRows, row.Rows)
@@ -6482,8 +6484,10 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 					if f, err := strconv.ParseFloat(row.Count, 64); err == nil {
 						row.Rows = int(f)
 					}
-				} else if row.EstRows > 0 {
-					row.Rows = int(row.EstRows)
+				} else if row.EstRows != "" {
+					if v, err := strconv.Atoi(row.EstRows); err == nil {
+						row.Rows = v
+					}
 				}
 			}
 			r.AffectedRows = row.Rows
