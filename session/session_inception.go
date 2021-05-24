@@ -4078,6 +4078,8 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 			if defaultValue.GetString() != "" {
 				s.appendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 			}
+		case types.KindNull:
+			s.appendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
 		default:
 			s.appendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 		}
