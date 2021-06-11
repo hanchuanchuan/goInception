@@ -2505,6 +2505,10 @@ func (s *testSessionIncSuite) TestCreateView(c *C) {
 
 	sql = "create table t1(id int primary key,c1 int);create view v_1 as select id,c1 from t1;"
 	s.testErrorCode(c, sql)
+
+	sql = `create table t1(id int primary key,c1 int);
+	create view v_1 as select id,c1 from t1 where id = 1 union all select id,c1 from t1 where id = 2;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {

@@ -669,6 +669,11 @@ func (s *testSessionIncExecSuite) TestCreateView(c *C) {
 	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
 	sql = "create table t1(id int primary key);create view v_1 as select id from t1;"
 	s.testErrorCode(c, sql)
+
+	s.mustRunExec(c, "drop table if exists t1;drop view if exists v_1;")
+	sql = `create table t1(id int primary key,c1 int);
+	create view v_1 as select id,c1 from t1 where id = 1 union all select id,c1 from t1 where id = 2;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncExecSuite) TestAlterTableAddIndex(c *C) {
