@@ -5,6 +5,7 @@
 package session
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -21,6 +22,7 @@ type masking struct {
 	maskingFields []MaskingFieldInfo
 	session       *session
 	colIndex      int
+	buf           *bytes.Buffer
 }
 
 func (s *session) maskingCommand(ctx context.Context, stmtNode ast.StmtNode,
@@ -35,6 +37,7 @@ func (s *session) maskingCommand(ctx context.Context, stmtNode ast.StmtNode,
 		p := masking{
 			session:       s,
 			maskingFields: make([]MaskingFieldInfo, 0),
+			buf:           new(bytes.Buffer),
 		}
 		_, _ = p.checkSelectItem(node, 0)
 		fields := p.maskingFields
@@ -45,7 +48,11 @@ func (s *session) maskingCommand(ctx context.Context, stmtNode ast.StmtNode,
 			log.Error(err)
 			s.printSets.Append(2, currentSql, "", err.Error())
 		} else {
-			s.printSets.Append(0, currentSql, string(tree), "")
+			if p.buf.Len() > 0 {
+				s.printSets.Append(0, currentSql, string(tree), p.buf.String())
+			} else {
+				s.printSets.Append(0, currentSql, string(tree), "")
+			}
 		}
 	default:
 		s.printSets.Append(2, currentSql, "", "not support")
@@ -186,8 +193,8 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 
 			// log.Infof("field.WildCard: %v, %v", field.WildCard, colIndex)
 			if field.WildCard == nil {
-				tmpFields = append(tmpFields, s.checkItem(field.Expr, tableInfoList)...)
-				fields = append(fields, tmpFields...)
+				// tmpFields = append(tmpFields, s.checkItem(field.Expr, tableInfoList)...)
+				// fields = append(fields, tmpFields...)
 				s.checkSelectField(field, tableInfoList, level, colIndex)
 				newFields = append(newFields, field)
 				continue
@@ -225,7 +232,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 							}
 							s.colIndex += len(t.Fields)
 						} else {
-							s.session.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
+							s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
 								fmt.Sprintf("`%s`.`%s`", tblName.Schema.O, tblName.Name.String()))
 						}
 					} else {
@@ -285,7 +292,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 								}
 								s.colIndex += len(t.Fields)
 							} else {
-								s.session.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
+								s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
 									fmt.Sprintf("`%s`.`%s`", tblName.Schema.O, tblName.Name.String()))
 							}
 						} else {
@@ -341,11 +348,21 @@ func (s *masking) checkItem(expr ast.ExprNode, tables []*TableInfo) (fields []Ma
 		return
 	}
 
+	// log.Errorf("expr: %#v", expr)
 	switch e := expr.(type) {
 	case *ast.ColumnNameExpr:
 		f := s.checkFieldItem(e.Name, tables)
 		if f == nil {
-			s.session.appendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.OrigColName())
+			s.appendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.OrigColName())
+			db := e.Name.Schema.O
+			if db == "" {
+				db = s.session.dbName
+			}
+			fields = append(fields, MaskingFieldInfo{
+				Schema: db,
+				Table:  e.Name.Table.String(),
+				Field:  e.Name.Name.String(),
+			})
 		} else {
 			fields = append(fields, *f)
 		}
@@ -361,7 +378,8 @@ func (s *masking) checkItem(expr ast.ExprNode, tables []*TableInfo) (fields []Ma
 		fields = append(fields, s.checkItem(e.V, tables)...)
 
 	case *ast.FuncCallExpr:
-		return s.checkFuncItem(e, tables)
+		fields = append(fields, s.checkFuncItem(e, tables)...)
+		// return s.checkFuncItem(e, tables)
 
 	case *ast.FuncCastExpr:
 		fields = append(fields, s.checkItem(e.Expr, tables)...)
@@ -550,4 +568,27 @@ func Convert(schema, table string, fs []FieldInfo) []MaskingFieldInfo {
 		}
 	}
 	return maskingFields
+}
+
+func (s *masking) appendErrorNo(number ErrorCode, values ...interface{}) {
+	// 不检查时退出
+	if !s.session.checkInceptionVariables(number) {
+		return
+	}
+
+	var level uint8
+	if v, ok := s.session.incLevel[number.String()]; ok {
+		level = v
+	} else {
+		level = GetErrorLevel(number)
+	}
+
+	if level > 0 {
+		if len(values) == 0 {
+			s.buf.WriteString(s.session.getErrorMessage(number))
+		} else {
+			s.buf.WriteString(fmt.Sprintf(s.session.getErrorMessage(number), values...))
+		}
+		s.buf.WriteString("\n")
+	}
 }
