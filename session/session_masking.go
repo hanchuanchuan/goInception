@@ -39,8 +39,8 @@ func (s *session) maskingCommand(ctx context.Context, stmtNode ast.StmtNode,
 		_, _ = p.checkSelectItem(node, 0)
 		fields := p.maskingFields
 		tree, err := json.Marshal(fields)
-		tree1, _ := json.MarshalIndent(fields, "    ", "")
-		log.Errorf("%#v", string(tree1))
+		// tree1, _ := json.MarshalIndent(fields, "    ", "")
+		// log.Errorf("%#v", string(tree1))
 		if err != nil {
 			log.Error(err)
 			s.printSets.Append(2, currentSql, "", err.Error())
