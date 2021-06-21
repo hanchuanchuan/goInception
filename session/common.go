@@ -134,6 +134,8 @@ type SourceOptions struct {
 
 	// 打印语法树功能
 	Print bool
+	// 语法树v2功能，以列方式返回query涉及的字段列表
+	Masking bool
 
 	// DDL/DML分隔功能
 	split bool
@@ -197,6 +199,16 @@ type FieldInfo struct {
 	isGenerated *bool `gorm:"-"`
 
 	Tp *types.FieldType `gorm:"-"`
+}
+
+// MaskingFieldInfo 脱敏功能的字段信息
+type MaskingFieldInfo struct {
+	Index  uint8  `json:"index"`
+	Field  string `json:"field"`
+	Type   string `json:"type"`
+	Table  string `json:"table"`
+	Schema string `json:"schema"`
+	Alias  string `json:"alias"`
 }
 
 func (f *FieldInfo) IsGenerated() bool {

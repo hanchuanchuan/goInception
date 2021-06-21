@@ -138,7 +138,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 	defer func() {
 		if s.sessionVars.StmtCtx.AffectedRows() == 0 {
-			if s.opt != nil && s.opt.Print {
+			if s.opt != nil && (s.opt.Print || s.opt.Masking) {
 				s.sessionVars.StmtCtx.AddAffectedRows(uint64(s.printSets.rc.count))
 			} else if s.opt != nil && s.opt.split {
 				if s.splitSets != nil {
@@ -281,7 +281,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					s.parseOptions(currentSql)
 
 					if s.opt != nil {
-						if s.opt.Print {
+						if s.opt.Print || s.opt.Masking {
 							s.printSets = NewPrintSets()
 						} else if s.opt.split {
 							s.splitSets = NewSplitSets()
@@ -383,11 +383,14 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 
 					var result []sqlexec.RecordSet
 					var err error
-					if s.opt != nil && s.opt.Print {
+					switch {
+					case s.opt != nil && s.opt.Print:
 						result, err = s.printCommand(ctx, stmtNode, currentSql)
-					} else if s.opt != nil && s.opt.split {
+					case s.opt != nil && s.opt.Masking:
+						result, err = s.maskingCommand(ctx, stmtNode, currentSql)
+					case s.opt != nil && s.opt.split:
 						result, err = s.splitCommand(ctx, stmtNode, currentSql)
-					} else {
+					default:
 						result, err = s.processCommand(ctx, stmtNode, currentSql)
 					}
 					if err != nil {
@@ -468,9 +471,10 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 func (s *session) makeResult() (recordSets []sqlexec.RecordSet, err error) {
 	if s.opt != nil && s.opt.Print && s.printSets != nil {
 		return s.printSets.Rows(), nil
+	} else if s.opt != nil && s.opt.Masking && s.printSets != nil {
+		return s.printSets.Rows(), nil
 	} else if s.opt != nil && s.opt.split && s.splitSets != nil {
 		s.addNewSplitNode()
-		// log.Infof("%#v", s.splitSets)
 		return s.splitSets.Rows(), nil
 	} else {
 		return s.recordSets.Rows(), nil
@@ -2081,7 +2085,8 @@ func (s *session) parseOptions(sql string) {
 
 		fingerprint: viper.GetBool("fingerprint"),
 
-		Print: viper.GetBool("queryPrint"),
+		Print:   viper.GetBool("queryPrint"),
+		Masking: viper.GetBool("masking"),
 
 		split:        viper.GetBool("split"),
 		RealRowCount: viper.GetBool("realRowCount"),
@@ -7511,7 +7516,7 @@ func (s *session) getTableFromCache(db string, tableName string, reportNotExists
 		return nil
 	}
 
-	if !s.checkDBExists(db, true) {
+	if !s.checkDBExists(db, reportNotExists) {
 		return nil
 	}
 

@@ -260,6 +260,9 @@ type session struct {
 
 	// 是否检查歧义性. 在order by时忽略该检查,其他时候正常开启
 	checkAmbiguous bool
+
+	// masking 语法树解析功能
+	maskingFields []MaskingFieldInfo
 }
 
 func (s *session) getMembufCap() int {
