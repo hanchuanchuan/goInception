@@ -1,5 +1,5 @@
 
-#### 使用示例
+### Usage demo
 
 goInception extension of the usage of Inception, to specify the remote server by adding annotations before the SQL review, and for distinguishing SQL and review adding special comments at the beginning and the end of SQL.
 
@@ -33,7 +33,7 @@ inception_magic_commit;
 |real_row_count `v1.0.3`|FALSE|bool|If get real DML effect rows by `count(*)`, default false, if ture, ignore fingerprintSQL, accurately first.|
 
 
-### mysql encrypted connection set
+### MySQL encrypted connection set
 
 |Key|Default|Type|Explanation|
 |:----|:----|:----|:----|
@@ -43,7 +43,7 @@ inception_magic_commit;
 |ssl-key| |string|SSL private key file path, PEM format|
 
 
-#### SSL type description
+### SSL type description
 
 |type|description|
 |:----|:----|
@@ -54,7 +54,7 @@ inception_magic_commit;
 |VERIFY_IDENTITY|Identify CA|
 
 
-##### CA Authentication Demo
+### CA Authentication Demo
 
 ```python
 # use ssl=verify_ca setting CA identify
@@ -70,7 +70,7 @@ use test_inc;
 inception_magic_commit;
 ```
 
-##### ssl Authentication Demo
+### SSL Authentication Demo
 
 ```python
 sql = '''/*--user=test;--password=xxx;--host=127.0.0.1;--port=3333;--check=1;\
