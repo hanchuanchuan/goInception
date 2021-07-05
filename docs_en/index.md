@@ -6,9 +6,9 @@ goInception is a MySQL maintenance tool, which can be used to review, implement,
 #### Architecture
 
 
-![流程](./images/process.jpg)
+![process](./images/process.jpg)
 
-#### Usage
+### Usage
 
 GoInception extension of the usage of Inception, to specify the remote server by adding annotations before the SQL review, and for distinguishing SQL and review adding special comments at the beginning and the end of SQL.
 
@@ -24,9 +24,9 @@ inception_magic_commit;
 
 
 
-#### Acknowledgments
+### Acknowledgments
 
 GoInception reconstructs from the Inception which is a well-known MySQL auditing tool and uses TiDB SQL parser.
 
-- [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
+- [Inception](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)

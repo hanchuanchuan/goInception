@@ -35,7 +35,7 @@ Understand and be familiar with the following audit rules, you can know what goi
 |Can not insert duplicate column fields.|default|
 
 
-## `Update`, `delete` rules
+## `Update`, `Delete` rules
 |Check item|Config option|
 |:----|:----|
 |table must exists.| default|
@@ -56,7 +56,7 @@ Understand and be familiar with the following audit rules, you can know what goi
 |Check use comma or `and` in update set|default |
 
 
-## `create` rules
+## `Create` rules
 ### table option rules
 |Check item|Config option|
 |:----|:----|
@@ -83,6 +83,7 @@ Understand and be familiar with the following audit rules, you can know what goi
 
 
 ### column option rules
+
 |Check item|Config option|
 |:----|:----|
 |If enable to set the charset of column.|enable_column_charset|

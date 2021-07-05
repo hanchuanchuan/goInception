@@ -8,7 +8,7 @@ Customize audit level for setting the audit error lever `error_level`.
 - `0` is correct.
 
 
-##### check levels
+### check levels
 
 ```sql
 inception show levels;
@@ -23,13 +23,13 @@ inception show levels where `desc` like '%index%';
 
 ![Option List](./images/levels_all.png)
 
-##### Setting audit level
+### Setting audit level
 
 ```sql
 inception set level er_no_where_condition = 2;
 ```
 
-##### Configuration file
+#### Configuration file
 
 **config.toml**
 
