@@ -23,3 +23,5 @@ release/
 config/config.toml
 tools/bin/
 tools/check/go.sum
+node_modules
+docs/.vuepress/dist

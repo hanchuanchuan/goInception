@@ -1,46 +1,44 @@
 
-### KILL操作
+### KILL Operation
 
-**使用前请连接goInception并使用`inception show processlist`确认当前阶段(`STATE`)**
+**Please connect to GoInception and use `inception show processlist `to make sure the process current stage before use KILL.**
 
+Process stage in tree:
+- CHECKING
+- EXECUTING
+- BACKUP
 
-阶段分为三种：
-
-- CHECKING (`审核中`)
-- EXECUTING (`执行中`)
-- BACKUP (`备份中`)
-
-####KILL操作执行位置
-
-- 远端数据库,即执行实际sql的数据库
-- goInception
-- goInception配置的备份库
+#### Kill execution location
+- Remote db server, the sql execute database.
+- GoInception
+- Goinception backup database
 
 
 ### goInception KILL
 
-当前阶段   | kill后的结果
-----------|---------
-CHECKING | 在`当前语句` `审核完成` 后中止审核，此时仅返回从开始到当前语句的审核结果，后续SQL不再审核
-EXECUTING | 在`当前语句` `执行完成` 后中止执行，如果开启了备份，会执行备份操作，未开启则直接返回
-BACKUP | 在`当前binlog事件` 解析完成后中止备份，但已生成的回滚语句会继续写入备份库，待写入完成后返回
+Current stage   | kill results
+----------------|---------
+|CHECKING  |	After the current statement audit is completed| the audit will be aborted. At this time, only the audit results from the beginning to the current statement will be returned and subsequent SQL will not be audited anymore.|
+|EXECUTING  | After the execution of the current statement is completed, the execution will be aborted. If the backup is turned on the backup operation will be executed and it will return directly if it is not turned on.|
+|BACKUP	 | After the current binlog event parsing is completed the backup is aborted but the generated rollback statement will continue to be written to the backup library and return after the writing is completed|
 
 
-### 远端数据库KILL(不建议)
+### Remote database kill（Not recommended）
 
-当前阶段   | kill后的结果
-----------|---------
-CHECKING | kill操作不会影响审核，连接被kill后会自动重连(`原因是审核失败**不会中止审核**，所以需要重连，并恢复断开的数据库，以避免后续SQL访问错数据库`)
-EXECUTING (`语句kill后执行失败`) | 语句用时过长时，此时kill会直接停止goInception语句的执行，如果开启了备份，会执行备份操作，未开启则直接返回
-EXECUTING (`语句kill后执行成功，连接断开`)| 语句执行比较快时，可能已经执行成功，此时需要根据binlog备份做进一步校验，所以`依赖备份功能`
-BACKUP | `<无>`
+Current stage   | kill results
+----------------|--------
+|CHECKING|kill operation does not affect the audit, the connection is automatically reconnect after kill (because of an audit failure audit ** ** do not abort, we need to reconnect and restore disconnected database in order to avoid subsequent SQL database access error)|
+|EXECUTING (`after kill execution failed`)|When the statement takes too long, kill will directly stop the execution of the goInception statement. If the backup is turned on, the backup operation will be performed, and if it is not turned on, it will return directly.|
+|EXECUTING (`after kill execution success，connection stop`)|When the statement is executed relatively quickly, it may have been executed successfully. At this time, it needs to be further verified according to the binlog backup, so it depends on the backup function|
+|BACKUP|N/A|
 
 
-### goInception备份库KILL (`完全不建议`)
+### Goinception backup database kill (Absolutely not recommended)
 
-当前阶段   | kill后的结果
-----------|---------
-CHECKING | 在开始备份前会自动检测连接并重连，所以该操作`无效`
-EXECUTING | 在开始备份前会自动检测连接并重连，所以该操作`无效`
-BACKUP | 执行可能成功也可能失败，会导致备份结果不确定，因此`完全不建议`在备份库执行KILL操作
+Current stage   | kill results
+----------------|--------
+|CHECKING	Before starting the backup| it will automatically detect the connection and reconnect| so this operation is invalid.|
+|EXECUTING	Before starting the backup| it will automatically detect the connection and reconnect| so this operation is invalid|
+|BACKUP	Execution may succeed or fail| lead to uncertain results of the backup| so totally not recommended KILL operation in the backup repository|
+
 

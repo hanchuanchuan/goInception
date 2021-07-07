@@ -1,0 +1,15 @@
+{
+  "name": "goInception",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/hanchuanchuan/goInception.git",
+  "author": "hanchuanchuan",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "vuepress": "^1.8.2"
+  },
+  "scripts": {
+    "docs:dev": "vuepress dev docs",
+    "docs:build": "vuepress build docs"
+  }
+}
