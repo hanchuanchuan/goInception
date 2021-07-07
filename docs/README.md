@@ -1,14 +1,14 @@
-## Introdunction
+# Introdunction
 
 goInception is a MySQL maintenance tool, which can be used to review, implement, backup, and generate SQL statements for rollback. It parses SQL syntax and returns the result of the review based on custom rules.
 
 
-#### Architecture
+## Architecture
 
 
-![process](./images/process.jpg)
+![process](./images/process.png)
 
-### Usage
+## Usage
 
 GoInception extension of the usage of Inception, to specify the remote server by adding annotations before the SQL review, and for distinguishing SQL and review adding special comments at the beginning and the end of SQL.
 
@@ -22,9 +22,12 @@ create table t1(id int primary key);
 inception_magic_commit;
 ```
 
+## What did
+
+What audit rules goInception does, and what grammar audits are supported can be referred to [Audit rules](rules.html)
 
 
-### Acknowledgments
+## Acknowledgments
 
 GoInception reconstructs from the Inception which is a well-known MySQL auditing tool and uses TiDB SQL parser.
 

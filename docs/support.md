@@ -1,35 +1,30 @@
-### 赞助与支持
+### Sponsorship and support
 
-如果goInception于你有所帮助，可以激励一下作者以作支持。
+If goInception can help, welcome to sponsor the author.
 
-您的企业or个人信息将会展示在 `赞助者名单` 中以作感谢。
+Thans for your sponsor, your company or personal information will be displayed in the `Sponsor List`.
 
-对于大力赞助的企业与个人，可联系作者将公司或个人logo添加到项目首页，并优先考虑对其需求定制化开发。
+For a strong endorsement of companies and individuals can contact the author to add your company or personal logo to the project home page, customize and prioritize the needs of their development.
 
-<!-- ![支付宝](./images/pay.jpeg)
-
-![微信](./images/wechat.jpeg) -->
 
 <div>
-<img src="https://hanchuanchuan.github.io/goInception/images/pay.jpeg" width="200" height="200" alt="支付宝"/>
+<img src="https://hanchuanchuan.github.io/goInception/images/pay.jpeg" width="200" height="200" alt="Alipay"/>
 <div style="display: inline-block;width: 100px"></div>
-<img src="https://hanchuanchuan.github.io/goInception/images/wechat.jpeg" width = "200" height = "200" alt="微信"/>
+<img src="https://hanchuanchuan.github.io/goInception/images/wechat.jpeg" width = "200" height = "200" alt="WeChat"/>
 </div>
 
 
 ------
 
-#### 赞助者名单
+#### Sponsor List
 
 
 ------
 
-### 定制化需求
+### Customization requirements
 
-提供定制化服务。
+Please connect me by e-mail or QQ group talk.
 
-具体事宜请通过邮箱或QQ群联系。
+e-mail: `chuanchuanhan@gmail.com`
 
-邮箱：`chuanchuanhan@gmail.com`
-
-QQ群：`499262190`
+QQ group talk: `499262190`

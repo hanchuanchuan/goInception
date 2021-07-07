@@ -1,18 +1,19 @@
-### goInception 语法树打印
-####结果集信息
+### goInception Syntax tree print
+#### result set
 
-可以通过设置选项`--query-print=1`或者`--enable-query-print`来启用打印语法树的功能，
-同样的，它与其它enable开头的选项是互斥的，不能同时设置，开启之后，再连接goInception，执行返回的结果集所包括的列如下：
+Setting `--query-print=1` or `--enable-query-print` to turn on print syntax tree.
 
-1. ID：这个用来表示当前语句的一个序列值。
-1. STATEMENT：这个列用来存储当前被分析的SQL语句。
-1. ERRLEVEL：这个列用来存储当打印遇到问题时，错误的级别，与审核结果集中的ERRLEVEL意义相同。
-1. QUERY_TREE：这个列就是对当前语句的分析结果，格式为JSON字符串。
-1. ERRMSG：这个列与上面的ERRLEVEL对应，当出错时，这里存储分析过程中所有的错误信息，与审核结果集中的同名列意义相同。
+Similarly, other options enable the beginning of it are mutually exclusive, can not be set at the same time, after switching, reconnection goInception, execution returns a result set included as follows:
 
-##示例
+- 1.`ID`: query number.
+- 2.`STATEMENT`: query text.
+- 3.`ERRLEVEL`: error level when print error.
+- 4.`QUERY_TREE`: tree information.
+- 5.`ERRMSG`: error message.
 
-SQL语句：
+## Demo
+
+SQL:
 ````
 insert into t (sno,name)
         select sno, name from t alias_t
@@ -27,8 +28,7 @@ insert into t (sno,name)
         limit 100, 10;
 ````
 
-
-返回的结果对应的Json可视化的query_tree如下：
+Return query_tree in Json:
 
 ````
 {
@@ -866,51 +866,49 @@ insert into t (sno,name)
   }
 }
 ````
-<!--
-上面的SQL语句实际上没有任何意义，这里只是为了尽可能好的将每一类型的表达式打印出来而胡乱构造的。
+## Others
 
-可以看到，这个Json串很长，不过结构化之后，整个语句就非常清楚了，是什么语句类型，用到什么表，什么列，有没有ORDER BY等，都非常明确，分析语句再也不是难事儿了，使用程序对这个结构化的语句做分析，应该是很容易了，并且是非常准确的。
+The SQL statement above actually does not make sense, here just to be the best possible expression of each type and print out random structure.
 
-##标签定义
-不过这里还是要简单讲一下语法树Json串中的一些标签：
+You can see this JSON string is very long. But the entire statement is very clear after structuring. It shows which type of statement, which table to use, which column and no ORDER BY, etc. Statement analysis is no longer a difficult thing. Use the program to do this structured statement analysis should be very easy and accurate.
 
-1. command: 每个语句都是以command开头的，这个表示是什么语句类型，现在支持的有insert, update, delete, select这四种类型。
-1. table_object: 表示当前语句对哪个表做的操作，这个只针对插入、删除操作的，比如是插入哪个表，删除哪个表。而更新操作在语法树中不太好确认哪些表被改了，所以这里没有明确拿出来，而是可以通过从更新列的信息中取到表信息，这也就是被更新的表。这是一个字典，里面包括的是一个，或者多个表信息，并且已经对应到其对应的数据库。
-1. fields: 表示插入时语句中指定的要插入的列列表，如果没有指定，则没有这个信息。它是一个数组，包括了语句中所指定的所有列信息，每一个列是一个对列表达式的表示，包括数据库、表及列名，因为这是一个表达式，所以其表达式类型为FIELD_ITEM，后面会专门列出所有支持的表达式信息。
-1. select_insert_values: 这个表示的是查询插入的查询部分，它是一个字典，里面包括了这个查询语句的所有元素，包括查询列、查询涉及的表、WHERE及ORDER BY等信息。
-1. select_list: 表示当前查询语句（或者子查询）要查询的表达式信息，这里可以是列，也可以是其它计算出来的值，例子中就有select sno+1...这样的查询。
-1. table_ref: 表示当前语句上下文中使用到的表信息，是一个数组，包括了所有的表，这里所谓的上下文，可以简单理解为，在一个子查询的可见范围内的所有表达式，都是属于同一个层次的，而如果比如一个列在当前上下文中找不到，可能就需要去父亲的上下文中找，那如果找到了，这种就算做是相关子查询，那么这种一个语句中有不同层级的查询存在时，就存在不同的上下文。在例子中也有相关反映。
-1. where: 表示的就是查询表达式（包括查询、删除、更新及查询等）的语法树，因为WHERE语句其实就是一个表达式，只是有可能是多个表达式的逻辑运算而已。
-1. OrderBy: 表示查询时使用到的排序列，是一个数组。
-1. limit: 表示在查询时使用到的LIMIT信息，因为LIMIT是一个复合信息，包括了限制行数及开始位置等，所以会有limit及limit_offset，而limit_offset有可能没有，只有限制行数。
-1. GroupBy: 表示查询时使用到的分组列，是一个数组。
-1. Having: 表示查询时，使用到的Having表达式。
-1. subselect: 如果使用到子查询时，则这个就用来表示这个子查询。它是一个字典。
-1. many_values: 在查询语句中，如果插入的是值，而不是查询结果，则用这个来表示它的值列表，因为在MySQL中可以同时插入多个值，则这里有可能是多个。
-1. values: 如果插入的是值时，这个用来表示一行的插入内容，这是一个数组，每个元素是一个列的表达式。这是many_values数组的一个元素。而如果是一个更新语句时，这表示的是被更新的值表达式列表。
-1. set_fields: 用于表示更新语句的更新列的信息的，这是一个数组，里面每个元素对应被更新的一个列表达式。
+## tag definations
+- 1.`command`: SQL type, support: `insert`, `update`, `delete`, `select`.
+- 2.`table_object`: `insert/delete` which table. `update` can check by update columns.
+- 3.`fields`: array type, `insert` fields.contains all column informations.each column is an expression which contains dbname,tablename and column name.the expression type is FIELD_ITEM.
+- 4.`select_insert_values`: the select part of `insert`. contains all items in this query, columns, tables,where and order by, etc.
+- 5.`select_list`: 表示当前查询语句（或者子查询）要查询的表达式信息，这里可以是列，也可以是其它计算出来的值，例子中就有select sno+1...这样的查询。
+- 6.`table_ref`: array type. shows the reference table information.
+- 7.`where`: where expresions.
+- 8.`OrderBy`: array type.
+- 9.`limit`: limit numbers.
+- 10.`GroupBy`: array type.
+- 11.`Having`: Having expression
+- 12.`subselect`: `dic` type, show sub-query.
+- 13.`many_values`: `insert` values in `select`.
+- 14.`values`: array type, each item is a column expression. show `insert` rows. it belong to `many_values`. if `update`, the same.
+- 15.`set_fields`: array type, `udpate` column informations.each item is a column expresion
 
-上面就是目前支持的语句中出现的标签说明，但是还有很大一部分是表达式的处理，在打印表达式时，每一个对象都有一个公共的KEY，名为type，而针对不同的type，其它的KEY就不一定相同了，而具体的不同，这里就不多叙述了，这里只给出支持哪些表达式，除type之外的其它信息，可以在使用过程中一试便知。
+The above statement is currently supported appearing label instructions, but lots of them are the expression, when you print an expression, every object has a public KEY, called type. For different type, KEY is not the same, you can try to find the details.
 
-##支持表达式类型
-下面是目前支持的所有表达式的列表，下面仅列出type的不同的值：
 
-1. STRING_ITEM: 字符串，有其它KEY用来存储其具体值信息。
-1. FIELD_ITEM: 列信息，有其它KEY用来存储具体对应的库、表及列名等。
-1. FUNC_ITEM,COND_ITEM: 逻辑运算信息，包括比较运算符、AND、OR、ISNULL、ISNOTNULL、LIKE、BETWEEN、IN、NOT、NOW及其它自定义或者内置函数等运算操作。
-1. INT_ITEM: 整数值表达式。
-1. REAL_ITEM: 符点数值表达式。
-1. NULL_ITEM: NULL值表达式。
-1. SUBSELECT_ITEM: 子查询表达式。
-1. SUM_FUNC_ITEM: 集函数表达式。
-1. ROW_ITEM: 行表达式，比如select * from t where (sno,name) = (select sno,name from t1)，这里where条件的左值就是这个表达式类型。
-1. DECIMAL_ITEM: DECIMAL表达式类型。
+## Expression Type
+The following is a list of all expressions currently supported are listed below only different values for type:
+- 1.`STRING_ITEM`: string, storage at other keys.有其它KEY用来存储其具体值信息。
+- 2.`FIELD_ITEM`: column information, storage at other keys.
+- 3.`FUNC_ITEM,COND_ITEM`: logical caculation information, contains comparison operators, `AND`, `OR`, `ISNULL`, `ISNOTNULL`, `LIKE`,`BETWEEN`, `IN`, `NOT`, `NOW`, etc.
+- 4.`INT_ITEM`: `integer` expression.
+- 5.`REAL_ITEM`: `float` expression.
+- 6.`NULL_ITEM`: `NULL` expression.
+- 7.`SUBSELECT_ITEM`: `sub-query` expression.
+- 8.`SUM_FUNC_ITEM`: `sum()`expression.
+- 9.`ROW_ITEM`:  row expression, eg: `select * from t where (sno,name) = (select sno,name from t1)`
+- 10.`DECIMAL_ITEM`: `DECIMAL` expression.
 
-上面就是目前所支持的表达式类型，已经基本覆盖所有的常用的表达式。
+Above is the expression types currently supported, already covers all common expressions.
 
-最后要说明的是，这里打印出来的信息，已经不完全只是语法分析结束之后的信息，而是经过Inception加工过的，比如在查询语句中用到了子查询，存在不同的上下文时，同时还使用了别名，或者在使用列时，没有指定其表名，这几种情况，Inception都打印了每一个列对应的库名表名，这样打印出来的信息中，已经不存在没有定位（找到其库名表名）的列名了，使用中更加友好，准确。比如上面例子中，就有这样的情况(名为alisa_t的t表的别名)。
+The last thing to note is that the information printed here is not exactly the information after the end of the grammatical analysis, but processed by Inception. For example, when a subquery is used in a query statement, it is also used when there are different contexts. In these cases, Inception has printed the library name table name corresponding to each column, so that the printed information does not exist without positioning (find its library name table) Name) is listed, it is more friendly and accurate in use. For example, in the above example, there is such a situation (the alias of the t table named alisa_t).
 
-##后记
-这个功能是新开发实现的，没有经过太多的验证（但也不存在太大问题），所以还需要后期的不断完善及更新，请各位有兴趣的同学，有任何意见、建议，都可以加群或者联系本人QQ讨论解决。
+## Tips
 
- -->
+This feature is a new development to achieve, without much verification (but there was no big problem), but also need to constantly improve and update, if you have any comments or suggestions, you can add QQ Group or contact me to discuss and resolve together.

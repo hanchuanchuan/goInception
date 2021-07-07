@@ -1,16 +1,16 @@
 
-#### 备份功能说明
+#### Backup Function
 
-goInception自带备份功能，首先服务启动时配置config.toml(放在 `[inc]` 段)
+goInception support backup, at config.toml(at `[inc]` block)
 
-参数  |  默认值  |  可选范围 | 说明
+parameters  |  default  |  type | description
 ------------ | ------------- | ------------ | ------------
-backup_host   |  ""    |   string     |   备份数据库IP地址
-backup_port   |  0    |   int     |     备份数据库端口
-backup_user   |  ""    |   string     |   备份数据库用户名
-backup_password   |  ""    |   string    |   备份数据库密码
+backup_host   |  ""    |   string     |   Backup database ip address
+backup_port   |  0    |   int     |     Backup database port
+backup_user   |  ""    |   string     |   username to connect backup database
+backup_password   |  ""    |   string    |   password to connect backup database
 
-并且在执行sql时，添加```--backup=true```选项
+Add ```--backup=true``` option when execute SQL
 
 ```sql
 /*--user=root;--password=root;--host=127.0.0.1;--port=3306;--execute=1;--backup=1;*/
@@ -21,42 +21,42 @@ inception_magic_commit;
 ```
 
 
-#### 备份功能写入规则
+#### Backup Record Format
 
-- 在备份服务器上，备份库的命名格式为：```IP_PORT_库名```，例如```127_0_0_1_3306_test```
-- 在备份库上创建备份信息表```$_$Inception_backup_information$_$```，用来保存该库的执行信息和回滚语句信息
+- backup database naming format: ```IP_PORT_{dbname}```, eg: ```127_0_0_1_3306_test```
+- create backup information table on backup schema ```$_$Inception_backup_information$_$``` to save execute SQL and rollback SQL
 
-    | 字段名             | 类型         | 说明
+    | Column             | Type         | Comment
     --------------------|--------------|------
-    opid_time         | varchar(50)  | 执行操作ID,格式为```时间戳_线程号_执行序号```
-    start_binlog_file | varchar(512) | 起始binlog文件
-    start_binlog_pos  | int(11)      | 起始binlog位置
-    end_binlog_file   | varchar(512) | 终止binlog文件
-    end_binlog_pos    | int(11)      | 终止binlog位置
-    sql_statement     | text         | 执行SQL
-    host              | varchar(64)  | 执行IP地址
-    dbname            | varchar(64)  | 执行库名
-    tablename         | varchar(64)  | 执行表名
-    port              | int(11)      | 执行端口
-    time              | timestamp    | 执行时间
-    type              | varchar(20)  | 操作类型
+    opid_time         | varchar(50)  | operation ID, formatting ```{timestamp}_{thread_id}_{operation_id}```
+    start_binlog_file | varchar(512) | binlog start filename
+    start_binlog_pos  | int(11)      | binlog start position
+    end_binlog_file   | varchar(512) | binlog end filename
+    end_binlog_pos    | int(11)      | binlog end position
+    sql_statement     | text         | SQL execute
+    host              | varchar(64)  | which IP address sql execute
+    dbname            | varchar(64)  | which schema sql execute
+    tablename         | varchar(64)  | which table sql execute
+    port              | int(11)      | which port sql execute
+    time              | timestamp    | when execute
+    type              | varchar(20)  | execution type
 
-- 在备份库有和操作表相同的表名，其表结构统一为：
+- the table in the backup database has the same table as name of execution table, table structure as blow.
 
-    字段名  |  类型  | 说明
+    Column  |  Type  | Comment
     ------------ | ------------- | ------------
-    id   |  bigint     |   自增主键
-    rollback_statement   |  mediumtext    |  回滚语句
-    opid_time   |  varchar(50)    | 关联执行操作ID
+    id   |  bigint     |   Auto_increment primary key
+    rollback_statement   |  mediumtext    |  rollback SQL
+    opid_time   |  varchar(50)    | operation ID related
 
-#### 备份功能详细步骤
+#### Backup Process Details
 
-1. 配置备份数据库，并在执行SQl时开启备份功能
-2. 在执行SQL前记录binlog位置和线程号(逐条执行逐条记录)
-3. 执行SQL
-4. 在执行SQL后记录binlog位置和线程号
-5. 开始备份，解析远程服务器binlog
-6. 在备份服务器创建备份库
-7. 创建备份信息表，写入执行信息和binlog位置信息
-8. 创建备份表，
-9. 逐步解析binlog，并生成回滚语句，写入备份表
+1. Config backup database and turn on backup function before executing SQL.
+2. Record binlog position and threadID before executing SQL one by one.
+3. Execute SQL.
+4. Record binlog position and threadID after executed SQL.
+5. Start backup, decode binlog on remote server.
+6. Create backup database on backup server.
+7. Create backup information table, record execution information and binlog position.
+8. Create backup table.
+9. Decode binlog, build rollback SQL and then insert into backup information table.

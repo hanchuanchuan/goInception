@@ -4,27 +4,59 @@ repo_url: https://github.com/hanchuanchuan/goInception/
 repo_name: GitHub
 site_description: goInception使用文档
 site_author: hanchuanchuan
-theme: readthedocs
+theme:
+  name: material
+  font:
+    text: Ubuntu
+    code: Ubuntu Mono
+  icon:
+    logo: material/file-document-multiple
+  palette:
+    primary: blue
 dev_addr: 0.0.0.0:8000
+plugins:
+    - search
+    - i18n:
+        default_language: zh
+        languages:
+            en: English
+            zh: 中文
+        # nav_translations:
+        #     en:
+        #         开始: Start
+        #     zh:
+        #         开始: 开始
+
 # pages:
-# - ['index.md', 'index']
-# # - ['docs/QUICKSTART.md', '快速开始']
+# - ['README.md', 'Introduction']
+# - ['user-guide.md', 'User Guide']
+# - ['about.md', 'About']
+
 nav:
-    # - 索引: index.md
-    - 介绍: index.md
-    - 安装: install.md
-    - 调用选项: params.md
-    - 使用示例: demo.md
-    - config.toml说明: config.md
-    - 审核选项: options.md
-    - 审核规则: rules.md
-    - 备份功能: backup.md
-    - DDL变更:pt-osc: osc.md
-    - DDL变更:gh-ost: ghost.md
-    - KILL操作: kill_stmt.md
-    - 自定义审核级别: levels.md
-    - 统计功能: statistics.md
-    - 语法树打印: tree.md
+    - 介绍 : README.md
+    - 开始:
+        - 安装: install.md
+        - 调用选项: params.md
+        - 使用示例: demo.md
+        - 结果集说明: result.md
+        - config.toml说明: config.md
+        - 权限说明: permission.md
+
+    - 配置:
+        - 审核选项: options.md
+        - 审核规则: rules.md
+        - 备份功能: backup.md
+        - DDL变更:pt-osc: osc.md
+        - DDL变更:gh-ost: ghost.md
+
+    - 进阶:
+        - 自定义审核级别: levels.md
+        - KILL操作: kill_stmt.md
+        - 统计功能: statistics.md
+        - 语法树打印: tree.md
+        - 事务: trans.md
+        - 用户管理/鉴权: safe.md
+        - 对比inception: diff.md
+
     - 赞助&定制: support.md
     - 更新日志: changelog.md
-    # - About: about.md

@@ -51,7 +51,7 @@ CHECK_LDFLAGS += $(LDFLAGS) ${TEST_LDFLAGS}
 
 TARGET = ""
 
-.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist testapi
+.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist testapi docs
 
 default: server buildsucc
 
@@ -369,3 +369,5 @@ docker-push:
 	v1=$(shell git tag|tail -1) && docker push hanchuanchuan/goinception:$${v1} \
 	&& docker push hanchuanchuan/goinception:latest
 
+docs:
+	$(shell bash docs/deploy.sh)

@@ -1,6 +1,6 @@
 
 
-### python调用
+### python Demo
 
 
 ```
@@ -36,7 +36,7 @@ for row in result:
 print(tb)
 ```
 
-返回结果：
+Results show：
 
 order_id |  stage  | error_level |   stage_status   |         error_message        |                    sql                     | affected_rows |   sequence   | backup_dbname | execute_time | sqlsha1 | backup_time
 ----------|---------|----------|-----------------|-----------------------------|--------------------------------------------|---------------|--------------|---------------|--------------|-------------|---------
@@ -45,9 +45,9 @@ order_id |  stage  | error_level |   stage_status   |         error_message     
 3     | CHECKED |    2     | Audit Completed | Column 't1.c2' not existed. |   insert into t1(id,c1,c2) values(1,1,1)   |       1       | 0_0_00000002 |      None     |      0       |   None |      0
 
 
-### 系统变量
+### system variables
 
-连接
+connection
 ```bash
 mysql -h127.0.0.1 -P4000
 ```
@@ -56,11 +56,11 @@ mysql -h127.0.0.1 -P4000
 inception show variables;
 ```
 
-![variables列表](./images/variables.png)
+![variables list](./images/variables.png)
 
-### 进程列表
+### processlist
 
-连接
+connections
 ```bash
 mysql -h127.0.0.1 -P4000
 ```
@@ -69,16 +69,16 @@ mysql -h127.0.0.1 -P4000
 inception show processlist;
 ```
 
-![variables列表](./images/processlist.png)
+![variables list](./images/processlist.png)
 
 
 
 
-### 中止进程(`*new`)
+### pause process(`*new`)
 
-** 在审核和执行阶段可以kill,备份阶段不再允许kill ** `v0.6.2 新增`
+** you can kill process at the stage of audit and execute. At backup stage, you can not use kill to pause process. ** `v0.6.2 new`
 
-相关链接： [kill 操作支持](https://github.com/hanchuanchuan/goInception/issues/10)
+links： [kill support](https://github.com/hanchuanchuan/goInception/issues/10)
 
 ```bash
 mysql -h127.0.0.1 -P4000

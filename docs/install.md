@@ -1,32 +1,31 @@
 
 
-### 二进制安装
+### Install package
 
 
-[goInception安装包](https://github.com/hanchuanchuan/goInception/releases)
+[goInception package](https://github.com/hanchuanchuan/goInception/releases)
 
 
-### 源码安装
+### Source code 
 
-- *go版本v1.12及以上*
-
-- *使用go mod做依赖管理*
+- Golang v1.12 and above
+- Go mod to manage package dependencies
 
 ```sh
 
-# 下载源码
+# download source code
 git clone https://github.com/hanchuanchuan/goInception
 
 cd goInception
 
 make parser
 
-# 构建二进制包
+# build package
 go build -o goInception tidb-server/main.go
 
 ```
 
-#### 启动(注意指定配置文件)
+#### start with configuration file
 
 ```sh
 ./goInception -config=config/config.toml
