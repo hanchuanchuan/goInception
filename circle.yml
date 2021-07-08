@@ -8,7 +8,8 @@ general:
 jobs:
   build:
     branches:
-      ignore: gh-pages
+      ignore:
+        - gh-pages
 
     docker:
       - image: circleci/golang:1.12
