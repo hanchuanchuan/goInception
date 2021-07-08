@@ -1,5 +1,13 @@
 # 介绍
 
+
+[![GitHub stars](https://img.shields.io/github/stars/hanchuanchuan/goInception?style=brightgreen)](https://github.com/hanchuanchuan/goInception/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/hanchuanchuan/goInception?style=brightgreen)](https://github.com/hanchuanchuan/goInception/network)
+[![codecov](https://codecov.io/gh/hanchuanchuan/goInception/branch/master/graph/badge.svg)](https://codecov.io/gh/hanchuanchuan/goInception)
+![](https://img.shields.io/github/downloads/hanchuanchuan/goInception/total.svg)
+[![GitHub release](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)](https://github.com/hanchuanchuan/goInception/releases)
+![](https://img.shields.io/github/license/hanchuanchuan/goInception.svg)
+
 goInception是一个集审核、执行、备份及生成回滚语句于一身的MySQL运维工具， 通过对执行SQL的语法解析，返回基于自定义规则的审核结果，并提供执行和备份及生成回滚语句的功能。
 
 ## 架构

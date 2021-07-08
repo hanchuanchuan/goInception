@@ -10,6 +10,10 @@
   },
   "scripts": {
     "docs:dev": "vuepress dev docs",
+    "docs:build-test": "node ./build/addComponents.js && vuepress build docs && node ./build/delComponents.js",
     "docs:build": "vuepress build docs"
+  },
+  "dependencies": {
+    "gitalk": "^1.7.2"
   }
 }

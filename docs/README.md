@@ -1,5 +1,12 @@
 # Introdunction
 
+[![GitHub stars](https://img.shields.io/github/stars/hanchuanchuan/goInception?style=brightgreen)](https://github.com/hanchuanchuan/goInception/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/hanchuanchuan/goInception?style=brightgreen)](https://github.com/hanchuanchuan/goInception/network)
+[![codecov](https://codecov.io/gh/hanchuanchuan/goInception/branch/master/graph/badge.svg)](https://codecov.io/gh/hanchuanchuan/goInception)
+![](https://img.shields.io/github/downloads/hanchuanchuan/goInception/total.svg)
+[![GitHub release](https://img.shields.io/github/release-pre/hanchuanchuan/goInception.svg?style=brightgreen)](https://github.com/hanchuanchuan/goInception/releases)
+![](https://img.shields.io/github/license/hanchuanchuan/goInception.svg)
+
 goInception is a MySQL maintenance tool, which can be used to review, implement, backup, and generate SQL statements for rollback. It parses SQL syntax and returns the result of the review based on custom rules.
 
 
