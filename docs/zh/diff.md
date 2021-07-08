@@ -25,7 +25,7 @@ SQL指纹功能   |  <div class="text-error">✕</div>    |   <div class="text-s
 ------------ | :--------: | :--------: | ------------
 审核   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 80px;"/></div>    |   审核速度inception占优，优势微弱
 执行   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   执行速度相近
-备份   |  <div class="progress"> <div class="rect left" style="width: 60px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   备份速度goinception领先(批量备份)，优势较大
+备份   |  <div class="progress"> <div class="rect left" style="width: 20px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   备份速度goinception领先(批量备份)，优势较大
 
 ## 上手和使用
 
@@ -33,10 +33,4 @@ SQL指纹功能   |  <div class="text-error">✕</div>    |   <div class="text-s
 ------------ | :--------: | :--------: | ------------
 快速部署   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   goinception可使用二进制部署，下载即用
 问题调试   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   goinception有较多日志输出，便于问题快速定位
-接口调用   |  限`python`,`c`,`c++`    |   实现了`mysql数据库驱动的语言`    |
-
-
-
-## 部分优化说明
-
-
+接口调用   |  限`python`,`c`,`c++`    | |  实现了`mysql数据库驱动的语言`

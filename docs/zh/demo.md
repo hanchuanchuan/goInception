@@ -1,6 +1,6 @@
 # 示例
 
-### python调用
+## python调用
 
 
 ```
@@ -44,7 +44,7 @@ order_id |  stage  | error_level |   stage_status   |         error_message     
 2     | CHECKED |    0     | Audit Completed |    None                         | create table t1(id int primary key,c1 int) |       0       | 0_0_00000001 |      None     |      0       |   None |      0
 3     | CHECKED |    2     | Audit Completed | Column 't1.c2' not existed. |   insert into t1(id,c1,c2) values(1,1,1)   |       1       | 0_0_00000002 |      None     |      0       |   None |      0
 
-### go调用
+## golang调用
 
 ```
 GO111MODULE=on go run test.go
@@ -101,12 +101,12 @@ func main() {
 
 ```
 
-### 结果集说明
+## 结果集说明
 
 详见 [结果集说明](result.html)
 
 
-### 系统变量
+## 配置选项
 
 连接
 ```bash
@@ -119,7 +119,7 @@ inception show variables;
 
 ![variables列表](./images/variables.png)
 
-### 进程列表
+## 进程列表
 
 连接
 ```bash
@@ -135,7 +135,7 @@ inception show processlist;
 
 
 
-### 中止进程(`*new`)
+## 中止进程
 
 ** 在审核和执行阶段可以kill,备份阶段不再允许kill ** `v0.6.2 新增`
 

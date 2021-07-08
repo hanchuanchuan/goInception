@@ -1,56 +1,13 @@
 # 审核选项
 
-### 使用说明
 
-以下参数均通过mysql客户端连接,通过命令行形式方式调用goinception(类似MySQL服务)
-
-### 重要说明(V1.2.2更新)
-
-从`V1.2.2`版本开始，支持在SQL语句内部动态设置审核选项，实现会话级变量设置！
-([相关issue](https://github.com/hanchuanchuan/goInception/issues/166))
-
-示例：
-```sql
-/*--user=xxx;--password=xxx;--host=127.0.0.1;--port=3306;--check=1;*/
-inception_magic_start;
-use test;
-
-drop table if exists t1,t2;
-
-inception set check_table_comment = 1;
-
-create table t1(id int primary key);
-
-inception set check_table_comment = 0;
-
-create table t2(id int primary key);
-
-inception_magic_commit;
-```
-
-审核结果(隐藏了部分列)：
-注意，`inception set` 的行并不返回！除非set失败报错。
-
-order_id |  stage  | error_level |   stage_status   |         error_message        |                    sql
------|------|------|-----------|--------------|----------------------------
-1     | CHECKED |      0      | Audit Completed |          None         |             use test_inc
-2     | CHECKED |      0      | Audit Completed |          None         |      drop table if exists t1,t2
-3     | CHECKED |      1      | Audit Completed | 表 't1' 需要设置注释. | create table t1(id int primary key)values(1,1,1)
-4     | CHECKED |      0      | Audit Completed |          None         | create table t2(id int primary key)
-
-
-
-
-### 支持参数
-
-
-goInception的审核规则可以通过```inception show variables;```查看
+goInception的审核规则都可以通过```inception show variables;```查看
 
 ```sql
 inception show variables;
 ```
 
-支持以下方式设置:
+并支持以下方式设置:
 
 - 1.通过```inception set ```设置
 
@@ -61,6 +18,7 @@ inception set check_dml_limit = true;
 - 2.配置config.toml,并通过```-config=config.toml```指定配置文件启动
 
 
+## variables列表
 
 ![variables列表](./images/variables.png)
 
@@ -145,8 +103,39 @@ table_prefix `v1.2.0` | ""             | string | 表名前缀,默认为空,即�
 wait_timeout `v1.1.2` | 0      | int | 远端数据库等待超时时间, 单位:秒, 默认值为 `0` 时表示使用数据库默认值
 
 
-<!--
-inception_read_only     设置当前Inception服务器是不是只读的，这是为了防止一些人具有修改权限的帐号时，通过Inception误修改一些数据，如果inception_read_only设置为ON，则即使开了enable-execute，同时又有执行权限，也不会去执行，审核完成即返回
- -->
 
+## 示例
+```sql
+/*--user=xxx;--password=xxx;--host=127.0.0.1;--port=3306;--check=1;*/
+inception_magic_start;
+use test;
+
+drop table if exists t1,t2;
+
+inception set check_table_comment = 1;
+
+create table t1(id int primary key);
+
+inception set check_table_comment = 0;
+
+create table t2(id int primary key);
+
+inception_magic_commit;
+```
+
+审核结果(隐藏了部分列)：
+注意，`inception set` 的行并不返回！除非set失败报错。
+
+order_id |  stage  | error_level |   stage_status   |         error_message        |                    sql
+-----|------|------|-----------|--------------|----------------------------
+1     | CHECKED |      0      | Audit Completed |          None         |             use test_inc
+2     | CHECKED |      0      | Audit Completed |          None         |      drop table if exists t1,t2
+3     | CHECKED |      1      | Audit Completed | 表 't1' 需要设置注释. | create table t1(id int primary key)values(1,1,1)
+4     | CHECKED |      0      | Audit Completed |          None         | create table t2(id int primary key)
+
+
+## 重要说明(V1.2.2更新)
+
+从`V1.2.2`版本开始，支持在SQL语句内部动态设置审核选项，实现会话级变量设置.
+([相关issue](https://github.com/hanchuanchuan/goInception/issues/166))
 

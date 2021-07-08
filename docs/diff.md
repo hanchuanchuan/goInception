@@ -1,42 +1,40 @@
-# 对比inception
+# Compared with inception
 
 
-## 功能对比
+## Function comparison:
 
-功能  |  inception  |  goInception | 说明
+Function  |  inception  |  goInception | Description
 ------------ | :--------: | :--------: | ------------
-审核   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   基本无差异
-执行   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   基本无差异
-pt-osc工具   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   基本无差异
-gh-ost工具   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |
-备份   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   基本无差异
-忽略警告   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   基本无差异
-只读参数   |  <div class="text-success">✓</div>    |   <div class="text-error">✕</div>     |   goinception未提供
-打印SQL语法树   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   inception的感觉更友好
-DDL和DML拆分功能   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   goinception支持混合执行，不会影响回滚解析
-执行部分后休眠   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   goinception支持执行指定条数后休眠
-计算真实受影响行数   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |
-事务支持   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |
-SQL指纹功能   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |   dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，提高审核速度
+Audit   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |  Basically no difference
+Execute   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   Basically no difference
+pt-osc tool   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   Basically no difference
+gh-ost tool  |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |
+Backup   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   Basically no difference
+Ignore warning parameters   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   Basically no difference
+Read-only parameter   |  <div class="text-success">✓</div>    |   <div class="text-error">✕</div>     |   goinception not provided
+Syntax tree   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   The syntax tree of inception is more friendly
+Split function of DDL and DML   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   goinception supports mixed execution and will not affect rollback analysis
+Hibernate after executing a batch   |  <div class="text-success">✓</div>    |   <div class="text-success">✓</div>     |   goinception supports sleeping after executing the specified number
+Number of affected rows   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     | goinception supports the calculation of the actual number of affected rows
+Transaction   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |
+SQL fingerprint   |  <div class="text-error">✕</div>    |   <div class="text-success">✓</div>     |   When the dml statements are similar, the explain results can be reused according to the same fingerprint ID to reduce the remote database explain operations and improve the audit speed
 
-## 速度
+## Speed comparison
 
-模块  |  inception  |  goInception | 说明
+Stage  |  inception  |  goInception | Description
 ------------ | :--------: | :--------: | ------------
-审核   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 80px;"/></div>    |   审核速度inception占优，优势微弱
-执行   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   执行速度相近
-备份   |  <div class="progress"> <div class="rect left" style="width: 60px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   备份速度goinception领先(批量备份)，优势较大
+Audit   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 80px;"/></div>    |   Slightly better review speed inception
+Execute   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   Similar execution speed
+Backup   |  <div class="progress"> <div class="rect left" style="width: 20px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   Goinception leads in backup speed (batch backup), which has a greater advantage
 
-## 上手和使用
+## Difficult to get started
 
-分类  |  inception  |  goInception | 说明
+operating  |  inception  |  goInception | Description
 ------------ | :--------: | :--------: | ------------
-快速部署   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   goinception可使用二进制部署，下载即用
-问题调试   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   goinception有较多日志输出，便于问题快速定位
-接口调用   |  限`python`,`c`,`c++`    |   实现了`mysql数据库驱动的语言`    |
+Rapid deployment   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   Goinception can use binary deployment, download and use
+Problem debugging   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   Goinception has a lot of log output, which is easy to locate the problem quickly
+Interface call   |  Limited to `python`,`c`,`c++`    |   As long as the language of `mysql database driver` is implemented, the call is supported    |
 
 
-
-## 部分优化说明
 
 
