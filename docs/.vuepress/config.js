@@ -80,7 +80,7 @@ module.exports = {
                             ["statistics.md","Statistics"],
                             ["tree.md","Syntax tree"],
                             ["trans.md","Transaction"],
-                            ["safe.md","User authentication"],
+                            ["safe.md","[Safe] User authentication"],
                             ["diff.md","VS Inception"],
                         ]
                     },

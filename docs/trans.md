@@ -1,20 +1,20 @@
 
-# 事务
+# Transaction
 
-## 介绍
+## Introdunction
 
-事务功能实现了DML语句按批次提交，以提高大批量DML语句的执行效率，以及保证事务一致性（`仅同一批次中`）。
+The transaction function realizes that DML statements are submitted in batches to improve the execution efficiency of large batches of DML statements and ensure transaction consistency (`in the same batch`).
 
-以下详细说明配置方式以及涉及的回滚差异等。
+The following details the configuration method and the rollback differences involved.
 
-## 配置
+## Config
 
-在调用goInception时添加参数`--trans=?`，其中参数值为数字，
-* 默认为0，即不开启事务(逐行提交)
-* 当大于1时，会按该参数分批进行提交，如500，则会按500条DML提交一次
+Add the parameter `--trans=?` when calling goInception, where the parameter value is a number,
+* The default is 0, that is, do not open the transaction (commit row by row)
+* When it is greater than 1, it will be submitted in batches according to this parameter, such as 500, it will be submitted once according to 500 DML
 
 
-### 示例
+### Demo
 ```py
 
 import pymysql
@@ -47,17 +47,11 @@ for row in result:
     print(row)
 ```
 
-## 执行
+## Execute
 
-* 未开启事务前为逐行提交
-* 开启事务后，按设置条数提交。如设为500，则会500条DML提交一次
-* DDL执行无差异
-* 当事务提交失败时，会`回滚该批次的SQL`，并立即中止(已执行SQL仍会生成回滚语句，以便有需要时快速回滚)
+* Commit row by row before opening the transaction
+* After opening the transaction, submit according to the set number. If set to 500, 500 DMLs will be submitted once
+* DDL execution is not affected by the transaction function, and like MySQL, it is independent of a transaction
+* When the transaction fails to commit, it will `roll back the batch of SQL` and terminate it immediately (all executed SQL will generate a rollback statement, so that it can be rolled back quickly if necessary)
 
-在事务中如果有DDL语句，会自动提交DML，因此`混合DDL和DML不会影响该功能`。
-
-
-## 回滚
-
-回滚无差异
-
+If there are DDL statements in the transaction, DML will be automatically submitted, so `mixing DDL and DML will not affect this function`.

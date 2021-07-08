@@ -1,49 +1,48 @@
-# 权限说明
+# Permission Desc
 
-不同功能及阶段需要不同的权限，下面会列出各项功能可能涉及的权限要求，如有遗漏之处欢迎提出和补充。
+Different functions and stages require different permissions. The permission requirements that may be involved in each function are listed below. If there are any omissions, please suggest and add.
 
-建议的权限为：
+The suggested permissions are:
+
 `GRANT ALL PRIVILEGES ON *.* TO ...`
 
-或者
+or
 
 `GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, PROCESS, REFERENCES, INDEX, ALTER, SUPER, REPLICATION SLAVE, REPLICATION CLIENT, TRIGGER ON *.* TO ...`
 
 
-## 审核功能
+## Audit function
 
-* `information_schema库` 元数据查询权限，表结构，索引信息，约束等
-* `mysql库` use权限，没有查询，默认连接该库，可通过调用选项的`--db`参数修改
-* `DML操作` 审核时会对DML语句做explain操作，该操作需要实际的相应DML权限。
-* `REFERENCES` 仅外键需要
+* `information_schema db` Metadata query permissions, table structure, index information, constraints, etc.
+* `mysql db` use permission, no query, the library is connected by default, and it can be modified by calling the option `--db` parameter
+* `DML` During the audit, the explain operation will be performed on the DML statement, and this operation requires the actual corresponding DML authority.
+* `REFERENCES` Only required for foreign keys
 
-## 执行
+## Execute
 
-* 实际的SQL执行权限
+* Actual SQL execution permissions
 
 
-### 使用pt-osc
+### Use pt-osc
 
-* `PROCESS` 权限，查看processlist信息
-* `TRIGGER` 创建和删除触发器
-* `SUPER` 或 `REPLICATION CLIENT` 有主从时,查看主从延迟
+* `PROCESS` permission, view processlist information
+* `TRIGGER` create and delete triggers
+* `SUPER` or `REPLICATION CLIENT` When there is a master-slave, check the master-slave delay
 
-### 使用gh-ost
+### Use gh-ost
 
-* `SUPER|REPLICATION CLIENT, REPLICATION SLAVE` binlog解析
+* `SUPER|REPLICATION CLIENT, REPLICATION SLAVE` Simulate slave pull binlog events
 * `ALTER`, `CREATE`, `DELETE`, `DROP`, `INDEX`, `INSERT`, `LOCK TABLES`, `SELECT`, `TRIGGER`, `UPDATE`
 
 
-## 备份
+## Backup
 
-### 远端数据库
+### Remote database
 
-* `SUPER权限`，用以binlog格式不为row时执行`set session binlog_format='row'`
+* `SUPER` When the binlog format is not row, execute `set session binlog_format='row'`
 
 * `SUPER|REPLICATION CLIENT, REPLICATION SLAVE` binlog解析
 
-### 备份库
+### Database used for backup
 
-
-
-* `建议授予备份库实例的所有权限`
+* `It is recommended to grant all permissions to the backup library instance`

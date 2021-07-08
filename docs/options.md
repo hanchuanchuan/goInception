@@ -1,6 +1,5 @@
+# Option List
 
-
-### Option List
 
 All goInception audit rules can check with ```inception show variables;```.
 

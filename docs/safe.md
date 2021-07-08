@@ -1,31 +1,31 @@
-# goinception用户鉴权
+# [Safe] User authentication
 
-### 说明
+### Desc
 
-goinception本身基于TiDB，所以拥有完整的用户管理模块，为了简单使用，默认是关闭该功能的。
+Goinception itself is based on TiDB, so it has a complete user management module. For ease of use, this function is turned off by default.
 
-**开启鉴权方法:**
+**Open authentication method:**
 
-在 config.toml 配置文件添加以下参数(文件根节点或者[inc]节点)
+Add the following parameters in the **config.toml** configuration file (file root node or [inc] node)
 
 ```
 skip_grant_table = false
 ```
 
-相应的语法支持如下:
+The supported syntax is as follows:
 
 - CREATE USER
 - DROP USER
 - ALTER USER
 - SET PASSWORD FOR
-- GRANK/REVOKE `可能用不到`
-- SELECT * FROM MYSQL.USER `用户查询`
+- GRANK/REVOKE `May not be used`
+- SELECT * FROM MYSQL.USER `Query user list`
 
-`默认初始用户为root, 密码为空`
+`The default initial user is root, and the password is empty`
 
-忘记密码后可以通过跳过鉴权的方式重新启动，修改密码后开启鉴权并重启goinception。
+If you forget the password, you can restart it by skipping authentication. After changing the password, turn on authentication and restart goinception (this method is similar to MySQL).
 
-在非正常关闭时数据目录(默认为`/tmp/tidb`)可能损坏，此时需要删除该目录并重启，但已创建用户会丢失，因此请注意备份该目录或保存用户创建脚本。
+**Note**: The data directory (default is `/tmp/tidb`) may be damaged during abnormal shutdown. At this time, you need to delete the directory and restart, but the created users will be lost, so please pay attention to back up the directory or save the user creation script.
 
-该功能是唯一需要注意保存数据目录的，其他功能均不需要。
+This function is the only one that needs attention to save the data directory, and no other functions are needed.
 
