@@ -1,493 +1,601 @@
-# goInception 更新日志
+# goInception Changelog
 
 
-## [v1.1.5] - 2019-12-09
-
-### Update
-* 优化对象名大小写审核逻辑
-* 优化索引长度审核准确性
-* 支持update多表更新语法(暂不支持多表回滚) (#112)
-* 优化sql语法解析失败时的错误信息
-
-
-## [v1.1.4] - 2019-11-21
+## [v1.2.4]-2020-12-19
 
 ### Fix
-* 修复非空字段insert时对自增列的处理 (#113)
-* 修复alter table rename语句的回滚SQL生成错误问题
-* 修复在开启`real_row_count`选项时,DML转select count时未处理limit的问题 (#119)
+* Fixed the problem that dml may not be backed up successfully in MariaDB
+* Fix the issue of audit errors when updating the specified table alias (#249)
+* Fix the problem that the child query in the select column may not find the parent table column and the having clause may not find the column (#266)
+* Fix the problem of falsely reporting error when not calling in the correct format
+* Fix the problem that the float type parameter specified in the `inception set` syntax will report an error (#279)
+* Fix the status indicator when the backup statement is not parsed correctly (#286)
 
 ### New Features
-* 添加新参数 `hex_blob` ,以支持回滚时解析二进制类型 (#118)
+* Add lock_wait_timeout to control the lock wait timeout time during normal SQL execution (#224)
+* Increase the sleep parameter of pt-osc to optimize the load situation when the low configuration db executes ddl changes (#260)
+* Add view support (#238,#262)
+* Add the parameter `ignore_osc_alter_stmt` to configure the syntax to force the osc check to be ignored (#258,#263)
+* Added CREATE TABLE AS SELECT syntax support (#246,#264)
+* Add auto_random support for tidb column attributes (#270)
+* Add sql_mode option when inc is executed (#267)
+* Add illegal date review when inserting (#277)
+
+### Update
+* Optimize index visibility audit support for multi-version databases (#247)
+* Optimize the binlog analysis of the backup function (#250)
+* Improve MySQL8.0 keyword list (#210)
+* Optimize the configuration of the default database, the use operation can be omitted after specifying the --db option
+* Optimize the osc process processing logic and add concurrent lock processing
+* Improve alter table partition syntax (#281)
+* Optimize the processing of the backup function when ssl is turned on (#287)
 
 
-## [v1.1.3] - 2019-11-13
+## [v1.2.3]-2020-05-22
 
 ### Fix
-* 修复表内有text,json等[]byte类型字段时最小化生成回滚语句panic的问题 (#105,#107)
-* 修复`decimal`类型逆向解析时变为科学计数法形式的问题 (#106,#108)
-* 修复多线程高并发测试时解析调用参数出现线程安全问题的bug (#103)
+* fix: Fix the problem that pt-osc cannot be killed when getting the table lock stuck (#213, #222)
 
 ### New Features
-* 添加审核选项 `check_implicit_type_conversion` ,审核where条件中的隐式类型转换 (#101)
+* Add the parameter `ignore_sighup`, the terminal connection disconnection signal is ignored by default (#195)
+* Add `osc_lock_wait_timeout` parameter to control pt-osc wait for meta lock time, default 60s (#214, #215)
+* Support multiple custom index prefixes (#204)
 
 ### Update
-* 添加TiDB数据库判断(不支持tidb备份)
-* 添加未指定表前缀时的字段歧义审核
+* Improve MySQL5.7 keyword list (#210)
 
 
-## [v1.1.2] - 2019-10-30
+## [v1.2.2]-2020-04-04
 
 ### Fix
-* 修复线程号超出uint32范围时无法备份的问题
+* Fix the problem of erroneous review when `max_char_length` is not specified
+* Fix the problem of inaccurate index column length limit (#176)
+* Fix the problem that the inception set command returns an error, and fix the problem that the lang setting may not take effect
+* Fix the problem that errors may occur during mixed execution of DDL and DML when opening a transaction (#182)
 
 ### New Features
-* 添加设置参数 `enable_minimal_rollback`, 用以开启最小化回滚SQL设置 (#90)
-* 添加设置参数 `wait_timeout`, 用以设置远端数据库等待超时时间,默认为0,即保持数据库设置
-* 添加mysql安全连接参数设置 `--ssl`等, 可配置SSL或CA证书验证 (#92)
+* Add session-level variable settings (#157, #166, #167)
+* Add the osc parameter `osc_max_flow_ctl` so that the PXC cluster can enable the pt-osc function (#170, #172)
+* Add audit item `columns_must_have_index`, index must be added to the specified column (#174, #175)
+
+### Update
+* Optimize column character set and collation review logic (#173)
+* Add review of value expressions in where conditions to avoid incorrect updates of invalid expressions (#178)
+* Optimize the printing of internal SQL that must be executed with privileges when authentication fails, so that the problem can be quickly located
 
 
-## [v1.1.1] - 2019-10-13
+## [v1.2.1]-2020-03-07
 
 ### Fix
-* 修复TiDB数据库explain出错的问题 (#86)
-* 修复`insert select`语法在有删除列时列数校验可能不准确的问题
+* Optimize the problem that the comments before and after the ALTER statement when using the pt tool may cause its parsing failure
 
 ### New Features
-* 添加审核选项 `explain_rule` ,用以设置explain获取受影响行数方式
+* Add version number information to system variables `show variables like'version'` (#164)
 
 ### Update
-* 完善`spatial index`审核规则
-* 调整update语法均进行逻辑审核
-* 添加join语法的ON子句审核
-* 优化delete审核规则,有新表时跳过explain审核
-* 远程数据库无法连接时,优化返回结果,添加sql内容返回
+* When opening the parameter for obtaining the actual number of affected rows, ignore the sql fingerprint function (accuracy first)
+* Automatically remove the special spaces at the beginning and end of each SQL line (ASCII code 160)
+* Optimized bit type default value audit, now supports audit like `b'1'`
+* Optimize the error message when the data source is not configured correctly to make it more friendly
+* Cache the setting of the unique key when creating a table
+* Improve the display width review of numeric types (#162)
 
 
-## [v1.1.0] - 2019-9-7
+## [v1.2.0]-2020-01-18
 
 ### Fix
-* 修复add column操作未命中`merge_alter_table`检测的问题 (#79)
+* Fix the bug that the change column was not properly reviewed when the column name was modified and the old column name was quoted immediately (#150)
+* Fixed the problem of incorrect review when using the wrong length of the year type
+* Fix the problem that the audit logic of ON clause of join grammar is incorrect
 
 ### New Features
-* 添加空间类型语法解析,添加空间索引支持
-* 添加新的调用选项`--db`,用以设置默认连接的数据库,默认值为`mysql`
+* Table name and index name prefix customization (#149)
+    * Table name prefix `table_prefix`, the default is empty, that is, unlimited
+    * Index prefix `index_prefix`, the default is `idx_`, which is consistent with the previous version and can be customized
+    * Unique index prefix `uniq_index_prefix`, the default is `uniq_`, which is consistent with the previous version and can be customized
 
 ### Update
-* 支持建库时同时创建表等操作 (#77)
-* 优化DDL回滚细节,对alter table多条子句调整回滚SQL为逆向 (#76)
-* 在执行前添加数据库只读状态判断
-* 优化索引总长度审核,现在基于目标库`innodb_large_prefix`参数判断
-* 审核select语法中的星号列
-* 优化多语句拆分解析逻辑,优化分号末尾但未结束的SQL解析
-* 完善列定义中的索引校验
+* Optimize the alter clause parsing when using the pt tool
+* Optimize the log output of gh-ost and backup functions and adjust to a unified format
+* Optimize the parameter settings of the default database, adjust the default `mysql` library to be empty by default to avoid affecting the master-slave synchronization under special circumstances
 
-
-## [v1.0.5] - 2019-8-20
+## [v1.1.6]-2020-01-02
 
 ### Fix
-* 修复insert values子句不支持default语法的问题
+* Fix the issue of incorrect audit of timestamp type switch
+* Fix the bug that the DML operation is not submitted correctly when the instance is not turned on autocommit (#146)
 
 ### New Features
-* 添加参数`default_charset` 用以设置连接数据库的默认字符集,默认值`utf8mb4` (解决低版本不支持utf8mb4的问题)
-* 添加pt-osc参数`osc_check_unique_key_change`, 设置pt-osc是否检查唯一索引,默认为`true`
+* Add user authentication module to realize user management and secure connection function (#132)
+* Add [transaction support](trans.html)(batch execution) (#135)
 
 ### Update
-* 优化回滚功能,添加binlog_row_image设置检查,为minimal时自动修改会话级别为full
+* Optimize column type change review (#121)
+* Implement rollback support when update set with multiple tables (#112,#136)
+* Optimize audit rules when case-sensitive (#123)
+* Optimize the alter clause split logic when using the pt-osc tool (#142)
 
 
-## [v1.0.4] - 2019-8-5
+## [v1.1.5]-2019-12-09
+
+### Update
+* Optimize the case review logic of object names
+* Optimize the accuracy of index length audit
+* Support update multi-table update syntax (multi-table rollback is not supported temporarily) (#112)
+* Optimize the error message when the sql syntax analysis fails
+
+## [v1.1.4]-2019-11-21
+
+### Fix
+* Fix the handling of auto-increment columns when inserting non-empty fields (#113)
+* Fixed the issue of SQL generation error for the rollback of alter table rename statement
+* Fix the problem that limit is not processed when DML transfers to select count when the `real_row_count` option is turned on (#119)
 
 ### New Features
-* 添加set names语法支持 (#69)
-
-### Update
-* 优化主键索引审核信息 (#67)
-* 完善`update set`多字段审核规则,为set多列and语法添加警告
-* 优化gh-ost socket文件名生成规则,避免长度溢出导致创建失败
-* 完善外键审核规则 (#68,#70)
+* Add new parameter `hex_blob` to support parsing binary types when rolling back (#118)
 
 
-## [v1.0.3] - 2019-7-29
+## [v1.1.3]-2019-11-13
 
 ### Fix
-* `[gh-ost]` 修复gh-ost在异常时没有断开binlog dump连接的问题
-* `[gh-ost]` 修复gh-ost当添加datetime列且默认值current_timestamp时,增量数据因时区导致数据错误的问题(timestamp列是正常的)
+* Fix the problem of minimizing the panic generation of rollback statements when there are text, json and other []byte type fields in the table (#105,#107)
+* Fix the problem that the `decimal` type becomes scientific notation during reverse analysis (#106,#108)
+* Fix a bug that caused thread safety issues when parsing call parameters during multi-threaded high-concurrency testing (#103)
 
 ### New Features
-* 添加参数 `enable_change_column` ,设置是否支持change column语法
-* 添加调用选项 `real_row_count`,设置是否通过`count(*)`获取真正受影响行数.默认值`false`
+* Add the audit option `check_implicit_type_conversion` to audit the implicit type conversion in the where condition (#101)
 
 ### Update
-* 添加pt-osc执行change column的审核,禁止多条change column操作,以免数据丢失 (pt-osc bug)
+* Added TiDB database judgment (tidb backup is not supported)
+* Add field ambiguity review when table prefix is not specified
 
 
-## [v1.0.2] - 2019-7-26
+## [v1.1.2]-2019-10-30
 
 ### Fix
-* 修复 `alter table` 命令没有其他选项时能正常通过的bug (#59)
-* 修复跨库操作时可能出现备份记录写错备份库的问题
+* Fix the problem that the thread number cannot be backed up when the thread number exceeds the uint32 range
 
 ### New Features
-* 添加参数 `max_ddl_affect_rows`，设置DDL允许的最大受影响行数，默认为`0`，即不限制
-* 添加参数 `check_float_double` ，为 true 时，警告将 float/double 转成 decimal 数据类型。 默认为 false (#62)
-* 添加参数 `check_identifier_upper` ，限制表名、列名、索引名等必须为大写，默认为`false` (#63)
-
-### Update
-* 优化自定义审核级别实现，移除参数 `enable_level`，现在自定义审核级别和审核开关设置合并 (#52)
-* 升级parser语法解析包，优化列排序规则和分区表语法支持 (#50)
-* 优化gh-ost的server_id设置自动变化，避免同一实例重复
+* Add the setting parameter `enable_minimal_rollback` to enable the minimized rollback SQL setting (#90)
+* Add the setting parameter `wait_timeout` to set the remote database waiting timeout time, the default is 0, that is to keep the database settings
+* Add mysql secure connection parameter setting `--ssl`, etc., configurable SSL or CA certificate verification (#92)
 
 
-## [v1.0.1] - 2019-7-20
+## [v1.1.1]-2019-10-13
 
 ### Fix
-* 修复 `must_have_columns` 参数列类型的大小写兼容问题
+* Fix the problem of explain error in TiDB database (#86)
+* Fix the problem that the column number verification of `insert select` syntax may be inaccurate when there are deleted columns
 
 ### New Features
-* 添加 `alter table rename index` 语法支持
-* 添加参数 `enable_zero_date`，设置是否支持时间为0值，关闭时强制报错。默认值为 `true` (#55)
-* 添加参数 `enable_timestamp_type` ，设置是否允许 `timestamp` 类型字段 (#57)
-* 添加 `mysql 5.5` 版本审核支持 (#54)
+* Add the review option `explain_rule` to set how explain gets the number of affected rows
 
 ### Update
-* 优化modify column列信息逻辑保存
-* 优化列属性的键定义逻辑保存
+* Improve the audit rules of `spatial index`
+* Adjustments to update syntax are all logically reviewed
+* Added ON clause review of join syntax
+* Optimize the delete audit rules, skip the explain audit when there are new tables
+* When the remote database cannot be connected, optimize the return result and add sql content to return
 
 
-## [v1.0] - 2019-7-15
+## [v1.1.0]-2019-9-7
 
 ### Fix
-* 修复密码中包含特殊字符时pt-osc执行出错的问题
+* Fix the problem that the add column operation misses the detection of `merge_alter_table` (#79)
 
 ### New Features
-* 添加审核结果级别自定义功能 (#52)
+* Add spatial type syntax analysis, add spatial index support
+* Add a new call option `--db` to set the default connection database, the default value is `mysql`
 
 ### Update
-* 添加delete/update自连接审核支持 (#51)
-* 优化binlog回滚时指定的server_id自动变化,避免同一实例重复
+* Support operations such as creating tables at the same time when building a database (#77)
+* Optimize the details of DDL rollback, adjust the rollback SQL for multiple clauses of alter table to reverse (#76)
+* Add database read-only status judgment before execution
+* Optimize the total length of the index audit, now based on the target library `innodb_large_prefix` parameter judgment
+* Review the asterisk column in the select syntax
+* Optimize the multi-statement splitting and parsing logic, and optimize the SQL parsing at the end of the semicolon but not the end
+* Improve the index check in the column definition
 
 
-## [v1.0-rc4] - 2019-7-9
+## [v1.0.5]-2019-8-20
 
 ### Fix
-* 修复pt-osc可能出现执行成功时但进度不到100%的问题 (#48)
+* Fix the problem that the insert values ​​clause does not support the default syntax
 
 ### New Features
-* 增加enable_set_engine、support_engine参数，控制是否允许指定存储引擎以及支持的存储引擎类型 (#47)
+* Add the parameter `default_charset` to set the default character set for connecting to the database, the default value is `utf8mb4` (to solve the problem that the lower version does not support utf8mb4)
+* Add the pt-osc parameter `osc_check_unique_key_change`, set whether pt-osc checks the unique index, the default is `true`
 
 ### Update
-* 优化osc的进程列表,同一会话的osc进程信息延后清除(在会话执行返回后) (#48)
-* 优化备份库库名生成逻辑,库名过长时自动截断 (#49)
-* 优化delete和update别名审核 (#51)
+* Optimize the rollback function, add binlog_row_image setting check, and automatically modify the session level to full when it is minimal
 
 
-## [v1.0-rc3] - 2019-7-2
-
-### Fix
-* 修复使用osc做DDL变更时可能不支持的问题(如`alter table t engine='innodb'`)
+## [v1.0.4]-2019-8-5
 
 ### New Features
-* 添加sleep执行等待功能,降低对线上数据库的影响 (#46)
-    * 调用选项 `sleep` ,执行 `sleep_rows` 条SQL后休眠多少毫秒,以降低对线上数据库的影响
-    * 调用选项 `sleep_rows` ,执行多少条SQL后休眠一次
-* 添加参数 `max_allowed_packet` 以支持更长的SQL文本
-* 添加参数 `skip_sqls` 以兼容不同客户端的默认sql
+* Add syntax support for set names (#69)
 
 ### Update
-* 调整备份记录表sql_statement字段类型为mediumtext,并自动兼容旧版本的text类型
-* 兼容mysqlclient客户端
+* Optimize the primary key index audit information (#67)
+* Improve `update set` multi-field audit rules, add warnings for set multi-column and syntax
+* Optimize gh-ost socket file name generation rules to avoid creation failure due to length overflow
+* Improve foreign key review rules (#68,#70)
 
 
-## [v1.0-rc2] - 2019-6-21
+## [v1.0.3]-2019-7-29
 
 ### Fix
-* 优化回滚相关表结构,字符集调整为utf8mb4 (`历史表结构需要手动调整`)
-
-### Update
-* 优化审核规则,审核子查询、函数等各种表达式 (#44)
-* 优化gh-ost默认生成的socket文件名格式
-* 优化日志输出,添加线程号显示
-* binlog解析时添加mariadb判断
-
-
-## [v1.0-rc1] - 2019-6-12
+* `[gh-ost]` fixed the problem that gh-ost did not disconnect the binlog dump connection when abnormal
+* `[gh-ost]` Fix the problem that when adding datetime column and default value current_timestamp in gh-ost, incremental data will cause data error due to time zone (timestamp column is normal)
 
 ### New Features
-* 添加split分隔功能 (#42)
+* Add parameter `enable_change_column` to set whether to support change column syntax
+* Add calling option `real_row_count` to set whether to get the number of really affected rows through `count(*)`. The default value is `false`
+
+### Update
+* Add pt-osc to perform change column audit, prohibit multiple change column operations to avoid data loss (pt-osc bug)
 
 
-## [v0.9-beta] - 2019-6-4
+## [v1.0.2]-2019-7-26
+
+### Fix
+* Fix the bug that the `alter table` command can pass normally without other options (#59)
+* Fix the problem that backup records may be written wrongly in the backup library during cross-database operations
 
 ### New Features
-* 添加统计功能,可通过参数 `enable_sql_statistic` 启用 (#38)
-* 添加参数 `check_column_position_change` ,可控制是否检查列位置/顺序变更 (#40, #41)
+* Add parameter `max_ddl_affect_rows` to set the maximum number of affected rows allowed by DDL, the default is `0`, which means no limit
+* Add parameter `check_float_double`, when it is true, warn that float/double will be converted to decimal data type. Default is false (#62)
+* Add parameter `check_identifier_upper` to restrict table names, column names, index names, etc. must be uppercase, the default is `false` (#63)
 
 ### Update
-* 优化使用阿里云RDS和gh-ost时的逻辑,自动设置 `assume-master-host` 参数 (#39)
+* Optimize the implementation of custom audit level, remove the parameter `enable_level`, now the custom audit level and audit switch settings are merged (#52)
+* Upgrade parser grammar analysis package, optimize column sorting rules and partition table grammar support (#50)
+* Optimize the automatic change of gh-ost's server_id setting to avoid duplication of the same instance
 
 
-## [v0.8.3-beta] - 2019-5-30
-
-### Fix
-* 修复gh-ost的initially-drop-old-table和initially-drop-ghost-table参数支持
-* 修复设置osc_min_table_size大于0后无法正常启用osc的bug
-
-### Update
-* 兼容语法inception get processlist
-* docker镜像内置pt-osc包(版本3.0.13)
-
-
-## [v0.8.2-beta] - 2019-5-27
+## [v1.0.1]-2019-7-20
 
 ### Fix
-* fix: 修复binlog解析时对unsigned列溢出值的处理
-* fix: 修复gh-ost执行语句有反引号时报语法错误的bug (#33)
-* fix: 修复kill DDL操作时,返回执行和备份成功的bug,现在会提示执行结果未知了 (#34)
-
-
-## [v0.8.1-beta] - 2019-5-24
-
-### Fix
-* 修复新建表后,使用大小写不一致的表名时返回表不存在bug
+* Fix the case compatibility problem of `must_have_columns` parameter column type
 
 ### New Features
-* 添加general_log参数,用以记录全量日志
+* Added `alter table rename index` syntax support
+* Add the parameter `enable_zero_date` to set whether to support the time value of 0, and force an error to be reported when it is closed. The default value is `true` (#55)
+* Add the parameter `enable_timestamp_type` to set whether to allow the `timestamp` type field (#57)
+* Add `mysql 5.5` version audit support (#54)
 
 ### Update
-* 优化insert select新表的审核规则,现在select新表时也可以审核了
+* Optimize the logical storage of modify column information
+* Optimize the key definition logic preservation of column attributes
 
 
-## [v0.8-beta] - 2019-5-22
-
-### Fix
-* 修复当开启sql指纹功能时,可能出现把警告误标记为错误的bug
-
-### Update
-* 优化子查询审核规则,递归审核所有子查询
-* 审核group by语法和聚合函数
-
-
-## [v0.7.5-beta] - 2019-5-17
+## [v1.0]-2019-7-15
 
 ### Fix
-* 修复执行阶段kill逻辑,避免kill后备份也中止
+* Fixed the problem of pt-osc execution error when the password contains special characters
 
 ### New Features
-* 添加select语法支持
-* 添加alter table的ALGORITHM,LOCK,FORCE语法支持
+* Add audit result level customization function (#52)
 
 ### Update
-* 优化update子查询审核
+* Add delete/update self-connection audit support (#51)
+* Optimize the automatic change of the specified server_id when binlog is rolled back to avoid duplication of the same instance
 
 
-## [v0.7.4-beta] - 2019-5-12
+## [v1.0-rc4]-2019-7-9
+
+### Fix
+* Fix the problem that pt-osc may be executed successfully but the progress is less than 100% (#48)
 
 ### New Features
-* 添加alter table表选项语法支持 (#30)
-* 重新设计kill操作支持,支持远端数据库kill和goInception kill命令 (#10)
+* Add enable_set_engine and support_engine parameters to control whether to allow specifying storage engines and supported storage engine types (#47)
 
+### Update
+* Optimize the osc process list, the osc process information of the same session will be cleared later (after the session execution returns) (#48)
+* Optimize the generation logic of the backup library library name, and automatically truncate the library name when it is too long (#49)
+* Optimize delete and update alias review (#51)
 
-## [v0.7.3-beta] - 2019-5-10
+## [v1.0-rc3]-2019-7-2
 
 ### Fix
-* 修复在开启备份时,执行错误时偶尔出现的误标记执行/备份成功bug
+* Fix the problem that may not be supported when using osc to make DDL changes (such as `alter table t engine='innodb'`)
 
 ### New Features
-* 添加`check_column_type_change`参数，设置是否开启字段类型变更审核,默认`开启` (#27)
+* Add sleep execution waiting function to reduce the impact on online databases (#46)
+    * Call option `sleep`, how many milliseconds to sleep after executing `sleep_rows` SQL to reduce the impact on online databases
+    * Call option `sleep_rows`, sleep once after executing how many SQLs
+* Add parameter `max_allowed_packet` to support longer SQL text
+* Add parameter `skip_sqls` to be compatible with the default sql of different clients
 
 ### Update
-* 实现insert select * 列数审核
+* Adjust the sql_statement field type of the backup record table to mediumtext, and it will automatically be compatible with the text type of the old version
+* Compatible with mysqlclient client
 
 
-## [v0.7.2-beta] - 2019-5-7
+## [v1.0-rc2]-2019-6-21
+
+### Fix
+* Optimize the rollback related table structure, adjust the character set to utf8mb4 (`The structure of the historical table needs to be adjusted manually`)
+
+### Update
+* Optimize audit rules, audit subqueries, functions and other expressions (#44)
+* Optimize the socket file name format generated by gh-ost by default
+* Optimize log output, add thread number display
+* Add mariadb judgment when binlog is parsed
+
+
+## [v1.0-rc1]-2019-6-12
 
 ### New Features
-* 添加`enable_json_type`参数，设置是否允许json类型字段 (#26)
-
-### Update
-* 实现基于系统变量explicit_defaults_for_timestamp的审核规则
-* 优化osc解析,转义密码和alter语句中的特殊字符
+* Add split function (#42)
 
 
-## [v0.7.1-beta] - 2019-5-4
-
-### Update
-* 优化json类型字段处理逻辑，不再检查其默认值和NOT NULL约束 (#7, #22)
-* 优化must_have_columns参数值解析
-* 优化insert select审核逻辑
-
-### Fix
-* 修复和完善add column(...)语法支持
-* 修复开启osc时,alter语句有多余空格时执行失败的bug
+## [v0.9-beta]-2019-6-4
 
 ### New Features
-* 添加`enable_null_index_name`参数，允许不指定索引名 (#25)
-* 添加语法树打印功能(beta) (#21)
-
-
-## [v0.7-beta] - 2019-4-26
+* Add statistical function, which can be enabled by parameter `enable_sql_statistic` (#38)
+* Add parameter `check_column_position_change` to control whether to check column position/order change (#40, #41)
 
 ### Update
-* 优化update关联新建表时的审核，现在update时可以关联新建表了
-* 优化insert 新建 select语法审核，现在可以获取预估受影响行数了
-* 审核阶段自动忽略警告，优化审核逻辑
-* 优化`check_column_default_value`的审核逻辑，默认值审核时会跳过主键
-* 备份阶段sql过长时会自动截断(比如insert values很多行)，`返回警告但不影响执行和备份操作`
+* Optimize the logic when using Alibaba Cloud RDS and gh-ost, automatically set the `assume-master-host` parameter (#39)
+
+
+## [v0.8.3-beta]-2019-5-30
 
 ### Fix
-* 修复开启`enable_pk_columns_only_int`选项时列类型审核错误的问题
+* Fix initial-drop-old-table and initial-drop-ghost-table parameter support of gh-ost
+* Fix the bug that osc cannot be enabled normally after setting osc_min_table_size greater than 0
+
+### Update
+* Compatible syntax inception get processlist
+* Built-in pt-osc package in docker image (version 3.0.13)
+
+## [v0.8.2-beta]-2019-5-27
+
+### Fix
+* fix: fix the handling of overflow values ​​of unsigned columns during binlog parsing
+* fix: Fix the bug of syntax error when gh-ost execution statement has backticks (#33)
+* fix: Fix the bug that returns successful execution and backup during kill DDL operation, now it will prompt that the execution result is unknown (#34)
+
+
+## [v0.8.1-beta]-2019-5-24
+
+### Fix
+* Fixed the bug that the returned table does not exist when a table name with inconsistent case is used after a new table is created
 
 ### New Features
-* 添加`enable_set_collation`参数，设置是否允许指定表和数据库的排序规则
-* 添加`support_collation`参数，设置支持的排序规则,多个时以逗号分隔
+* Add the general_log parameter to record the full amount of logs
+
+### Update
+* Optimize the audit rules for insert select new tables, now you can also audit when you select new tables
 
 
-## [v0.6.4-beta] - 2019-4-23
+## [v0.8-beta]-2019-5-22
 
 ### Fix
-* 修复mysql 5.6和mariadb无法获取受影响行数的问题
+* Fixed a bug where warnings may be incorrectly marked as errors when the SQL fingerprint function is turned on
+
+### Update
+* Optimize sub-query review rules, recursively review all sub-queries
+* Review group by syntax and aggregate functions
 
 
-## [v0.6.3-beta] - 2019-4-22
+## [v0.7.5-beta]-2019-5-17
+
+### Fix
+* Fix the kill logic in the execution phase to avoid the backup suspension after the kill
 
 ### New Features
-* 添加`max_insert_rows`参数，设置insert values允许的最大行数。
-* 添加`must_have_columns`参数，用以指定建表时必须创建的列。多个列时以逗号分隔(`格式: 列名 [列类型,可选]`)
+* Add support for select syntax
+* Added ALGORITHM, LOCK, FORCE syntax support for alter table
 
-
-## [v0.6.2-beta] - 2019-4-18
 ### Update
-* 添加不支持的语法警告(create table as和create table select)
-* 实现alter多子句时的表结构变化支持,如drop column后跟add column
-
-### Fix
-* 修复explain返回null列时报错的问题
-* 修复索引的唯一标识设置错误问题
+* Optimize update subquery review
 
 
-## [v0.6.1-beta] - 2019-4-9
-### Update
-* 添加远端数据库断开重连机制，优化线程号和master status查询速度
-* 优化远端数据库访问操作
-* 优化sql内容解析，移除多余分号和空格
-
-### Fix
-* 修复跨库update时无法找到列的问题
-* 修复osc子句有双引号时执行错误的问题
+## [v0.7.4-beta]-2019-5-12
 
 ### New Features
-* 添加sql指纹功能
-dml语句相似时，可以根据相同的指纹ID复用explain结果，以减少远端数据库explain操作，并提高审核速度
-	- 可以通过```inception set enable_fingerprint=1;```或配置文件开启全局配置
-	- 也可以通过调用选项```--fingerprint=1;```开启单个配置
-	- 两种配置取并集，即开启任一配置，则启用sql指纹功能，默认关闭。
+* Add alter table option syntax support (#30)
+* Redesign the kill operation support, support remote database kill and goInception kill commands (#10)
 
 
-## [v0.6-beta] - 2019-4-3
-### Update
-* 备份操作性能优化,备份信息改为批量写入
-* 添加备份库连接超时检查
-* explain函数性能优化
-* 优化部分函数未指定架构名时的默认处理
-* 优化默认值检查,添加计算列支持 (#12, #13, #14)
-* 优化时间格式和范围检查,根据数据库sql_mode校验零值日期
-* 升级到go 1.12
+## [v0.7.3-beta]-2019-5-10
 
 ### Fix
-* 修复index name校验逻辑,其可与列名一致
-* 修复timestamp默认值校验不准确的问题
+* Fix the bug that occasionally marks the execution/backup success when the backup is turned on and the execution error occurs occasionally
 
 ### New Features
-* 添加kill功能支持,在审核和执行时可以kill,备份阶段无法kill (#10)
-* 添加`check_timestamp_count`参数,可配置是否检查current_timestamp数量 (#11, #15)
+* Add the `check_column_type_change` parameter to set whether to open the field type change review, the default is `on` (#27)
 
-
-## [v0.5.3-beta] - 2019-3-25
 ### Update
-* 变更列名时使用逻辑校验,避免explain update失败
-* 添加union子句校验
-* 添加表名别名重复性校验
+* Implement insert select * Review the number of columns
+
+
+## [v0.7.2-beta]-2019-5-7
+
+### New Features
+* Add the `enable_json_type` parameter to set whether to allow json type fields (#26)
+
+### Update
+* Implement audit rules based on the system variable explicit_defaults_for_timestamp
+* Optimize osc parsing, escape passwords and special characters in alter statements
+
+## [v0.7.1-beta]-2019-5-4
+
+### Update
+* Optimize json type field processing logic, no longer check its default value and NOT NULL constraint (#7, #22)
+* Optimize must_have_columns parameter value analysis
+* Optimize the insert select audit logic
 
 ### Fix
-* 修复update set子句指定表别名时校验问题
-* 修复自增列校验问题
-* 修复default value为表达式时的校验问题
+* Fix and improve add column(...) syntax support
+* Fixed the bug that the execution failed when the alter statement had extra spaces when osc was turned on
+
+### New Features
+* Add the `enable_null_index_name` parameter to allow the index name not to be specified (#25)
+* Add syntax tree printing function (beta) (#21)
 
 
-## [v0.5.2-beta] - 2019-3-17
+## [v0.7-beta]-2019-4-26
+
 ### Update
-* 优化主键NULL列审核规则(审核`DEFAULT NULL`)
-* 优化索引总长度校验,根据列字符集判断字节数长度
-* 优化DDL备份对默认值的处理
+* Optimized the review of the update associated with the newly created table, now it can associate with the newly created table during update
+* Optimized insert new select syntax review, now you can get the estimated number of affected rows
+* Automatically ignore warnings during the review phase and optimize the review logic
+* Optimize the audit logic of `check_column_default_value`, the primary key will be skipped when auditing the default value
+* SQL will be automatically truncated when the backup phase is too long (such as insert values ​​with many rows), `returns warning but does not affect execution and backup operations`
 
-
-## [v0.5.1-beta] - 2019-3-14
-### Update
-* 优化option解析规则,密码兼容特殊字符
-* 优化语法解析失败时返回的sql语句
-* 添加中文的异常和警告信息
-* 添加新的参数
-	- lang 设置返回的异常信息语言,可选值 `en-US`,`zh-CN`,默认`en-US`
 ### Fix
-* 修复mariadb备份警告信息重复的问题
+* Fix the issue that the column type audit is wrong when the `enable_pk_columns_only_int` option is turned on
+
+### New Features
+* Add the `enable_set_collation` parameter to set whether to allow the specified table and database collation rules
+* Add the `support_collation` parameter to set the supported collation rules, separated by commas when multiple
+
+## [v0.6.4-beta]-2019-4-23
+
+### Fix
+* Fixed the problem that mysql 5.6 and mariadb could not get the number of affected rows
 
 
-## [v0.5-beta] - 2019-3-10
+## [v0.6.3-beta]-2019-4-22
+
+### New Features
+* Add the `max_insert_rows` parameter to set the maximum number of rows allowed by insert values.
+* Add the `must_have_columns` parameter to specify the columns that must be created when the table is built. Separate multiple columns with commas (`format: column name [column type, optional]`)
+
+
+## [v0.6.2-beta]-2019-4-18
 ### Update
-* 兼容mariadb v10版本的备份兼容(高并发时回滚语句可能有误，须注意检查)
-* 更新pt-osc部分参数名，使其与inception保持一致
+* Added unsupported syntax warnings (create table as and create table select)
+* Support for table structure changes when implementing alter multiple clauses, such as drop column followed by add column
+
+### Fix
+* Fix the problem that an error is reported when explain returns a null column
+* Fix the problem that the unique identifier of the index is set incorrectly
+
+
+## [v0.6.1-beta]-2019-4-9
+### Update
+* Add remote database disconnection and reconnection mechanism, optimize thread number and master status query speed
+* Optimize remote database access operations
+* Optimize sql content parsing, remove extra semicolons and spaces
+
+### Fix
+* Fixed the problem that the column could not be found during cross-database update
+* Fix the problem of execution error when the osc clause has double quotes
+
+### New Features
+* Add sql fingerprint function
+When the dml statements are similar, the explain results can be reused according to the same fingerprint ID to reduce the remote database explain operations and improve the audit speed
+	- You can open the global configuration through ```inception set enable_fingerprint=1;``` or configuration file
+	- You can also open a single configuration by calling the option ```--fingerprint=1;```
+	- Take the union of the two configurations, that is, if either configuration is turned on, the sql fingerprint function will be enabled, and it will be turned off by default.
+
+
+## [v0.6-beta]-2019-4-3
+### Update
+* Optimized the performance of backup operations, and changed the backup information to batch writing
+* Added backup library connection timeout check
+* Performance optimization of explain function
+* Optimize the default processing when some functions do not specify the architecture name
+* Optimize the default value check, add support for calculated columns (#12, #13, #14)
+* Optimize the time format and range check, check the zero-value date according to the database sql_mode
+* Upgrade to go 1.12
+
+### Fix
+* Fix the index name verification logic, which can be consistent with the column name
+* Fix the problem of inaccurate timestamp default value verification
+
+### New Features
+* Added support for the kill function, which can be killed during audit and execution, but cannot be killed during the backup phase (#10)
+* Add the `check_timestamp_count` parameter to configure whether to check the current_timestamp number (#11, #15)
+
+
+## [v0.5.3-beta]-2019-3-25
+### Update
+* Use logical verification when changing column names to avoid explain update failure
+* Add union clause verification
+* Add table name alias repeatability check
+
+### Fix
+* Fix the verification problem when the update set clause specifies the table alias
+* Fix the issue of auto-increment column verification
+* Fix the verification problem when the default value is an expression
+
+## [v0.5.2-beta]-2019-3-17
+### Update
+* Optimize the primary key NULL column audit rules (audit `DEFAULT NULL`)
+* Optimize the check of the total length of the index, and judge the length of the number of bytes according to the column character set
+* Optimize the handling of default values ​​in DDL backup
+
+
+## [v0.5.1-beta]-2019-3-14
+### Update
+* Optimize option parsing rules, passwords are compatible with special characters
+* Optimize the SQL statement returned when the syntax analysis fails
+* Added Chinese exception and warning information
+* Add new parameters
+	- lang sets the language of the returned exception information, optional values ​​`en-US`, `zh-CN`, default `en-US`
+### Fix
+* Fix the problem of repeated warning messages in mariadb backup
+
+
+## [v0.5-beta]-2019-3-10
+### Update
+* Compatible with backup compatibility of mariadb v10 version (the rollback statement may be wrong in high concurrency, please pay attention to check)
+* Update some parameter names of pt-osc to make it consistent with inception
 	- osc_critical_running -> osc_critical_thread_running
 	- osc_critical_connected -> osc_critical_thread_connected
 	- osc_max_running -> osc_max_thread_running
 	- osc_max_connected -> osc_max_thread_connected
-* 隐藏gh-osc部分未使用参数
-* 添加是否允许删除数据库参数`enable_drop_database`
-* 优化系统变量variables显示和设置
-* 调整部分参数默认值
+* Hide some unused parameters of gh-osc
+* Add whether to allow deleting the database parameter `enable_drop_database`
+* Optimize the display and setting of system variables
+* Adjust the default values ​​of some parameters
 	- ghost_ok_to_drop_table `true`
 	- ghost_skip_foreign_key_checks `true`
 	- osc_chunk_size `1000`
 ### Fix
-* 修复json列校验异常问题 (#7)
+* Fix json column verification exception problem (#7)
 
-## [v0.4.1-beta] - 2019-3-6
+## [v0.4.1-beta]-2019-3-6
 ### Update
-* 兼容mariadb数据库(v5.5.60)
-	- 添加mariadb的binlog解析支持(测试版本**v5.5.60**,v10版本由于binlog格式改变,暂无法解析thread_id)
-	- 优化备份失败时的返回信息
+* Compatible with mariadb database (v5.5.60)
+	- Added mariadb binlog parsing support (test version **v5.5.60**, v10 version can not resolve thread_id due to the change of binlog format)
+	- Optimize the return information when the backup fails
 
 
-## [v0.4-beta] - 2019-3-5
+## [v0.4-beta]-2019-3-5
 ### New Features
-* 添加gh-ost工具支持
-	- 无需安装gh-ost,功能内置(v1.0.48)
-	- 进程列表 ```inception get osc processlist```
-	- 指定进程信息 ```inception get osc_percent 'sqlsha1'```
-	- 进程终止 ```inception stop alter 'sqlsha1'``` (同义词```inception kill osc 'sqlsha1'```)
-	- 进程暂停 ```inception pause alter 'sqlsha1'``` (同义词```inception pause osc 'sqlsha1'```)
-	- 进程恢复 ```inception resume alter 'sqlsha1'``` (同义词```inception resume osc 'sqlsha1'```)
-	- 兼容gh-ost参数 ```inception show variables like 'ghost%'```
+* Add gh-ost tool support
+	- No need to install gh-ost, built-in functions (v1.0.48)
+	- Process list ```inception get osc processlist```
+	- Specify process information ```inception get osc_percent'sqlsha1'```
+	- Process termination ```inception stop alter'sqlsha1'``` (synonym ```inception kill osc'sqlsha1'```)
+	- Process pause ```inception pause alter'sqlsha1'``` (synonym ```inception pause osc'sqlsha1'```)
+	- Process resume ```inception resume alter'sqlsha1'``` (synonym ```inception resume osc'sqlsha1'```)
+	- Compatible with gh-ost parameters ```inception show variables like'ghost%'```
 
 
-## [v0.3-beta] - 2019-2-13
+## [v0.3-beta]-2019-2-13
 ### New Features
-* 添加pt-osc工具支持
-	- ```inception get osc processlist``` 查看osc进程列表
-	- ```inception get osc_percent 'sqlsha1'``` 查看指定的osc进程
-	- ```inception stop alter 'sqlsha1'``` (同义词```inception kill osc 'sqlsha1'```)中止指定的osc进程
+* Add pt-osc tool support
+	- ```inception get osc processlist``` to view the osc process list
+	- ```inception get osc_percent'sqlsha1'``` to view the specified osc process
+	- ```inception stop alter'sqlsha1'``` (synonym ```inception kill osc'sqlsha1'```) abort the specified osc process
 
 
-## [v0.2-beta] - 2019-1-31
+## [v0.2-beta]-2019-1-31
 ### Optimizer
-* 优化二进制构建方式，压缩安装包大小
-* 移除vendor依赖，优化GO111MODULE使用方式
+* Optimize the binary build method, compress the installation package size
+* Remove vendor dependency and optimize the use of GO111MODULE
 
-* 跳过权限校验，以避免登陆goInception失败
-* 移除root身份启动校验，以避免windows无法启动
-* 优化inception set变量时的类型校验
+* Skip permission verification to avoid failure to log in to goInception
+* Remove root authentication to prevent windows from failing to start
+* Optimize the type check of inception set variables
 
 
-## [v0.1-beta] - 2019-1-25
-#### goInception正式发布
-
+## [v0.1-beta]-2019-1-25
+#### goInception officially released
