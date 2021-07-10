@@ -4,8 +4,6 @@
 
 在提交PR前，请先提交一个[Issue](https://github.com/hanchuanchuan/goInception/issues/new/choose)，以方便沟通。
 
-<!-- TOC -->
-
 ### Go
 
 `goInception`使用 [`Go`](http://golang.org) 语言编写，

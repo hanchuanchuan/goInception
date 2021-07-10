@@ -12,17 +12,18 @@
 <!-- **[English](https://github.com/hanchuanchuan/goInception/blob/master/README.md)**
 **[Chinese](https://github.com/hanchuanchuan/goInception/blob/master/README.zh.md)** -->
 
-**[English](README.md)**
-**[Chinese](README.zh.md)**
+**[[English]](README.md)**
+**[[Chinese]](README.zh.md)**
 
 
 goInception是一个集审核、执行、备份及生成回滚语句于一身的MySQL运维工具， 通过对执行SQL的语法解析，返回基于自定义规则的审核结果，并提供执行和备份及生成回滚语句的功能
 
 
-**[Document](https://hanchuanchuan.github.io/goInception/)**
-**[中文文档](https://hanchuanchuan.github.io/goInception/zh/)**
+**Documentation: **
+**[[Document]](https://hanchuanchuan.github.io/goInception/)**
+**[[中文文档]](https://hanchuanchuan.github.io/goInception/zh/)**
 
-**[更新日志](https://github.com/hanchuanchuan/inc-docs/blob/master/changelog.md)**
+**[[更新日志]](https://github.com/hanchuanchuan/inc-docs/blob/master/changelog.md)**
 
 ----
 
