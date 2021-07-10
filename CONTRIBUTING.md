@@ -8,17 +8,22 @@ This document outlines some conventions about development workflow, commit messa
 
 - [How to contribute](#how-to-contribute)
 - [Contribution Guide](#contribution-guide)
-    - [Before you get started](#before-you-get-started)
-        - [Sign the CLA](#sign-the-cla)
-        - [Setting up your development environment](#setting-up-your-development-environment)
-    - [Your First Contribution](#your-first-contribution)
-    - [Before you open your PR](#before-you-open-your-pr)
-    - [TiDB Contribution Workflow](#tidb-contribution-workflow)
-    - [Get a code review](#get-a-code-review)
-        - [Style reference](#style-reference)
-    - [Bot Commands](#bot-commands)
-    - [Benchmark](#benchmark)
-- [Get your reward](#get-your-reward)
+  * [Before you get started](#before-you-get-started)
+    + [Setting up your development environment](#setting-up-your-development-environment)
+  * [Contribution Workflow](#contribution-workflow)
+    + [Step 1: Fork in the cloud](#step-1--fork-in-the-cloud)
+    + [Step 2: Clone fork to local storage](#step-2--clone-fork-to-local-storage)
+    + [Step 3: Branch](#step-3--branch)
+    + [Step 4: Develop](#step-4--develop)
+      - [Edit the code](#edit-the-code)
+      - [Prepare the test environment](#prepare-the-test-environment)
+      - [Test](#test)
+    + [Step 5: Keep your branch in sync](#step-5--keep-your-branch-in-sync)
+    + [Step 6: Commit](#step-6--commit)
+    + [Step 7: Push](#step-7--push)
+    + [Step 8: Create a pull request](#step-8--create-a-pull-request)
+    + [Step 9: Get a code review](#step-9--get-a-code-review)
+  * [Code style](#code-style)
 
 <!-- /TOC -->
 
@@ -197,7 +202,7 @@ git commit
 Likely you'll go back and edit/build/test further, and then `commit --amend` in a
 few cycles.
 
-## Step 7: Push
+### Step 7: Push
 
 When the changes are ready to review (or you just to create an offsite backup
 or your work), push your branch to your fork on `github.com`:
