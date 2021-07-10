@@ -9,39 +9,40 @@
 ![](https://img.shields.io/github/downloads/hanchuanchuan/goInception/total.svg)
 ![](https://img.shields.io/github/license/hanchuanchuan/goInception.svg)
 
+<!-- **[English](https://github.com/hanchuanchuan/goInception/blob/master/README.md)**
+**[Chinese](https://github.com/hanchuanchuan/goInception/blob/master/README.zh.md)** -->
 
 **[English](README.md)**
 **[Chinese](README.zh.md)**
 
 
-goInception is a MySQL maintenance tool, which can be used to review, implement, backup, and generate SQL statements for rollback. It parses SQL syntax and returns the result of the review based on custom rules.
+goInception是一个集审核、执行、备份及生成回滚语句于一身的MySQL运维工具， 通过对执行SQL的语法解析，返回基于自定义规则的审核结果，并提供执行和备份及生成回滚语句的功能
 
 
 **[Document](https://hanchuanchuan.github.io/goInception/)**
 **[中文文档](https://hanchuanchuan.github.io/goInception/zh/)**
 
-**[Changelog](https://hanchuanchuan.github.io/goInception/changelog.html)**
-
+**[更新日志](https://github.com/hanchuanchuan/inc-docs/blob/master/changelog.md)**
 
 ----
 
-### Quick start
+### 安装说明
 
 
-#### Binary
+#### 二进制免安装
 
-[goInception Download](https://github.com/hanchuanchuan/goInception/releases)
+[goInception下载](https://github.com/hanchuanchuan/goInception/releases)
 
 
-#### Docker Image
+#### Docker镜像
 ```
 docker pull hanchuanchuan/goinception
 ```
 
 
-#### Source code compilation
+#### 源码编译
 
-***go version 1.14+ (go mod)***
+***go version 1.14 (go mod)***
 
 ```bash
 git clone https://github.com/hanchuanchuan/goInception.git
@@ -53,28 +54,28 @@ go build -o goInception tidb-server/main.go
 
 ----
 
-#### Associated SQL audit platform
+#### 关联SQL审核平台 `已集成goInception`
 
-* [Archery](https://github.com/hhyo/Archery) `Query support (MySQL/MsSQL/Redis/PostgreSQL), MySQL optimization (SQLAdvisor|SOAR|SQLTuning), slow log management, table structure comparison, session management, Alibaba Cloud RDS management, etc.`
+* [Archery](https://github.com/hhyo/Archery) `查询支持(MySQL/MsSQL/Redis/PostgreSQL)、MySQL优化(SQLAdvisor|SOAR|SQLTuning)、慢日志管理、表结构对比、会话管理、阿里云RDS管理等`
 
 
-#### Acknowledgments
-    GoInception reconstructs from the Inception which is a well-known MySQL auditing tool and uses TiDB SQL parser.
-
-- [Inception](https://github.com/hanchuanchuan/inception)
+#### 致谢
+    goInception基于TiDB的语法解析器，和业内有名的inpcetion审核工具重构。
+- [Inception - 审核工具](https://github.com/hanchuanchuan/inception)
 - [TiDB](https://github.com/pingcap/tidb)
 
-#### Sponsorship and support
-- [Sponsorship and support](https://hanchuanchuan.github.io/goInception/support.html)
+#### 赞助&定制
+- [赞助与支持](https://hanchuanchuan.github.io/goInception/support.html)
 
-#### Contact
+#### 交流
 
-QQ group talk: **499262190**
-e-mail: `chuanchuanhan@gmail.com`
+QQ群 **499262190**
 
-### Contributing
+*(通用问题建议提issue以便于记录及帮助他人)*
 
-Welcome and thank you very much for your contribution. For the process of submitting PR, please refer to [CONTRIBUTING.md](CONTRIBUTING.md)。
+### 贡献
+
+欢迎并非常感谢您的贡献。 有关提交PR的流程请参考 [CONTRIBUTING.md](CONTRIBUTING.zh.md)。
 
 
 ## Contributors

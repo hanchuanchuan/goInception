@@ -1,182 +1,224 @@
-# 贡献指南
+# How to contribute
 
-本文档约定了一些操作步骤，以方便快速提交PR，并易于合并。
+# Contribution Guide
 
-在提交PR前，请先提交一个[Issue](https://github.com/hanchuanchuan/goInception/issues/new/choose)，以方便沟通。
+This document outlines some conventions about development workflow, commit message formatting, contact points and other resources to make it easier to get your contribution accepted.
+
+<!-- TOC -->
+
+- [How to contribute](#how-to-contribute)
+- [Contribution Guide](#contribution-guide)
+    - [Before you get started](#before-you-get-started)
+        - [Sign the CLA](#sign-the-cla)
+        - [Setting up your development environment](#setting-up-your-development-environment)
+    - [Your First Contribution](#your-first-contribution)
+    - [Before you open your PR](#before-you-open-your-pr)
+    - [TiDB Contribution Workflow](#tidb-contribution-workflow)
+    - [Get a code review](#get-a-code-review)
+        - [Style reference](#style-reference)
+    - [Bot Commands](#bot-commands)
+    - [Benchmark](#benchmark)
+- [Get your reward](#get-your-reward)
+
+<!-- /TOC -->
+
+## Before you get started
+
+<!-- ### Sign the CLA
+
+Click the **Sign in with GitHub to agree** button to sign the CLA. See an example [here](https://cla-assistant.io/pingcap/tidb).
+
+What is [CLA](https://en.wikipedia.org/wiki/Contributor_License_Agreement)? -->
+
+### Setting up your development environment
+
+Before you start, you need
+Set up your GO development environment.
+
+1. Install `Go` version **1.14** or above. Refer to [How to Write Go Code](http://golang.org/doc/code.html) for more information.
+2. Define `GOPATH` environment variable and modify `PATH` to access your Go binaries. A common setup is as follows. You could always specify it based on your own flavor.
+
+    ```sh
+    export GOPATH=$HOME/go
+    export PATH=$PATH:$GOPATH/bin
+    ```
+
+>**Note:** TiDB uses [`Go Modules`](https://github.com/golang/go/wiki/Modules)
+to manage dependencies.
+
+Now you should be able to use the `make build` command to build TiDB.
+
+## Contribution Workflow
+
+To contribute to the goInception code base, please follow the workflow as defined in this section.
+
+1. Create a topic branch from where you want to base your work. This is usually master.
+2. Make commits of logical units and add test case if the change fixes a bug or adds new functionality.
+3. Run tests and make sure all the tests are passed.
+4. Make sure your commit messages are in the proper format (see below).
+5. Push your changes to a topic branch in your fork of the repository.
+6. Submit a pull request.
+
+Thanks for your contributions!
 
 
-### Go
+### Step 1: Fork in the cloud
 
-`goInception`使用 [`Go`](http://golang.org) 语言编写，
+1. Visit https://github.com/hanchuanchuan/goInception
+2. On the top right of the page, click the `Fork` button (top right) to create
+   a cloud-based fork of the repository.
 
-GO版本应该在 **1.12** 及以上。
+### Step 2: Clone fork to local storage
 
-#### 依赖管理
+Per Go's [workspace instructions](https://golang.org/doc/code.html#Workspaces),
+place TiDB's code on your `GOPATH` using the following cloning procedure.
 
-*项目采用 [`Go Modules`](https://github.com/golang/go/wiki/Modules) 管理依赖。*
-
-您仍须定义`GOPATH`，并修改`PATH`以访问您的Go二进制文件。
-
-*由于单元测试使用gofail做模拟测试，所以仍须使用`GOPATH`*
-
-例如：
-
-```SH
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOPATH/bin
-```
-
-## 工作流
-
-### Step 1: Fork项目
-
-1. 打开 https://github.com/hanchuanchuan/goInception
-2. 点击右上角 `Fork` 按钮，将项目fork到自己的仓库中，等待Fork完成。
-
-### Step 2: 克隆fork项目到本地
-
-
-将代码放在你的`GOPATH`目录下，定义本地工作目录：
+Define a local working directory:
 
 ```sh
-# 设置你的github用户名`user`:
-user={your github profile name}
-
-working_dir=$GOPATH/src/github.com/${user}
+# Set `user` to match your github profile name:
+export user={your github profile name}
+export working_dir=$GOPATH/src/github.com/${user}
 ```
+
+Both `$working_dir` and `$user` are mentioned in the figure above.
+
+Create your clone:
 
 ```sh
 mkdir -p $working_dir
 cd $working_dir
 
 git clone https://github.com/${user}/goInception.git
-# 或者: git clone git@github.com/${user}/goInception.git
+# or: git clone git@github.com/${user}/goInception.git
 
 cd $working_dir/goInception
 git remote add upstream https://github.com/hanchuanchuan/goInception.git
-# 或者: git remote add upstream git@github.com/hanchuanchuan/goInception.git
+# or: git remote add upstream git@github.com/hanchuanchuan/goInception.git
 
-# 避免误推送
+# Never push to the upstream master.
 git remote set-url --push upstream no_push
 
-# 配置检查
-git remote -v
-# 结果应该有四条:
+# Confirm that your remotes make sense:
+# It should look like:
 # origin    git@github.com:$(user)/goInception.git (fetch)
 # origin    git@github.com:$(user)/goInception.git (push)
 # upstream  https://github.com/hanchuanchuan/goInception (fetch)
 # upstream  no_push (push)
+git remote -v
 ```
 
-#### 定义提交前检查
-
-*这个hook定义了提交前的格式检查*
-
-```sh
-cd $working_dir/goInception/.git/hooks
-ln -s ../../hooks/pre-commit .
-chmod +x pre-commit
-cd ../..
-```
-
-### Step 3: 创建分支
-
-获取最新版本的goInception
+Set the `pre-commit` hook. This hook checks your commits for formatting,
+building, doc generation, etc:
 
 ```sh
-# 切换到项目目录
 cd $working_dir/goInception/
-# 获取最新更新
-git fetch upstream
+ln -s `pwd`/hooks/pre-commit .git/hooks/
+chmod +x $working_dir/goInception/.git/hooks/pre-commit
+```
 
-# 切换到本地master
+### Step 3: Branch
+
+Get your local master up to date:
+
+```sh
+cd $working_dir/goInception
+git fetch upstream
 git checkout master
-# 版本合并
 git rebase upstream/master
 ```
 
-创建分支
+Branch from master:
 
 ```sh
-# 创建并切换到新分支
-# 新功能建议以feature开头,bug修改建议以fix开头
 git checkout -b feature-test
 ```
 
-### Step 4: 开发
+### Step 4: Develop
 
-#### 代码开发
+#### Edit the code
 
-现在可以在`feature-test`分支进行开发了.
+You can now edit the code on the `feature-test` branch.
 
+#### Prepare the test environment
 
-#### 准备测试环境
+A mysql instance is required to run local tests to test audit, execution, and backup functions.
 
-运行本地测试需要一个mysql环境，用来测试审核、执行及备份功能。
-* mysql建议版本: `5.7`
-* mysql启动参数(可设置my.cnf) `mysqld --log-bin=on --server_id=111 --character-set-server=utf8mb4`
-* 测试数据库 `mysql -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;"`
-* 测试用户  `mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"`
+* mysql recommended version: `5.7`
+* mysql startup parameters(or set my.cnf) `mysqld --log-bin=on --server_id=111 --character-set-server=utf8mb4`
+* Create a test database `mysql -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;"`
+* Create a test user  `mysql -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"`
 
-#### 运行测试
+#### Test
 
-运行完整测试
-
-*完整测试可能由于环境问题无法通过，此时需要保证`GO111MODULE=on go test session/session_inception_*.go`通过*
+Build and run all tests:
 
 ```sh
-# 单元测试
+# build and run the unit test to make sure all tests are passed.
 make dev
 
-# 检查checklist
+# Check the checklist before you move on.
 make checklist
 ```
 
-运行指定测试
+You can also run a single unit test in a file. For example, to run test
+`TestToInt64` in file `types/datum.go`:
 
 ```sh
 GO111MODULE=on go test session/session_inception_*.go
-# 或者:
+# or:
 GO111MODULE=on go test session/session_inception_test.go
 ```
 
-### Step 5: 保持分支同步
+### Step 5: Keep your branch in sync
 
-*分支在提交前需要先合并goInception最新版本，以免PR无法合并*
+*The branch needs to be merged with the latest version of goInception before submitting, so as not to be unable to merge PR*
 
 ```sh
-# 在`feature-test`分支(`git checkout feature-test`)
+# While on your feature-test branch.
 git fetch upstream
 git rebase upstream/master
 ```
 
-### Step 6: 提交
+Please don't use `git pull` instead of the above `fetch`/`rebase`. `git pull`
+does a merge, which leaves merge commits. These make the commit history messy
+and violate the principle that commits ought to be individually understandable
+and useful (see below). You can also consider changing your `.git/config` file
+via `git config branch.autoSetupRebase` always to change the behavior of `git pull`.
 
-提交变更
+### Step 6: Commit
+
+Commit your changes.
 
 ```sh
 git commit
 ```
 
-### Step 7: Push
+Likely you'll go back and edit/build/test further, and then `commit --amend` in a
+few cycles.
 
-推送分支到`github.com`
+## Step 7: Push
+
+When the changes are ready to review (or you just to create an offsite backup
+or your work), push your branch to your fork on `github.com`:
+
 ```sh
-git push -f origin feature-test
+git push --set-upstream ${your_remote_name} feature-test
 ```
 
-### Step 8: 创建PR
+### Step 8: Create a pull request
 
-1. 访问fork项目地址 `https://github.com/$user/goInception`
-2. 点击 `feature-test` 分支旁边的 `Compare & pull request` 按钮
+1. Visit your fork at `https://github.com/$user/goInception`.
+2. Click the `Compare & Pull Request` button next to your `feature-test` branch.
+3. Fill in the required information in the PR template.
 
-### Step 9: code review
+### Step 9: Get a code review
 
-在PR提交后，会自动进行travisci测试和circleci测试，
-在review时,有什么变动可以直接在该分支上修改和提交，PR会使用最新的commit，不用再次提交PR,
-如果一个PR涉及了多个功能或者修复,建议分成多个分支，以便于review以及合并。
+After PR submission, travisci test and circleci test will be automatically performed,
+During the review, any changes can be directly modified and submitted on the branch, the PR will use the latest commit, and there is no need to submit the PR again.
+If a PR involves multiple functions or fixes, it is recommended to split into multiple branches to facilitate review and merging.
 
 
-## 代码风格
+## Code style
 
-可参考Golang社区建议的编码风格 [style doc](https://github.com/golang/go/wiki/CodeReviewComments)
+You can refer to the coding style suggested by the Golang community [style doc](https://github.com/golang/go/wiki/CodeReviewComments)
