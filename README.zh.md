@@ -19,7 +19,7 @@
 goInception是一个集审核、执行、备份及生成回滚语句于一身的MySQL运维工具， 通过对执行SQL的语法解析，返回基于自定义规则的审核结果，并提供执行和备份及生成回滚语句的功能
 
 
-**Documentation: **
+**Documentation:**
 **[[Document]](https://hanchuanchuan.github.io/goInception/)**
 **[[中文文档]](https://hanchuanchuan.github.io/goInception/zh/)**
 
