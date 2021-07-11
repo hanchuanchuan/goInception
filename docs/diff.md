@@ -23,18 +23,14 @@ SQL fingerprint   |  <div class="text-error">✕</div>    |   <div class="text-s
 
 Stage  |  inception  |  goInception | Description
 ------------ | :--------: | :--------: | ------------
-Audit   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 80px;"/></div>    |   Slightly better review speed inception
-Execute   |  <div class="progress"> <div class="rect left" style="width: 90px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   Similar execution speed
-Backup   |  <div class="progress"> <div class="rect left" style="width: 20px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   Goinception leads in backup speed (batch backup), which has a greater advantage
+Audit    |  ☆☆    |   ☆☆   |   Slightly better review speed inception
+Execute  |  ☆☆    |   ☆☆   |   Similar execution speed
+Backup   |  ☆     |   ☆☆   |   Goinception leads in backup speed (batch backup), which has a greater advantage
 
 ## Difficult to get started
 
 operating  |  inception  |  goInception | Description
 ------------ | :--------: | :--------: | ------------
-Rapid deployment   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>    |   Goinception can use binary deployment, download and use
-Problem debugging   |  <div class="progress"> <div class="rect left" style="width: 30px;"/> </div>    |   <div class="progress"> <div class="rect left" style="width: 90px;"/></div>     |   Goinception has a lot of log output, which is easy to locate the problem quickly
+Rapid deployment    |  ☆   |   ☆☆    |   Goinception can use binary deployment, download and use
+Problem debugging   |  ☆   |   ☆☆    |   Goinception has a lot of log output, which is easy to locate the problem quickly
 Interface call   |  Limited to `python`,`c`,`c++`    |   As long as the language of `mysql database driver` is implemented, the call is supported    |
-
-
-
-
