@@ -6475,8 +6475,8 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 							row.Rows = int(f)
 						}
 					} else if row.EstRows != "" {
-						if v, err := strconv.Atoi(row.EstRows); err == nil {
-							row.Rows = v
+						if v, err := strconv.ParseFloat(row.EstRows, 64); err == nil {
+							row.Rows = int(v)
 						}
 					}
 				}
@@ -6490,8 +6490,8 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 						row.Rows = int(f)
 					}
 				} else if row.EstRows != "" {
-					if v, err := strconv.Atoi(row.EstRows); err == nil {
-						row.Rows = v
+					if v, err := strconv.ParseFloat(row.EstRows, 64); err == nil {
+						row.Rows = int(v)
 					}
 				}
 			}
