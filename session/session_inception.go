@@ -3969,6 +3969,18 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 				defaultExpr = op.Expr
 				defaultValue = op.Expr.GetDatum()
 				hasDefaultValue = true
+			case ast.ColumnOptionOnUpdate:
+				if funcCall, ok := op.Expr.(*ast.FuncCallExpr); ok {
+					var num int64
+					if len(funcCall.Args) == 1 {
+						v := funcCall.Args[0]
+						num = v.GetDatum().GetInt64()
+					}
+					if int(num) != field.Tp.Decimal && !(field.Tp.Decimal == -1 && num == 0) {
+						s.appendErrorMessage(
+							fmt.Sprintf("Invalid ON UPDATE clause for '%s' column", field.Name.Name.O))
+					}
+				}
 			case ast.ColumnOptionPrimaryKey:
 				isPrimary = true
 			case ast.ColumnOptionGenerated:
@@ -3993,9 +4005,27 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.appendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
 
+	if (field.Tp.Tp == mysql.TypeTimestamp || field.Tp.Tp == mysql.TypeDatetime) && field.Tp.Decimal > 6 {
+		s.appendErrorMessage(
+			fmt.Sprintf("Too-big precision %d specified for '%s'. Maximum is 6",
+				field.Tp.Decimal, field.Name.Name.O))
+	}
+
 	//有默认值，且归类无效，如(default CURRENT_TIMESTAMP)
 	if hasDefaultValue && s.isInvalidDefaultValue(field) {
 		s.appendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+	} else if hasDefaultValue {
+		if funcCall, ok := defaultExpr.(*ast.FuncCallExpr); ok {
+			var num int64
+			if len(funcCall.Args) == 1 {
+				v := funcCall.Args[0]
+				num = v.GetDatum().GetInt64()
+			}
+			if int(num) != field.Tp.Decimal && !(field.Tp.Decimal == -1 && num == 0) {
+				log.Errorf("num: %v, tp.decimal: %v", num, field.Tp.Decimal)
+				s.appendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
+		}
 	}
 
 	//有默认值，且为NULL，且有NOT NULL约束，如(not null default null)
@@ -7258,6 +7288,11 @@ func (s *session) queryIndexFromDB(db string, tableName string, reportNotExists 
 }
 
 func (s *session) appendErrorMessage(msg string) {
+	s.appendErrorf(msg)
+}
+
+func (s *session) appendErrorf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	if s.stage != StageCheck && s.recordSets.MaxLevel != 2 {
 		if s.stage == StageBackup {
 			s.myRecord.Buf.WriteString("Backup: ")
