@@ -4005,7 +4005,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.appendErrorNo(ER_COLUMN_HAVE_NO_COMMENT, field.Name.Name, tableName)
 	}
 
-	if field.Tp.Decimal > 6 {
+	if (field.Tp.Tp == mysql.TypeTimestamp || field.Tp.Tp == mysql.TypeDatetime) && field.Tp.Decimal > 6 {
 		s.appendErrorMessage(
 			fmt.Sprintf("Too-big precision %d specified for '%s'. Maximum is 6",
 				field.Tp.Decimal, field.Name.Name.O))
