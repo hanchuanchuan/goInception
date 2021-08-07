@@ -977,6 +977,26 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TABLE_PREFIX,
 			config.GetGlobalConfig().Inc.TablePrefix))
+	config.GetGlobalConfig().Inc.TablePrefix = ""
+
+	sql = `create table t1(id int primary key,
+				c1 datetime DEFAULT CURRENT_TIMESTAMP(1) ON UPDATE CURRENT_TIMESTAMP);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = `create table t1(id int primary key,
+			c1 datetime DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP);`
+	s.testErrorCode(c, sql)
+
+	sql = `create table t1(id int primary key,
+			c1 datetime DEFAULT CURRENT_TIMESTAMP(7) ON UPDATE CURRENT_TIMESTAMP);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
+
+	sql = `create table t1(id int primary key,
+			c1 datetime(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP);`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Invalid ON UPDATE clause for '%s' column.", "c1"))
 
 }
 
@@ -2384,6 +2404,7 @@ func (s *testSessionIncSuite) TestTimestampColumn(c *C) {
 		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
 	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(7) default '2000-1-1 1:1:1');`
 	s.testErrorCode(c, sql,
+		session.NewErrf("Too-big precision 7 specified for 'c1'. Maximum is 6."),
 		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
 
 	sql = `drop table if exists timeTable;create table timeTable(c1 timestamp(0) default '2000-1-1 1:1:1');`
