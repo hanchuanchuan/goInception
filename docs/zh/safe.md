@@ -18,7 +18,7 @@ skip_grant_table = false
 - DROP USER
 - ALTER USER
 - SET PASSWORD FOR
-- GRANK/REVOKE `可能用不到`
+- GRANT/REVOKE `可能用不到`
 - SELECT * FROM MYSQL.USER `用户查询`
 
 `默认初始用户为root, 密码为空`
