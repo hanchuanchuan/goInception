@@ -210,18 +210,18 @@ func (s *session) mysqlExecuteAlterTableOsc(r *Record) {
 // getSocketFile return gh-ost socket file
 // unix socket file max 104 characters (or 107)
 func (s *session) getSocketFile(r *Record) string {
-	socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", s.opt.Host, s.opt.Port,
-		r.TableInfo.Schema, r.TableInfo.Name)
+	socketFile := fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.%d.sock", s.opt.Host, s.opt.Port,
+		r.TableInfo.Schema, r.TableInfo.Name, time.Now().Unix())
 	if len(socketFile) > 100 {
 		// 字符串过长时转换为hash值
 		host := truncateString(s.opt.Host, 30)
 		dbName := truncateString(r.TableInfo.Schema, 30)
 		tableName := truncateString(r.TableInfo.Name, 30)
-		socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.sock", host, s.opt.Port,
-			dbName, tableName)
+		socketFile = fmt.Sprintf("/tmp/gh-ost.%s.%d.%s.%s.%d.sock", host, s.opt.Port,
+			dbName, tableName, time.Now().Unix())
 		if len(socketFile) > 100 {
-			socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s.sock", host, s.opt.Port,
-				dbName, tableName)
+			socketFile = fmt.Sprintf("/tmp/gh%s%d%s%s%d.sock", host, s.opt.Port,
+				dbName, tableName, time.Now().Unix())
 		}
 	}
 	return socketFile
