@@ -49,7 +49,7 @@ type Record struct {
 	Sql string
 
 	// 受影响行
-	AffectedRows int
+	AffectedRows int64
 
 	// 对应备份库的opid,用来找到对应的回滚语句
 	// Sequence string	改用属性OPID
@@ -165,7 +165,7 @@ func (r *Record) List() []interface{} {
 	columns[4] = r.ErrorMessage
 
 	columns[5] = r.Sql
-	columns[6] = int64(r.AffectedRows)
+	columns[6] = r.AffectedRows
 
 	if r.OPID == "" {
 		columns[7] = makeOPIDByTime(r.ExecTimestamp,
@@ -310,7 +310,7 @@ func NewRecordSets() *MyRecordSets {
 	rc.CreateFiled("error_message", mysql.TypeString)
 	rc.CreateFiled("sql", mysql.TypeString)
 	// 受影响行
-	rc.CreateFiled("affected_rows", mysql.TypeLong)
+	rc.CreateFiled("affected_rows", mysql.TypeLonglong)
 	// 对应备份库的opid,用来找到对应的回滚语句
 	rc.CreateFiled("sequence", mysql.TypeString)
 	// 备份库的库名
@@ -355,7 +355,7 @@ func (s *MyRecordSets) setFields(r *Record) {
 	}
 
 	row[5].SetString(r.Sql)
-	row[6].SetInt64(int64(r.AffectedRows))
+	row[6].SetInt64(r.AffectedRows)
 	if r.OPID == "" {
 		// record.OPID =
 		// row[7].SetNull()

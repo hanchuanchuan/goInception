@@ -202,7 +202,7 @@ type session struct {
 	lastBackupTable string
 
 	// 总的操作行数,当备份时用以计算备份进度
-	totalChangeRows int
+	totalChangeRows int64
 	backupTotalRows int
 
 	// 数据库类型

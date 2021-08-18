@@ -389,7 +389,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 			// if (record.StageStatus == StatusExecFail && record.AffectedRows > 0) ||
 			// 	record.StageStatus == StatusExecOK || record.StageStatus == StatusBackupFail {
 			if record.AffectedRows > 0 {
-				if changeRows >= record.AffectedRows {
+				if int64(changeRows) >= record.AffectedRows {
 					record.StageStatus = StatusBackupOK
 				}
 			}
@@ -411,7 +411,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 				break
 			}
 		} else if s.opt.tranBatch > 1 {
-			if changeRows >= record.AffectedRows &&
+			if int64(changeRows) >= record.AffectedRows &&
 				(s.dbType != DBTypeMariaDB || s.dbVersion < 100000) {
 				if record.AffectedRows > 0 {
 					record.StageStatus = StatusBackupOK

@@ -1132,7 +1132,7 @@ func (s *session) executeTransaction(records []*Record) int {
 		}
 
 		// log.Infof("TRAN!!! [%s] [%d] %s,RowsAffected: %d", s.DBName, currentThreadId, record.Sql, res.RowsAffected)
-		record.AffectedRows = int(res.RowsAffected)
+		record.AffectedRows = res.RowsAffected
 		record.ThreadId = currentThreadId
 
 		record.StageStatus = StatusExecOK
@@ -1507,7 +1507,7 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 	if err != nil {
 		s.appendErrorMessage(err.Error())
 	}
-	record.AffectedRows = int(affectedRows)
+	record.AffectedRows = affectedRows
 	record.ThreadId = s.fetchThreadID()
 	if record.ThreadId == 0 {
 		s.appendErrorMessage("无法获取线程号")
@@ -2283,7 +2283,7 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 
 			s.myRecord.TableInfo.IsDeleted = true
 
-			if s.inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.inc.MaxDDLAffectRows) {
+			if s.inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int64(s.inc.MaxDDLAffectRows) {
 				s.appendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
 					"Drop", s.myRecord.AffectedRows, s.inc.MaxDDLAffectRows)
 			}
@@ -2303,7 +2303,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 		where table_schema='%s' and table_name='%s';`, t.Schema, t.Name)
 
 	var (
-		res       uint
+		res       uint64
 		collation string
 	)
 
@@ -2322,7 +2322,7 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 		for rows.Next() {
 			rows.Scan(&res, &collation)
 		}
-		s.myRecord.AffectedRows = int(res)
+		s.myRecord.AffectedRows = int64(res)
 		t.Collation = collation
 	}
 }
@@ -3238,7 +3238,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 	}
 	s.alterRollbackBuffer = nil
 
-	if s.inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int(s.inc.MaxDDLAffectRows) {
+	if s.inc.MaxDDLAffectRows > 0 && s.myRecord.AffectedRows > int64(s.inc.MaxDDLAffectRows) {
 		s.appendErrorNo(ER_CHANGE_TOO_MUCH_ROWS,
 			"Alter", s.myRecord.AffectedRows, s.inc.MaxDDLAffectRows)
 	}
@@ -5174,7 +5174,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				}
 			}
 		}
-		s.myRecord.AffectedRows = len(node.Lists)
+		s.myRecord.AffectedRows = int64(len(node.Lists))
 	} else if node.Select == nil {
 		s.appendErrorNo(ER_WITH_INSERT_VALUES)
 	}
@@ -6502,26 +6502,26 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 				if row.Rows == 0 {
 					if row.Count != "" {
 						if f, err := strconv.ParseFloat(row.Count, 64); err == nil {
-							row.Rows = int(f)
+							row.Rows = int64(f)
 						}
 					} else if row.EstRows != "" {
 						if v, err := strconv.ParseFloat(row.EstRows, 64); err == nil {
-							row.Rows = int(v)
+							row.Rows = int64(v)
 						}
 					}
 				}
-				r.AffectedRows = Max(r.AffectedRows, row.Rows)
+				r.AffectedRows = Max64(r.AffectedRows, row.Rows)
 			}
 		} else {
 			row := rows[0]
 			if row.Rows == 0 {
 				if row.Count != "" {
 					if f, err := strconv.ParseFloat(row.Count, 64); err == nil {
-						row.Rows = int(f)
+						row.Rows = int64(f)
 					}
 				} else if row.EstRows != "" {
 					if v, err := strconv.ParseFloat(row.EstRows, 64); err == nil {
-						row.Rows = int(v)
+						row.Rows = int64(v)
 					}
 				}
 			}
@@ -6533,7 +6533,7 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 		}
 	}
 
-	if s.inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.inc.MaxUpdateRows) {
+	if s.inc.MaxUpdateRows > 0 && r.AffectedRows > int64(s.inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.appendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
@@ -6565,7 +6565,7 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 	// }
 	r := s.myRecord
 
-	var value int
+	var value int64
 	rows, err := s.raw(sql)
 	if rows != nil {
 		defer rows.Close()
@@ -6596,7 +6596,7 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 	// 	newRecord.AffectedRows = r.AffectedRows
 	// }
 
-	if s.inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.inc.MaxUpdateRows) {
+	if s.inc.MaxUpdateRows > 0 && r.AffectedRows > int64(s.inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.appendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
@@ -6683,7 +6683,7 @@ func (s *session) anlyzeExplain(rows []ExplainInfo) {
 	if len(rows) > 0 {
 		r.AffectedRows = rows[0].Rows
 	}
-	if s.inc.MaxUpdateRows > 0 && r.AffectedRows > int(s.inc.MaxUpdateRows) {
+	if s.inc.MaxUpdateRows > 0 && r.AffectedRows > int64(s.inc.MaxUpdateRows) {
 		switch r.Type.(type) {
 		case *ast.DeleteStmt, *ast.UpdateStmt:
 			s.appendErrorNo(ER_UDPATE_TOO_MUCH_ROWS,
