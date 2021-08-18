@@ -170,7 +170,7 @@ type ExplainInfo struct {
 	Key          string  `gorm:"Column:key"`
 	KeyLen       string  `gorm:"Column:key_len"`
 	Ref          string  `gorm:"Column:ref"`
-	Rows         int     `gorm:"Column:rows"`
+	Rows         int64   `gorm:"Column:rows"`
 	Filtered     float32 `gorm:"Column:filtered"`
 	Extra        string  `gorm:"Column:Extra"`
 
@@ -871,6 +871,13 @@ func Exist(filename string) bool {
 }
 
 func Max(x, y int) int {
+	if x >= y {
+		return x
+	}
+	return y
+}
+
+func Max64(x, y int64) int64 {
 	if x >= y {
 		return x
 	}
