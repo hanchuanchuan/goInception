@@ -454,7 +454,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// flag.BoolVar(&migrationContext.InitiallyDropOldTable, "initially-drop-old-table", false, "Drop a possibly existing OLD table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
 	migrationContext.InitiallyDropGhostTable = s.ghost.GhostInitiallyDropGhostTable
 	// flag.BoolVar(&migrationContext.InitiallyDropGhostTable, "initially-drop-ghost-table", false, "Drop a possibly existing Ghost table (remains from a previous run?) before beginning operation. Default is to panic and abort if such table exists")
-	migrationContext.TimestampOldTable = false
+	migrationContext.TimestampOldTable = s.ghost.GhostTimestampOldTable
 	// flag.BoolVar(&migrationContext.TimestampOldTable, "timestamp-old-table", false, "Use a timestamp in old table name. This makes old table names unique and non conflicting cross migrations")
 	cutOver := s.ghost.GhostCutOver
 	// cutOver := flag.String("cut-over", "atomic", "choose cut-over type (default|atomic, two-step)")
