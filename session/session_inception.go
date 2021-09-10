@@ -4235,7 +4235,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 				}
 			}
 			if !found {
-				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, table.Name, s.inc.IndexPrefix)
+				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, s.inc.IndexPrefix, table.Name)
 			}
 		}
 	}
