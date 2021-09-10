@@ -952,7 +952,7 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WRONG_NAME_FOR_INDEX, "NULL", "test_error_code_3"),
 		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "",
-			"test_error_code_3", config.GetGlobalConfig().Inc.IndexPrefix),
+			config.GetGlobalConfig().Inc.IndexPrefix, "test_error_code_3"),
 		session.NewErr(session.ER_TOO_LONG_KEY, "", indexMaxLength))
 
 	config.GetGlobalConfig().Inc.IndexPrefix = "idx_,idx1_"
@@ -963,7 +963,7 @@ primary key(id)) comment 'test';`
 	sql = "create table test_error_code_3(c1 int,c2 int,key idx_1(c1),key idx2_2(c2));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INDEX_NAME_IDX_PREFIX, "idx2_2",
-			"test_error_code_3", config.GetGlobalConfig().Inc.IndexPrefix),
+			config.GetGlobalConfig().Inc.IndexPrefix, "test_error_code_3"),
 	)
 
 	config.GetGlobalConfig().Inc.TablePrefix = "t_"
