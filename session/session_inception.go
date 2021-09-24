@@ -4196,6 +4196,10 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 			s.appendErrorNo(ErrIdentifierUpper, name)
 		}
 
+		if name != strings.ToLower(name) {
+			s.appendErrorNo(ErrIdentifierLower, name)
+		}
+
 		if isIncorrectName(name) {
 			s.appendErrorNo(ER_WRONG_NAME_FOR_INDEX, name, table.Name)
 		} else {
@@ -7363,6 +7367,10 @@ func (s *session) checkKeyWords(name string) {
 		s.appendErrorNo(ErrIdentifierUpper, name)
 	}
 
+	if name != strings.ToLower(name) {
+		s.appendErrorNo(ErrIdentifierLower, name)
+	}
+
 	if !regIdentified.MatchString(name) {
 		s.appendErrorNo(ER_INVALID_IDENT, name)
 	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
@@ -7490,6 +7498,8 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return s.inc.CheckDatetimeCount
 	case ErrIdentifierUpper:
 		return s.inc.CheckIdentifierUpper
+	case ErrIdentifierLower:
+		return s.inc.CheckIdentifierLower
 	case ErCantChangeColumn:
 		return !s.inc.EnableChangeColumn
 	}

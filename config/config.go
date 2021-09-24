@@ -256,6 +256,7 @@ type Inc struct {
 	CheckFloatDouble bool `toml:"check_float_double" json:"check_float_double"`
 
 	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
+	CheckIdentifierLower bool `toml:"check_identifier_lower" json:"check_identifier_lower"`
 
 	// 连接服务器的默认字符集,默认值为utf8mb4
 	DefaultCharset      string `toml:"default_charset" json:"default_charset"`
@@ -753,6 +754,7 @@ var defaultConf = Config{
 		EnableTimeStampType:   true,
 		CheckFloatDouble:      false,
 		CheckIdentifierUpper:  false,
+		CheckIdentifierLower:  false,
 		SqlSafeUpdates:        -1,
 		LockWaitTimeout:       -1,
 		SupportCharset:        "utf8,utf8mb4",
