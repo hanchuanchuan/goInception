@@ -2907,6 +2907,16 @@ func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
 	config.GetGlobalConfig().Inc.CheckIdentifierUpper = false
 }
 
+func (s *testSessionIncSuite) TestIdentifierLower(c *C) {
+	config.GetGlobalConfig().Inc.CheckIdentifierLower = true
+	sql := `drop table if exists hello;create table hello(id int,c1 float, c2 double,key idx_c1(c1),unique index uniq_a(c2));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrIdentifierLower, "uniq_a"),
+	)
+
+	config.GetGlobalConfig().Inc.CheckIdentifierLower = false
+}
+
 func (s *testSessionIncSuite) TestMaxKeys(c *C) {
 	//er_too_many_keys
 	config.GetGlobalConfig().Inc.MaxKeys = 2
