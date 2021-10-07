@@ -2909,10 +2909,13 @@ func (s *testSessionIncSuite) TestIdentifierUpper(c *C) {
 
 func (s *testSessionIncSuite) TestIdentifierLower(c *C) {
 	config.GetGlobalConfig().Inc.CheckIdentifierLower = true
-	sql := `drop table if exists hello;create table hello(id int,c1 float, c2 double,key idx_c1(c1),unique index uniq_a(c2));`
+	sql := `drop table if exists hello;create table hello(id int,c1 float, c2 double,key idx_c1(c1),unique index uniq_A(c2));`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrIdentifierLower, "uniq_a"),
+		session.NewErr(session.ErrIdentifierLower, "uniq_A"),
 	)
+
+	sql = `drop table if exists hello;create table hello(id int,c1 float, c2 double,key idx_c1(c1),unique index uniq_a(c2));`
+	s.testErrorCode(c, sql)
 
 	config.GetGlobalConfig().Inc.CheckIdentifierLower = false
 }

@@ -56,7 +56,7 @@ type ChanOscData struct {
 
 // Copying `test`.`t1`:  99% 00:00 remain
 // 匹配osc执行进度
-var regOscPercent *regexp.Regexp = regexp.MustCompile(`^Copying .*? (\d+)% (\d+:\d+) remain`)
+var regOscPercent = regexp.MustCompile(`^Copying .*? (\d+)% (\d+:\d+|\d+:\d+:\d+) remain`)
 var regGhostPercent *regexp.Regexp = regexp.MustCompile(`^Copy:.*?(\d+).\d+%;.*?ETA: (.*)?`)
 
 func (s *session) checkAlterUseOsc(t *TableInfo) {
