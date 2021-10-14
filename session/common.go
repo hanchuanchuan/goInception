@@ -184,6 +184,7 @@ type ExplainInfo struct {
 type FieldInfo struct {
 	// gorm.Model
 
+	Table      string  `gorm:"-"`
 	Field      string  `gorm:"Column:Field"`
 	Type       string  `gorm:"Column:Type"`
 	Collation  string  `gorm:"Column:Collation"`
@@ -218,6 +219,14 @@ func (f *FieldInfo) IsGenerated() bool {
 		f.isGenerated = &v
 	}
 	return *f.isGenerated
+}
+
+// 返回列名
+func (f *FieldInfo) getName() string {
+	if f.Table != "" {
+		return f.Table + "." + f.Field
+	}
+	return f.Field
 }
 
 // TableInfo 表结构.

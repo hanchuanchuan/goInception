@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/hanchuanchuan/goInception/ast"
+	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/model"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/types"
@@ -477,7 +478,7 @@ func (s *session) checkOnlyFullGroupByWithOutGroupClause(fields []*ast.SelectFie
 }
 
 func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, tables []*TableInfo) error {
-	gbyCols := make(map[*FieldInfo]struct{}, len(sel.Fields.Fields))
+	gbyCols := make(map[string]struct{}, len(sel.Fields.Fields))
 	gbyExprs := make([]ast.ExprNode, 0, len(sel.Fields.Fields))
 
 	for _, byItem := range sel.GroupBy.Items {
@@ -487,24 +488,68 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 			if col == nil {
 				continue
 			}
-			gbyCols[col] = struct{}{}
+			if s.IgnoreCase() {
+				gbyCols[strings.ToLower(col.getName())] = struct{}{}
+			} else {
+				gbyCols[col.getName()] = struct{}{}
+			}
 		} else {
 			gbyExprs = append(gbyExprs, byItem.Expr)
 		}
 	}
 
-	notInGbyCols := make(map[*FieldInfo]ErrExprLoc, len(sel.Fields.Fields))
+	notInGbyCols := make(map[string]ErrExprLoc, len(sel.Fields.Fields))
 	for offset, field := range sel.Fields.Fields {
-		// log.Info(field.Auxiliary, "---", field.Expr)
+		// log.Info(field.Auxiliary, "---", field.AsName)
 		if field.Auxiliary {
 			continue
 		}
-		checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+		if _, ok := field.Expr.(*ast.AggregateFuncExpr); ok {
+			if field.AsName.L != "" {
+				c := &ast.ColumnNameExpr{Name: &ast.ColumnName{
+					Name: model.NewCIStr(field.AsName.O),
+				}}
+				col := findColumnWithList(c, tables)
+				if col != nil {
+					if _, ok := gbyCols[col.getName()]; ok {
+						s.appendErrorf("Can't group on '%s'", field.AsName.String())
+						break
+					}
+				}
+			}
+			continue
+		}
+		if f, ok := field.Expr.(*ast.FuncCallExpr); ok {
+			if f.FnName.L == ast.AnyValue {
+				continue
+			}
+		}
+		if field.AsName.L != "" {
+			var name string
+			if s.IgnoreCase() {
+				name = field.AsName.L
+			} else {
+				name = field.AsName.O
+			}
+
+			if _, ok1 := gbyCols[name]; ok1 {
+				continue
+			} else {
+				s.checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+			}
+			// c := &ast.ColumnNameExpr{Name: &ast.ColumnName{
+			// 	Name: model.NewCIStr(field.AsName.O),
+			// }}
+			// checkExprInGroupBy(c, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+		} else {
+			s.checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+		}
+		// checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
 	}
 
 	if sel.OrderBy != nil {
 		for offset, item := range sel.OrderBy.Items {
-			checkExprInGroupBy(item.Expr, offset, ErrExprInOrderBy, gbyCols, gbyExprs, notInGbyCols, tables)
+			s.checkExprInGroupBy(item.Expr, offset, ErrExprInOrderBy, gbyCols, gbyExprs, notInGbyCols, tables)
 		}
 	}
 
@@ -517,12 +562,12 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 		case ErrExprInSelect:
 			// getName(sel.Fields.Fields[errExprLoc.Offset])
 			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
-				field.Field)
+				field)
 			return nil
 		case ErrExprInOrderBy:
 			// sel.OrderBy.Items[errExprLoc.Offset].Expr.Text()
 			s.appendErrorNo(ErrFieldNotInGroupBy, errExprLoc.Offset+1, errExprLoc.Loc,
-				field.Field)
+				field)
 			return nil
 		}
 		return nil
@@ -530,11 +575,11 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 	return nil
 }
 
-func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
-	gbyCols map[*FieldInfo]struct{}, gbyExprs []ast.ExprNode, notInGbyCols map[*FieldInfo]ErrExprLoc, tables []*TableInfo) {
-	if _, ok := expr.(*ast.AggregateFuncExpr); ok {
-		return
-	}
+func (s *session) checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
+	gbyCols map[string]struct{}, gbyExprs []ast.ExprNode, notInGbyCols map[string]ErrExprLoc, tables []*TableInfo) {
+	// if _, ok := expr.(*ast.AggregateFuncExpr); ok {
+	// 	return
+	// }
 	// AnyValue可以跳过only_full_group_by检查
 	// if f, ok := expr.(*ast.FuncCallExpr); ok {
 	// 	if f.FnName.L == ast.AnyValue {
@@ -544,8 +589,8 @@ func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
 	if c, ok := expr.(*ast.ColumnNameExpr); ok {
 		col := findColumnWithList(c, tables)
 		if col != nil {
-			if _, ok := gbyCols[col]; !ok {
-				notInGbyCols[col] = ErrExprLoc{Offset: offset, Loc: loc}
+			if _, ok := gbyCols[col.getName()]; !ok {
+				notInGbyCols[col.getName()] = ErrExprLoc{Offset: offset, Loc: loc}
 			}
 		}
 	} else {
@@ -554,6 +599,17 @@ func checkExprInGroupBy(expr ast.ExprNode, offset int, loc string,
 				return
 			}
 		}
+
+		// todo: 待优化，从表达式中返回一列
+		// colNames := s.getSubSelectColumns(expr)
+		// log.Errorf("colNames: %#v", colNames)
+		// if len(colNames) > 0 {
+		// 	notInGbyCols[colNames[0]] = ErrExprLoc{Offset: offset, Loc: loc}
+		// }
+
+		var builder strings.Builder
+		_ = expr.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
+		notInGbyCols[builder.String()] = ErrExprLoc{Offset: offset, Loc: loc}
 	}
 }
 
