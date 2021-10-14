@@ -3325,3 +3325,40 @@ func (s *testSessionIncSuite) TestWhereCondition(c *C) {
 	`
 	s.testManyErrors(c, sql)
 }
+
+func (s *testSessionIncSuite) TestGroupBy(c *C) {
+	sql := ""
+	s.mustRunExec(c, `drop table if exists system_menu;
+	create table system_menu(id int primary key,pid int ,c1 int);`)
+
+	sql = `SELECT count(pid) as as_count_pid,pid as as_pid FROM system_menu group by as_count_pid;`
+	if strings.Contains(s.sqlMode, "ONLY_FULL_GROUP_BY") {
+		s.testErrorCode(c, sql,
+			session.NewErrf("Can't group on 'as_count_pid'."))
+	} else {
+		s.testErrorCode(c, sql)
+	}
+
+	sql = `SELECT count(pid) as as_count_pid,pid as as_pid FROM system_menu group by as_pid;`
+	s.testErrorCode(c, sql)
+
+	sql = `SELECT count(pid) as as_count_pid,c1 as as_pid FROM system_menu group by c1;`
+	s.testErrorCode(c, sql)
+
+	sql = `SELECT count(pid) as as_count_pid,id as as_pid FROM system_menu group by pid;`
+	if strings.Contains(s.sqlMode, "ONLY_FULL_GROUP_BY") {
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrFieldNotInGroupBy, 2, "SELECT list", "id"))
+	} else {
+		s.testErrorCode(c, sql)
+	}
+
+	sql = `SELECT count(pid) as as_count_pid,concat(c1,'..') as as_pid FROM system_menu group by pid;`
+	if strings.Contains(s.sqlMode, "ONLY_FULL_GROUP_BY") {
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrFieldNotInGroupBy, 2, "SELECT list", "CONCAT(`c1`, '..')"))
+	} else {
+		s.testErrorCode(c, sql)
+	}
+
+}

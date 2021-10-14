@@ -7243,6 +7243,9 @@ func (s *session) queryTableFromDB(db string, tableName string, reportNotExists 
 		}
 		return nil
 	}
+	for _, r := range rows {
+		r.Table = tableName
+	}
 	return rows
 }
 
@@ -7616,6 +7619,7 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 
 	c := &FieldInfo{}
 
+	c.Table = t.Name
 	c.Field = field.Name.Name.String()
 	c.Type = field.Tp.InfoSchemaStr()
 	// c.Null = "YES"
@@ -7852,15 +7856,16 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt, outerTables []*TableI
 			s.checkSubSelectItem(x, nil)
 
 			cols := s.getSubSelectColumns(x)
-			// log.Info(cols)
 			if cols != nil {
 				rows := make([]FieldInfo, len(cols))
+				tableName := tblSource.AsName.String()
 				for i, colName := range cols {
+					rows[i].Table = tableName
 					rows[i].Field = colName
 				}
 				t := &TableInfo{
 					Schema: "",
-					Name:   tblSource.AsName.String(),
+					Name:   tableName,
 					Fields: rows,
 				}
 				tableInfoList = append(tableInfoList, t)
@@ -7903,11 +7908,26 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt, outerTables []*TableI
 	// 	}
 	// }
 
+	groupTables := make([]*TableInfo, 0)
+
+	cols := s.getSubSelectColumns(node)
+	rows := make([]FieldInfo, len(cols))
+	for i, colName := range cols {
+		rows[i].Field = colName
+	}
+	t := &TableInfo{
+		Schema: "",
+		Name:   "",
+		Fields: rows,
+	}
+	groupTables = append(groupTables, t)
+	groupTables = append(groupTables, tableInfoList...)
+
 	// log.Info("group by : ", s.sessionVars.SQLMode.HasOnlyFullGroupBy())
 	if s.sessionVars.SQLMode.HasOnlyFullGroupBy() && node.From != nil {
 		var err error
 		if node.GroupBy != nil {
-			err = s.checkOnlyFullGroupByWithGroupClause(node, tableInfoList)
+			err = s.checkOnlyFullGroupByWithGroupClause(node, groupTables)
 		} else {
 			err = s.checkOnlyFullGroupByWithOutGroupClause(node.Fields.Fields)
 		}
@@ -7917,9 +7937,11 @@ func (s *session) checkSubSelectItem(node *ast.SelectStmt, outerTables []*TableI
 	}
 
 	if node.GroupBy != nil {
+		s.checkAmbiguous = false
 		for _, item := range node.GroupBy.Items {
-			s.checkItem(item.Expr, tableInfoList)
+			s.checkItem(item.Expr, groupTables)
 		}
+		s.checkAmbiguous = true
 	}
 
 	if node.Having != nil || node.OrderBy != nil {
