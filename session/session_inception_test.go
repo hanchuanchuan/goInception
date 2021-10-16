@@ -1398,6 +1398,11 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 
 	sql = "alter table t1 modify c1 int not null;alter table t1 add primary key(id,c1);"
 	s.testErrorCode(c, sql)
+
+	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int not null,`alter` int);")
+	sql = "alter table t1 modify `alter` bigint;"
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableChangeColumn(c *C) {
@@ -1417,6 +1422,13 @@ func (s *testSessionIncSuite) TestAlterTableChangeColumn(c *C) {
 
 	config.GetGlobalConfig().Inc.EnableChangeColumn = true
 
+	config.GetGlobalConfig().Inc.EnableIdentiferKeyword = false
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int not null,`alter` int);")
+	sql = "alter table t1 change `alter` `alter` bigint;"
+	s.testErrorCode(c, sql)
+	sql = "alter table t1 change `alter` `delete` bigint;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_IDENT_USE_KEYWORD, "delete"))
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
