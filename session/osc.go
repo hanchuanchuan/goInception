@@ -310,13 +310,15 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 
 	// unix socket file max 104 characters (or 107)
 	socketFile := s.getSocketFile(r)
-	if _, err := os.Stat(socketFile); err == nil {
-		s.appendErrorMessage("listen unix socket file already in use, need to clean up manually")
-		return
-	} else if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-		s.appendErrorMessage(err.Error())
-		return
+	if !s.ghost.GhostInitiallyDropSocketFile {
+		if _, err := os.Stat(socketFile); err == nil {
+			s.appendErrorMessage("listen unix socket file already in use, need to clean up manually")
+			return
+		} else if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
+			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+			s.appendErrorMessage(err.Error())
+			return
+		}
 	}
 
 	buf.WriteString(fmt.Sprintf(" --serve-socket-file=%s", socketFile))
