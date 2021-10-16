@@ -2727,6 +2727,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				onUpdateDatetimeCount := 0
 
 				for _, field := range node.Cols {
+					s.checkKeyWords(field.Name.Name.O)
 					s.mysqlCheckField(table, field)
 					for _, op := range field.Options {
 						switch op.Tp {
@@ -3936,7 +3937,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.appendErrorNo(ErrFloatDoubleToDecimal, field.Name.Name)
 	}
 
-	s.checkKeyWords(field.Name.Name.O)
+	// s.checkKeyWords(field.Name.Name.O)
 
 	// notNullFlag := mysql.HasNotNullFlag(field.Tp.Flag)
 	// autoIncrement := mysql.HasAutoIncrementFlag(field.Tp.Flag)
@@ -4415,6 +4416,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		if found {
 			s.appendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 		} else {
+			s.checkKeyWords(nc.Name.Name.O)
 			s.mysqlCheckField(t, nc)
 
 			if !s.hasError() {
