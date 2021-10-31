@@ -2728,7 +2728,7 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 
 				for _, field := range node.Cols {
 					s.checkKeyWords(field.Name.Name.O)
-					s.mysqlCheckField(table, field)
+					s.mysqlCheckField(table, field, ast.AlterTableAddColumns)
 					for _, op := range field.Options {
 						switch op.Tp {
 						case ast.ColumnOptionPrimaryKey:
@@ -3549,7 +3549,8 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkModifyColumn")
 
 	for _, nc := range c.NewColumns {
-
+		// varchar类型字段长度是否发生了改变
+		varcharLengthChanged := false
 		found := false
 		foundIndexOld := -1
 		var foundField FieldInfo
@@ -3578,6 +3579,18 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !found {
 				s.appendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 			} else {
+				if nc.Tp.Tp == mysql.TypeVarchar && nc.Tp.Flen > 0 &&
+					s.inc.MaxVarcharLength > 0 {
+					if strings.Contains(GetDataTypeBase(foundField.Type), "char") {
+						old := GetDataTypeLength(foundField.Type)
+						if len(old) > 0 {
+							oldLen := old[0]
+							if nc.Tp.Flen > oldLen {
+								varcharLengthChanged = true
+							}
+						}
+					}
+				}
 
 				if c.Position.Tp != ast.ColumnPositionNone {
 
@@ -3701,6 +3714,18 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			s.checkKeyWords(nc.Name.Name.O)
 
 			if !s.hasError() {
+				if nc.Tp.Tp == mysql.TypeVarchar && nc.Tp.Flen > 0 &&
+					s.inc.MaxVarcharLength > 0 {
+					if strings.Contains(GetDataTypeBase(foundField.Type), "char") {
+						old := GetDataTypeLength(foundField.Type)
+						if len(old) > 0 {
+							oldLen := old[0]
+							if nc.Tp.Flen > oldLen {
+								varcharLengthChanged = true
+							}
+						}
+					}
+				}
 
 				// 在新的快照上变更表结构
 				t := s.cacheTableSnapshot(t)
@@ -3816,7 +3841,11 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 	s.AppendErrorNo(ER_CHARSET_ON_COLUMN, t.Name, nc.Name.Name)
 		// }
 
-		s.mysqlCheckField(t, nc)
+		if varcharLengthChanged {
+			s.mysqlCheckField(t, nc, ast.AlterTableAddColumns)
+		} else {
+			s.mysqlCheckField(t, nc, ast.AlterTableModifyColumn)
+		}
 
 		// 列(或旧列)未找到时结束
 		if s.hasError() {
@@ -3915,7 +3944,31 @@ func (s *session) hasErrorBefore() bool {
 	return false
 }
 
-func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
+func (s *session) checkVarcharLength(t *TableInfo, colDef *ast.ColumnDef) {
+	if s.inc.MaxVarcharLength <= 0 {
+		return
+	}
+	cName := colDef.Name.Name.String()
+	// Check column type.
+	tp := colDef.Tp
+	if tp == nil {
+		return
+	}
+
+	switch tp.Tp {
+	case mysql.TypeString: // char
+		if tp.Flen != types.UnspecifiedLength && tp.Flen > mysql.MaxFieldCharLength {
+			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, mysql.MaxFieldCharLength))
+		}
+	case mysql.TypeVarchar: // varchar
+		maxFlen := mysql.MaxFieldVarCharLength
+
+		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
+			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
+		}
+	}
+}
+func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTableType ast.AlterTableType) {
 	log.Debug("mysqlCheckField")
 
 	tableName := t.Name
@@ -4152,7 +4205,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef) {
 		s.appendErrorNo(ER_WITH_DEFAULT_ADD_COLUMN, field.Name.Name.O, tableName)
 	}
 
-	s.checkColumn(field, t.Collation)
+	s.checkColumn(field, t.Collation, alterTableType)
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
 	//        is_timestamp_type(field->sql_type) && !field->def &&
 	//        (field->flags & NOT_NULL_FLAG) &&
@@ -4417,7 +4470,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			s.appendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 		} else {
 			s.checkKeyWords(nc.Name.Name.O)
-			s.mysqlCheckField(t, nc)
+			s.mysqlCheckField(t, nc, c.Tp)
 
 			if !s.hasError() {
 				isPrimary := false

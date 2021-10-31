@@ -216,6 +216,7 @@ const (
 	ErrSameNamePartition
 	ErrRepeatConstDefinition
 	ErrPartitionNotExisted
+	ErrMaxVarcharLength
 	ER_ERROR_LAST
 )
 
@@ -399,6 +400,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrSameNamePartition:           "Duplicate partition name %-.192s",
 	ErrRepeatConstDefinition:       "Duplicate partition constant definition: '%v'",
 	ErrPartitionNotExisted:         "Partition '%-.64s' does not exist",
+	ErrMaxVarcharLength:            "Column length too big for column '%s' (Custom maximum is %d)",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
 }
 
@@ -574,6 +576,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrSameNamePartition:                   "分区名重复: %-.192s",
 	ErrRepeatConstDefinition:               "重复的分区范围定义: '%v'",
 	ErrPartitionNotExisted:                 "分区 '%-.64s' 不存在",
+	ErrMaxVarcharLength:                    "列'%s'指定长度过长(自定义上限为%d)",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -693,6 +696,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrCharsetNotSupport,
 		ErrCollationNotSupport,
 		ErrEngineNotSupport,
+		ErrMaxVarcharLength,
 		ER_FOREIGN_KEY,
 		ER_TOO_MUCH_AUTO_DATETIME_COLS,
 		ER_INCEPTION_EMPTY_QUERY:
@@ -1085,6 +1089,8 @@ func (e ErrorCode) String() string {
 		return "er_repeat_const_definition"
 	case ErrPartitionNotExisted:
 		return "er_partition_not_existed"
+	case ErrMaxVarcharLength:
+		return "er_max_varchar_length"
 	case ER_ERROR_LAST:
 		return "er_error_last"
 	}

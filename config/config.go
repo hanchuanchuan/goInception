@@ -337,7 +337,8 @@ type Inc struct {
 	MaxKeys       uint `toml:"max_keys" json:"max_keys"`
 	MaxKeyParts   uint `toml:"max_key_parts" json:"max_key_parts"`
 	MaxUpdateRows uint `toml:"max_update_rows" json:"max_update_rows"`
-
+	// varchar类型的最大长度，当超出时添加警告
+	MaxVarcharLength   uint `toml:"max_varchar_length" json:"max_varchar_length"`
 	MaxPrimaryKeyParts uint `toml:"max_primary_key_parts" json:"max_primary_key_parts"` // 主键最多允许有几列组合
 	MergeAlterTable    bool `toml:"merge_alter_table" json:"merge_alter_table"`
 
@@ -667,6 +668,7 @@ type IncLevel struct {
 	ErrWrongAndExpr                 int8 `toml:"er_wrong_and_expr"`
 	ErrViewSupport                  int8 `toml:"er_view_support"`
 	ErrIncorrectDateTimeValue       int8 `toml:"er_incorrect_datetime_value"`
+	ErrMaxVarcharLength             int8 `toml:"er_max_varchar_length"`
 }
 
 var defaultConf = Config{
@@ -883,6 +885,7 @@ var defaultConf = Config{
 		ErrWrongAndExpr:                 1,
 		ErrViewSupport:                  2,
 		ErrIncorrectDateTimeValue:       2,
+		ErrMaxVarcharLength:             2,
 	},
 }
 
