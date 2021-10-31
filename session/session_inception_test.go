@@ -1197,6 +1197,29 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 			alter table t1 add index c1(c1);`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_DUP_INDEX, "c1", "test_inc", "t1"))
+
+	config.GetGlobalConfig().Inc.MaxVarcharLength = 100
+	sql = `drop table if exists t1;
+			create table t1(id int,c1 varchar(200));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrMaxVarcharLength, "c1", 100))
+
+	sql = `drop table if exists t1;
+			create table t1(id int,key c1(id));
+			alter table t1 add column c1 varchar(1000);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrMaxVarcharLength, "c1", 100))
+
+	sql = `drop table if exists t1;
+		create table t1(id int,c1 char(10));
+		alter table t1 modify column c1 varchar(1000);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrMaxVarcharLength, "c1", 100))
+
+	sql = `drop table if exists t1;
+		create table t1(id int,c1 char(10));
+		alter table t1 modify column c1 char(100);`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {

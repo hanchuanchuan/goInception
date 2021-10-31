@@ -310,7 +310,7 @@ func (s *session) checkCreateTableGrammar(stmt *ast.CreateTableStmt) {
 	}
 }
 
-func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string) {
+func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string, alterTableType ast.AlterTableType) {
 	// Check column name.
 	cName := colDef.Name.Name.String()
 	if isIncorrectName(cName) {
@@ -367,6 +367,12 @@ func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string) {
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
 			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
 		}
+		// check varchar length and ignore other alter table operation
+		if alterTableType == ast.AlterTableAddColumns && tp.Flen != types.UnspecifiedLength &&
+			s.inc.MaxVarcharLength > 0 && tp.Flen > int(s.inc.MaxVarcharLength) {
+			s.appendErrorNo(ErrMaxVarcharLength, cName, s.inc.MaxVarcharLength)
+		}
+
 	case mysql.TypeFloat, mysql.TypeDouble:
 		if tp.Decimal > mysql.MaxFloatingTypeScale {
 			s.appendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxFloatingTypeScale))
