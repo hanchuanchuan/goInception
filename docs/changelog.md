@@ -1,5 +1,34 @@
 # goInception Changelog
 
+## [v1.2.5]-2021-10-31
+
+### Fix
+* Fix the problem that the ghost_initially_drop_socket_file parameter of gh-ost does not take effect (#382)
+* Fix the inconsistency of index prefix between Chinese and English (#380)
+* Fix the problem that the number of affected rows may overflow (#375)
+* Fix the problem that the default value of bit type is set to NULL and it cannot be approved (#346)
+* Fix the problem that pt-osc fails to execute when connecting to a port other than 3306 (#335)
+* Fix the bug that dml of tidb v4.0 version cannot be audited
+* Fix the problem that the calculated column is not ignored in the dml rollback statement (#324)
+* Fix the problem that the rename table syntax does not take effect logically when multiple table names are modified at one time (#327)
+
+### New Features
+* Added the `check_identifier_lower` parameter to enable lowercase requirements for table names, column names, and index names (#389)
+* Add `masking function`-syntax tree parsing function upgrade, return objects involved in select (library, table, column) (#355)
+* Added ghost_bin_dir parameter setting from switching gh-ost mode, `independent gh-ost module`, using binary method to call to optimize the possible bugs when ddl high concurrency and kill gh-ost process (#334)
+* Add option `max_execution_time` to set the maximum execution time of session-level DML statements (#319)
+* Added `enable_any_statement` option to support all syntaxes to be executable (#301)
+
+### Update
+* Optimize the keyword review logic of alter table modification column clauses (#392)
+* Optimize group by clause review logic (#385)
+* Add datetime decimal second check (#369)
+* Add view support for union
+* Fine-tune the insert column value check logic in strict mode
+* Optimize the character type length audit logic
+* Optimize the handling of database connection timeout (#306)
+* Improve character set and collation review logic, add utf8mb4_0900_ai_ci collation support
+
 
 ## [v1.2.4]-2020-12-19
 

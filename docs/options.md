@@ -35,6 +35,7 @@ inception set osc_check_interval = 10;
 |check_dml_where|FALSE|true,false|If return error when there is no WHERE in DML.|
 |check_float_double `v1.0.2`|FALSE|true,false|If turned on, the type of `float/double` will change to decimal auto.|
 |check_identifier|FALSE|true,false|Check if Identifier is correct.Rule: [a-z,A-Z,0-9,_]|
+check_identifier_lower  `v1.2.5` |  false    |   true,false     | If the Identifier, such as table name, column name,index name, must be lowercase. Default false
 |check_identifier_upper `v1.0.2`|FALSE|true,false|If the Identifier, such as table name, column name,index name, must be uppercase. Default false|
 |check_implicit_type_conversion `v1.1.3`|FALSE|true,false|If have implicit type conversion at WHERE. Default false|
 |check_index_prefix|FALSE|true,false|If check index prefix, setting by `index_prefix` and `uniq_index_prefix`|
@@ -46,7 +47,7 @@ inception set osc_check_interval = 10;
 |columns_must_have_index `v1.2.2`| |string|Set the column must be create index. Split by comma. Format: column name [type, option]|
 |default_charset `v1.0.5`|utf8mb4|string|The default connection charset. Default utf8mb4.|
 |enable_autoincrement_unsigned|FALSE|true,false|If the auto_increment column should be unsigned.|
-|enable_any_statement `v1.2.5`|FALSE|true,false|If all SQL approved.|
+|enable_any_statement `v1.2.5`|FALSE|true,false|If all SQL approved.[More](https://github.com/hanchuanchuan/goInception/pull/301)|
 |enable_blob_not_null `v1.0`|FALSE|true,false|If set the default value of `blob/text/json` not null are approved, default is false, means not allowed.|
 |enable_blob_type|FALSE|true,false|If check support of BLOB column, include create,alter etc.|
 |enable_change_column `v1.0.3`|TRUE|true,false|If support change column syntax, default true.|
@@ -81,6 +82,7 @@ inception set osc_check_interval = 10;
 |max_allowed_packet `v1.0-rc3`|4194304|int|Max data package size, default 4194304 byte = 4MB|
 |max_char_length|0|int|Max length of char, if exceed, `warning to exchange to varchar`.|
 |max_ddl_affect_rows `v1.0.2`|0|int|Warning when the DDL affects rows more than the setting value, if setting `0`, no limit.|
+max_execution_time `v1.2.5`   | 0              | int | Configure the max_execution_time of the remote database, no limit when 0
 |max_insert_rows `v0.6.3`|0|int|The max rows than can be insert in one INSERT values. `0` means no limit.|
 |max_key_parts|3|int|The max columns can be contained in one index.|
 |max_keys|3|int|The max number of index can be contained in one table.|

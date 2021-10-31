@@ -26,6 +26,7 @@ inception_magic_commit;
 |ignore_warnings|FALSE|bool|If stop execute when warning or not.|
 |trans `v1.1.6`|0|int|How many DML operations can be included in each transaction. `>1` means turn on transaction.|
 |fingerprint `v0.6.2`|FALSE|bool|SQL fingerprint for similar DML. reuses the explanation, decreases explain operations, speed review.|
+masking `v1.2.5` | FALSE | bool | The new version of print SQL syntax tree, return JSON format result。[More](https://github.com/hanchuanchuan/goInception/pull/355)
 |query-print `v0.7.1`|FALSE|bool|Print the SQL syntax map|
 |split `v0.9.1`|FALSE|bool|Split DDL and DML on the same table. But other option unavailable such as review, execute,backup,print sql syntax map. Normally, no need to split, GoInception records table structure snapshot which can be used for binlog translation.|
 |sleep `v1.0-rc3`|0|int|For decrease the impact to DB service, set sleep time by sleep_rows. Default 0 millisecond, max value is 100000 millisecond, equally 100 second.|
