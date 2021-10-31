@@ -27,6 +27,7 @@ backup | false | bool | 开启备份功能，仅在执行时生效
 ignore_warnings | false | bool | 是否忽略警告，仅在执行时生效。该参数控制有警告时是继续执行还是中止
 trans `v1.1.6` | 0 | int | 单个事务包含的DML条数。当设置>1时，则开启事务，按设置条数提交。如设为500，则会500条DML提交一次。详见**[事务功能](trans.html)**
 fingerprint `v0.6.2` | false | bool | 开启sql指纹功能。dml语句相似时，可以根据相同的指纹ID复用explain结果，减少远端数据库explain操作，以提高审核速度
+masking `v1.2.5` | false | bool | 新版的打印SQL语法树，返回JSON格式结果。[更多信息](https://github.com/hanchuanchuan/goInception/pull/355)
 query-print `v0.7.1` | false | bool | 打印SQL语法树，返回JSON格式结果，详见**[语法树打印](tree.html)**
 split `v0.9.1` | false | bool | 将一段SQL语句按互不影响原则分组DDL和DML语句，即相同表的DDL及DML语句分开两个语句块执行。指定后，其他选项(审核、执行、备份、打印语法树等)均不再生效。兼容老版inception，实际情况下 **可以不分组**，goInception记录有表结构快照，用以实现binlog解析。[更多信息](https://github.com/hanchuanchuan/goInception/pull/42)
 sleep `v1.0-rc3` | 0 | int | 执行 `sleep_rows` 条SQL后休眠多少毫秒，用以降低对线上数据库的影响。单位为毫秒，最小值为 `0` ，即不设置，最大值为 `100000`，即100秒。默认值 `0`

@@ -37,6 +37,7 @@ check_dml_orderby   |  false    |   true,false     |  在DML语句中使用了Or
 check_dml_where   |  false    |   true,false     |    在DML语句中没有WHERE条件时，是不是要报错
 check_float_double `v1.0.2` |  false    |   true,false     |    开启时,当使用 `float/double` 类型时提示转成 `decimal` 类型
 check_identifier  |  false    |   true,false     |    检查标识符是否正确,规则是[a-z,A-Z,0-9,_]
+check_identifier_lower  `v1.2.5` |  false    |   true,false     |    要求标识符即表名、列名、索引名等必须为小写,默认为`false`
 check_identifier_upper  `v1.0.2` |  false    |   true,false     |    要求标识符即表名、列名、索引名等必须为大写,默认为`false`
 check_implicit_type_conversion `v1.1.3` | false | true,false | 检查where条件中是否存在隐式类型转换,默认值`false`
 check_index_prefix   |  false    |   true,false     |     是否检查索引前缀,索引前缀通过参数`index_prefix`和`uniq_index_prefix`配置
@@ -84,6 +85,7 @@ lock_wait_timeout `v1.2.4` | -1             | int | 会话在执行SQL时的元�
 max_allowed_packet    `v1.0-rc3`            | 4194304     | int | 允许的最大数据包大小.默认为 `4194304`,单位字节,即4MB
 max_char_length                | 0              | int | 最大char长度,当超出时警告转换为varchar类型
 max_ddl_affect_rows `v1.0.2`   | 0              | int | 当DDL预估受影响行数超出设置值时警告,为0时不限制
+max_execution_time `v1.2.5`   | 0              | int | 配置远端数据库的max_execution_time,为0时不限制
 max_insert_rows   `v0.6.3`              | 0           | int  | 设置insert values允许的最大行数.0为不限制
 max_key_parts                  | 3              | int  | 一个索引最多可指定的列数
 max_keys                       | 3              | int | 单表允许的最大索引数

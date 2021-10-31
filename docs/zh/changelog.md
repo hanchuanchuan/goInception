@@ -1,5 +1,34 @@
 # goInception 更新日志
 
+## [v1.2.5] - 2021-10-31
+
+### Fix
+* 修复gh-ost的ghost_initially_drop_socket_file 参数不生效的问题 (#382)
+* 修复索引前缀中文英文不一致的问题 (#380)
+* 修复受影响行数可能溢出的问题 (#375)
+* 修复bit类型默认值设置为NULL时无法审核通过的问题 (#346)
+* 修复pt-osc连接非3306端口时执行失败的问题 (#335)
+* 修复tidb v4.0版本dml无法审核的bug
+* 修复dml回滚语句未忽略计算列的问题(#324)
+* 修复rename table语法一次修改多个表名时，有表名逻辑上不生效的问题 (#327)
+
+### New Features
+* 新增 `check_identifier_lower` 参数，用于打开表名、列名、索引名小写需求 (#389)
+* 添加`masking功能`-语法树解析功能升级,返回select涉及的对象(库.表.列) (#355)
+* 添加ghost_bin_dir参数设置来自切换gh-ost模式,`独立gh-ost模块`,采用binary方式调用以优化ddl高并发且kill gh-ost进程时可能出现的bug (#334)
+* 添加选项`max_execution_time`设置会话级DML语句的最大执行时间 (#319)
+* 添加`enable_any_statement`选项以支持所有语法均可执行 (#301)
+
+### Update
+* 优化alter table修改列子句的关键字审核逻辑 (#392)
+* 优化group by子句审核逻辑 (#385)
+* 添加datetime小数秒校验 (#369)
+* 添加视图对union的支持
+* 微调严格模式下的insert列值检查逻辑
+* 优化字符类型长度审核逻辑
+* 优化数据库连接超时时的处理(#306)
+* 完善字符集和排序规则审核逻辑,添加utf8mb4_0900_ai_ci排序规则支持
+
 
 ## [v1.2.4] - 2020-12-19
 
