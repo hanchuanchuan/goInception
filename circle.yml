@@ -25,7 +25,7 @@ jobs:
       - run:
           name: Install mysql-client
           # command: sudo apt install default-mysql-client
-          command: sudo apt-get update -y --allow-releaseinfo-change && sudo apt-get install default-mysql-client
+          command: sudo apt-get update -y --allow-releaseinfo-change && sudo apt upgrade -y && sudo apt-get install default-mysql-client && sudo apt-get install --reinstall ca-certificates libgnutls30 -y
       - run:
           name: Waiting for MySQL to be ready
           command: |
