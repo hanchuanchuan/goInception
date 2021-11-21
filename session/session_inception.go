@@ -5307,10 +5307,20 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				} else {
 					var selectSql string
 					if table.IsNew || table.IsNewColumns || s.dbVersion < 50600 {
-						i := strings.Index(strings.ToLower(sql), "select")
+						i := strings.Index(strings.ToLower(sql), "select ")
 						selectSql = sql[i:]
 					} else {
 						selectSql = sql
+					}
+
+					// 添加sql语句check，避免错误解析
+					charsetInfo, collation := s.sessionVars.GetCharsetInfo()
+					_, err := s.ParseSQL(context.Background(), selectSql, charsetInfo, collation)
+					if err != nil {
+						var builder strings.Builder
+						node.Select.Restore(
+							format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
+						selectSql = builder.String()
 					}
 
 					s.explainOrAnalyzeSql(selectSql)
