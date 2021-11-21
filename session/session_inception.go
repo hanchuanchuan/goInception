@@ -4197,6 +4197,14 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 		// if !mysql.HasNoDefaultValueFlag(field.Tp.Flag) {
 		if !hasDefaultValue {
 			s.appendErrorNo(ER_TIMESTAMP_DEFAULT, field.Name.Name.O)
+		} else if hasDefaultValue {
+			// v5.6在使用default null后即使指定on update仍会报错
+			// https://github.com/hanchuanchuan/goInception/issues/406
+			if _, ok := defaultExpr.(*ast.ValueExpr); ok &&
+				defaultValue.IsNull() && !notNullFlag && s.dbVersion < 50700 {
+				//有默认值，且为NULL，且有NOT NULL约束，如(not null default null)
+				s.appendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
+			}
 		}
 	}
 
