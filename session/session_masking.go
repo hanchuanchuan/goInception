@@ -139,11 +139,6 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 			}
 			t := s.session.getTableFromCache(dbName, tblName.Name.O, false)
 			if t != nil {
-				// if tblSource.AsName.L != "" {
-				// 	t.AsName = tblSource.AsName.O
-				// }
-				// tableInfoList = append(tableInfoList, t)
-
 				if tblSource.AsName.L != "" {
 					t.AsName = tblSource.AsName.O
 					tableInfoList = append(tableInfoList, t.copy())
@@ -255,10 +250,10 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 				}
 			} else {
 				for _, tblSource := range tableList {
+					var tableName string
 					tblName, ok := tblSource.Source.(*ast.TableName)
-					tableName := tblSource.AsName.String()
-					if tableName == "" {
-						tableName = tblName.Name.L
+					if tblSource.AsName.L != "" {
+						tableName = tblSource.AsName.L
 					} else if ok {
 						tableName = tblName.Name.L
 					}
