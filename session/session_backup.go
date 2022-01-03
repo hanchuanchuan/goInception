@@ -280,14 +280,14 @@ func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
 }
 
 func (s *session) mysqlCreateSqlFromTableInfo(dbname string, ti *TableInfo) string {
-
 	buf := bytes.NewBufferString("CREATE TABLE if not exists ")
 	buf.WriteString(fmt.Sprintf("`%s`.`%s`", dbname, ti.Name))
 	buf.WriteString("(")
 
 	buf.WriteString("id bigint auto_increment primary key, ")
 	buf.WriteString("rollback_statement mediumtext, ")
-	buf.WriteString("opid_time varchar(50)")
+	buf.WriteString("opid_time varchar(50),")
+	buf.WriteString("KEY `idx_opid_time` (`opid_time`)")
 
 	buf.WriteString(") ENGINE INNODB DEFAULT CHARSET UTF8MB4;")
 
