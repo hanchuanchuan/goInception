@@ -696,7 +696,7 @@ func (s *session) executeCommit(ctx context.Context) {
 	// 如果有错误时,把错误输出放在第一行
 	s.myRecord = s.recordSets.All()[0]
 
-	if s.checkIsReadOnly() {
+	if s.isReadOnly() {
 		s.appendErrorMessage("当前数据库为只读模式,无法执行!")
 		return
 	}
@@ -1988,7 +1988,10 @@ func (s *session) checkBinlogIsOn() bool {
 	return format == "ON" || format == "1"
 }
 
-func (s *session) checkIsReadOnly() bool {
+func (s *session) isReadOnly() bool {
+	if !s.inc.CheckReadOnly {
+		return false
+	}
 	log.Debug("checkIsReadOnly")
 
 	sql := "show variables like 'read_only';"

@@ -257,6 +257,8 @@ type Inc struct {
 
 	CheckIdentifierUpper bool `toml:"check_identifier_upper" json:"check_identifier_upper"`
 	CheckIdentifierLower bool `toml:"check_identifier_lower" json:"check_identifier_lower"`
+	// 数据库是否只读的判断. 默认为true
+	CheckReadOnly bool `toml:"check_read_only" json:"check_read_only"`
 
 	// 连接服务器的默认字符集,默认值为utf8mb4
 	DefaultCharset      string `toml:"default_charset" json:"default_charset"`
@@ -757,6 +759,7 @@ var defaultConf = Config{
 		CheckFloatDouble:      false,
 		CheckIdentifierUpper:  false,
 		CheckIdentifierLower:  false,
+		CheckReadOnly:         true,
 		SqlSafeUpdates:        -1,
 		LockWaitTimeout:       -1,
 		SupportCharset:        "utf8,utf8mb4",
