@@ -61,6 +61,7 @@ check_column_comment = false
 check_float_double = false
 check_identifier_upper = false
 check_identifier_lower = false
+check_read_only = true
 
 
 # 审核列类型变更
