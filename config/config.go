@@ -261,7 +261,9 @@ type Inc struct {
 	CheckReadOnly bool `toml:"check_read_only" json:"check_read_only"`
 
 	// 连接服务器的默认字符集,默认值为utf8mb4
-	DefaultCharset      string `toml:"default_charset" json:"default_charset"`
+	DefaultCharset string `toml:"default_charset" json:"default_charset"`
+	// 禁用数据库类型,多个时以逗号分隔.该参数优先级低于enable_blob_type/enable_enum_set_bit等参数
+	DisableTypes        string `toml:"disable_types" json:"disable_types"`
 	EnableAlterDatabase bool   `toml:"enable_alter_database" json:"enable_alter_database"`
 	// 允许执行任意语法类型.该设置有安全要求,仅支持配置文件方式设置
 	EnableAnyStatement          bool `toml:"enable_any_statement" json:"enable_any_statement"`

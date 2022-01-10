@@ -106,6 +106,7 @@ func (s *session) init() {
 
 	s.backupDBCacheList = make(map[string]bool)
 	s.backupTableCacheList = make(map[string]bool)
+	s.disableTypes = make(map[string]struct{})
 
 	s.inc = config.GetGlobalConfig().Inc
 	s.osc = config.GetGlobalConfig().Osc
