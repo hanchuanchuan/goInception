@@ -96,6 +96,7 @@ type Session interface {
 
 	// 用以测试
 	GetAlterTablePostPart(sql string, isPtOSC bool) string
+	InitDisableTypes()
 
 	LoadOptions(opt SourceOptions) error
 	Audit(ctx context.Context, sql string) ([]Record, error)
@@ -263,6 +264,9 @@ type session struct {
 
 	// masking 语法树解析功能
 	maskingFields []MaskingFieldInfo
+
+	// 统一处理禁用的数据类型
+	disableTypes map[string]struct{}
 }
 
 func (s *session) getMembufCap() int {

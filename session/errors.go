@@ -251,7 +251,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_ID_IS_UPER:                          "Identifier is not allowed to been upper-case.",
 	ErrUnknownCharset:                      "Unknown charset: '%s'.",
 	ER_UNKNOWN_COLLATION:                   "Unknown collation: '%s'.",
-	ER_INVALID_DATA_TYPE:                   "Not supported data type on field: '%s'.",
+	ER_INVALID_DATA_TYPE:                   "Not supported data type on field: '%s'(%s).",
 	ER_NOT_ALLOWED_NULLABLE:                "Column '%s' in table '%s' is not allowed to been nullable.",
 	ER_DUP_FIELDNAME:                       "Duplicate column name '%s'.",
 	ER_WRONG_COLUMN_NAME:                   "Incorrect column name '%s'.",
@@ -434,7 +434,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_ID_IS_UPER:                       "标识符不允许大写.",
 	ErrUnknownCharset:                   "未知的字符集: '%s'.",
 	ER_UNKNOWN_COLLATION:                "未知的排序规则: '%s'.",
-	ER_INVALID_DATA_TYPE:                "列 '%s' 数据类型不支持.",
+	ER_INVALID_DATA_TYPE:                "列 '%s' 数据类型(%s)不支持.",
 	ER_NOT_ALLOWED_NULLABLE:             "列 '%s' 不允许为null(表 '%s').",
 	ER_DUP_FIELDNAME:                    "重复的列名: '%s'.",
 	ER_WRONG_COLUMN_NAME:                "不正确的列名: '%s'.",
@@ -1200,10 +1200,8 @@ func TestCheckAuditSetting(cnf *config.Config) {
 
 	if !cnf.Inc.EnableEnumSetBit {
 		cnf.IncLevel.ER_USE_ENUM = int8(GetErrorLevel(ER_USE_ENUM))
-		cnf.IncLevel.ER_INVALID_DATA_TYPE = int8(GetErrorLevel(ER_INVALID_DATA_TYPE))
 	} else {
 		cnf.IncLevel.ER_USE_ENUM = 0
-		cnf.IncLevel.ER_INVALID_DATA_TYPE = 0
 	}
 
 	if cnf.Inc.CheckIndexPrefix {
