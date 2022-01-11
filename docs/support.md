@@ -7,12 +7,17 @@ Thans for your sponsor, your company or personal information will be displayed i
 For a strong endorsement of companies and individuals can contact the author to add your company or personal logo to the project home page, customize and prioritize the needs of their development.
 
 
-<div>
-<img src="https://hanchuanchuan.github.io/goInception/images/pay.jpeg" width="200" height="200" alt="Alipay"/>
+<!-- <div>
+<img src="https://github.com/hanchuanchuan/goInception/blob/master/docs/images/pay.jpeg" width="200" height="200" alt="Alipay"/>
 <div style="display: inline-block;width: 100px"></div>
 <img src="https://hanchuanchuan.github.io/goInception/images/wechat.jpeg" width = "200" height = "200" alt="WeChat"/>
-</div>
+</div> -->
 
+<div>
+<img src="./images/pay.jpeg" width="200" height="200" alt="Alipay">
+<div style="display: inline-block;width: 100px"></div>
+<img src="./images/wechat.jpeg" width="200" height="200" alt="WeChat">
+</div>
 
 ------
 

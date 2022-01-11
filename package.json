@@ -6,6 +6,7 @@
   "author": "hanchuanchuan",
   "license": "GPL-3.0",
   "devDependencies": {
+    "axios": "0.21.2",
     "less": "^4.1.1",
     "less-loader": "7.3.0",
     "node-less": "^1.0.0",

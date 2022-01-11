@@ -10,11 +10,18 @@
 
 ![微信](./images/wechat.jpeg) -->
 
-<div>
+<!-- <div>
 <img src="https://hanchuanchuan.github.io/goInception/images/pay.jpeg" width="200" height="200" alt="支付宝"/>
 <div style="display: inline-block;width: 100px"></div>
 <img src="https://hanchuanchuan.github.io/goInception/images/wechat.jpeg" width = "200" height = "200" alt="微信"/>
+</div> -->
+
+<div>
+<img src="./images/pay.jpeg" width="200" height="200" alt="支付宝">
+<div style="display: inline-block;width: 100px"></div>
+<img src="./images/wechat.jpeg" width="200" height="200" alt="微信">
 </div>
+
 
 
 ------
