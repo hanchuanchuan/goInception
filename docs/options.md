@@ -46,20 +46,21 @@ check_identifier_lower  `v1.2.5` |  false    |   true,false     | If the Identif
 |check_timestamp_default|FALSE|true,false|If return error when timestamp column has no default value.|
 |columns_must_have_index `v1.2.2`| |string|Set the column must be create index. Split by comma. Format: column name [type, option]|
 |default_charset `v1.0.5`|utf8mb4|string|The default connection charset. Default utf8mb4.|
+|disable_types `v1.2.6` | ""    |   string  | Disable database types, separate with commas (The following parameters are automatically merged: enable_blob_type,enable_json_type,enable_enum_set_bit,enable_timestamp_type)
 |enable_autoincrement_unsigned|FALSE|true,false|If the auto_increment column should be unsigned.|
 |enable_any_statement `v1.2.5`|FALSE|true,false|If all SQL approved.[More](https://github.com/hanchuanchuan/goInception/pull/301)|
 |enable_blob_not_null `v1.0`|FALSE|true,false|If set the default value of `blob/text/json` not null are approved, default is false, means not allowed.|
-|enable_blob_type|FALSE|true,false|If check support of BLOB column, include create,alter etc.|
+|enable_blob_type `Deprecated`|FALSE|true,false|If check support of BLOB column, include create,alter etc. (use `disable_types` instead)|
 |enable_change_column `v1.0.3`|TRUE|true,false|If support change column syntax, default true.|
 |enable_column_charset|FALSE|true,false|If allow to set charset in SQL|
 |enable_drop_database|FALSE|true,false|If allow to drop database.|
 |enable_drop_table|FALSE|true,false|If allow to drop table.|
-|enable_enum_set_bit|FALSE|true,false|If can use enum,set,bit|
+|enable_enum_set_bit `Deprecated`|FALSE|true,false|If can use enum,set,bit (use `disable_types` instead)|
 |enable_fingerprint `v0.6.2`|FALSE|true,false|SQL fingerprint.|
 |explain_rule `v1.1.1`|`first`|`first`, `max`|The rule which explain decide the effect of SQL. `first`: use affect rows at the first row of explain shows as the SQL affect rows. `max`: use the max affect rows of explain as the whole explain affect rows.|
 |enable_foreign_key|FALSE|true,false|If can use foreign key.|
 |enable_identifer_keyword|FALSE|true,false|If use MySQL key words in SQL. default warn.|
-|enable_json_type `v0.7.2`|FALSE|true,false|If can use Json type include create, alter etc.|
+|enable_json_type `v0.7.2` `Deprecated`|FALSE|true,false|If can use Json type include create, alter etc. (use `disable_types` instead)|
 |enable_minimal_rollback `v1.1.2`|FALSE|true,false|If turn on the min rollback SQL, if on the rollback of update only record the change rows. Default false.|
 |enable_nullable|TRUE|true,false|If allow NULL for new column.|
 |enable_null_index_name v0.7.1|FALSE|true,false|If allow NULL index name for new index.|
@@ -71,7 +72,7 @@ check_identifier_lower  `v1.2.5` |  false    |   true,false     | If the Identif
 |enable_set_collation `v0.7`|FALSE|true,false|If enable setting collation|
 |enable_set_engine `v1.0-rc4`|TRUE|true,false|If enable setting engine, default true.|
 |enable_sql_statistic `v0.9`|FALSE|true,false|Turn on statistic|
-|enable_timestamp_type `v1.0.1`|TRUE|true,false|If enable timestamp column, include create and alter, default true.|
+|enable_timestamp_type `v1.0.1` `Deprecated`|TRUE|true,false|If enable timestamp column, include create and alter, default true. (use `disable_types` instead)
 |enable_use_view `v1.2.4`|FALSE|true,false|If enable create and use View|
 |enable_zero_date `v1.0.1`|TRUE|true,false|If enable time is 0, when turn off return error. Default true, means turn on, followed `NO_ZERO_DATE` in `sql_mode` setting.|
 |general_log `v0.8.1`|FALSE|true,false|If record full log|
