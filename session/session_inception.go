@@ -314,6 +314,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 						s.sqlFingerprint = make(map[string]*Record, 64)
 					}
 
+					s.initDisableTypes()
 					continue
 				case *ast.InceptionCommitStmt:
 
@@ -645,6 +646,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 			_, err := s.executeInceptionSet(node, currentSql)
 			if err != nil {
 				s.appendErrorMessage(err.Error())
+			} else {
+				s.initDisableTypes()
 			}
 		} else {
 			return s.executeInceptionSet(node, currentSql)
@@ -3971,18 +3974,19 @@ func (s *session) checkVarcharLength(t *TableInfo, colDef *ast.ColumnDef) {
 		}
 	}
 }
+
 func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTableType ast.AlterTableType) {
 	log.Debug("mysqlCheckField")
 
 	tableName := t.Name
-	if !s.inc.EnableEnumSetBit && (field.Tp.Tp == mysql.TypeEnum ||
-		field.Tp.Tp == mysql.TypeSet ||
-		field.Tp.Tp == mysql.TypeBit) {
-		s.appendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
-	}
-
-	if field.Tp.Tp == mysql.TypeTimestamp && !s.inc.EnableTimeStampType {
-		s.appendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name)
+	if len(s.disableTypes) > 0 {
+		fieldType := types.TypeToStr(field.Tp.Tp, field.Tp.Charset)
+		for typeStr := range s.disableTypes {
+			if typeStr == fieldType {
+				s.appendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name, typeStr)
+				break
+			}
+		}
 	}
 
 	if field.Tp.Tp == mysql.TypeString && (s.inc.MaxCharLength > 0 && field.Tp.Flen > int(s.inc.MaxCharLength)) {
@@ -4120,14 +4124,15 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 	}
 	//是否使用 text\blob\json 字段类型
 	//当EnableNullable=false，不强制text\blob\json使用NOT NULL
-	if types.IsTypeBlob(field.Tp.Tp) {
-		s.appendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
-	} else if field.Tp.Tp == mysql.TypeJSON {
-		s.appendErrorNo(ErrJsonTypeSupport, field.Name.Name)
-	} else {
-		if !notNullFlag && !hasGenerated {
-			s.appendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
-		}
+
+	// 类型限制统一由disableTypes处理
+	// if types.IsTypeBlob(field.Tp.Tp) {
+	// 	s.appendErrorNo(ER_USE_TEXT_OR_BLOB, field.Name.Name)
+	// } else if field.Tp.Tp == mysql.TypeJSON {
+	// 	s.appendErrorNo(ErrJsonTypeSupport, field.Name.Name)
+	// }
+	if !notNullFlag && !hasGenerated {
+		s.appendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
 	}
 
 	// 审核所有指定了charset或collate的字段
@@ -8227,4 +8232,40 @@ func (s *session) checkVaildWhere(expr ast.ExprNode) bool {
 		return true
 	}
 	return true
+}
+
+func (s *session) initDisableTypes() {
+	log.Debug("initDisableTypes")
+	s.disableTypes = make(map[string]struct{})
+	if !s.inc.EnableBlobType {
+		s.disableTypes["tinytext"] = struct{}{}
+		s.disableTypes["mediumtext"] = struct{}{}
+		s.disableTypes["longtext"] = struct{}{}
+		s.disableTypes["text"] = struct{}{}
+		s.disableTypes["tinyblob"] = struct{}{}
+		s.disableTypes["mediumblob"] = struct{}{}
+		s.disableTypes["longblob"] = struct{}{}
+		s.disableTypes["blob"] = struct{}{}
+	}
+	if !s.inc.EnableTimeStampType {
+		s.disableTypes["timestamp"] = struct{}{}
+	}
+	if !s.inc.EnableJsonType {
+		s.disableTypes["json"] = struct{}{}
+	}
+	if !s.inc.EnableEnumSetBit {
+		s.disableTypes["enum"] = struct{}{}
+		s.disableTypes["set"] = struct{}{}
+		s.disableTypes["bit"] = struct{}{}
+	}
+	for _, typeStr := range strings.Split(s.inc.DisableTypes, ",") {
+		key := strings.ToLower(strings.TrimSpace(typeStr))
+		if key != "" {
+			s.disableTypes[key] = struct{}{}
+		}
+	}
+}
+
+func (s *session) InitDisableTypes() {
+	s.initDisableTypes()
 }

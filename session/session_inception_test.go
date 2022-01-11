@@ -381,20 +381,20 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	// 数据类型 警告
 	sql = "create table t1(id int,c1 bit);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "bit"))
 
 	sql = "create table t1(id int,c1 enum('red', 'blue', 'black'));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "enum"))
 
 	sql = "create table t1(id int,c1 set('red', 'blue', 'black'));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "set"))
 
 	config.GetGlobalConfig().Inc.EnableTimeStampType = false
 	sql = "create table t1(id int,c1 timestamp);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "timestamp"))
 
 	config.GetGlobalConfig().Inc.EnableTimeStampType = true
 	sql = "create table t1(id int,c1 timestamp);"
@@ -460,17 +460,37 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	sql = ("create table t1(id int,c1 blob, c2 text);")
+	sql = "create table t111(id int,c1 blob, c2 text);"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c2"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "blob"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "text"),
 	)
+
+	config.GetGlobalConfig().Inc.DisableTypes = "blob,text"
+	sql = "create table t111(id int,c1 blob, c2 text);"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "blob"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "text"),
+	)
+	config.GetGlobalConfig().Inc.DisableTypes = ""
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
 	sql = ("create table t1(id int,c1 blob not null);")
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TEXT_NOT_NULLABLE_ERROR, "c1", "t1"),
 	)
+
+	// 指定类型禁用
+	config.GetGlobalConfig().Inc.DisableTypes = "bit"
+	sql = "create table t1(id int,c1 bit default b'0');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "bit"))
+	config.GetGlobalConfig().Inc.DisableTypes = ""
+
+	config.GetGlobalConfig().Inc.EnableEnumSetBit = false
+	sql = "create table t1(id int,c1 bit default b'0');"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "bit"))
 
 	// 检查默认值
 	config.GetGlobalConfig().Inc.CheckColumnDefaultValue = true
@@ -677,7 +697,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.CheckIndexPrefix = false
 	sql = "create table test_error_code_3(pt text ,primary key (pt));"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "pt"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "pt", "text"),
 		session.NewErr(session.ER_TOO_LONG_KEY, "PRIMARY", indexMaxLength))
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
@@ -1055,15 +1075,15 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	// 数据类型 警告
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c2 bit;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "bit"))
 
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c2 enum('red', 'blue', 'black');"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "enum"))
 
 	sql = "drop table if exists t1;create table t1(id int);alter table t1 add column c2 set('red', 'blue', 'black');"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "set"))
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
@@ -1116,8 +1136,8 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.EnableBlobType = false
 	sql = ("drop table if exists t1;create table t1(id int);alter table t1 add column c1 blob;alter table t1 add column c2 text;")
 	s.testManyErrors(c, sql,
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c2"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "blob"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "text"),
 	)
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
@@ -1169,7 +1189,7 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 		config.GetGlobalConfig().Inc.EnableJsonType = false
 		sql = "drop table if exists t1;create table t1 (c1 int primary key);alter table t1 add c2 json;"
 		s.testErrorCode(c, sql,
-			session.NewErr(session.ErrJsonTypeSupport, "c2"))
+			session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "json"))
 	}
 
 	sql = "drop table if exists t1;create table t1 (id int primary key);alter table t1 add column (c1 int,c2 varchar(20));"
@@ -1260,15 +1280,15 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	// 数据类型 警告
 	sql = "create table t1(id bit);alter table t1 modify column id bit;"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id", "bit"))
 
 	sql = "create table t1(id enum('red', 'blue'));alter table t1 modify column id enum('red', 'blue', 'black');"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id", "enum"))
 
 	sql = "create table t1(id set('red'));alter table t1 modify column id set('red', 'blue', 'black');"
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "id"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "id", "set"))
 
 	// char列建议
 	config.GetGlobalConfig().Inc.MaxCharLength = 100
@@ -1301,10 +1321,10 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 
 	// blob/text字段
 	config.GetGlobalConfig().Inc.EnableBlobType = false
-	sql = ("create table t1(id int,c1 varchar(10));alter table t1 modify column c1 blob;alter table t1 modify column c1 text;")
+	config.GetGlobalConfig().Inc.CheckColumnTypeChange = false
+	sql = ("create table t1(id int,c1 varchar(10));alter table t1 modify column c1 blob;")
 	s.testManyErrors(c, sql,
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "blob"),
 	)
 
 	config.GetGlobalConfig().Inc.EnableBlobType = true
@@ -2910,7 +2930,7 @@ func (s *testSessionIncSuite) TestTimestampType(c *C) {
 	// sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a timestamp not null default 0 comment 'a') comment 'test';`
 	sql = `create table t4 (id int unsigned not null auto_increment primary key comment 'primary key', a timestamp not null comment 'a') comment 'test';`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_INVALID_DATA_TYPE, "a"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "a", "timestamp"))
 	config.GetGlobalConfig().Inc.EnableTimeStampType = true
 }
 
@@ -3295,10 +3315,10 @@ func (s *testSessionIncSuite) TestBlobAndText(c *C) {
 		c3 mediumblob,
 		c4 longblob);`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c2"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c3"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c4"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "tinyblob"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "blob"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c3", "mediumblob"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c4", "longblob"))
 
 	sql = `create table t2(id int primary key,
 			c1 tinytext ,
@@ -3306,10 +3326,10 @@ func (s *testSessionIncSuite) TestBlobAndText(c *C) {
 			c3 mediumtext,
 			c4 longtext);`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c1"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c2"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c3"),
-		session.NewErr(session.ER_USE_TEXT_OR_BLOB, "c4"))
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c1", "tinytext"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c2", "text"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c3", "mediumtext"),
+		session.NewErr(session.ER_INVALID_DATA_TYPE, "c4", "longtext"))
 
 }
 
