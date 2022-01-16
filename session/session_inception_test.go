@@ -1240,6 +1240,20 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 		create table t1(id int,c1 char(10));
 		alter table t1 modify column c1 char(100);`
 	s.testErrorCode(c, sql)
+
+	// 	ALTER TABLE t1 ADD FULLTEXT INDEX ft_index (c1) WITH PARSER ngram;
+
+	// alter table t1 add index ix_1(c1) /*!50100 WITH PARSER `ngram` */;
+	sql = `drop table if exists t1;
+		create table t1(id int,c1 char(10));
+		ALTER TABLE t1 ADD FULLTEXT INDEX ft_index (c1) WITH PARSER ngram;`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;
+		create table t1(id int,c1 char(10));
+		alter table t1 add index ix_1(c1) /*!50100 WITH PARSER ngram */;`
+	s.testErrorCode(c, sql,
+		session.NewErrf("WITH PARSER option can be used only with FULLTEXT indexes."))
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {

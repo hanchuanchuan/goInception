@@ -4683,7 +4683,7 @@ func (s *session) checkDropIndex(node *ast.DropIndexStmt, sql string) {
 }
 
 func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
-	IndexColNames []*ast.IndexColName, IndexOption *ast.IndexOption,
+	IndexColNames []*ast.IndexColName, indexOption *ast.IndexOption,
 	t *TableInfo, unique bool, tp ast.ConstraintType) {
 	log.Debug("checkCreateIndex")
 
@@ -4833,16 +4833,22 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		// }
 	}
 
-	if IndexOption != nil {
+	if indexOption != nil {
 		// 注释长度校验
-		if len(IndexOption.Comment) > INDEX_COMMENT_MAXLEN {
+		if len(indexOption.Comment) > INDEX_COMMENT_MAXLEN {
 			s.appendErrorNo(ER_TOO_LONG_INDEX_COMMENT, IndexName, INDEX_COMMENT_MAXLEN)
 		}
 
-		if IndexOption.Visibility != ast.IndexVisibilityDefault {
+		if indexOption.Visibility != ast.IndexVisibilityDefault {
 			if s.dbType == DBTypeMariaDB ||
 				s.dbVersion < 80000 {
 				s.appendErrorNo(ErrUseIndexVisibility)
+			}
+		}
+
+		if indexOption.ParserName.L != "" {
+			if tp != ast.ConstraintFulltext {
+				s.appendErrorMessage("WITH PARSER option can be used only with FULLTEXT indexes")
 			}
 		}
 	}
