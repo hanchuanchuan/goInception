@@ -22,6 +22,7 @@ type masking struct {
 	maskingFields []MaskingFieldInfo
 	session       *session
 	colIndex      int
+	newItemIndex  int
 	buf           *bytes.Buffer
 }
 
@@ -39,6 +40,7 @@ func (s *session) maskingCommand(ctx context.Context, stmtNode ast.StmtNode,
 			maskingFields: make([]MaskingFieldInfo, 0),
 			buf:           new(bytes.Buffer),
 		}
+
 		_, _ = p.checkSelectItem(node, 0)
 		fields := p.maskingFields
 		tree, err := json.Marshal(fields)
@@ -179,8 +181,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 
 	if node.Fields != nil {
 		newFields := make([]*ast.SelectField, 0)
-		for colIndex, field := range node.Fields.Fields {
-			s.colIndex = colIndex
+		for _, field := range node.Fields.Fields {
 			// if field.WildCard == nil {
 			// 	s.checkItem(field.Expr, tableInfoList)
 			// }
@@ -190,8 +191,9 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 			if field.WildCard == nil {
 				// tmpFields = append(tmpFields, s.checkItem(field.Expr, tableInfoList)...)
 				// fields = append(fields, tmpFields...)
-				s.checkSelectField(field, tableInfoList, level, colIndex)
+				s.checkSelectField(field, tableInfoList, level, s.colIndex)
 				newFields = append(newFields, field)
+				s.colIndex++
 				continue
 			}
 
@@ -222,7 +224,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 									},
 								}
 								s.checkSelectField(newField, tableInfoList,
-									level, colIndex+_index)
+									level, s.colIndex+_index)
 								newFields = append(newFields, newField)
 							}
 							s.colIndex += len(t.Fields)
@@ -242,7 +244,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 								},
 							}
 							s.checkSelectField(newField, tableInfoList,
-								level, colIndex+_index)
+								level, s.colIndex+_index)
 							newFields = append(newFields, newField)
 						}
 						s.colIndex += len(cols)
@@ -282,7 +284,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 										},
 									}
 									s.checkSelectField(newField, tableInfoList,
-										level, colIndex+_index)
+										level, s.colIndex+_index)
 									newFields = append(newFields, newField)
 								}
 								s.colIndex += len(t.Fields)
@@ -302,7 +304,7 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 									},
 								}
 								s.checkSelectField(newField, tableInfoList,
-									level, colIndex+_index)
+									level, s.colIndex+_index)
 								newFields = append(newFields, newField)
 							}
 							s.colIndex += len(cols)
@@ -325,7 +327,9 @@ func (s *masking) checkSelectField(field *ast.SelectField,
 	tableInfoList []*TableInfo, level, colIndex int) {
 	if level == 0 {
 		for _, f := range s.checkItem(field.Expr, tableInfoList) {
-			f.Index = uint8(colIndex)
+			f.Index = uint16(s.newItemIndex)
+			s.newItemIndex++
+			// f.Index = uint8(colIndex)
 			if field.AsName.String() != "" {
 				f.Alias = field.AsName.String()
 				s.maskingFields = append(s.maskingFields, f)
