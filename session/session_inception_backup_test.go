@@ -182,6 +182,42 @@ func (s *testSessionIncBackupSuite) TestAlterTableAddColumn(c *C) {
 
 }
 
+func (s *testSessionIncBackupSuite) TestAlterTableRenameColumn(c *C) {
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int primary key,c1 int);")
+	var (
+		row    []interface{}
+		backup string
+	)
+
+	if s.DBVersion < 80000 {
+		return
+	}
+
+	s.mustRunBackup(c, `alter table t1 rename column c1 to c2;`)
+	s.assertRows(c, s.rows[1:],
+		"ALTER TABLE `test_inc`.`t1` RENAME COLUMN `c2` TO `c1`;",
+	)
+
+	// pt-osc
+	config.GetGlobalConfig().Osc.OscOn = true
+	s.mustRunBackup(c, `alter table t1 rename column c2 to c3;`)
+	row = s.rows[s.getAffectedRows()-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` RENAME COLUMN `c3` TO `c2`;", Commentf("%v", s.rows))
+
+	// gh-ost
+	config.GetGlobalConfig().Osc.OscOn = false
+	config.GetGlobalConfig().Ghost.GhostOn = true
+	s.mustRunBackup(c, `alter table t1 rename column c3 to c4;`)
+	row = s.rows[s.getAffectedRows()-1]
+	backup = s.query("t1", row[7].(string))
+	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` RENAME COLUMN `c4` TO `c3`;", Commentf("%v", s.rows))
+}
+
 func (s *testSessionIncBackupSuite) TestAlterTableAlterColumn(c *C) {
 
 	s.mustRunExec(c, "drop table if exists t1;create table t1(id int,c1 int);")
@@ -914,7 +950,11 @@ func (s *testSessionIncBackupSuite) TestAlterTable(c *C) {
 	s.mustRunBackup(c, sql)
 	row = s.rows[s.getAffectedRows()-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", s.rows))
+	if s.DBVersion < 80000 {
+		c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", s.rows))
+	} else {
+		c.Assert(backup, Equals, "ALTER TABLE `test_inc`.`t1` MODIFY COLUMN `c2` datetime DEFAULT CURRENT_TIMESTAMP DEFAULT_GENERATED ON UPDATE CURRENT_TIMESTAMP COMMENT '123';", Commentf("%v", s.rows))
+	}
 
 	sql = `alter table t1 modify c3 bigint;`
 	s.mustRunBackup(c, sql)

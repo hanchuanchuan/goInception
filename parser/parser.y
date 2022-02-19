@@ -1233,6 +1233,16 @@ AlterTableSpec:
 			NewColumns: []*ast.ColumnDef{colDef},
 		}
 	}
+|	"RENAME" "COLUMN" Identifier "TO" Identifier
+	{
+		oldColName := &ast.ColumnName{Name: model.NewCIStr($3)}
+		newColName := &ast.ColumnName{Name: model.NewCIStr($5)}
+		$$ = &ast.AlterTableSpec{
+			Tp:            ast.AlterTableRenameColumn,
+			OldColumnName: oldColName,
+			NewColumnName: newColName,
+		}
+	}
 |	"RENAME" "TO" TableName
 	{
 		$$ = &ast.AlterTableSpec{

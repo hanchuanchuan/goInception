@@ -3288,6 +3288,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			}
 			s.checkChangeColumn(table, alter)
 
+		case ast.AlterTableRenameColumn:
+			if s.dbVersion < 80000 && s.dbType == DBTypeMysql {
+				s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			} else {
+				s.checkRenameColumn(table, alter)
+			}
+
 		case ast.AlterTableRenameTable:
 			s.checkAlterTableRenameTable(table, alter)
 
@@ -3928,6 +3935,81 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	// 			fmt.Sprintf("%s.%s", t.Name, c.Position.RelativeColumn.Name))
 	// 	}
 	// }
+}
+
+func (s *session) checkRenameColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	log.Debug("checkRenameColumn")
+
+	if c.OldColumnName == nil {
+		s.appendErrorNo(ER_WRONG_COLUMN_NAME, "old_col")
+	}
+	if c.NewColumnName == nil {
+		s.appendErrorNo(ER_WRONG_COLUMN_NAME, "new_col")
+	}
+	if c.OldColumnName == c.NewColumnName {
+		s.appendErrorMessage("The new column name of rename is the same as the old column name")
+	}
+
+	var foundField FieldInfo
+
+	if c.OldColumnName.Schema.L != "" && !strings.EqualFold(c.OldColumnName.Schema.L, t.Schema) {
+		s.appendErrorNo(ER_WRONG_DB_NAME, c.OldColumnName.Schema.O)
+	} else if c.OldColumnName.Table.L != "" && !strings.EqualFold(c.OldColumnName.Table.L, t.Name) {
+		s.appendErrorNo(ER_WRONG_TABLE_NAME, c.OldColumnName.Table.O)
+	}
+
+	if c.NewColumnName.Schema.L != "" && !strings.EqualFold(c.NewColumnName.Schema.L, t.Schema) {
+		s.appendErrorNo(ER_WRONG_DB_NAME, c.NewColumnName.Schema.O)
+	} else if c.NewColumnName.Table.L != "" && !strings.EqualFold(c.NewColumnName.Table.L, t.Name) {
+		s.appendErrorNo(ER_WRONG_TABLE_NAME, c.NewColumnName.Table.O)
+	}
+
+	// 列名改变
+
+	oldFound := false
+	newFound := false
+	foundIndexOld := -1
+	for i, field := range t.Fields {
+		if strings.EqualFold(field.Field, c.OldColumnName.Name.L) && !field.IsDeleted {
+			oldFound = true
+			foundIndexOld = i
+			foundField = field
+		}
+		if strings.EqualFold(field.Field, c.NewColumnName.Name.L) && !field.IsDeleted {
+			newFound = true
+		}
+	}
+
+	// 未变更列名时,列需要存在
+	// 变更列名后,新列名不能存在
+	if !oldFound {
+		s.appendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
+	} else if newFound {
+		s.appendErrorNo(ER_COLUMN_EXISTED, fmt.Sprintf("%s.%s", t.Name, c.NewColumnName.Name.O))
+	}
+
+	s.checkKeyWords(c.NewColumnName.Name.O)
+
+	if !s.hasError() {
+		// 在新的快照上变更表结构
+		t := s.cacheTableSnapshot(t)
+
+		foundField.Field = c.NewColumnName.Name.String()
+		t.Fields[foundIndexOld] = foundField
+
+		// 修改列名后标记有新列
+		t.IsNewColumns = true
+
+		if s.opt.Execute {
+			buf := bytes.NewBufferString("RENAME COLUMN `")
+			buf.WriteString(c.NewColumnName.Name.O)
+			buf.WriteString("` TO `")
+			buf.WriteString(c.OldColumnName.Name.O)
+			buf.WriteString("`")
+			buf.WriteString(",")
+			s.alterRollbackBuffer = append(s.alterRollbackBuffer, buf.String())
+		}
+	}
 }
 
 // hasError return current sql has errors or warnings

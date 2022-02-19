@@ -689,7 +689,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	config.GetGlobalConfig().Inc.EnableNullIndexName = false
 
 	indexMaxLength := 767
-	if s.innodbLargePrefix {
+	if s.innodbLargePrefix || s.DBVersion > 80000 {
 		indexMaxLength = 3072
 	}
 
@@ -713,7 +713,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 		session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
 
 	// ----------------- 索引长度审核 varchar ----------------------
-	if s.innodbLargePrefix {
+	if s.innodbLargePrefix || s.DBVersion > 80000 {
 		sql = "create table test_error_code_3(c1 int primary key,c2 varchar(1024),c3 int, key uq_1(c2,c3)) default charset utf8;"
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ER_TOO_LONG_KEY, "uq_1", indexMaxLength))
@@ -1254,6 +1254,29 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 		alter table t1 add index ix_1(c1) /*!50100 WITH PARSER ngram */;`
 	s.testErrorCode(c, sql,
 		session.NewErrf("WITH PARSER option can be used only with FULLTEXT indexes."))
+}
+
+func (s *testSessionIncSuite) TestAlterTableRenameColumn(c *C) {
+	config.GetGlobalConfig().Inc.CheckColumnComment = false
+	config.GetGlobalConfig().Inc.CheckTableComment = false
+	config.GetGlobalConfig().Inc.EnableDropTable = true
+
+	s.mustRunExec(c, "drop table if exists t1;create table t1(id int primary key,c1 int);")
+
+	if s.DBVersion < 80000 {
+		return
+	}
+
+	sql = `alter table t1 rename column c1 to c2;`
+	s.testErrorCode(c, sql)
+
+	sql = `alter table t1 rename column c1 to id;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_EXISTED, "t1.id"))
+
+	sql = `alter table t1 rename column c2 to id;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_COLUMN_NOT_EXISTED, "t1.c2"))
 }
 
 func (s *testSessionIncSuite) TestAlterTableAlterColumn(c *C) {
@@ -2657,15 +2680,25 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_MANY_KEY_PARTS, "ix_1", "geom", 1))
 
-	sql = `create table t1(id int,c1 int);
-		alter table t1 add index idx (c1) visible;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrUseIndexVisibility))
+	if s.DBVersion < 80000 {
+		sql = `create table t1(id int,c1 int);
+				alter table t1 add index idx (c1) visible;`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrUseIndexVisibility))
 
-	sql = `create table t1(id int,c1 int);
+		sql = `create table t1(id int,c1 int);
+				alter table t1 add index idx2 (c1) invisible;`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrUseIndexVisibility))
+	} else {
+		sql = `create table t1(id int,c1 int);
+		alter table t1 add index idx (c1) visible;`
+		s.testErrorCode(c, sql)
+
+		sql = `create table t1(id int,c1 int);
 		alter table t1 add index idx2 (c1) invisible;`
-	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrUseIndexVisibility))
+		s.testErrorCode(c, sql)
+	}
 }
 
 func (s *testSessionIncSuite) TestAlterTableDropIndex(c *C) {

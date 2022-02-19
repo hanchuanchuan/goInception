@@ -1707,6 +1707,7 @@ const (
 	AlterTableDropForeignKey
 	AlterTableModifyColumn
 	AlterTableChangeColumn
+	AlterTableRenameColumn
 	AlterTableRenameTable
 	AlterTableAlterColumn
 	AlterTableLock
@@ -1854,6 +1855,7 @@ type AlterTableSpec struct {
 	NewTable        *TableName
 	NewColumns      []*ColumnDef
 	OldColumnName   *ColumnName
+	NewColumnName   *ColumnName
 	Position        *ColumnPosition
 	LockType        LockType
 	Algorithm       AlgorithmType
@@ -1963,6 +1965,15 @@ func (n *AlterTableSpec) Restore(ctx *RestoreCtx) error {
 		}
 		if err := n.Position.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.Position")
+		}
+	case AlterTableRenameColumn:
+		ctx.WriteKeyWord("RENAME COLUMN ")
+		if err := n.OldColumnName.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.OldColumnName")
+		}
+		ctx.WriteKeyWord(" TO ")
+		if err := n.NewColumnName.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore AlterTableSpec.NewColumnName")
 		}
 	case AlterTableRenameTable:
 		ctx.WriteKeyWord("RENAME AS ")
