@@ -204,7 +204,7 @@ type FieldInfo struct {
 
 // MaskingFieldInfo 脱敏功能的字段信息
 type MaskingFieldInfo struct {
-	Index  uint8  `json:"index"`
+	Index  uint16 `json:"index"`
 	Field  string `json:"field"`
 	Type   string `json:"type"`
 	Table  string `json:"table"`
