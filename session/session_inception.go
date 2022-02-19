@@ -7401,7 +7401,12 @@ func (s *session) queryTableFromDB(db string, tableName string, reportNotExists 
 
 	if err := s.rawScan(sql, &rows); err != nil {
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			if myErr.Number != 1146 {
+			// 1146 Table doesn't exist
+			// 1049 Unknown database
+			if v, ok := s.dbCacheList[db]; ok && v.IsNew &&
+				myErr.Number == 1049 && !reportNotExists {
+				// ignore error
+			} else if myErr.Number != 1146 {
 				log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 				s.appendErrorMessage(myErr.Message + ".")
 			} else if reportNotExists {
