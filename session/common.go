@@ -272,6 +272,9 @@ type TableInfo struct {
 
 	// 有效列数，移除已删除列和生成列
 	effectiveFieldCount int
+
+	// used for masking
+	maskingFields []MaskingFieldInfo
 }
 
 // IndexInfo 索引信息

@@ -101,5 +101,21 @@ func (s *testSessionMaskingSuite) TestQuery(c *C) {
 	res = s.makeSQL(`select ifnull(c1,c2) from t1 inner join t2 on t1.id=t2.id`)
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	c.Assert(row[2], Equals, "0", Commentf("%v", row))
-	c.Assert(row[3], Equals, `[{"index":0,"field":"c1","type":"int(11)","table":"t1","schema":"test_inc","alias":"ifnull(c1,c2)"},{"index":1,"field":"c2","type":"int(11)","table":"t2","schema":"test_inc","alias":"ifnull(c1,c2)"}]`, Commentf("%v", row))
+	c.Assert(row[3], Equals, `[{"index":0,"field":"c1","type":"int(11)","table":"t1","schema":"test_inc","alias":"ifnull(c1,c2)"},{"index":0,"field":"c2","type":"int(11)","table":"t2","schema":"test_inc","alias":"ifnull(c1,c2)"}]`, Commentf("%v", row))
+
+	res = s.makeSQL(`select a.c1_alias,a.c3_alias from (select *,c1 as c1_alias,concat(id,c2) as c3_alias from t2) a;`)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+	c.Assert(row[3], Equals, `[{"index":0,"field":"c1","type":"int(11)","table":"t2","schema":"test_inc","alias":"c1_alias"},{"index":1,"field":"id","type":"int(11)","table":"t2","schema":"test_inc","alias":"c3_alias"},{"index":1,"field":"c2","type":"int(11)","table":"t2","schema":"test_inc","alias":"c3_alias"}]`, Commentf("%v", row))
+
+	res = s.makeSQL(`select a.*,concat(a.id,a.c1) as c4 from (select * from t2) a;`)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+	c.Assert(row[3], Equals, `[{"index":0,"field":"id","type":"int(11)","table":"t2","schema":"test_inc","alias":"id"},{"index":1,"field":"c1","type":"int(11)","table":"t2","schema":"test_inc","alias":"c1"},{"index":2,"field":"c2","type":"int(11)","table":"t2","schema":"test_inc","alias":"c2"},{"index":3,"field":"id","type":"int(11)","table":"t2","schema":"test_inc","alias":"c4"},{"index":3,"field":"c1","type":"int(11)","table":"t2","schema":"test_inc","alias":"c4"}]`, Commentf("%v", row))
+
+	res = s.makeSQL(`select a1.*,a1.id,a2.* from t1 a1 inner join t2 a2 on a1.id=a2.id`)
+	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
+	c.Assert(row[2], Equals, "0", Commentf("%v", row))
+	c.Assert(row[3], Equals, `[{"index":0,"field":"id","type":"int(11)","table":"t1","schema":"test_inc","alias":"id"},{"index":1,"field":"c1","type":"int(11)","table":"t1","schema":"test_inc","alias":"c1"},{"index":2,"field":"id","type":"int(11)","table":"t1","schema":"test_inc","alias":"id"},{"index":3,"field":"id","type":"int(11)","table":"t2","schema":"test_inc","alias":"id"},{"index":4,"field":"c1","type":"int(11)","table":"t2","schema":"test_inc","alias":"c1"},{"index":5,"field":"c2","type":"int(11)","table":"t2","schema":"test_inc","alias":"c2"}]`, Commentf("%v", row))
+
 }
