@@ -5597,6 +5597,8 @@ func (s *session) subSelectColumns(node ast.ResultSetNode) (int, error) {
 }
 
 func (s *session) getSubSelectColumns(node ast.ResultSetNode) []string {
+	log.Debug("getSubSelectColumns")
+
 	columns := []string{}
 
 	switch sel := node.(type) {

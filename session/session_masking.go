@@ -156,22 +156,13 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 		case *ast.SelectStmt:
 			// 递归审核子查询
 			tmpTables, tmpFields := s.checkSubSelectItem(x, level+1)
+			if tblSource.AsName.L != "" {
+				for _, f := range tmpTables {
+					f.AsName = tblSource.AsName.String()
+				}
+			}
 			tableInfoList = append(tableInfoList, tmpTables...)
 			fields = append(fields, tmpFields...)
-
-			cols := s.session.getSubSelectColumns(x)
-			if cols != nil {
-				rows := make([]FieldInfo, len(cols))
-				for i, colName := range cols {
-					rows[i].Field = colName
-				}
-				t := &TableInfo{
-					Schema: "",
-					Name:   tblSource.AsName.String(),
-					Fields: rows,
-				}
-				tableInfoList = append(tableInfoList, t)
-			}
 		default:
 			tmpTables, tmpFields := s.checkSelectItem(x, level+1)
 			tableInfoList = append(tableInfoList, tmpTables...)
@@ -182,9 +173,6 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 	if node.Fields != nil {
 		newFields := make([]*ast.SelectField, 0)
 		for _, field := range node.Fields.Fields {
-			// if field.WildCard == nil {
-			// 	s.checkItem(field.Expr, tableInfoList)
-			// }
 			var tmpFields []MaskingFieldInfo
 
 			// log.Infof("field.WildCard: %v, %v", field.WildCard, colIndex)
