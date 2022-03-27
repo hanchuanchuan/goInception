@@ -22,9 +22,20 @@ type masking struct {
 	maskingFields []MaskingFieldInfo
 	session       *session
 	colIndex      int
-	newItemIndex  int
 	buf           *bytes.Buffer
+	// newItemIndex  int
 }
+
+// func (m *masking) copy() *masking {
+// 	p := &masking{
+// 		session:      m.session,
+// 		newItemIndex: 0,
+// 		colIndex:     0,
+// 		buf:          nil,
+// 	}
+// 	copy(m.maskingFields, p.maskingFields)
+// 	return p
+// }
 
 func (s *session) maskingCommand(ctx context.Context, stmtNode ast.StmtNode,
 	currentSql string) ([]sqlexec.RecordSet, error) {
@@ -161,6 +172,28 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 					f.AsName = tblSource.AsName.String()
 				}
 			}
+
+			for _, f := range tmpFields {
+				if f.Alias == "" {
+					continue
+				}
+				for _, t := range tmpTables {
+					if f.Table == t.Name {
+						if t.maskingFields == nil {
+							t.maskingFields = make([]MaskingFieldInfo, 0)
+						}
+						t.maskingFields = append(t.maskingFields, f)
+					}
+				}
+			}
+
+			// for _, t := range tmpTables {
+			// 	log.Errorf("t: %v, maskingFields: %v", t.Name, len(t.maskingFields))
+			// 	for _, f := range t.maskingFields {
+			// 		log.Errorf("f: %#v ", f)
+			// 	}
+			// }
+
 			tableInfoList = append(tableInfoList, tmpTables...)
 			fields = append(fields, tmpFields...)
 		default:
@@ -175,16 +208,24 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 		for _, field := range node.Fields.Fields {
 			var tmpFields []MaskingFieldInfo
 
-			// log.Infof("field.WildCard: %v, %v", field.WildCard, colIndex)
+			// 非星号列
 			if field.WildCard == nil {
-				// tmpFields = append(tmpFields, s.checkItem(field.Expr, tableInfoList)...)
-				// fields = append(fields, tmpFields...)
-				s.checkSelectField(field, tableInfoList, level, s.colIndex)
+				// 如果列有别名，则特殊处理
+				subFields := s.checkSelectField(field, tableInfoList, level, s.colIndex)
+				if len(subFields) > 0 && field.AsName.L != "" {
+					for index := range subFields {
+						(&subFields[index]).Alias = field.AsName.String()
+					}
+					fields = append(fields, subFields...)
+				}
 				newFields = append(newFields, field)
-				s.colIndex++
+				if level == 0 {
+					s.colIndex++
+				}
 				continue
 			}
 
+			// WildCard!=nil 为星号列
 			db := field.WildCard.Schema.L
 			wildTable := field.WildCard.Table.L
 			if wildTable == "" {
@@ -215,7 +256,9 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 									level, s.colIndex+_index)
 								newFields = append(newFields, newField)
 							}
-							s.colIndex += len(t.Fields)
+							if level == 0 {
+								s.colIndex += len(t.Fields)
+							}
 						} else {
 							s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
 								fmt.Sprintf("`%s`.`%s`", tblName.Schema.O, tblName.Name.String()))
@@ -235,7 +278,9 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 								level, s.colIndex+_index)
 							newFields = append(newFields, newField)
 						}
-						s.colIndex += len(cols)
+						if level == 0 {
+							s.colIndex += len(cols)
+						}
 					}
 				}
 			} else {
@@ -275,7 +320,9 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 										level, s.colIndex+_index)
 									newFields = append(newFields, newField)
 								}
-								s.colIndex += len(t.Fields)
+								if level == 0 {
+									s.colIndex += len(t.Fields)
+								}
 							} else {
 								s.appendErrorNo(ER_TABLE_NOT_EXISTED_ERROR,
 									fmt.Sprintf("`%s`.`%s`", tblName.Schema.O, tblName.Name.String()))
@@ -295,7 +342,9 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 									level, s.colIndex+_index)
 								newFields = append(newFields, newField)
 							}
-							s.colIndex += len(cols)
+							if level == 0 {
+								s.colIndex += len(cols)
+							}
 						}
 					}
 				}
@@ -312,21 +361,23 @@ func (s *masking) checkSubSelectItem(node *ast.SelectStmt, level int) (tableInfo
 }
 
 func (s *masking) checkSelectField(field *ast.SelectField,
-	tableInfoList []*TableInfo, level, colIndex int) {
-	if level == 0 {
-		for _, f := range s.checkItem(field.Expr, tableInfoList) {
-			f.Index = uint16(s.newItemIndex)
-			s.newItemIndex++
-			// f.Index = uint8(colIndex)
+	tableInfoList []*TableInfo, level, colIndex int) (fields []MaskingFieldInfo) {
+	// log.Debug("checkSelectField")
+	fields = s.checkItem(field.Expr, tableInfoList)
+	for index := range fields {
+		f := fields[index]
+		if level == 0 {
+			f.Index = uint16(colIndex)
 			if field.AsName.String() != "" {
-				f.Alias = field.AsName.String()
+				(&f).Alias = field.AsName.String()
 				s.maskingFields = append(s.maskingFields, f)
 			} else {
-				f.Alias = s.getExprAliasName(field)
+				(&f).Alias = s.getExprAliasName(field)
 				s.maskingFields = append(s.maskingFields, f)
 			}
 		}
 	}
+	return fields
 }
 
 func (s *masking) checkItem(expr ast.ExprNode, tables []*TableInfo) (fields []MaskingFieldInfo) {
@@ -338,8 +389,9 @@ func (s *masking) checkItem(expr ast.ExprNode, tables []*TableInfo) (fields []Ma
 	// log.Errorf("expr: %#v", expr)
 	switch e := expr.(type) {
 	case *ast.ColumnNameExpr:
-		f := s.checkFieldItem(e.Name, tables)
-		if f == nil {
+		// log.Errorf("e.Name: %#v", e.Name)
+		fs := s.checkFieldItem(e.Name, tables)
+		if fs == nil {
 			s.appendErrorNo(ER_COLUMN_NOT_EXISTED, e.Name.OrigColName())
 			db := e.Name.Schema.O
 			if db == "" {
@@ -351,7 +403,9 @@ func (s *masking) checkItem(expr ast.ExprNode, tables []*TableInfo) (fields []Ma
 				Field:  e.Name.Name.String(),
 			})
 		} else {
-			fields = append(fields, *f)
+			for _, f := range fs {
+				fields = append(fields, *f)
+			}
 		}
 		if e.Refer != nil {
 			fields = append(fields, s.checkItem(e.Refer.Expr, tables)...)
@@ -430,8 +484,10 @@ func (s *masking) checkItem(expr ast.ExprNode, tables []*TableInfo) (fields []Ma
 		}
 
 	case *ast.ValuesExpr:
-		fields = append(fields, *s.checkFieldItem(e.Column.Name, tables))
-
+		fs := s.checkFieldItem(e.Column.Name, tables)
+		for _, f := range fs {
+			fields = append(fields, *f)
+		}
 	case *ast.VariableExpr:
 		return s.checkItem(e.Value, tables)
 
@@ -471,7 +527,8 @@ func (s *masking) getExprAliasName(field *ast.SelectField) string {
 	}
 }
 
-func (s *masking) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) *MaskingFieldInfo {
+// checkFieldItem 检查字段是否存在并返回对应的字段信息. 当为列别名时可能引用了多个原始列
+func (s *masking) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) []*MaskingFieldInfo {
 	db := name.Schema.L
 
 	for _, t := range tables {
@@ -485,39 +542,68 @@ func (s *masking) checkFieldItem(name *ast.ColumnName, tables []*TableInfo) *Mas
 			if (db == "" || strings.EqualFold(t.Schema, db)) &&
 				(strings.EqualFold(tName, name.Table.L)) {
 				if len(t.Fields) == 0 {
-					return &MaskingFieldInfo{
+					return []*MaskingFieldInfo{
+						{
+							Schema: t.Schema,
+							Table:  t.Name,
+							Field:  name.Name.String(),
+						}}
+				}
+
+				result := make([]*MaskingFieldInfo, 0)
+				for index := range t.maskingFields {
+					field := t.maskingFields[index]
+					if strings.EqualFold(field.Alias, name.Name.L) {
+						result = append(result, &field)
+					}
+				}
+				if len(result) > 0 {
+					return result
+				}
+
+				for _, field := range t.Fields {
+					if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+						return []*MaskingFieldInfo{
+							{
+								Schema: t.Schema,
+								Table:  t.Name,
+								Field:  name.Name.String(),
+								Type:   field.Type,
+							}}
+					}
+				}
+
+			}
+		} else {
+			if len(t.Fields) == 0 {
+				return []*MaskingFieldInfo{
+					{
 						Schema: t.Schema,
 						Table:  t.Name,
 						Field:  name.Name.String(),
-					}
+					}}
+			}
+
+			result := make([]*MaskingFieldInfo, 0)
+			for index := range t.maskingFields {
+				field := t.maskingFields[index]
+				if strings.EqualFold(field.Alias, name.Name.L) {
+					result = append(result, &field)
 				}
-				for _, field := range t.Fields {
-					if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
-						return &MaskingFieldInfo{
+			}
+			if len(result) > 0 {
+				return result
+			}
+
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
+					return []*MaskingFieldInfo{
+						{
 							Schema: t.Schema,
 							Table:  t.Name,
 							Field:  name.Name.String(),
 							Type:   field.Type,
-						}
-					}
-				}
-			}
-		} else {
-			if len(t.Fields) == 0 {
-				return &MaskingFieldInfo{
-					Schema: t.Schema,
-					Table:  t.Name,
-					Field:  name.Name.String(),
-				}
-			}
-			for _, field := range t.Fields {
-				if strings.EqualFold(field.Field, name.Name.L) && !field.IsDeleted {
-					return &MaskingFieldInfo{
-						Schema: t.Schema,
-						Table:  t.Name,
-						Field:  name.Name.String(),
-						Type:   field.Type,
-					}
+						}}
 				}
 			}
 		}
