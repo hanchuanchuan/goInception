@@ -5403,8 +5403,19 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 				} else {
 					var selectSql string
 					if table.IsNew || table.IsNewColumns || s.dbVersion < 50600 {
-						i := strings.Index(strings.ToLower(sql), "select ")
-						selectSql = sql[i:]
+						var builder strings.Builder
+						if err := node.Select.Restore(
+							format.NewRestoreCtx(format.DefaultRestoreFlags, &builder)); err == nil {
+							selectSql = builder.String()
+						} else {
+							subIndex := strings.Index(strings.ToLower(sql), "select ")
+							if subIndex > 0 {
+								selectSql = sql[subIndex:]
+							} else {
+								subIndex = strings.Index(strings.ToLower(sql), "select")
+								selectSql = sql[subIndex:]
+							}
+						}
 					} else {
 						selectSql = sql
 					}
@@ -5414,7 +5425,7 @@ func (s *session) checkInsert(node *ast.InsertStmt, sql string) {
 					_, err := s.ParseSQL(context.Background(), selectSql, charsetInfo, collation)
 					if err != nil {
 						var builder strings.Builder
-						node.Select.Restore(
+						_ = node.Select.Restore(
 							format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
 						selectSql = builder.String()
 					}
