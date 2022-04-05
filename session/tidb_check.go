@@ -31,7 +31,6 @@ import (
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
 	"github.com/pingcap/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -623,9 +622,6 @@ func (s *session) checkPartitionNameUnique(defs []*ast.PartitionDefinition) {
 	partNames := make(map[string]struct{})
 	listRanges := make(map[string]struct{})
 	for _, oldPar := range defs {
-		log.Infof("oldPar: %#v", oldPar)
-		log.Infof("oldPar.Name: %#v", oldPar.Name.String())
-
 		switch clause := oldPar.Clause.(type) {
 		case *ast.PartitionDefinitionClauseIn:
 			if clause.Values == nil {
@@ -717,5 +713,24 @@ func (s *session) checkPartitionDrop(t *TableInfo, parts []model.CIStr) {
 		if !found {
 			s.appendErrorNo(ErrPartitionNotExisted, part.String())
 		}
+	}
+}
+
+// checkPartitionConvert 检查普通表转为分区表
+func (s *session) checkPartitionConvert(t *TableInfo, opts *ast.PartitionOptions) {
+	if opts == nil {
+		return
+	}
+	if len(t.Partitions) > 0 {
+		s.appendErrorMessage(fmt.Sprintf("Table '%s' is already a partitioned table", t.Name))
+	}
+	s.checkPartitionNameUnique(opts.Definitions)
+	s.checkPartitionNameExists(t, opts.Definitions)
+}
+
+// checkPartitionConvert 检查分区表转为普通表
+func (s *session) checkPartitionRemove(t *TableInfo) {
+	if len(t.Partitions) == 0 {
+		s.appendErrorMessage("Partition management on a not partitioned table is not possible")
 	}
 }

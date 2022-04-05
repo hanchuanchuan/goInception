@@ -1943,6 +1943,40 @@ PARTITION BY RANGE (TO_DAYS(hiredate) ) (
 		  exchange PARTITION p1 WITH TABLE arch_customer_login_log;`
 	s.mustRunExec(c, sql)
 
+	s.mustRunExec(c, `drop table if exists t1;`)
+	sql = `create table t1(id int primary key,c1 varchar(100),bill_date datetime);`
+	s.mustRunExec(c, sql)
+
+	sql = `alter table t1 partition by range (to_days(bill_date)) (
+		partition p202201 values less than (to_days('2022-02-01')) ENGINE = InnoDB,
+		partition p202202 values less than (to_days('2022-03-01')) ENGINE = InnoDB
+		);`
+	s.testErrorCode(c, sql)
+
+	sql = `alter table t1 remove partitioning;`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Partition management on a not partitioned table is not possible."))
+
+	sql = `drop table if exists t1;CREATE TABLE t1 (
+			customer_id int(10) unsigned NOT NULL COMMENT '登录用户ID',
+			login_time DATETIME NOT NULL COMMENT '用户登录时间',
+			login_ip int(10) unsigned NOT NULL COMMENT '登录IP',
+			login_type tinyint(4) NOT NULL COMMENT '登录类型:0未成功 1成功'
+		  ) ENGINE=InnoDB
+		  PARTITION BY RANGE (YEAR(login_time))(
+		  PARTITION p0 VALUES LESS THAN (2017),
+		  PARTITION p1 VALUES LESS THAN (2018));		  `
+	s.mustRunExec(c, sql)
+
+	sql = `alter table t1 partition by range (to_days(bill_date)) (
+			partition p202201 values less than (to_days('2022-02-01')) ENGINE = InnoDB,
+			partition p202202 values less than (to_days('2022-03-01')) ENGINE = InnoDB
+			);`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Table '%s' is already a partitioned table.", "t1"))
+
+	sql = `alter table t1 remove partitioning;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestSubSelect(c *C) {

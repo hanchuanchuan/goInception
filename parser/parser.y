@@ -265,6 +265,7 @@ import (
 	algorithm              "ALGORITHM"
 	any                    "ANY"
 	ascii                  "ASCII"
+	attributes             "ATTRIBUTES"
 	autoIncrement          "AUTO_INCREMENT"
 	autoRandom             "AUTO_RANDOM"
 	autoRandomBase         "AUTO_RANDOM_BASE"
@@ -371,6 +372,7 @@ import (
 	offset                 "OFFSET"
 	only                   "ONLY"
 	parser                 "PARSER"
+	partitioning           "PARTITIONING"
 	password               "PASSWORD"
 	partitions             "PARTITIONS"
 	pipesAsOr
@@ -387,6 +389,8 @@ import (
 	recover                "RECOVER"
 	redundant              "REDUNDANT"
 	reload                 "RELOAD"
+	remove                 "REMOVE"
+	reorganize             "REORGANIZE"
 	repair                 "REPAIR"
 	repeatable             "REPEATABLE"
 	replication            "REPLICATION"
@@ -635,9 +639,10 @@ import (
 	AdminShowSlow                 "Admin Show Slow statement"
 	AllOrPartitionNameList        "All or partition name list"
 	AlgorithmClause               "Alter table algorithm"
-	AlterTableOptionListOpt       "alter table option list opt"
+	AlterTablePartitionOpt        "Alter table partition option"
 	AlterTableSpec                "Alter table specification"
 	AlterTableSpecList            "Alter table specification list"
+	AlterTableSpecListOpt         "Alter table specification list optional"
 	AnyOrAll                      "Any or All for subquery"
 	Assignment                    "assignment"
 	AssignmentList                "assignment list"
@@ -667,7 +672,7 @@ import (
 	ConstraintKeywordOpt          "Constraint Keyword or empty"
 	CreateTableOptionListOpt      "create table option list opt"
 	CreateTableSelectOpt          "Select/Union statement in CREATE TABLE ... SELECT"
-	CreateViewSelectOpt                    "Select/Union statement in CREATE VIEW ... AS SELECT"
+	CreateViewSelectOpt           "Select/Union statement in CREATE VIEW ... AS SELECT"
 	DatabaseOption                "CREATE Database specification"
 	DatabaseOptionList            "CREATE Database specification list"
 	DatabaseOptionListOpt         "CREATE Database specification list opt"
@@ -883,6 +888,7 @@ import (
 	LengthNum                     "Field length num(uint64)"
 	HintTableList                 "Table list in optimizer hint"
 	TableOptimizerHints           "Table level optimizer hints"
+	AttributesOpt                 "Attributes options"
 
 %type	<ident>
 	AsOpt             "AS or EmptyString"
@@ -991,11 +997,15 @@ Start:
  * See https://dev.mysql.com/doc/refman/5.7/en/alter-table.html
  *******************************************************************************************/
 AlterTableStmt:
-	"ALTER" IgnoreOptional "TABLE" TableName AlterTableSpecList
+	"ALTER" IgnoreOptional "TABLE" TableName AlterTableSpecListOpt AlterTablePartitionOpt
 	{
+		specs := $5.([]*ast.AlterTableSpec)
+		if $6 != nil {
+			specs = append(specs, $6.(*ast.AlterTableSpec))
+		}
 		$$ = &ast.AlterTableStmt{
 			Table: $4.(*ast.TableName),
-			Specs: $5.([]*ast.AlterTableSpec),
+			Specs: specs,
 		}
 	}
 |	"ALTER" IgnoreOptional "TABLE" TableName "ANALYZE" "PARTITION" PartitionNameList MaxNumBuckets
@@ -1013,8 +1023,59 @@ AlterTableStmt:
 		}
 	}
 
+AttributesOpt:
+	"ATTRIBUTES" EqOpt "DEFAULT"
+	{
+		$$ = &ast.AttributesSpec{Default: true}
+	}
+|	"ATTRIBUTES" EqOpt stringLit
+	{
+		$$ = &ast.AttributesSpec{Default: false, Attributes: $3}
+	}
+
+AlterTablePartitionOpt:
+	PartitionOpt
+	{
+		if $1 != nil {
+			$$ = &ast.AlterTableSpec{
+				Tp:        ast.AlterTablePartition,
+				Partition: $1.(*ast.PartitionOptions),
+			}
+		} else {
+			$$ = nil
+		}
+	}
+|	"REMOVE" "PARTITIONING"
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp: ast.AlterTableRemovePartitioning,
+		}
+	}
+|	"REORGANIZE" "PARTITION" NoWriteToBinLogAliasOpt ReorganizePartitionRuleOpt
+	{
+		ret := $4.(*ast.AlterTableSpec)
+		ret.NoWriteToBinlog = $3.(bool)
+		$$ = ret
+	}
+|	"PARTITION" Identifier AttributesOpt
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp:             ast.AlterTablePartitionAttributes,
+			PartitionNames: []model.CIStr{model.NewCIStr($2)},
+			AttributesSpec: $3.(*ast.AttributesSpec),
+		}
+	}
+|	"PARTITION" Identifier PartDefOptionList
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp:             ast.AlterTablePartitionOptions,
+			PartitionNames: []model.CIStr{model.NewCIStr($2)},
+			Options:        $3.([]*ast.TableOption),
+		}
+	}
+
 AlterTableSpec:
-	AlterTableOptionListOpt
+	TableOptionList %prec higherThanComma
 	{
 		$$ = &ast.AlterTableSpec{
 			Tp:      ast.AlterTableOption,
@@ -1412,6 +1473,13 @@ ColumnPosition:
 			RelativeColumn: $2.(*ast.ColumnName),
 		}
 	}
+
+AlterTableSpecListOpt:
+	/* empty */
+	{
+		$$ = make([]*ast.AlterTableSpec, 0, 1)
+	}
+|	AlterTableSpecList
 
 AlterTableSpecList:
 	AlterTableSpec
@@ -2767,6 +2835,7 @@ CreateViewSelectOpt:
 	{
 		$$ = $2.(*ast.UnionStmt)
 	}
+
 LikeTableWithOrWithoutParen:
 	"LIKE" TableName
 	{
@@ -3598,7 +3667,7 @@ IndexOption:
 |	"WITH" "PARSER" Identifier
 	{
 		$$ = &ast.IndexOption{
-				ParserName: model.NewCIStr($3),
+			ParserName: model.NewCIStr($3),
 		}
 		yylex.AppendError(yylex.Errorf("The WITH PARASER clause is parsed but ignored by all storage engines."))
 		parser.lastErrorAsWarn()
@@ -3702,6 +3771,7 @@ Identifier:
 UnReservedKeyword:
 	"ACTION"
 |	"ASCII"
+|	"ATTRIBUTES"
 |	"AUTO_INCREMENT"
 |	"AFTER"
 |	"ALWAYS"
@@ -3762,6 +3832,7 @@ UnReservedKeyword:
 |	"PREPARE"
 |	"QUICK"
 |	"REDUNDANT"
+|	"REORGANIZE"
 |	"ROLLBACK"
 |	"SESSION"
 |	"SIGNED"
@@ -3874,6 +3945,8 @@ UnReservedKeyword:
 |	"HISTORY"
 |	"DIRECTORY"
 |	"NODEGROUP"
+|	"REMOVE"
+|	"PARTITIONING"
 |	"VALIDATION"
 |	"WITHOUT"
 |	"RTREE"
@@ -7009,12 +7082,6 @@ StatsPersistentVal:
 	{}
 |	LengthNum
 	{}
-
-AlterTableOptionListOpt:
-	{
-		$$ = []*ast.TableOption{}
-	}
-|	TableOptionList %prec higherThanComma
 
 CreateTableOptionListOpt:
 	/* empty */ %prec lowerThanCreateTableSelect

@@ -3250,8 +3250,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			"Alter", s.myRecord.AffectedRows, s.inc.MaxDDLAffectRows)
 	}
 
+	if len(node.Specs) == 0 {
+		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		return
+	}
 	for i, alter := range node.Specs {
-
 		switch alter.Tp {
 		case ast.AlterTableOption:
 			if len(alter.Options) == 0 {
@@ -3308,11 +3311,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 				s.checkAlterTableRenameIndex(table, alter)
 			}
 
+		/* 分区表 */
 		case ast.AlterTableAddPartitions:
 			if !s.inc.EnablePartitionTable {
 				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
 			} else {
-				s.fetchPartitionFromDB(table)
+				_ = s.fetchPartitionFromDB(table)
 				s.checkPartitionNameUnique(alter.PartDefinitions)
 				s.checkPartitionNameExists(table, alter.PartDefinitions)
 			}
@@ -3320,8 +3324,22 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			if !s.inc.EnablePartitionTable {
 				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
 			} else {
-				s.fetchPartitionFromDB(table)
+				_ = s.fetchPartitionFromDB(table)
 				s.checkPartitionDrop(table, alter.PartitionNames)
+			}
+		case ast.AlterTableRemovePartitioning:
+			if !s.inc.EnablePartitionTable {
+				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+			} else {
+				_ = s.fetchPartitionFromDB(table)
+				s.checkPartitionRemove(table)
+			}
+		case ast.AlterTablePartition:
+			if !s.inc.EnablePartitionTable {
+				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+			} else {
+				_ = s.fetchPartitionFromDB(table)
+				s.checkPartitionConvert(table, alter.Partition)
 			}
 		case ast.AlterTableAlterPartition,
 			ast.AlterTableCoalescePartitions,
@@ -3335,7 +3353,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			ast.AlterTableImportPartitionTablespace,
 			ast.AlterTableDiscardPartitionTablespace:
 			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
-			s.fetchPartitionFromDB(table)
+			_ = s.fetchPartitionFromDB(table)
 
 		case ast.AlterTableLock,
 			ast.AlterTableAlgorithm,
@@ -7437,7 +7455,7 @@ func (s *session) queryTableFromDB(db string, tableName string, reportNotExists 
 }
 
 func (s *session) fetchPartitionFromDB(t *TableInfo) error {
-	if t.IsNew || t.IsDeleted || t.Partitions != nil {
+	if t.IsNew || t.IsDeleted || len(t.Partitions) > 0 {
 		return nil
 	}
 
@@ -7451,6 +7469,13 @@ func (s *session) fetchPartitionFromDB(t *TableInfo) error {
 			s.appendErrorMessage(err.Error() + ".")
 		}
 		return err
+	}
+	if len(rows) > 0 {
+		first := rows[0]
+		if first.PartName == "" && first.PartMethod == "" {
+			// 非分区表
+			return nil
+		}
 	}
 	t.Partitions = rows
 	return nil
