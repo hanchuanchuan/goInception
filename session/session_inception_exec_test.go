@@ -1124,3 +1124,169 @@ func (s *testSessionIncExecSuite) TestMaxExecutionTime(c *C) {
 		alter table t1 drop column c1;alter table t1 add column c1 varchar(20);`
 	s.testErrorCode(c, sql)
 }
+
+func (s *testSessionIncExecSuite) TestPartition(c *C) {
+	config.GetGlobalConfig().Inc.EnablePartitionTable = false
+	config.GetGlobalConfig().IncLevel.ER_PARTITION_NOT_ALLOWED = 2
+
+	s.mustRunExec(c, "drop table if exists test_partition;")
+	sql = `create table test_partition(
+		id int unsigned not null auto_increment comment 'id',
+		a varchar(10) comment 'a',
+		buss_day varchar(8) comment 'day',
+		primary key (id,buss_day)
+	) comment '分区表'
+	partition by list columns (buss_day) (
+		partition p1 values in('20200101'),partition p2 values in('20200102'))`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_PARTITION_NOT_ALLOWED))
+
+	//	----------- enable partition -----------
+	config.GetGlobalConfig().Inc.EnablePartitionTable = true
+	s.mustRunExec(c, "drop table if exists test_partition;")
+	s.testErrorCode(c, sql)
+
+	sql = `alter table test_partition add partition (
+			partition p4 values in('20200104'),
+			partition p5 values in('20200105'),
+			partition p6 values in('20200106')
+			);`
+	s.testErrorCode(c, sql)
+
+	sql = `alter table test_partition drop partition p5,p6;`
+	s.testErrorCode(c, sql)
+
+	sql = `alter table test_partition drop partition p5,p6;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrPartitionNotExisted, "p5"),
+		session.NewErr(session.ErrPartitionNotExisted, "p6"))
+
+	sql = `CREATE TABLE my_range_datetime(
+    id INT,
+    hiredate DATETIME
+)
+PARTITION BY RANGE (TO_DAYS(hiredate) ) (
+    PARTITION p1 VALUES LESS THAN ( TO_DAYS('20171202') ),
+    PARTITION p2 VALUES LESS THAN ( TO_DAYS('20171203') ),
+    PARTITION p3 VALUES LESS THAN ( TO_DAYS('20171204') ),
+    PARTITION p4 VALUES LESS THAN ( TO_DAYS('20171205') ),
+    PARTITION p5 VALUES LESS THAN ( TO_DAYS('20171206') ),
+    PARTITION p6 VALUES LESS THAN ( TO_DAYS('20171207') ),
+    PARTITION p7 VALUES LESS THAN ( TO_DAYS('20171208') ),
+    PARTITION p8 VALUES LESS THAN ( TO_DAYS('20171209') ),
+    PARTITION p9 VALUES LESS THAN ( TO_DAYS('20171210') ),
+    PARTITION p10 VALUES LESS THAN ( TO_DAYS('20171211') ),
+    PARTITION p11 VALUES LESS THAN (MAXVALUE)
+);`
+	s.testErrorCode(c, sql)
+
+	sql = `create table t_list(a int(11),b int(11))
+		partition by list (b)(
+		partition p0 values in (1,3,5,7,9),
+		partition p1 values in (2,4,6,8,0));`
+	s.testErrorCode(c, sql)
+
+	sql = `CREATE TABLE my_member (
+		id INT NOT NULL,
+		fname VARCHAR(30),
+		lname VARCHAR(30),
+		created DATE NOT NULL DEFAULT '1970-01-01',
+		separated DATE NOT NULL DEFAULT '9999-12-31',
+		job_code INT,
+		store_id INT
+	)
+	PARTITION BY HASH(id)
+	PARTITIONS 4;`
+	s.testErrorCode(c, sql)
+
+	sql = `CREATE TABLE my_members (
+		id INT NOT NULL,
+		fname VARCHAR(30),
+		lname VARCHAR(30),
+		hired DATE NOT NULL DEFAULT '1970-01-01',
+		separated DATE NOT NULL DEFAULT '9999-12-31',
+		job_code INT,
+		store_id INT
+	)
+	PARTITION BY LINEAR HASH( id )
+	PARTITIONS 4;`
+	s.mustRunExec(c, sql)
+
+	sql = `CREATE TABLE k1 (
+		id INT NOT NULL PRIMARY KEY,
+		name VARCHAR(20)
+	)
+	PARTITION BY KEY()
+	PARTITIONS 2;`
+	s.mustRunExec(c, sql)
+
+	sql = `CREATE TABLE tm1 (
+		s1 CHAR(32)
+	)
+	PARTITION BY KEY(s1)
+	PARTITIONS 10;`
+	s.mustRunExec(c, sql)
+
+	sql = `CREATE TABLE customer_login_log (
+		customer_id int(10) unsigned NOT NULL COMMENT '登录用户ID',
+		login_time DATETIME NOT NULL COMMENT '用户登录时间',
+		login_ip int(10) unsigned NOT NULL COMMENT '登录IP',
+		login_type tinyint(4) NOT NULL COMMENT '登录类型:0未成功 1成功'
+	  ) ENGINE=InnoDB
+	  PARTITION BY RANGE (YEAR(login_time))(
+	  PARTITION p0 VALUES LESS THAN (2017),
+	  PARTITION p1 VALUES LESS THAN (2018),
+	  PARTITION p2 VALUES LESS THAN (2019)
+	  );
+	  CREATE TABLE arch_customer_login_log (
+        customer_id INT unsigned NOT NULL COMMENT '登录用户ID',
+        login_time DATETIME NOT NULL COMMENT '用户登录时间',
+        login_ip INT unsigned NOT NULL COMMENT '登录IP',
+        login_type TINYINT NOT NULL COMMENT '登录类型:0未成功 1成功'
+      ) ENGINE=InnoDB ;`
+	s.mustRunExec(c, sql)
+	sql = `ALTER TABLE customer_login_log
+		  exchange PARTITION p1 WITH TABLE arch_customer_login_log;`
+	s.mustRunExec(c, sql)
+
+	s.mustRunExec(c, `drop table if exists t1;`)
+	sql = `create table t1(id int,c1 datetime,bill_date datetime,primary key(id,bill_date));`
+	s.mustRunExec(c, sql)
+
+	// sql = `alter table t1 partition by range (to_days(c1)) (
+	// 	partition p202201 values less than (to_days('2022-02-01')) ENGINE = InnoDB,
+	// 	partition p202202 values less than (to_days('2022-03-01')) ENGINE = InnoDB
+	// 	);`
+	// s.testErrorCode(c, sql,
+	// 	session.NewErrf("Table '%s' is already a partitioned table.", "t1"))
+
+	sql = `alter table t1 partition by range (to_days(bill_date)) (
+		partition p202201 values less than (to_days('2022-02-01')) ENGINE = InnoDB,
+		partition p202202 values less than (to_days('2022-03-01')) ENGINE = InnoDB
+		);`
+	s.testErrorCode(c, sql)
+
+	sql = `alter table t1 remove partitioning;`
+	s.testErrorCode(c, sql)
+
+	sql = `drop table if exists t1;CREATE TABLE t1 (
+			customer_id int(10) unsigned NOT NULL COMMENT '登录用户ID',
+			login_time DATETIME NOT NULL COMMENT '用户登录时间',
+			login_ip int(10) unsigned NOT NULL COMMENT '登录IP',
+			login_type tinyint(4) NOT NULL COMMENT '登录类型:0未成功 1成功'
+		  ) ENGINE=InnoDB
+		  PARTITION BY RANGE (YEAR(login_time))(
+		  PARTITION p0 VALUES LESS THAN (2017),
+		  PARTITION p1 VALUES LESS THAN (2018));		  `
+	s.mustRunExec(c, sql)
+
+	sql = `alter table t1 partition by range (to_days(bill_date)) (
+			partition p202201 values less than (to_days('2022-02-01')) ENGINE = InnoDB,
+			partition p202202 values less than (to_days('2022-03-01')) ENGINE = InnoDB
+			);`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Table '%s' is already a partitioned table.", "t1"))
+
+	sql = `alter table t1 remove partitioning;`
+	s.testErrorCode(c, sql)
+}

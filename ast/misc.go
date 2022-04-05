@@ -1322,6 +1322,20 @@ func (n *DropBindingStmt) Accept(v Visitor) (Node, bool) {
 	return v.Leave(n)
 }
 
+// Extended statistics types.
+const (
+	StatsTypeCardinality uint8 = iota
+	StatsTypeDependency
+	StatsTypeCorrelation
+)
+
+// StatisticsSpec is the specification for ADD /DROP STATISTICS.
+type StatisticsSpec struct {
+	StatsName string
+	StatsType uint8
+	Columns   []*ColumnName
+}
+
 // DoStmt is the struct for DO statement.
 type DoStmt struct {
 	stmtNode
