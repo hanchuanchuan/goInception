@@ -330,10 +330,10 @@ func (s *session) parserBinlog(ctx context.Context) {
 
 			if s.dbType == DBTypeMariaDB && s.dbVersion >= 100000 {
 				goto ENDCHECK
-			} else {
-				if event, ok := e.Event.(*replication.QueryEvent); ok {
-					currentThreadID = event.SlaveProxyID
-				}
+			}
+
+			if event, ok := e.Event.(*replication.QueryEvent); ok {
+				currentThreadID = event.SlaveProxyID
 			}
 
 		case replication.WRITE_ROWS_EVENTv1, replication.WRITE_ROWS_EVENTv2:

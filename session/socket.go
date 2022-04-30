@@ -6,9 +6,10 @@ package session
 // time go run mainRemote.go -start-time="2018-09-17 00:00:00" -stop-time="2018-09-25 00:00:00" -o=1.sql
 import (
 	"fmt"
+	"time"
+
 	"github.com/imroc/req"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 // const (
@@ -62,9 +63,8 @@ func sendMsg(user string, event string, title string, text string, kwargs map[st
 
 	if resp.StatusCode == 200 {
 		return true
-	} else {
-		log.Error("请求websocket失败!")
-		log.Printf("%+v", r) // 打印详细信息
-		return false
 	}
+	log.Error("请求websocket失败!")
+	log.Printf("%+v", r) // 打印详细信息
+	return false
 }

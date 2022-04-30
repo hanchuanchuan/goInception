@@ -4798,6 +4798,8 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		s.myRecord.TableInfo = t
 	}
 
+	s.mysqlShowTableStatus(t)
+
 	if tp == ast.ConstraintPrimaryKey && IndexName == "" {
 		IndexName = "PRIMARY"
 	}
@@ -5011,7 +5013,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	if s.opt.Execute {
 		var rollbackSql string
 		if IndexName == "PRIMARY" {
-			rollbackSql = fmt.Sprintf("DROP PRIMARY KEY,")
+			rollbackSql = "DROP PRIMARY KEY,"
 		} else {
 			rollbackSql = fmt.Sprintf("DROP INDEX `%s`,", IndexName)
 		}
@@ -6322,28 +6324,28 @@ func (s *session) executeLocalOscKill(node *ast.ShowOscStmt) ([]sqlexec.RecordSe
 		if pi.Killed {
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been aborted"))
 			return nil, errors.New("osc process not aborted")
-		} else {
-			if pi.Percent >= 100 {
-				return nil, errors.New("osc change has been completed")
-			}
-
-			if pi.SocketFile == "" {
-				pi.PanicAbort <- util.ProcessOperationKill
-			} else {
-				panicFile := fmt.Sprintf("%s.panic", strings.TrimRight(pi.SocketFile, ".sock"))
-				f, err := os.Create(panicFile)
-				if err != nil {
-					log.Error(err)
-					return nil, fmt.Errorf("Unable to create panic file, operation failed: %s", err.Error())
-				}
-				f.Close()
-				// clean panic file
-				go time.AfterFunc(time.Second*10, func() {
-					os.Remove(panicFile)
-				})
-			}
-			return nil, nil
 		}
+
+		if pi.Percent >= 100 {
+			return nil, errors.New("osc change has been completed")
+		}
+
+		if pi.SocketFile == "" {
+			pi.PanicAbort <- util.ProcessOperationKill
+		} else {
+			panicFile := fmt.Sprintf("%s.panic", strings.TrimRight(pi.SocketFile, ".sock"))
+			f, err := os.Create(panicFile)
+			if err != nil {
+				log.Error(err)
+				return nil, fmt.Errorf("Unable to create panic file, operation failed: %s", err.Error())
+			}
+			f.Close()
+			// clean panic file
+			go time.AfterFunc(time.Second*10, func() {
+				os.Remove(panicFile)
+			})
+		}
+		return nil, nil
 	}
 	return nil, errors.New("osc process not found")
 }
@@ -6364,25 +6366,25 @@ func (s *session) executeLocalOscPause(node *ast.ShowOscStmt) ([]sqlexec.RecordS
 		if pi.Pause {
 			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process has been paused"))
 			return nil, errors.New("osc process has been paused")
-		} else {
-			// echo throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
-			// echo no-throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
-			if pi.SocketFile == "" {
-				pi.PanicAbort <- util.ProcessOperationPause
-			} else {
-				if _, err := os.Stat(pi.SocketFile); err != nil {
-					log.Error(err)
-					return nil, fmt.Errorf("The socket file was not found, the operation failed")
-				}
-				cmd := exec.Command("sh", "-c", fmt.Sprintf("echo throttle | nc -U %s", pi.SocketFile))
-				if err := cmd.Run(); err != nil {
-					err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
-					log.Error(err)
-				}
-				pi.Pause = true
-			}
-			return nil, nil
 		}
+
+		// echo throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
+		// echo no-throttle | nc -U /tmp/gh-ost.test.sample_data_0.sock
+		if pi.SocketFile == "" {
+			pi.PanicAbort <- util.ProcessOperationPause
+		} else {
+			if _, err := os.Stat(pi.SocketFile); err != nil {
+				log.Error(err)
+				return nil, fmt.Errorf("The socket file was not found, the operation failed")
+			}
+			cmd := exec.Command("sh", "-c", fmt.Sprintf("echo throttle | nc -U %s", pi.SocketFile))
+			if err := cmd.Run(); err != nil {
+				err = fmt.Errorf("failed running command: %s %s; error=%v", "echo throttle | nc -U ", pi.SocketFile, err)
+				log.Error(err)
+			}
+			pi.Pause = true
+		}
+		return nil, nil
 	}
 	return nil, errors.New("osc process not found")
 }
@@ -6416,10 +6418,10 @@ func (s *session) executeLocalOscResume(node *ast.ShowOscStmt) ([]sqlexec.Record
 				pi.Pause = false
 			}
 			return nil, nil
-		} else {
-			// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
-			return nil, errors.New("osc process not paused")
 		}
+
+		// s.sessionVars.StmtCtx.AppendWarning(errors.New("osc process not paused"))
+		return nil, errors.New("osc process not paused")
 	}
 	return nil, errors.New("osc process not found")
 }

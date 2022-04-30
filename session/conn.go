@@ -73,9 +73,8 @@ func (s *session) raw(sqlStr string) (rows *sql.Rows, err error) {
 			}
 			s.appendErrorMessage(err.Error())
 			continue
-		} else {
-			return
 		}
+		return
 	}
 	return
 }
@@ -99,9 +98,8 @@ func (s *session) exec(sqlStr string, retry bool) (res sql.Result, err error) {
 			if retry {
 				s.appendWarningMessage(err.Error())
 				continue
-			} else {
-				return
 			}
+			return
 		}
 
 		// 连接超时时自动重连数据库. 仅在超时设置超过10min时开启该功能
@@ -138,9 +136,8 @@ func (s *session) execDDL(sqlStr string, retry bool) (res sql.Result, err error)
 			if retry {
 				s.appendWarningMessage(err.Error())
 				continue
-			} else {
-				return
 			}
+			return
 		}
 		return
 	}
