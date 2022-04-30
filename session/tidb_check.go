@@ -208,35 +208,32 @@ func (s *session) isInvalidDefaultValue(colDef *ast.ColumnDef) bool {
 
 			if !(tp.Tp == mysql.TypeTimestamp || tp.Tp == mysql.TypeDatetime) && isDefaultValNowSymFunc(columnOpt.Expr) {
 				return true
-			} else {
-				if !types.IsTypeTime(tp.Tp) ||
-					columnOpt.Expr.GetDatum().IsNull() || isDefaultValNowSymFunc(columnOpt.Expr) {
-					return false
-				}
-
-				d, err := GetTimeValue(s, columnOpt.Expr, tp.Tp, tp.Decimal)
-				if err != nil {
-					// log.Warning(err)
-					return true
-				}
-
-				vars := s.sessionVars
-
-				// 根据服务器sql_mode设置处理零值日期
-				t := d.GetMysqlTime()
-				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroDateMode(), t.IsZero())
-				// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroInDateMode(), t.InvalidZero())
-				if t.IsZero() {
-					if s.inc.EnableZeroDate {
-						return vars.StrictSQLMode && vars.SQLMode.HasNoZeroDateMode()
-					} else {
-						return true
-					}
-				} else if t.InvalidZero() {
-					return vars.StrictSQLMode && vars.SQLMode.HasNoZeroInDateMode()
-				}
+			}
+			if !types.IsTypeTime(tp.Tp) ||
+				columnOpt.Expr.GetDatum().IsNull() || isDefaultValNowSymFunc(columnOpt.Expr) {
+				return false
 			}
 
+			d, err := GetTimeValue(s, columnOpt.Expr, tp.Tp, tp.Decimal)
+			if err != nil {
+				// log.Warning(err)
+				return true
+			}
+
+			vars := s.sessionVars
+
+			// 根据服务器sql_mode设置处理零值日期
+			t := d.GetMysqlTime()
+			// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroDateMode(), t.IsZero())
+			// log.Info(vars.StrictSQLMode, vars.SQLMode.HasNoZeroInDateMode(), t.InvalidZero())
+			if t.IsZero() {
+				if s.inc.EnableZeroDate {
+					return vars.StrictSQLMode && vars.SQLMode.HasNoZeroDateMode()
+				}
+				return true
+			} else if t.InvalidZero() {
+				return vars.StrictSQLMode && vars.SQLMode.HasNoZeroInDateMode()
+			}
 			break
 		}
 	}
@@ -539,9 +536,10 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 
 			if _, ok1 := gbyCols[name]; ok1 {
 				continue
-			} else {
-				s.checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
 			}
+
+			s.checkExprInGroupBy(field.Expr, offset, ErrExprInSelect, gbyCols, gbyExprs, notInGbyCols, tables)
+
 			// c := &ast.ColumnNameExpr{Name: &ast.ColumnName{
 			// 	Name: model.NewCIStr(field.AsName.O),
 			// }}

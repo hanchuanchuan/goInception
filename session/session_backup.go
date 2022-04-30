@@ -207,9 +207,8 @@ func (s *session) mysqlExecuteBackupInfoInsertSql(record *Record, longDataType b
 			ch, _ := utf8.DecodeLastRuneInString(sql_stmt)
 			if ch != utf8.RuneError {
 				break
-			} else {
-				sql_stmt = sql_stmt[:len(sql_stmt)-1]
 			}
+			sql_stmt = sql_stmt[:len(sql_stmt)-1]
 		}
 		sql_stmt = sql_stmt + "..."
 	}
@@ -381,10 +380,9 @@ func (s *session) mysqlCreateBackupTable(record *Record) (longDataType bool) {
 					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 					s.appendErrorMessage(myErr.Message)
 					return
-				} else {
-					// 获取sql_statement字段类型,用以兼容类型为text的旧表结构
-					longDataType = s.checkBackupTableSqlStmtColumnType(backupDBName)
 				}
+				// 获取sql_statement字段类型,用以兼容类型为text的旧表结构
+				longDataType = s.checkBackupTableSqlStmtColumnType(backupDBName)
 			} else {
 				s.appendErrorMessage(err.Error())
 				return

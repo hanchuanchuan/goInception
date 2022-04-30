@@ -511,19 +511,18 @@ func (s *session) checkOptions() error {
 		// 不再检查密码是否为空
 		if s.inc.BackupHost == "" || s.inc.BackupPort == 0 || s.inc.BackupUser == "" {
 			return errors.New(s.getErrorMessage(ER_INVALID_BACKUP_HOST_INFO))
-		} else {
-			addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
-				s.inc.BackupUser, s.inc.BackupPassword, s.inc.BackupHost, s.inc.BackupPort,
-				s.inc.DefaultCharset)
-			backupdb, err := gorm.Open("mysql", addr)
-
-			if err != nil {
-				return fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-			}
-
-			backupdb.LogMode(false)
-			s.backupdb = backupdb
 		}
+		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
+			s.inc.BackupUser, s.inc.BackupPassword, s.inc.BackupHost, s.inc.BackupPort,
+			s.inc.DefaultCharset)
+		backupdb, err := gorm.Open("mysql", addr)
+
+		if err != nil {
+			return fmt.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		}
+
+		backupdb.LogMode(false)
+		s.backupdb = backupdb
 	}
 
 	tmp := s.processInfo.Load()
