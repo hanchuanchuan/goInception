@@ -15,6 +15,7 @@ import (
 	// "github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/types"
+	"github.com/jinzhu/copier"
 	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"
 )
@@ -336,10 +337,14 @@ func (t *TableInfo) EffectiveFieldCount() (count int) {
 func (t *TableInfo) copy() *TableInfo {
 	p := &TableInfo{}
 
+	_ = copier.Copy(p, t)
+
 	p.Schema = t.Schema
 	p.Name = t.Name
 	p.AsName = t.AsName
 	p.AlterCount = t.AlterCount
+	p.TableSize = t.TableSize
+	p.Collation = t.Collation
 
 	p.Fields = make([]FieldInfo, len(t.Fields))
 	copy(p.Fields, t.Fields)
