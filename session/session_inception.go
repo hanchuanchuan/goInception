@@ -2329,7 +2329,9 @@ func (s *session) mysqlShowTableStatus(t *TableInfo) {
 			rows.Scan(&res, &collation)
 		}
 		s.myRecord.AffectedRows = int64(res)
-		t.Collation = collation
+		if collation != "" {
+			t.Collation = collation
+		}
 	}
 }
 
@@ -3038,7 +3040,10 @@ func (s *session) checkColumnsMustHaveindex(table *TableInfo) {
 func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 	log.Debug("buildTableInfo")
 
-	table := &TableInfo{}
+	table := &TableInfo{
+		IsNew:        true,
+		IsNewColumns: true,
+	}
 
 	if node.Table.Schema.O == "" {
 		table.Schema = s.dbName
@@ -3084,7 +3089,6 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 		c := s.buildNewColumnToCache(table, field)
 		table.Fields = append(table.Fields, *c)
 	}
-	table.IsNewColumns = true
 
 	return table
 }
@@ -4322,6 +4326,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 	}
 
 	s.checkColumn(field, t.Collation, alterTableType)
+
 	// if (thd->variables.sql_mode & MODE_NO_ZERO_DATE &&
 	//        is_timestamp_type(field->sql_type) && !field->def &&
 	//        (field->flags & NOT_NULL_FLAG) &&

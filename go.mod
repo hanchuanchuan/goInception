@@ -31,7 +31,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
-	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
+	github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gofrs/uuid v3.2.0+incompatible
@@ -50,6 +50,7 @@ require (
 	github.com/hanchuanchuan/gh-ost v1.0.49-0.20210117111015-ca873c0b5ca6
 	github.com/hanchuanchuan/go-mysql v0.0.0-20200114082439-6d0d8d3a982e
 	github.com/imroc/req v0.2.3
+	github.com/jinzhu/copier v0.3.5
 	github.com/jinzhu/gorm v1.9.2
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
 	github.com/jinzhu/now v0.0.0-20181116074157-8ec929ed50c3 // indirect
