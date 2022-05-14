@@ -1018,6 +1018,12 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErrf("Invalid ON UPDATE clause for '%s' column.", "c1"))
 
+	config.GetGlobalConfig().Inc.MaxColumnCount = 2
+	sql = `create table t1(id int primary key,
+			c1 int,c2 int);`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrMaxColumnCount, "t1", 2, 3))
+
 }
 
 func (s *testSessionIncSuite) TestCreateTableAsSelect(c *C) {
@@ -1254,6 +1260,13 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 		alter table t1 add index ix_1(c1) /*!50100 WITH PARSER ngram */;`
 	s.testErrorCode(c, sql,
 		session.NewErrf("WITH PARSER option can be used only with FULLTEXT indexes."))
+
+	config.GetGlobalConfig().Inc.MaxColumnCount = 2
+	sql = `drop table if exists t1;
+	create table t1(id int,c1 char(10));
+	alter table t1 add column c2 int;`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrMaxColumnCount, "t1", 2, 3))
 }
 
 func (s *testSessionIncSuite) TestAlterTableRenameColumn(c *C) {

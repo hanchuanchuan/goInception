@@ -331,7 +331,8 @@ type Inc struct {
 	// 连接服务器允许的最大包大小,以字节为单位 默认值为4194304(即4MB)
 	MaxAllowedPacket uint `toml:"max_allowed_packet" json:"max_allowed_packet"`
 	MaxCharLength    uint `toml:"max_char_length" json:"max_char_length"`
-
+	// 单表的列数上限
+	MaxColumnCount uint `toml:"max_column_count" json:"max_column_count"`
 	// DDL操作最大允许的受影响行数. 默认值0,即不限制
 	MaxDDLAffectRows uint `toml:"max_ddl_affect_rows" json:"max_ddl_affect_rows"`
 
@@ -673,6 +674,7 @@ type IncLevel struct {
 	ErrViewSupport                  int8 `toml:"er_view_support"`
 	ErrIncorrectDateTimeValue       int8 `toml:"er_incorrect_datetime_value"`
 	ErrMaxVarcharLength             int8 `toml:"er_max_varchar_length"`
+	ErrMaxColumnCount               int8 `toml:"er_max_column_count"`
 }
 
 var defaultConf = Config{
@@ -891,6 +893,7 @@ var defaultConf = Config{
 		ErrViewSupport:                  2,
 		ErrIncorrectDateTimeValue:       2,
 		ErrMaxVarcharLength:             2,
+		ErrMaxColumnCount:               1,
 	},
 }
 

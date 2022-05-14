@@ -2674,6 +2674,9 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 			}
 
 			if len(node.Cols) > 0 {
+				if s.inc.MaxColumnCount > 0 && len(node.Cols) > int(s.inc.MaxColumnCount) {
+					s.appendErrorNo(ErrMaxColumnCount, node.Table.Name.O, s.inc.MaxColumnCount, len(node.Cols))
+				}
 
 				// 处理explicitDefaultsForTimestamp逻辑
 				if !s.explicitDefaultsForTimestamp {
@@ -4697,6 +4700,12 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				// 	nc.Name.Name.O)
 			}
 		}
+	}
+
+	fieldCount := t.ValidFieldCount()
+	if s.inc.MaxColumnCount > 0 && len(c.NewColumns)+fieldCount > int(s.inc.MaxColumnCount) {
+		s.appendErrorNo(ErrMaxColumnCount, t.Name,
+			s.inc.MaxColumnCount, len(c.NewColumns)+fieldCount)
 	}
 }
 
