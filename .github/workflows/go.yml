@@ -6,6 +6,11 @@ on:
       - release/*
   pull_request:
 
+defaults:
+  run:
+    shell: bash
+    working-directory: src/github.com/hanchuanchuan/goInception
+
 jobs:
   build:
     name: Build
