@@ -86,14 +86,21 @@ jobs:
           done
           echo Failed waiting for MySQL && exit 1
 
-      - name: Set up Go 1.13
+      - name: Set up Go
         uses: actions/setup-go@v1
         with:
           go-version: 1.14
         id: go
 
+      - name: Set up GOPATH
+        run: |
+          echo "GOPATH=${{ github.workspace }}" >> "$GITHUB_ENV"
+          echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
+
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
+        with:
+          path: src/github.com/hanchuanchuan/goInception # add this
 
       - name: Install pt-online-schema-change
         run: |
@@ -112,3 +119,10 @@ jobs:
           rm -f go.sum
           sudo chmod +x cmd/explaintest/run-tests.sh
           make checklist parserlib gotest
+
+      - name: Send coverage
+        env:
+          TRAVIS_COVERAGE: 1
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make dev upload-coverage
+        working-directory: src/github.com/hanchuanchuan/goInception
