@@ -6,11 +6,6 @@ on:
       - release/*
   pull_request:
 
-defaults:
-  run:
-    shell: bash
-    working-directory: src/github.com/hanchuanchuan/goInception
-
 jobs:
   build:
     name: Build
@@ -92,20 +87,13 @@ jobs:
           echo Failed waiting for MySQL && exit 1
 
       - name: Set up Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
           go-version: 1.14
         id: go
 
-      - name: Set up GOPATH
-        run: |
-          echo "GOPATH=${{ github.workspace }}" >> "$GITHUB_ENV"
-          echo "${{ github.workspace }}/bin" >> "$GITHUB_PATH"
-
-      - name: Check out code into the Go module directory
+      - name: Check out code
         uses: actions/checkout@v2
-        with:
-          path: src/github.com/hanchuanchuan/goInception # add this
 
       - name: Install pt-online-schema-change
         run: |
@@ -128,6 +116,6 @@ jobs:
       - name: Send coverage
         env:
           TRAVIS_COVERAGE: 1
+          GOVERALLS_SERVICE: 1
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make dev upload-coverage
-        working-directory: src/github.com/hanchuanchuan/goInception
