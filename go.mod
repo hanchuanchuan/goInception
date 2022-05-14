@@ -1,6 +1,6 @@
 module github.com/hanchuanchuan/goInception
 
-go 1.12
+go 1.14
 
 replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3
 
