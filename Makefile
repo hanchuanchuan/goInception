@@ -27,8 +27,10 @@ endif
 
 ifeq "$(GOVERALLS_SERVICE)" ""
 	GOVERALLS_SERVICE    := "circle-ci"
+	GOVERALLS_PROJECT	 := "github.com/hanchuanchuan/goInception"
 else
 	GOVERALLS_SERVICE    := "github"
+	GOVERALLS_PROJECT	 := "/home/runner/work/goInception/goInception"
 endif
 
 OVERALLS  := CGO_ENABLED=1 GO111MODULE=on overalls
@@ -205,7 +207,7 @@ ifeq ("$(TRAVIS_COVERAGE)", "1")
 	# $(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
 	# $(GOVERALLS) -service=$(GOVERALLS_SERVICE) -coverprofile=overalls.coverprofile || { $(GOFAIL_DISABLE); exit 1; }
 
-	$(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' -concurrency=1 -- -short || { $(GOFAIL_DISABLE); exit 1; }
+	$(OVERALLS) -project=$(GOVERALLS_PROJECT) -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' -concurrency=1 -- -short || { $(GOFAIL_DISABLE); exit 1; }
 else
 
 ifeq ("$(API)", "1")
