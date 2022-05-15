@@ -113,13 +113,9 @@ jobs:
           sudo chmod +x cmd/explaintest/run-tests.sh
           make checklist parserlib gotest
 
-      - name: Install goveralls
-        run: go install github.com/mattn/goveralls
-
-      - name: Send coverage
-        env:
-          TRAVIS_COVERAGE: 1
-          GOVERALLS_SERVICE: 1
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # run: make dev upload-coverage
-        run: goveralls -coverprofile=covprofile -service=github -project=/home/runner/work/goInception/goInception
+      # - name: Send coverage
+      #   env:
+      #     TRAVIS_COVERAGE: 1
+      #     GOVERALLS_SERVICE: 1
+      #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: make dev upload-coverage
