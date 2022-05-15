@@ -113,6 +113,9 @@ jobs:
           sudo chmod +x cmd/explaintest/run-tests.sh
           make checklist parserlib gotest
 
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls
+
       - name: Send coverage
         env:
           TRAVIS_COVERAGE: 1
