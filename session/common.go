@@ -213,6 +213,7 @@ type MaskingFieldInfo struct {
 	Alias  string `json:"alias"`
 }
 
+// IsGenerated 是否为计算列
 func (f *FieldInfo) IsGenerated() bool {
 	if f.isGenerated == nil {
 		v := strings.Contains(f.Extra, "VIRTUAL GENERATED") ||
@@ -315,7 +316,7 @@ type DBInfo struct {
 	IsNew bool
 }
 
-// EffectiveFieldCount 有效列数，移除已删除列和生成列
+// EffectiveFieldCount 有效列数，会移除已删除列和生成列
 func (t *TableInfo) EffectiveFieldCount() (count int) {
 	if t == nil {
 		return
@@ -332,6 +333,20 @@ func (t *TableInfo) EffectiveFieldCount() (count int) {
 	}
 	t.effectiveFieldCount = count
 	return
+}
+
+// ValidFieldCount 可用列
+func (t *TableInfo) ValidFieldCount() (count int) {
+	if t == nil {
+		return
+	}
+
+	for _, f := range t.Fields {
+		if !f.IsDeleted && !f.IsGenerated() {
+			count++
+		}
+	}
+	return count
 }
 
 func (t *TableInfo) copy() *TableInfo {
