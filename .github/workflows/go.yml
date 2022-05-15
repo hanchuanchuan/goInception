@@ -118,4 +118,5 @@ jobs:
           TRAVIS_COVERAGE: 1
           GOVERALLS_SERVICE: 1
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: make dev upload-coverage
+        # run: make dev upload-coverage
+        run: goveralls -coverprofile=covprofile -service=github -project=/home/runner/work/goInception/goInception

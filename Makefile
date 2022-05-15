@@ -27,7 +27,7 @@ endif
 
 ifeq "$(GOVERALLS_SERVICE)" ""
 	GOVERALLS_SERVICE    := "circle-ci"
-	GOVERALLS_PROJECT	 := "github.com/hanchuanchuan/goInception"
+	GOVERALLS_PROJECT	 := "/go/src/github.com/hanchuanchuan/goInception"
 else
 	GOVERALLS_SERVICE    := "github"
 	GOVERALLS_PROJECT	 := "/home/runner/work/goInception/goInception"
