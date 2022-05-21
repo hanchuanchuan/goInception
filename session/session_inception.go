@@ -6810,6 +6810,11 @@ func (s *session) getRealRowCount(sql string, sqlId string) {
 	for rows.Next() {
 		rows.Scan(&value)
 	}
+	err = rows.Err()
+	if err != nil {
+		s.appendErrorMessage(err.Error())
+		return
+	}
 
 	r.AffectedRows = value
 	// if newRecord != nil {
