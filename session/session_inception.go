@@ -2677,6 +2677,39 @@ func (s *session) checkCreateTable(node *ast.CreateTableStmt, sql string) {
 				if s.inc.MaxColumnCount > 0 && len(node.Cols) > int(s.inc.MaxColumnCount) {
 					s.appendErrorNo(ErrMaxColumnCount, node.Table.Name.O, s.inc.MaxColumnCount, len(node.Cols))
 				}
+				// 20220609 检查text/json/blob 大字段个数
+				blobColCount := 0
+				jsonColCount := 0
+				charVarcharLength := 0
+				for _, field := range node.Cols {
+					if types.IsTypeBlob(field.Tp.Tp) {
+						blobColCount += 1
+					}
+					 // types/etc.go
+					 //  mysql.TypeBlob -> Text
+					 //  mysql.TypeLongBlob -> longtext
+
+					if field.Tp.Tp == mysql.TypeJSON {
+						jsonColCount += 1
+					}
+					// 统计 char varchar的总长度
+					if types.IsTypeChar(field.Tp.Tp) {
+						// 获取char、varchar字段类型的长度并累加
+						log.Debug(field.Tp, " length: ", field.Tp.Flen)
+						charVarcharLength += field.Tp.Flen
+					}
+					
+				}
+				log.Debug("charVarcharLength:",charVarcharLength, ", MaxCharVarcharLength:",s.inc.MaxCharVarcharLength)
+				if charVarcharLength > int(s.inc.MaxCharVarcharLength) {
+					s.appendErrorNo(ErrMaxCharVarcharLength, node.Table.Name.O, s.inc.MaxCharVarcharLength, charVarcharLength)
+				}
+				if jsonColCount > int(s.inc.MaxJsonCount) {
+					s.appendErrorNo(ErrMaxJsonCount, node.Table.Name.O, s.inc.MaxJsonCount, jsonColCount)
+				}
+				if blobColCount > int(s.inc.MaxBlobCount) {
+					s.appendErrorNo(ErrMaxBlobCount, node.Table.Name.O, s.inc.MaxBlobCount, blobColCount)
+				}
 
 				// 处理explicitDefaultsForTimestamp逻辑
 				if !s.explicitDefaultsForTimestamp {

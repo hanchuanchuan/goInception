@@ -333,6 +333,12 @@ type Inc struct {
 	MaxCharLength    uint `toml:"max_char_length" json:"max_char_length"`
 	// 单表的列数上限
 	MaxColumnCount uint `toml:"max_column_count" json:"max_column_count"`
+	// blob/text 字段最大个数
+	MaxBlobCount uint `toml:"max_blob_count" json:"max_blob_count"`
+	// json 字段最大个数
+	MaxJsonCount uint `toml:"max_json_count" json:"max_json_count"`
+	// 20220609@zw char/varchar最大总长度
+	MaxCharVarcharLength uint `toml:"max_char_varchar_length_count" json:"max_char_varchar_length_count"`
 	// DDL操作最大允许的受影响行数. 默认值0,即不限制
 	MaxDDLAffectRows uint `toml:"max_ddl_affect_rows" json:"max_ddl_affect_rows"`
 
@@ -675,6 +681,9 @@ type IncLevel struct {
 	ErrIncorrectDateTimeValue       int8 `toml:"er_incorrect_datetime_value"`
 	ErrMaxVarcharLength             int8 `toml:"er_max_varchar_length"`
 	ErrMaxColumnCount               int8 `toml:"er_max_column_count"`
+	ErrMaxBlobCount               int8 `toml:"er_max_blob_count"`
+	ErrMaxJsonCount               int8 `toml:"er_max_json_count"`
+	ErrMaxCharVarcharLength       int8 `toml:"er_max_char_varcher_length"`
 }
 
 var defaultConf = Config{
@@ -894,6 +903,9 @@ var defaultConf = Config{
 		ErrIncorrectDateTimeValue:       2,
 		ErrMaxVarcharLength:             2,
 		ErrMaxColumnCount:               1,
+		ErrMaxBlobCount:               1,
+		ErrMaxJsonCount:               1,
+		ErrMaxCharVarcharLength:       1,
 	},
 }
 
