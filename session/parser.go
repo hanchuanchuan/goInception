@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -793,6 +792,7 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 		newValues []driver.Value
 		newSql    string
 	)
+
 	// update时, Rows为2的倍数, 双数index为旧值,单数index为新值
 	for i, rows := range e.Rows {
 		if i%2 == 0 {
@@ -803,21 +803,8 @@ func (s *session) generateUpdateSql(t *TableInfo, e *replication.RowsEvent,
 				// 	continue
 				// }
 				if minimalMode {
-					equal := false
-					switch v := d.(type) {
-					case []byte:
-						equal = reflect.DeepEqual(d, e.Rows[i+1][j])
-					case decimal.Decimal:
-						if newDec, ok := e.Rows[i+1][j].(decimal.Decimal); ok {
-							equal = v.Equal(newDec)
-						} else {
-							equal = false
-						}
-					default:
-						equal = d == e.Rows[i+1][j]
-					}
 					// 最小化模式下,列如果相等则省略
-					if !equal {
+					if !compareValue(d, e.Rows[i+1][j]) {
 						if t.Fields[j].IsGenerated() {
 							continue
 						}
@@ -1121,4 +1108,45 @@ func escapeBytesBackslash(buf, v []byte) []byte {
 	}
 
 	return buf[:pos]
+}
+
+// compareValue 比较两值是否相等
+func compareValue(v1 interface{}, v2 interface{}) bool {
+	equal := false
+
+	// 处理特殊情况
+	if v1 == nil && v2 == nil {
+		return true
+	}
+	if v1 == nil || v2 == nil {
+		return false
+	}
+
+	switch v := v1.(type) {
+	case []byte:
+		equal = byteEquals(v, v2.([]byte))
+	case decimal.Decimal:
+		if newDec, ok := v2.(decimal.Decimal); ok {
+			equal = v.Equal(newDec)
+		} else {
+			equal = false
+		}
+	default:
+		equal = v1 == v2
+	}
+
+	return equal
+}
+
+// byteEquals 判断字节切片是否相等
+func byteEquals(v1, v2 []byte) bool {
+	if len(v1) != len(v2) {
+		return false
+	}
+	for i, v := range v1 {
+		if v != v2[i] {
+			return false
+		}
+	}
+	return true
 }

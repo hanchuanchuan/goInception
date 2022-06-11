@@ -15,6 +15,7 @@ package session_test
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -25,6 +26,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
+	"vitess.io/vitess/go/vt/log"
 )
 
 var _ = Suite(&testSessionIncSuite{})
@@ -3510,4 +3512,43 @@ func (s *testSessionIncSuite) TestGroupBy(c *C) {
 		s.testErrorCode(c, sql)
 	}
 
+}
+
+// TestCheckAuditSetting 自动校准旧的审核规则和自定义规则, 保证两者一致
+func (s *testSessionIncSuite) TestCheckAuditSetting(c *C) {
+	configLevel := &config.GetGlobalConfig().IncLevel
+	configLevel.ER_USE_ENUM = 1
+	configLevel.ErJsonTypeSupport = 2
+	configLevel.ER_USE_TEXT_OR_BLOB = 2
+
+	obj := config.GetGlobalConfig().IncLevel
+	t := reflect.TypeOf(obj)
+	v := reflect.ValueOf(obj)
+
+	incLevel := make(map[string]uint8, v.NumField())
+
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).CanInterface() {
+			a := v.Field(i).Int()
+			if a < 0 {
+				a = 0
+			} else if a > 2 {
+				a = 2
+			}
+			if k := t.Field(i).Tag.Get("toml"); k != "" {
+				incLevel[k] = uint8(a)
+			} else {
+				incLevel[t.Field(i).Name] = uint8(a)
+			}
+		}
+	}
+
+	for e := range session.ErrorsDefault {
+		name := e.String()
+		if level, ok := incLevel[name]; ok {
+			v := session.GetErrorLevel(e)
+			log.Errorf("name:%v,incLevel:%d, config: %d", name, level, v)
+			c.Assert(level, Equals, v, Commentf("name:%v,incLevel:%d, config: %d", name, level, v))
+		}
+	}
 }

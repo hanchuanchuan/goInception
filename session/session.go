@@ -266,7 +266,7 @@ type session struct {
 	maskingFields []MaskingFieldInfo
 
 	// 统一处理禁用的数据类型
-	disableTypes map[string]struct{}
+	disableTypes map[string]uint8
 }
 
 func (s *session) getMembufCap() int {

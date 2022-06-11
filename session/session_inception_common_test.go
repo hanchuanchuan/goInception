@@ -101,7 +101,8 @@ type testCommon struct {
 
 	session session.Session
 
-	defaultInc config.Inc
+	defaultInc      config.Inc
+	defaultIncLevel config.IncLevel
 
 	// 测试数据库,默认为test_inc,该参数用以测试未指定数据库情况下的审核
 	useDB string
@@ -183,10 +184,16 @@ func (s *testCommon) initSetUp(c *C) {
 	inc.SqlSafeUpdates = 0
 	inc.EnableDropTable = true
 
+	incLevel := &config.GetGlobalConfig().IncLevel
+	incLevel.ER_USE_ENUM = 1
+	incLevel.ErJsonTypeSupport = 1
+	incLevel.ER_USE_TEXT_OR_BLOB = 1
+
 	// mysql5.6测试用例会出错(docker映射对外的端口不一致)
 	config.GetGlobalConfig().Ghost.GhostAliyunRds = true
 
 	s.defaultInc = *inc
+	s.defaultIncLevel = *incLevel
 
 	s.remoteBackupTable = "$_$Inception_backup_information$_$"
 	s.parser = parser.New()
@@ -1002,6 +1009,7 @@ func (s *testCommon) parserStmt(sql string) ast.StmtNode {
 
 func (s *testCommon) reset() {
 	config.GetGlobalConfig().Inc = s.defaultInc
+	config.GetGlobalConfig().IncLevel = s.defaultIncLevel
 	log.SetLevel(log.ErrorLevel)
 	// log.SetReportCaller(true)
 
