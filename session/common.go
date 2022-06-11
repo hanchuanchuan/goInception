@@ -916,6 +916,13 @@ func Max64(x, y int64) int64 {
 	return y
 }
 
+func Max8(x, y uint8) uint8 {
+	if x >= y {
+		return x
+	}
+	return y
+}
+
 func Min(x, y int) int {
 	if x < y {
 		return x

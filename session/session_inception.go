@@ -4088,9 +4088,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 	tableName := t.Name
 	if len(s.disableTypes) > 0 {
 		fieldType := types.TypeToStr(field.Tp.Tp, field.Tp.Charset)
-		for typeStr := range s.disableTypes {
+		for typeStr, level := range s.disableTypes {
 			if typeStr == fieldType {
-				s.appendErrorNo(ER_INVALID_DATA_TYPE, field.Name.Name, typeStr)
+				s.appendErrorWithLevel(ER_INVALID_DATA_TYPE, level, field.Name.Name, typeStr)
 				break
 			}
 		}
@@ -7567,6 +7567,10 @@ func (s *session) appendWarning(number ErrorCode, values ...interface{}) {
 }
 
 func (s *session) appendErrorNo(number ErrorCode, values ...interface{}) {
+	s.appendErrorWithLevel(number, 0, values...)
+}
+
+func (s *session) appendErrorWithLevel(number ErrorCode, customizeLevel uint8, values ...interface{}) {
 	r := s.myRecord
 
 	// 不检查时退出
@@ -7580,6 +7584,7 @@ func (s *session) appendErrorNo(number ErrorCode, values ...interface{}) {
 	} else {
 		level = GetErrorLevel(number)
 	}
+	level = Max8(level, customizeLevel)
 
 	if level > 0 {
 		r.ErrLevel = uint8(Max(int(r.ErrLevel), int(level)))
@@ -8388,32 +8393,48 @@ func (s *session) checkVaildWhere(expr ast.ExprNode) bool {
 
 func (s *session) initDisableTypes() {
 	log.Debug("initDisableTypes")
-	s.disableTypes = make(map[string]struct{})
+	s.disableTypes = make(map[string]uint8)
+	var defaultLevel uint8
+	if v, ok := s.incLevel["er_invalid_data_type"]; ok {
+		defaultLevel = v
+	}
 	if !s.inc.EnableBlobType {
-		s.disableTypes["tinytext"] = struct{}{}
-		s.disableTypes["mediumtext"] = struct{}{}
-		s.disableTypes["longtext"] = struct{}{}
-		s.disableTypes["text"] = struct{}{}
-		s.disableTypes["tinyblob"] = struct{}{}
-		s.disableTypes["mediumblob"] = struct{}{}
-		s.disableTypes["longblob"] = struct{}{}
-		s.disableTypes["blob"] = struct{}{}
+		level := defaultLevel
+		if v, ok := s.incLevel["er_use_text_or_blob"]; ok {
+			level = Max8(level, v)
+		}
+		s.disableTypes["tinytext"] = level
+		s.disableTypes["mediumtext"] = level
+		s.disableTypes["longtext"] = level
+		s.disableTypes["text"] = level
+		s.disableTypes["tinyblob"] = level
+		s.disableTypes["mediumblob"] = level
+		s.disableTypes["longblob"] = level
+		s.disableTypes["blob"] = level
 	}
 	if !s.inc.EnableTimeStampType {
-		s.disableTypes["timestamp"] = struct{}{}
+		s.disableTypes["timestamp"] = defaultLevel
 	}
 	if !s.inc.EnableJsonType {
-		s.disableTypes["json"] = struct{}{}
+		level := defaultLevel
+		if v, ok := s.incLevel["er_json_type_support"]; ok {
+			level = Max8(level, v)
+		}
+		s.disableTypes["json"] = level
 	}
 	if !s.inc.EnableEnumSetBit {
-		s.disableTypes["enum"] = struct{}{}
-		s.disableTypes["set"] = struct{}{}
-		s.disableTypes["bit"] = struct{}{}
+		level := defaultLevel
+		if v, ok := s.incLevel["er_use_enum"]; ok {
+			level = Max8(defaultLevel, v)
+		}
+		s.disableTypes["enum"] = level
+		s.disableTypes["set"] = level
+		s.disableTypes["bit"] = level
 	}
 	for _, typeStr := range strings.Split(s.inc.DisableTypes, ",") {
 		key := strings.ToLower(strings.TrimSpace(typeStr))
 		if key != "" {
-			s.disableTypes[key] = struct{}{}
+			s.disableTypes[key] = defaultLevel
 		}
 	}
 }

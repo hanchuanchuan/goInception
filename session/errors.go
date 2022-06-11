@@ -727,6 +727,7 @@ func GetErrorMessage(code ErrorCode, lang string) string {
 // SQLError records an error information, from executing SQL.
 type SQLError struct {
 	Code    ErrorCode
+	Level   uint8
 	Message string
 }
 
@@ -739,6 +740,12 @@ func (e *SQLError) Error() string {
 func NewErr(errCode ErrorCode, args ...interface{}) *SQLError {
 	e := &SQLError{Code: errCode}
 	e.Message = fmt.Sprintf(GetErrorMessage(errCode, "en_us"), args...)
+	return e
+}
+
+// custom error level. used for inc_level function
+func (e *SQLError) SetLevel(l uint8) *SQLError {
+	e.Level = l
 	return e
 }
 
@@ -1105,6 +1112,7 @@ func (e ErrorCode) String() string {
 
 // TestCheckAuditSetting 自动校准旧的审核规则和自定义规则
 func TestCheckAuditSetting(cnf *config.Config) {
+	return
 
 	if cnf.Inc.CheckInsertField {
 		cnf.IncLevel.ER_WITH_INSERT_FIELD = int8(GetErrorLevel(ER_WITH_INSERT_FIELD))
@@ -1157,13 +1165,17 @@ func TestCheckAuditSetting(cnf *config.Config) {
 	}
 
 	if !cnf.Inc.EnableBlobType {
-		cnf.IncLevel.ER_USE_TEXT_OR_BLOB = int8(GetErrorLevel(ER_USE_TEXT_OR_BLOB))
+		if cnf.IncLevel.ER_USE_TEXT_OR_BLOB == 0 {
+			cnf.IncLevel.ER_USE_TEXT_OR_BLOB = int8(GetErrorLevel(ER_USE_TEXT_OR_BLOB))
+		}
 	} else {
 		cnf.IncLevel.ER_USE_TEXT_OR_BLOB = 0
 	}
 
 	if !cnf.Inc.EnableJsonType {
-		cnf.IncLevel.ErJsonTypeSupport = int8(GetErrorLevel(ErrJsonTypeSupport))
+		if cnf.IncLevel.ErJsonTypeSupport == 0 {
+			cnf.IncLevel.ErJsonTypeSupport = int8(GetErrorLevel(ErrJsonTypeSupport))
+		}
 	} else {
 		cnf.IncLevel.ErJsonTypeSupport = 0
 	}

@@ -87,9 +87,15 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 	errCode := 0
 	if len(errors) > 0 {
 		for _, e := range errors {
-			level := session.GetErrorLevel(e.Code)
-			if int(level) > errCode {
-				errCode = int(level)
+			if e.Level > 0 {
+				if int(e.Level) > errCode {
+					errCode = int(e.Level)
+				}
+			} else {
+				level := session.GetErrorLevel(e.Code)
+				if int(level) > errCode {
+					errCode = int(level)
+				}
 			}
 		}
 	}
@@ -1139,7 +1145,7 @@ func (s *testSessionIncExecSuite) TestPartition(c *C) {
 	partition by list columns (buss_day) (
 		partition p1 values in('20200101'),partition p2 values in('20200102'))`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ER_PARTITION_NOT_ALLOWED))
+		session.NewErr(session.ER_PARTITION_NOT_ALLOWED).SetLevel(2))
 
 	//	----------- enable partition -----------
 	config.GetGlobalConfig().Inc.EnablePartitionTable = true
