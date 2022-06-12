@@ -59,7 +59,7 @@ CHECK_LDFLAGS += $(LDFLAGS) ${TEST_LDFLAGS}
 
 TARGET = ""
 
-.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist testapi docs
+.PHONY: all build update parser clean todo test gotest interpreter server dev benchkv benchraw check parserlib checklist testapi docs level
 
 default: server buildsucc
 
@@ -379,3 +379,8 @@ docker-push:
 
 docs:
 	$(shell bash docs/deploy.sh)
+
+level:
+	@rm -f config/error_level.go
+	$(GO) run config/generate_levels/main.go
+	gofmt -w config/error_level.go
