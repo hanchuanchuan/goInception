@@ -133,6 +133,7 @@ func (s *session) init() {
 
 	// 自定义审核级别,通过解析config.GetGlobalConfig().IncLevel生成
 	s.parseIncLevel()
+
 }
 
 // clear 清理变量或map等信息

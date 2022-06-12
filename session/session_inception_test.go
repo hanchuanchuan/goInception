@@ -207,7 +207,6 @@ func (s *testSessionIncSuite) runAudit(c *C) {
 		sqls = append(sqls, a.sql)
 	}
 
-	session.TestCheckAuditSetting(config.GetGlobalConfig())
 	a := `/*%s;--check=1;--backup=0;--enable-ignore-warnings;real_row_count=%v;*/
 inception_magic_start;
 %s
@@ -912,7 +911,7 @@ primary key(id)) comment 'test';`
 	config.GetGlobalConfig().Inc.ColumnsMustHaveIndex = ""
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 
 	// 测试表名大小写
 	sql = `drop table if exists t1;CREATE TABLE t1(c1 int);insert into T1 values(1);`
@@ -1547,7 +1546,7 @@ func (s *testSessionIncSuite) TestAlterTableDropColumn(c *C) {
 
 func (s *testSessionIncSuite) TestInsert(c *C) {
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 
 	// 表不存在
 	sql = "insert into t1 values(1,1);"
@@ -1578,12 +1577,12 @@ func (s *testSessionIncSuite) TestInsert(c *C) {
 
 	// 字段警告
 	config.GetGlobalConfig().Inc.CheckInsertField = true
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 1
 	sql = "create table t1(id int,c1 int);insert into t1 values(1,1);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_INSERT_FIELD))
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 
 	sql = "create table t1(id int,c1 int);insert into t1(id) values();"
 	s.testErrorCode(c, sql,
@@ -2013,7 +2012,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 	config.GetGlobalConfig().Inc.EnableSetEngine = true
 
 	// 表不存在
@@ -2315,7 +2314,7 @@ WHERE tt1.id=1;`
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 
 	// 表不存在
 	sql = "delete from t1 where c1 = 1;"
@@ -3434,10 +3433,10 @@ func (s *testSessionIncSuite) TestWhereCondition(c *C) {
 	s.mustRunExec(c, "drop table if exists t1,t2;create table t1(id int);")
 
 	sql = "update t1 set id = 1 where 123;"
-	config.GetGlobalConfig().IncLevel.ErrUseValueExpr = 0
+	config.GetGlobalConfig().IncLevel.ErUseValueExpr = 0
 	s.testErrorCode(c, sql)
 
-	config.GetGlobalConfig().IncLevel.ErrUseValueExpr = 1
+	config.GetGlobalConfig().IncLevel.ErUseValueExpr = 1
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrUseValueExpr))
 
@@ -3517,9 +3516,9 @@ func (s *testSessionIncSuite) TestGroupBy(c *C) {
 // TestCheckAuditSetting 自动校准旧的审核规则和自定义规则, 保证两者一致
 func (s *testSessionIncSuite) TestCheckAuditSetting(c *C) {
 	configLevel := &config.GetGlobalConfig().IncLevel
-	configLevel.ER_USE_ENUM = 1
+	configLevel.ErUseEnum = 1
 	configLevel.ErJsonTypeSupport = 2
-	configLevel.ER_USE_TEXT_OR_BLOB = 2
+	configLevel.ErUseTextOrBlob = 2
 
 	obj := config.GetGlobalConfig().IncLevel
 	t := reflect.TypeOf(obj)
@@ -3529,10 +3528,8 @@ func (s *testSessionIncSuite) TestCheckAuditSetting(c *C) {
 
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).CanInterface() {
-			a := v.Field(i).Int()
-			if a < 0 {
-				a = 0
-			} else if a > 2 {
+			a := v.Field(i).Uint()
+			if a > 2 {
 				a = 2
 			}
 			if k := t.Field(i).Tag.Get("toml"); k != "" {
