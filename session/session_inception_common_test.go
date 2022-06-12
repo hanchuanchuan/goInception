@@ -185,9 +185,9 @@ func (s *testCommon) initSetUp(c *C) {
 	inc.EnableDropTable = true
 
 	incLevel := &config.GetGlobalConfig().IncLevel
-	incLevel.ER_USE_ENUM = 1
+	incLevel.ErUseEnum = 1
 	incLevel.ErJsonTypeSupport = 1
-	incLevel.ER_USE_TEXT_OR_BLOB = 1
+	incLevel.ErUseTextOrBlob = 1
 
 	// mysql5.6测试用例会出错(docker映射对外的端口不一致)
 	config.GetGlobalConfig().Ghost.GhostAliyunRds = true
@@ -249,7 +249,6 @@ func (s *testCommon) tearDownTest(c *C) {
 	}()
 
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	s.runCheck("show tables")
 	c.Assert(int(s.getAffectedRows()), GreaterEqual, 1)
@@ -292,7 +291,6 @@ func (s *testCommon) tearDownTest(c *C) {
 }
 
 func (s *testCommon) runCheck(sql string) {
-	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	if s.isAPI {
 		s.sessionService.LoadOptions(session.SourceOptions{
@@ -388,7 +386,6 @@ inception_magic_commit;`
 
 func (s *testCommon) mustRunExec(c *C, sql string) *testkit.Result {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
-	session.TestCheckAuditSetting(config.GetGlobalConfig())
 
 	if s.isAPI {
 		s.sessionService.LoadOptions(session.SourceOptions{
