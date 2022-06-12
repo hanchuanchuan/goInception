@@ -381,6 +381,5 @@ docs:
 	$(shell bash docs/deploy.sh)
 
 level:
-	@rm -f config/error_level.go
 	$(GO) run config/generate_levels/main.go
 	gofmt -w config/error_level.go

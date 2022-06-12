@@ -19,14 +19,20 @@ const tmpl = `
 
 package config
 
-type IncLevel2 struct {
+type IncLevel struct {
 {{ range $opt := . }}` + "	{{ $opt.OptionName }} uint8 `toml:\"{{ $opt.TomlValue }}\"`" +
 	`
 {{ end }}}
 
-var DefaultLevel = IncLevel2 {
+var defaultLevel = IncLevel {
 {{ range $opt := . }}	{{ $opt.OptionName }}: {{ $opt.Level }},
 {{ end }}}
+`
+
+const defaultToml = `
+[inc_level]
+{{ range $opt := . }}{{ $opt.TomlValue }} = {{ $opt.Level }}
+{{ end }}
 `
 
 func GenerateLevels() []ErrorLevel {
@@ -54,7 +60,18 @@ func GenerateLevels() []ErrorLevel {
 
 func main() {
 	t := template.Must(template.New("tmpl").Parse(tmpl))
-	file, err := os.OpenFile("config/error_level2.go", os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0600)
+	file, err := os.OpenFile("config/error_level.go", os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		panic(err)
+	}
+	err = t.Execute(file, GenerateLevels())
+	if err != nil {
+		panic(err)
+	}
+	file.Close()
+
+	t = template.Must(template.New("toml_default").Parse(defaultToml))
+	file, err = os.OpenFile("config/config.toml.default.tmp", os.O_TRUNC|os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -63,5 +80,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 }

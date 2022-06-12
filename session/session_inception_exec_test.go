@@ -79,8 +79,6 @@ func (s *testSessionIncExecSuite) testErrorCode(c *C, sql string, errors ...*ses
 		s.tk = testkit.NewTestKitWithInit(c, s.store)
 	}
 
-	session.TestCheckAuditSetting(config.GetGlobalConfig())
-
 	res := s.runExec(sql)
 	row := res.Rows()[s.getAffectedRows()-1]
 
@@ -382,19 +380,19 @@ func (s *testSessionIncExecSuite) TestAlterTableDropColumn(c *C) {
 func (s *testSessionIncExecSuite) TestInsert(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 
 	sql := ""
 
 	// 字段警告
 	config.GetGlobalConfig().Inc.CheckInsertField = true
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 1
 	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1 values(1,1);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_WITH_INSERT_FIELD))
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 
 	sql = "drop table if exists t1;create table t1(id int,c1 int);insert into t1(id) values();"
 	s.testErrorCode(c, sql,
@@ -440,7 +438,7 @@ func (s *testSessionIncExecSuite) TestInsert(c *C) {
 func (s *testSessionIncExecSuite) TestUpdate(c *C) {
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 	sql := ""
 
 	// 表不存在
@@ -529,11 +527,11 @@ func (s *testSessionIncExecSuite) TestDelete(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
-		config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 1
+		config.GetGlobalConfig().IncLevel.ErWithInsertField = 1
 	}()
 
 	config.GetGlobalConfig().Inc.CheckInsertField = false
-	config.GetGlobalConfig().IncLevel.ER_WITH_INSERT_FIELD = 0
+	config.GetGlobalConfig().IncLevel.ErWithInsertField = 0
 	sql := ""
 
 	sql = "drop table if exists t1"
@@ -1133,7 +1131,7 @@ func (s *testSessionIncExecSuite) TestMaxExecutionTime(c *C) {
 
 func (s *testSessionIncExecSuite) TestPartition(c *C) {
 	config.GetGlobalConfig().Inc.EnablePartitionTable = false
-	config.GetGlobalConfig().IncLevel.ER_PARTITION_NOT_ALLOWED = 2
+	config.GetGlobalConfig().IncLevel.ErPartitionNotAllowed = 2
 
 	s.mustRunExec(c, "drop table if exists test_partition;")
 	sql = `create table test_partition(
