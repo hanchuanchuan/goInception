@@ -2211,10 +2211,8 @@ func (s *session) parseIncLevel() {
 
 	for i := 0; i < v.NumField(); i++ {
 		if v.Field(i).CanInterface() {
-			a := v.Field(i).Int()
-			if a < 0 {
-				a = 0
-			} else if a > 2 {
+			a := v.Field(i).Uint()
+			if a > 2 {
 				a = 2
 			}
 			if k := t.Field(i).Tag.Get("toml"); k != "" {
