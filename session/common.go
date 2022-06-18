@@ -279,6 +279,14 @@ type TableInfo struct {
 	maskingFields []MaskingFieldInfo
 }
 
+// BackupTable 表$_$inception_backup_information$_$相关信息
+type BackupTable struct {
+	// sql_statement字段类型字段的数据类型是否为text
+	longDataType bool
+	// host字段长度,新建表的默认值为128
+	hostMaxLength int
+}
+
 // IndexInfo 索引信息
 type IndexInfo struct {
 	gorm.Model
