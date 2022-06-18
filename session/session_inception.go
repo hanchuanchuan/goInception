@@ -809,15 +809,15 @@ func (s *session) executeCommit(ctx context.Context) {
 
 // mysqlBackupSql 写备份记录表
 // longDataType 为true表示字段类型已更新,否则为text,需要在写入时自动截断
-func (s *session) mysqlBackupSql(record *Record, longDataType bool) {
+func (s *session) mysqlBackupSql(record *Record, longDataType bool, hostMaxLength int) {
 	if s.checkSqlIsDDL(record) {
-		s.mysqlExecuteBackupInfoInsertSql(record, longDataType)
+		s.mysqlExecuteBackupInfoInsertSql(record, longDataType, hostMaxLength)
 
 		if s.isMiddleware() {
 			s.mysqlExecuteBackupSqlForDDL(record)
 		}
 	} else if s.checkSqlIsDML(record) {
-		s.mysqlExecuteBackupInfoInsertSql(record, longDataType)
+		s.mysqlExecuteBackupInfoInsertSql(record, longDataType, hostMaxLength)
 	}
 }
 

@@ -105,7 +105,7 @@ func (s *session) init() {
 	s.dbCacheList = make(map[string]*DBInfo)
 
 	s.backupDBCacheList = make(map[string]bool)
-	s.backupTableCacheList = make(map[string]bool)
+	s.backupTableCacheList = make(map[string]BackupTable)
 	s.disableTypes = make(map[string]uint8)
 
 	s.inc = config.GetGlobalConfig().Inc
