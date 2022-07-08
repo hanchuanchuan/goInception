@@ -25,3 +25,4 @@ tools/bin/
 tools/check/go.sum
 node_modules
 docs/.vuepress/dist
+./goInception
