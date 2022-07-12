@@ -4339,7 +4339,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 	//    }
 }
 
-func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
+func (s *session) checkIndexAttr(unique bool, tp ast.ConstraintType, name string,
 	keys []*ast.IndexColName, table *TableInfo) {
 
 	if tp == ast.ConstraintPrimaryKey {
@@ -4406,16 +4406,22 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		}
 
 	default:
-		if s.inc.IndexPrefix != "" {
+		prefix := ""
+		if unique {
+			prefix = s.inc.UniqIndexPrefix
+		} else {
+			prefix = s.inc.IndexPrefix
+		}
+		if prefix != "" {
 			var found bool
-			for _, v := range strings.Split(s.inc.IndexPrefix, ",") {
+			for _, v := range strings.Split(prefix, ",") {
 				if strings.HasPrefix(name, v) {
 					found = true
 					break
 				}
 			}
 			if !found {
-				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, s.inc.IndexPrefix, table.Name)
+				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, prefix, table.Name)
 			}
 		}
 	}
@@ -4816,7 +4822,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		IndexName = "PRIMARY"
 	}
 
-	s.checkIndexAttr(tp, IndexName, IndexColNames, t)
+	s.checkIndexAttr(unique, tp, IndexName, IndexColNames, t)
 
 	keyMaxLen := 0
 	// 禁止使用blob列当索引,所以不再检测blob字段时列是否过长
