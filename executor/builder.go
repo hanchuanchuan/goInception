@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/cznic/sortutil"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/distsql"
@@ -48,6 +47,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
 	"golang.org/x/net/context"
+	"modernc.org/mathutil"
 )
 
 // executorBuilder builds an Executor from a Plan.

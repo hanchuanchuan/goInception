@@ -21,7 +21,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/domain"
 	"github.com/hanchuanchuan/goInception/expression"
@@ -38,6 +37,7 @@ import (
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
+	"modernc.org/mathutil"
 )
 
 const (

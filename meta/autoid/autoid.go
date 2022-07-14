@@ -18,12 +18,12 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/meta"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
+	"modernc.org/mathutil"
 )
 
 // Test needs to change it, so it's a variable.
