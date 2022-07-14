@@ -17,12 +17,12 @@ import (
 	"bytes"
 	"sync/atomic"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/hanchuanchuan/goInception/util/set"
 	"github.com/pingcap/errors"
+	"modernc.org/mathutil"
 )
 
 type baseGroupConcat4String struct {

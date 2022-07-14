@@ -90,6 +90,7 @@ const (
 	ER_DUP_KEYNAME
 	ER_TOO_LONG_INDEX_COMMENT
 	ER_DUP_INDEX
+	ER_INDEX_COLUMN_REPEAT
 	ER_TEMP_TABLE_TMP_PREFIX
 	ER_TABLE_PREFIX
 	ER_TABLE_CHARSET_MUST_UTF8
@@ -273,6 +274,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_DUP_KEYNAME:                         "Duplicate key name '%s'.",
 	ER_TOO_LONG_INDEX_COMMENT:              "Comment for index '%s' is too long (max = %lu).",
 	ER_DUP_INDEX:                           "Duplicate index '%s' defined on the table '%s.%s'.",
+	ER_INDEX_COLUMN_REPEAT:                 "Column repeat index '%s' defined on the table '%s.%s' column('%s').",
 	ER_TEMP_TABLE_TMP_PREFIX:               "Set 'tmp' prefix for temporary table.",
 	ER_TABLE_PREFIX:                        "Need set '%s' prefix for table.",
 	ER_TABLE_CHARSET_MUST_UTF8:             "Set charset to one of '%s' for table '%s'.",
@@ -457,6 +459,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_DUP_KEYNAME:                         "索引名 '%s' 重复.",
 	ER_TOO_LONG_INDEX_COMMENT:              "索引 '%s' 注释过长(max = %lu).",
 	ER_DUP_INDEX:                           "索引 '%s' 定义重复(表'%s.%s').",
+	ER_INDEX_COLUMN_REPEAT:                 "索引 '%s' 的字段与索引 '%s.%s' 存在重复字段('%s').",
 	ER_TEMP_TABLE_TMP_PREFIX:               "临时表需要指定'tmp'前缀",
 	ER_TABLE_PREFIX:                        "表名需要指定'%s'前缀",
 	ER_TABLE_CHARSET_MUST_UTF8:             "允许的字符集为: '%s'(表'%s').",
@@ -661,6 +664,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_INVALID_DEFAULT,
 		ER_NOT_SUPPORTED_KEY_TYPE,
 		ER_DUP_INDEX,
+		ER_INDEX_COLUMN_REPEAT,
 		ER_TOO_LONG_KEY,
 		ER_MULTIPLE_PRI_KEY,
 		ER_DUP_KEYNAME,
@@ -861,6 +865,8 @@ func (e ErrorCode) String() string {
 		return "er_too_long_index_comment"
 	case ER_DUP_INDEX:
 		return "er_dup_index"
+	case ER_INDEX_COLUMN_REPEAT:
+		return "er_index_column_repeat"
 	case ER_TEMP_TABLE_TMP_PREFIX:
 		return "er_temp_table_tmp_prefix"
 	case ER_TABLE_PREFIX:

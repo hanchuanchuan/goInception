@@ -21,7 +21,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/model"
@@ -39,6 +38,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/format"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
+	"modernc.org/mathutil"
 )
 
 // ShowExec represents a show executor.

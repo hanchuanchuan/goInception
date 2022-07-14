@@ -149,6 +149,7 @@ er_db_not_existed_error = 2
 er_ddl_dml_coexist = 2
 er_dup_fieldname = 2
 er_dup_index = 2
+er_index_column_repeat = 2
 er_dup_keyname = 2
 er_end_with_commit = 2
 er_end_with_semicolon = 2
