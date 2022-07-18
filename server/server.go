@@ -247,6 +247,7 @@ func (s *Server) Run() error {
 		s.startStatusHTTP()
 	}
 	for {
+		// 开始处理tidb连接请求，注意，这是4000端口的请求，而非上面的http服务请求
 		conn, err := s.listener.Accept()
 		if err != nil {
 			if opErr, ok := err.(*net.OpError); ok {
