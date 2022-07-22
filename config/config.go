@@ -16,6 +16,7 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/hanchuanchuan/goInception/util"
 	"strings"
 
 	// "fmt"
@@ -790,6 +791,8 @@ func (c *Config) Load(confFile string) error {
 	if c.TokenLimit <= 0 {
 		c.TokenLimit = 1000
 	}
+	// 如果是密文，则解密
+	c.Inc.BackupPassword = util.DesDecrypt(c.Inc.BackupPassword)
 	return errors.Trace(err)
 }
 
