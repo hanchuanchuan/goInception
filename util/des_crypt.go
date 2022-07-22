@@ -4,11 +4,6 @@ import (
 	"bytes"
 	"crypto/des"
 	"encoding/hex"
-	"fmt"
-)
-
-var (
-	KEY = []byte{62, 10, 13, 4, 54, 21, 33, 7}
 )
 
 //
@@ -30,11 +25,8 @@ var (
 //}
 
 //密钥必须是64位，所以key必须是长度为8的byte数组
-func DesEncrypt(text string) (string, error) {
-	if len(KEY) != 8 {
-		return "", fmt.Errorf("DES加密算法要求key必须是64位bit")
-	}
-	block, err := des.NewCipher(KEY) //用des创建一个加密器cipher
+func DesEncrypt(text, key string) (string, error) {
+	block, err := des.NewCipher([]byte(key)) //用des创建一个加密器cipher
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +48,7 @@ func DesEncrypt(text string) (string, error) {
 
 //DesDecrypt DES解密
 //密钥必须是64位，所以key必须是长度为8的byte数组
-func DesDecrypt(text string) string {
+func DesDecrypt(text, key string) string {
 	tLen := len(text)
 	if tLen < 5 {
 		return text
@@ -69,7 +61,7 @@ func DesDecrypt(text string) string {
 	if err != nil {
 		return text
 	}
-	block, err := des.NewCipher(KEY)
+	block, err := des.NewCipher([]byte(key))
 	if err != nil {
 		return text
 	}

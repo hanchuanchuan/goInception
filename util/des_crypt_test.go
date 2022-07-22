@@ -6,14 +6,14 @@ import (
 )
 
 func TestDesEncrypt(t *testing.T) {
-
-	password := "Ne536GYDRjirhf*$^R"
-	encode, err := DesEncrypt(password)
+	key := "12345678"
+	password := "ItIsMyPassword"
+	encode, err := DesEncrypt(password, key)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	fmt.Println(encode)
-	decode := DesDecrypt(encode)
+	decode := DesDecrypt(encode, key)
 	fmt.Println(decode)
 }
