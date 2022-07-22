@@ -16,6 +16,7 @@ package config
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/hanchuanchuan/goInception/util"
 	"strings"
 
 	// "fmt"
@@ -221,6 +222,7 @@ type Binlog struct {
 
 // Inc is the inception section of the config.
 type Inc struct {
+	DesKey         string `toml:"des_key" json:"des_key"`         // 用于加解密的key, 转成[]byte后必须是8位
 	BackupHost     string `toml:"backup_host" json:"backup_host"` // 远程备份库信息
 	BackupPassword string `toml:"backup_password" json:"backup_password"`
 	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
@@ -790,6 +792,11 @@ func (c *Config) Load(confFile string) error {
 	if c.TokenLimit <= 0 {
 		c.TokenLimit = 1000
 	}
+	if c.Inc.DesKey == "" {
+		c.Inc.DesKey = "12345678"
+	}
+	// 如果是密文，则解密
+	c.Inc.BackupPassword = util.DesDecrypt(c.Inc.BackupPassword, c.Inc.DesKey)
 	return errors.Trace(err)
 }
 

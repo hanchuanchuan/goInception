@@ -112,29 +112,44 @@ var (
 )
 
 func main() {
+	// 解析启动参数
 	flag.Parse()
+	// 单纯打印版本信息
 	if *version {
 		fmt.Println(printer.GetTiDBInfo())
 		os.Exit(0)
 	}
+	// 注册存储、驱动、GCHandler
 	registerStores()
+	// 解析toml配置文件，加载至config
 	loadConfig()
+	// 如果启动参数中指定了配置，则覆盖toml配置文件中的配置
 	overrideConfig()
+	// 校验配置参数的合法性，不合法则终止程序
 	validateConfig()
+	// 根据配置信息设置一些系统级别的变量，如限制使用的CPU核数
 	setGlobalVars()
+	// 初始化日志打印模块
 	setupLog()
-	printInfo()
+	// 打印tidb启动信息
+	// printInfo()
+
+	// 初始化binlog客户端，默认是没有的
 	setupBinlogClient()
+	// 创建存储文件、启动Session会话、加载DB时区、启动统计线程、启动GC线程
 	createStoreAndDomain()
+	// 开启监听端口，默认4000，提供对外服务
 	createServer()
+	// 注册服务关闭回调钩子
 	signal.SetupSignalHandler(cfg.IgnoreSighup, serverShutdown)
 
 	// 在启动完成后关闭DDL线程(goInception用不到该线程)
-	ddl := dom.DDL()
-	if ddl != nil {
-		terror.Log(errors.Trace(ddl.Stop()))
+	ddlWorker := dom.DDL()
+	if ddlWorker != nil {
+		terror.Log(errors.Trace(ddlWorker.Stop()))
 	}
 
+	// 输出废弃配置警告
 	if config.GetGlobalConfig().Inc.EnableBlobType ||
 		config.GetGlobalConfig().Inc.EnableJsonType ||
 		config.GetGlobalConfig().Inc.EnableTimeStampType ||
@@ -143,13 +158,16 @@ func main() {
 		fmt.Println("Warning: The following parameters will be deprecated and replaced with disable_types:")
 		fmt.Println("\tenable_blob_type")
 		fmt.Println("\tenable_json_type")
-		fmt.Println("\tenable_enum_set_bit")
 		fmt.Println("\tenable_timestamp_type")
+		fmt.Println("\tenable_enum_set_bit")
 		fmt.Println("https://github.com/hanchuanchuan/goInception/pull/418")
 		fmt.Println("################################################")
 	}
+	// 启动一个http服务（用于提供服务状态信息、指标等），并开始接受处理4000端口的请求
 	runServer()
+	// 当服务准备关闭时，先等待连接全部处理完毕，并关闭存储引擎
 	cleanup()
+	// 系统退出
 	os.Exit(0)
 }
 
@@ -385,7 +403,7 @@ func printInfo() {
 	// Make sure the TiDB info is always printed.
 	level := log.GetLevel()
 	log.SetLevel(log.InfoLevel)
-	// printer.PrintTiDBInfo()
+	printer.PrintTiDBInfo()
 	log.SetLevel(level)
 }
 
