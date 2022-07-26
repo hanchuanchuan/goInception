@@ -4343,7 +4343,7 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 	//    }
 }
 
-func (s *session) checkIndexAttr(unique bool, tp ast.ConstraintType, name string,
+func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 	keys []*ast.IndexColName, table *TableInfo) {
 
 	if tp == ast.ConstraintPrimaryKey {
@@ -4850,7 +4850,7 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		IndexName = "PRIMARY"
 	}
 
-	s.checkIndexAttr(unique, tp, IndexName, IndexColNames, t)
+	s.checkIndexAttr(tp, IndexName, IndexColNames, t)
 
 	keyMaxLen := 0
 	// 禁止使用blob列当索引,所以不再检测blob字段时列是否过长
