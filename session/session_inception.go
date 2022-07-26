@@ -614,8 +614,12 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		s.checkTruncateTable(node, currentSql)
 
 	case *ast.CreateIndexStmt:
+		tp := ast.ConstraintIndex
+		if node.Unique {
+			tp = ast.ConstraintUniq
+		}
 		s.checkCreateIndex(node.Table, node.IndexName,
-			node.IndexColNames, node.IndexOption, nil, node.Unique, ast.ConstraintIndex)
+			node.IndexColNames, node.IndexOption, nil, node.Unique, tp)
 
 	case *ast.DropIndexStmt:
 		s.checkDropIndex(node, currentSql)
@@ -4395,7 +4399,7 @@ func (s *session) checkIndexAttr(unique bool, tp ast.ConstraintType, name string
 	case ast.ConstraintForeignKey:
 		s.appendErrorNo(ER_FOREIGN_KEY, table.Name)
 
-	case ast.ConstraintUniq:
+	case ast.ConstraintUniq, ast.ConstraintUniqIndex, ast.ConstraintUniqKey:
 		if !strings.HasPrefix(strings.ToLower(name), s.inc.UniqIndexPrefix) {
 			s.appendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, s.inc.UniqIndexPrefix, table.Name)
 		}
