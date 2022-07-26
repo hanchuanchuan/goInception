@@ -53,6 +53,8 @@ import (
 // Flag Names
 const (
 	nmVersion          = "V"
+	nmGenPassword      = "GenPassword"
+	nmGenKey           = "GenKey"
 	nmConfig           = "config"
 	nmStore            = "store"
 	nmStorePath        = "path"
@@ -74,7 +76,9 @@ const (
 )
 
 var (
-	version = flagBoolean(nmVersion, false, "print version information and exit")
+	version     = flagBoolean(nmVersion, false, "print version information and exit")
+	genPassword = flag.String(nmGenPassword, "", "generate des password and exit")
+	genKey      = flag.String(nmGenKey, "", "generate des password whit this key")
 	// 添加config文件的默认值
 	configPath = flag.String(nmConfig, "", "config file path")
 
@@ -119,6 +123,18 @@ func main() {
 		fmt.Println(printer.GetTiDBInfo())
 		os.Exit(0)
 	}
+
+	// 生成加密密码
+	if *genPassword != "" {
+		if *genKey == "" {
+			*genKey = "12345678"
+		}
+		res, err := util.DesEncrypt(*genPassword, *genKey)
+		terror.MustNil(err)
+		fmt.Println("Your password is: " + res)
+		os.Exit(0)
+	}
+
 	// 注册存储、驱动、GCHandler
 	registerStores()
 	// 解析toml配置文件，加载至config

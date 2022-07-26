@@ -44,7 +44,7 @@ log-rotate = true
 backup_host = ""
 backup_port = 0
 backup_user = ""
-# 密码，可使用明文或密文（密文由`DES(xxx)`包裹，可通过 util/des_crypt_test.go 进行生成）
+# 密码，可使用明文或密文（密文由 DES(xxx) 包裹，可通过 ./goInception -GenPassword=明文密码 -GenKey=加密key 进行生成）
 backup_password = ""
 # 用于加解密的key, 转成[]byte后必须是8位，默认12345678
 des_key = "12345678"
