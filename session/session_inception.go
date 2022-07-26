@@ -4404,56 +4404,25 @@ func (s *session) checkIndexAttr(unique bool, tp ast.ConstraintType, name string
 			s.appendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, s.inc.UniqIndexPrefix, table.Name)
 		}
 
+		s.checkDupIndex(table, name, keys)
 	case ast.ConstraintSpatial:
 		if len(keys) > 1 {
 			s.appendErrorNo(ER_TOO_MANY_KEY_PARTS, name, table.Name, 1)
 		}
-	case ast.ConstraintIndex:
-		var prefix string
-		if unique {
-			prefix = s.inc.UniqIndexPrefix
-			if prefix != "" {
-				var found bool
-				for _, v := range strings.Split(prefix, ",") {
-					if strings.HasPrefix(name, v) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					s.appendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, prefix, table.Name)
-				}
-			}
-		} else {
-			prefix = s.inc.IndexPrefix
-			if prefix != "" {
-				var found bool
-				for _, v := range strings.Split(prefix, ",") {
-					if strings.HasPrefix(name, v) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, prefix, table.Name)
-				}
-			}
-		}
-		s.checkDupIndex(table, name, keys)
 	default:
-		prefix := s.inc.IndexPrefix
-		if prefix != "" {
+		if s.inc.IndexPrefix != "" {
 			var found bool
-			for _, v := range strings.Split(prefix, ",") {
+			for _, v := range strings.Split(s.inc.IndexPrefix, ",") {
 				if strings.HasPrefix(name, v) {
 					found = true
 					break
 				}
 			}
 			if !found {
-				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, prefix, table.Name)
+				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, s.inc.IndexPrefix, table.Name)
 			}
 		}
+		s.checkDupIndex(table, name, keys)
 	}
 
 	if s.inc.MaxKeyParts > 0 && len(keys) > int(s.inc.MaxKeyParts) {
