@@ -79,7 +79,6 @@ require (
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
 	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39 // indirect
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446 // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24
 	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07
 	github.com/sirupsen/logrus v1.4.2
