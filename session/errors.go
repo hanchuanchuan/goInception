@@ -215,6 +215,7 @@ const (
 	ErrSameNamePartition
 	ErrRepeatConstDefinition
 	ErrPartitionNotExisted
+	ErrIndexNotExisted
 	ErrMaxVarcharLength
 	ErrMaxColumnCount
 	ER_ERROR_LAST
@@ -400,6 +401,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrSameNamePartition:           "Duplicate partition name %-.192s",
 	ErrRepeatConstDefinition:       "Duplicate partition constant definition: '%v'",
 	ErrPartitionNotExisted:         "Partition '%-.64s' does not exist",
+	ErrIndexNotExisted:             "Index '%-.64s' does not exist",
 	ErrMaxVarcharLength:            "Column length too big for column '%s' (Custom maximum is %d)",
 	ErrMaxColumnCount:              "Table '%s' has too many columns(limit %d,current %d)",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
@@ -570,13 +572,14 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrJoinNoOnCondition:                   "join语句请指定on子句.",
 	ErrImplicitTypeConversion:              "不允许隐式类型转换(列'%s.%s',类型'%s').",
 	ErrUseValueExpr:                        "请确认是否要在where条件中使用值表达式.",
-	ErrUseIndexVisibility:                  "后端数据库暂不支持索引指定visible选项",
+	ErrUseIndexVisibility:                  "后端数据库不支持索引的visible选项",
 	ErrViewSupport:                         "不允许创建或使用视图 '%s'.",
 	ErrViewColumnCount:                     "视图的SELECT和视图字段列表具有不同的列数",
 	ErrIncorrectDateTimeValue:              "不正确的时间:'%v'(列 '%s')",
 	ErrSameNamePartition:                   "分区名重复: %-.192s",
 	ErrRepeatConstDefinition:               "重复的分区范围定义: '%v'",
 	ErrPartitionNotExisted:                 "分区 '%-.64s' 不存在",
+	ErrIndexNotExisted:                     "Index '%-.64s' 不存在",
 	ErrMaxVarcharLength:                    "列'%s'指定长度过长(自定义上限为%d)",
 	ErrMaxColumnCount:                      "表'%s'列数过多(上限:%d,当前:%d)",
 }
@@ -1099,6 +1102,8 @@ func (e ErrorCode) String() string {
 		return "er_repeat_const_definition"
 	case ErrPartitionNotExisted:
 		return "er_partition_not_existed"
+	case ErrIndexNotExisted:
+		return "er_index_not_existed"
 	case ErrMaxVarcharLength:
 		return "er_max_varchar_length"
 	case ErrMaxColumnCount:

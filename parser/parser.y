@@ -1354,6 +1354,14 @@ AlterTableSpec:
 			Tp: ast.AlterTableForce,
 		}
 	}
+|	"ALTER" "INDEX" Identifier IndexInvisible
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp:         ast.AlterTableIndexInvisible,
+			IndexName:  model.NewCIStr($3),
+			Visibility: $4.(ast.IndexVisibility),
+		}
+	}
 
 AlterAlgorithm:
 	"DEFAULT"
