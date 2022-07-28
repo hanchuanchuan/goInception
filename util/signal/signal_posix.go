@@ -28,7 +28,6 @@ func SetupSignalHandler(ignoreSighup bool, shudownFunc func(bool)) {
 	usrDefSignalChan := make(chan os.Signal, 1)
 
 	signal.Notify(usrDefSignalChan, syscall.SIGUSR1)
-	// go func(){}() 表示异步执行，类似于java的 new Thread(runnable).start();
 	go func() {
 		buf := make([]byte, 1<<16)
 		for {

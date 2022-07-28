@@ -4407,11 +4407,11 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 			s.appendErrorNo(ER_INDEX_NAME_UNIQ_PREFIX, name, s.inc.UniqIndexPrefix, table.Name)
 		}
 
-		s.checkDupIndex(table, name, keys)
 	case ast.ConstraintSpatial:
 		if len(keys) > 1 {
 			s.appendErrorNo(ER_TOO_MANY_KEY_PARTS, name, table.Name, 1)
 		}
+
 	default:
 		if s.inc.IndexPrefix != "" {
 			var found bool
@@ -4425,42 +4425,12 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 				s.appendErrorNo(ER_INDEX_NAME_IDX_PREFIX, name, s.inc.IndexPrefix, table.Name)
 			}
 		}
-		s.checkDupIndex(table, name, keys)
 	}
 
 	if s.inc.MaxKeyParts > 0 && len(keys) > int(s.inc.MaxKeyParts) {
 		s.appendErrorNo(ER_TOO_MANY_KEY_PARTS, name, table.Name, s.inc.MaxKeyParts)
 	}
 
-}
-
-/* 检查当前索引是否与已存在的索引存在字段重复, 比如(a,b) 与 (a)是存在重复的 */
-func (s *session) checkDupIndex(t *TableInfo, name string, keys []*ast.IndexColName) {
-	columns := ""
-	for _, c := range keys {
-		columns += c.Column.Name.String() + ","
-	}
-	idxMap := make(map[string]string)
-	for _, idx := range t.Indexes {
-		if idx.IsDeleted {
-			continue
-		}
-		if _, ok := idxMap[idx.IndexName]; !ok {
-			idxMap[idx.IndexName] = ""
-		}
-		idxMap[idx.IndexName] += idx.ColumnName + ","
-	}
-	lc := len(columns)
-	for k, v := range idxMap {
-		if lv := len(v); lv >= lc && v[:lc] == columns {
-			s.appendErrorNo(ER_INDEX_COLUMN_REPEAT, name, t.Name, k, columns)
-			break
-		}
-		if lv := len(v); lv < lc && columns[:lv] == v {
-			s.appendErrorNo(ER_INDEX_COLUMN_REPEAT, name, t.Name, k, v)
-			break
-		}
-	}
 }
 
 func (s *session) checkCreateForeignKey(t *TableInfo, c *ast.Constraint) {
@@ -7770,10 +7740,10 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		}
 	case ER_INVALID_DATA_TYPE:
 		return true
+
 	case ER_INDEX_NAME_IDX_PREFIX, ER_INDEX_NAME_UNIQ_PREFIX:
 		return s.inc.CheckIndexPrefix
-	case ER_INDEX_COLUMN_REPEAT:
-		return s.inc.CheckIndexColumnRepeat
+
 	case ER_AUTOINC_UNSIGNED:
 		return s.inc.EnableAutoIncrementUnsigned
 
