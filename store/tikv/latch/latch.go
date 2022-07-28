@@ -19,8 +19,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/cznic/mathutil"
 	"github.com/spaolacci/murmur3"
+	"modernc.org/mathutil"
 )
 
 type node struct {

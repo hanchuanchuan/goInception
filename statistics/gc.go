@@ -17,12 +17,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/infoschema"
 	"github.com/hanchuanchuan/goInception/store/tikv/oracle"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 	"github.com/pingcap/errors"
 	"golang.org/x/net/context"
+	"modernc.org/mathutil"
 )
 
 // GCStats will garbage collect the useless stats info. For dropped tables, we will first update their version so that
