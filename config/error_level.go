@@ -63,6 +63,7 @@ type IncLevel struct {
 	ErIncorrectGlobalLocalVar         uint8 `toml:"er_incorrect_global_local_var"`
 	ErIndexNameIdxPrefix              uint8 `toml:"er_index_name_idx_prefix"`
 	ErIndexNameUniqPrefix             uint8 `toml:"er_index_name_uniq_prefix"`
+	ErIndexNotExisted                 uint8 `toml:"er_index_not_existed"`
 	ErIndexUseAlterTable              uint8 `toml:"er_index_use_alter_table"`
 	ErInsertTooMuchRows               uint8 `toml:"er_insert_too_much_rows"`
 	ErInvalidBackupHostInfo           uint8 `toml:"er_invalid_backup_host_info"`
@@ -238,6 +239,7 @@ var defaultLevel = IncLevel{
 	ErIncorrectGlobalLocalVar:         2,
 	ErIndexNameIdxPrefix:              1,
 	ErIndexNameUniqPrefix:             1,
+	ErIndexNotExisted:                 2,
 	ErIndexUseAlterTable:              2,
 	ErInsertTooMuchRows:               1,
 	ErInvalidBackupHostInfo:           2,

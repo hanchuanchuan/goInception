@@ -172,6 +172,7 @@ er_incorrect_datetime_value = 2
 er_incorrect_global_local_var = 2
 er_index_name_idx_prefix = 1
 er_index_name_uniq_prefix = 1
+er_index_not_existed = 2
 er_index_use_alter_table = 2
 er_insert_too_much_rows = 1
 er_invalid_backup_host_info = 2
