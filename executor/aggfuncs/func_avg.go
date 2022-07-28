@@ -14,13 +14,13 @@
 package aggfuncs
 
 import (
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/hanchuanchuan/goInception/util/set"
 	"github.com/pingcap/errors"
+	"modernc.org/mathutil"
 )
 
 // All the following avg function implementations return the decimal result,

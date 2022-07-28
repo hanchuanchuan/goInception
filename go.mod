@@ -21,7 +21,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142 // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/cznic/golex v0.0.0-20181122101858-9c343928389c // indirect
-	github.com/cznic/mathutil v0.0.0-20181021201202-eba54fb065b7
+	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548 // indirect
 	github.com/cznic/parser v0.0.0-20181122101858-d773202d5b1f
 	github.com/cznic/sortutil v0.0.0-20150617083342-4c7342852e65
 	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537
@@ -79,7 +79,6 @@ require (
 	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
 	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39 // indirect
 	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20170806203942-52369c62f446 // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24
 	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07
 	github.com/sirupsen/logrus v1.4.2
@@ -99,5 +98,6 @@ require (
 	google.golang.org/grpc v1.16.0
 	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
+	modernc.org/mathutil v1.4.1
 	vitess.io/vitess v2.1.1+incompatible
 )

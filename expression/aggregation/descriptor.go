@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/model"
@@ -29,6 +28,7 @@ import (
 	"github.com/hanchuanchuan/goInception/sessionctx/variable"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/charset"
+	"modernc.org/mathutil"
 )
 
 // AggFuncDesc describes an aggregation function signature, only used in planner.

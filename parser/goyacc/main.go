@@ -141,11 +141,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cznic/mathutil"
 	parser "github.com/cznic/parser/yacc"
 	"github.com/cznic/sortutil"
 	"github.com/cznic/strutil"
 	"github.com/cznic/y"
+	"modernc.org/mathutil"
 )
 
 var (

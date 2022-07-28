@@ -17,9 +17,9 @@ import (
 	"encoding/binary"
 	"unsafe"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/types/json"
+	"modernc.org/mathutil"
 )
 
 // Chunk stores multiple rows of data in Apache Arrow format.

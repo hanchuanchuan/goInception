@@ -20,7 +20,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/config"
 	"github.com/hanchuanchuan/goInception/domain"
@@ -44,6 +43,7 @@ import (
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"modernc.org/mathutil"
 )
 
 var (

@@ -14,10 +14,10 @@
 package executor
 
 import (
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/planner/core"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"golang.org/x/net/context"
+	"modernc.org/mathutil"
 )
 
 // ExplainExec represents an explain executor.

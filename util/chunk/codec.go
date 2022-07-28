@@ -18,9 +18,9 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/types"
+	"modernc.org/mathutil"
 )
 
 // Codec is used to:
