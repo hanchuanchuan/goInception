@@ -3369,6 +3369,9 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			ast.AlterTableForce:
 			// 不做校验,允许这些参数
 
+		case ast.AlterTableIndexInvisible:
+			_ = s.checkIndexExists(table, alter)
+
 		default:
 			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 			log.Info("con:", s.sessionVars.ConnectionID, " 未定义的解析: ", alter.Tp)
@@ -4533,6 +4536,57 @@ func (s *session) checkDropForeignKey(t *TableInfo, c *ast.AlterTableSpec) {
 		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 	}
 }
+
+func (s *session) checkIndexExists(t *TableInfo, alter *ast.AlterTableSpec) bool {
+	log.Debug("checkIndexExists")
+
+	indexName := alter.IndexName.O
+
+	if alter.Visibility != ast.IndexVisibilityDefault {
+		if s.dbType == DBTypeMariaDB ||
+			s.dbVersion < 80000 {
+			s.appendErrorNo(ErrUseIndexVisibility)
+		}
+	}
+
+	if len(t.Indexes) == 0 {
+		s.appendErrorNo(ErrIndexNotExisted, fmt.Sprintf("%s.%s", t.Name, indexName))
+		return false
+	}
+
+	var found bool
+	for _, row := range t.Indexes {
+		if row.IndexName == indexName && !row.IsDeleted {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		s.appendErrorNo(ErrIndexNotExisted, fmt.Sprintf("%s.%s", t.Name, indexName))
+		return false
+	}
+
+	if s.opt.Execute {
+		var rollbackSql string
+		rollbackSql += "ALTER INDEX "
+		rollbackSql += fmt.Sprintf("`%s`", indexName)
+
+		switch alter.Visibility {
+		case ast.IndexVisibilityVisible:
+			rollbackSql += " INVISIBLE"
+		case ast.IndexVisibilityInvisible:
+			rollbackSql += " VISIBLE"
+		}
+
+		s.myRecord.DDLRollback = fmt.Sprintf("ALTER TABLE `%s`.`%s` ",
+			t.Schema, t.Name)
+		s.myRecord.DDLRollback += rollbackSql + ";"
+		s.alterRollbackBuffer = append(s.alterRollbackBuffer, rollbackSql)
+	}
+	return true
+}
+
 func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool {
 	log.Debug("checkAlterTableDropIndex")
 

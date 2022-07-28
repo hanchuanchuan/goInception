@@ -2738,6 +2738,11 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 				alter table t1 add index idx2 (c1) invisible;`
 		s.testErrorCode(c, sql,
 			session.NewErr(session.ErrUseIndexVisibility))
+
+		sql = `create table t1(id int,c1 int,key idx(c1));
+				alter table t1 alter index idx visible;`
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrUseIndexVisibility))
 	} else {
 		sql = `create table t1(id int,c1 int);
 		alter table t1 add index idx (c1) visible;`
@@ -2745,6 +2750,10 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 
 		sql = `create table t1(id int,c1 int);
 		alter table t1 add index idx2 (c1) invisible;`
+		s.testErrorCode(c, sql)
+
+		sql = `create table t1(id int,c1 int,key idx(c1));
+				alter table t1 alter index idx visible;`
 		s.testErrorCode(c, sql)
 	}
 }
