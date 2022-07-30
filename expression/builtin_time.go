@@ -25,7 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx"
 	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
@@ -35,6 +34,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tipb/go-tipb"
 	log "github.com/sirupsen/logrus"
+	"modernc.org/mathutil"
 )
 
 const ( // GET_FORMAT first argument.

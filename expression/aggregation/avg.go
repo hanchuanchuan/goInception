@@ -14,13 +14,13 @@
 package aggregation
 
 import (
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/terror"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
+	"modernc.org/mathutil"
 )
 
 type avgFunction struct {

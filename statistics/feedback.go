@@ -22,7 +22,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/mysql"
 	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
@@ -34,6 +33,7 @@ import (
 	"github.com/pingcap/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spaolacci/murmur3"
+	"modernc.org/mathutil"
 )
 
 // `feedback` represents the total scan count in range [lower, upper).
