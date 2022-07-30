@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/ddl"
 	"github.com/hanchuanchuan/goInception/expression"
@@ -31,6 +30,7 @@ import (
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/ranger"
 	"github.com/pingcap/errors"
+	"modernc.org/mathutil"
 )
 
 type visitInfo struct {

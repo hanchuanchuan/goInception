@@ -23,7 +23,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/kv"
 	"github.com/hanchuanchuan/goInception/store/tikv/tikvrpc"
 	"github.com/hanchuanchuan/goInception/util/execdetails"
@@ -33,6 +32,7 @@ import (
 	"github.com/pingcap/tipb/go-tipb"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"modernc.org/mathutil"
 )
 
 // CopClient is coprocessor client.

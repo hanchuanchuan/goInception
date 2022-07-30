@@ -17,12 +17,12 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/cznic/mathutil"
 	"github.com/hanchuanchuan/goInception/expression"
 	"github.com/hanchuanchuan/goInception/sessionctx/stmtctx"
 	"github.com/hanchuanchuan/goInception/types"
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/pingcap/errors"
+	"modernc.org/mathutil"
 )
 
 type concatFunction struct {
