@@ -40,7 +40,6 @@ type IncLevel struct {
 	ErDdlDmlCoexist                   uint8 `toml:"er_ddl_dml_coexist"`
 	ErDupFieldname                    uint8 `toml:"er_dup_fieldname"`
 	ErDupIndex                        uint8 `toml:"er_dup_index"`
-	ErIndexColumnRepeat               uint8 `toml:"er_index_column_repeat"`
 	ErDupKeyname                      uint8 `toml:"er_dup_keyname"`
 	ErEndWithCommit                   uint8 `toml:"er_end_with_commit"`
 	ErEndWithSemicolon                uint8 `toml:"er_end_with_semicolon"`
@@ -62,6 +61,7 @@ type IncLevel struct {
 	ErInceptionEmptyQuery             uint8 `toml:"er_inception_empty_query"`
 	ErIncorrectDatetimeValue          uint8 `toml:"er_incorrect_datetime_value"`
 	ErIncorrectGlobalLocalVar         uint8 `toml:"er_incorrect_global_local_var"`
+	ErIndexColumnRepeat               uint8 `toml:"er_index_column_repeat"`
 	ErIndexNameIdxPrefix              uint8 `toml:"er_index_name_idx_prefix"`
 	ErIndexNameUniqPrefix             uint8 `toml:"er_index_name_uniq_prefix"`
 	ErIndexNotExisted                 uint8 `toml:"er_index_not_existed"`
@@ -217,7 +217,6 @@ var defaultLevel = IncLevel{
 	ErDdlDmlCoexist:                   2,
 	ErDupFieldname:                    2,
 	ErDupIndex:                        2,
-	ErIndexColumnRepeat:               2,
 	ErDupKeyname:                      2,
 	ErEndWithCommit:                   2,
 	ErEndWithSemicolon:                2,
@@ -239,6 +238,7 @@ var defaultLevel = IncLevel{
 	ErInceptionEmptyQuery:             2,
 	ErIncorrectDatetimeValue:          2,
 	ErIncorrectGlobalLocalVar:         2,
+	ErIndexColumnRepeat:               2,
 	ErIndexNameIdxPrefix:              1,
 	ErIndexNameUniqPrefix:             1,
 	ErIndexNotExisted:                 2,
