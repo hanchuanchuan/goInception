@@ -241,6 +241,7 @@ type Inc struct {
 	CheckIdentifier             bool `toml:"check_identifier" json:"check_identifier"`
 	CheckImplicitTypeConversion bool `toml:"check_implicit_type_conversion"` // 检查where条件中的隐式类型转换
 	CheckIndexPrefix            bool `toml:"check_index_prefix" json:"check_index_prefix"`
+	CheckIndexColumnRepeat      bool `toml:"check_index_column_repeat" json:"check_index_column_repeat"`
 	CheckInsertField            bool `toml:"check_insert_field" json:"check_insert_field"`
 	CheckPrimaryKey             bool `toml:"check_primary_key" json:"check_primary_key"`
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`

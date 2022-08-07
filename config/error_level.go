@@ -40,6 +40,7 @@ type IncLevel struct {
 	ErDdlDmlCoexist                   uint8 `toml:"er_ddl_dml_coexist"`
 	ErDupFieldname                    uint8 `toml:"er_dup_fieldname"`
 	ErDupIndex                        uint8 `toml:"er_dup_index"`
+	ErIndexColumnRepeat               uint8 `toml:"er_index_column_repeat"`
 	ErDupKeyname                      uint8 `toml:"er_dup_keyname"`
 	ErEndWithCommit                   uint8 `toml:"er_end_with_commit"`
 	ErEndWithSemicolon                uint8 `toml:"er_end_with_semicolon"`
@@ -216,6 +217,7 @@ var defaultLevel = IncLevel{
 	ErDdlDmlCoexist:                   2,
 	ErDupFieldname:                    2,
 	ErDupIndex:                        2,
+	ErIndexColumnRepeat:               2,
 	ErDupKeyname:                      2,
 	ErEndWithCommit:                   2,
 	ErEndWithSemicolon:                2,

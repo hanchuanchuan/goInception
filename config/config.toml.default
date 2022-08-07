@@ -63,6 +63,8 @@ check_identifier_upper = false
 check_identifier_lower = false
 check_read_only = true
 
+# 是否检查字段存在多个索引，比如索引 (a,b) 与索引 (a) 中，a字段就是被重复索引的，应当只保留索引 (a,b)
+check_index_column_repeat = true
 
 # 审核列类型变更
 check_column_type_change = true
@@ -170,6 +172,7 @@ er_inc_init_err = 1
 er_inception_empty_query = 2
 er_incorrect_datetime_value = 2
 er_incorrect_global_local_var = 2
+er_index_column_repeat = 2
 er_index_name_idx_prefix = 1
 er_index_name_uniq_prefix = 1
 er_index_not_existed = 2
