@@ -259,8 +259,7 @@ func (ut *benchDB) createTable() {
 	res, _ := ut.mustExec(createSQL)
 	for _, row := range res {
 		if row[2] == "2" {
-			log.Fatal(res)
-			log.Fatal(row)
+			log.Fatal(res, row)
 		}
 	}
 
@@ -345,8 +344,7 @@ func (ut *benchDB) insertRows(spec string) {
 		res, _ := ut.mustExec(bufSQL.String())
 		for _, row := range res {
 			if row[2] == "2" {
-				log.Fatal(res)
-				log.Fatal(row)
+				log.Fatal(res, row)
 			}
 		}
 	})
@@ -369,8 +367,7 @@ func (ut *benchDB) updateRandomRows(spec string) {
 		res, _ := ut.mustExec(bufSQL.String())
 		for _, row := range res {
 			if row[2] == "2" {
-				log.Fatal(res)
-				log.Fatal(row)
+				log.Fatal(res, row)
 			}
 		}
 	})
@@ -385,8 +382,7 @@ func (ut *benchDB) updateRangeRows(spec string) {
 		res, _ := ut.mustExec(bufSQL.String())
 		for _, row := range res {
 			if row[2] == "2" {
-				log.Fatal(res)
-				log.Fatal(row)
+				log.Fatal(res, row)
 			}
 		}
 	})
