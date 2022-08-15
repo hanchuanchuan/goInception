@@ -389,6 +389,9 @@ type Inc struct {
 	MaxExecutionTime int `toml:"max_execution_time" json:"max_execution_time"`
 	// 版本信息
 	Version string `toml:"version" json:"version"`
+
+	// 自定义的关键字，用于检查字段名是否符合规范
+	CustomKeywords []string `toml:"custom_keywords" json:"custom_keywords"`
 }
 
 // Osc online schema change 工具参数配置
@@ -720,6 +723,8 @@ var defaultConf = Config{
 		IndexPrefix:     "idx_",  // 默认不检查,由CheckIndexPrefix控制
 		UniqIndexPrefix: "uniq_", // 默认不检查,由CheckIndexPrefix控制
 		TablePrefix:     "",      // 默认不检查表前缀
+
+		CustomKeywords: []string{},
 	},
 	Osc: Osc{
 		OscPrintNone:               false,
@@ -790,6 +795,12 @@ func (c *Config) Load(confFile string) error {
 	if c.TokenLimit <= 0 {
 		c.TokenLimit = 1000
 	}
+
+	// 将自定义关键字全部转为大写
+	for i, k := range c.Inc.CustomKeywords {
+		c.Inc.CustomKeywords[i] = strings.ToUpper(k)
+	}
+
 	return errors.Trace(err)
 }
 
