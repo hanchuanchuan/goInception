@@ -160,6 +160,7 @@ const (
 	ER_NOT_SUPPORTED_ALTER_OPTION
 	ER_CONFLICTING_DECLARATIONS
 	ER_IDENT_USE_KEYWORD
+	ER_IDENT_USE_CUSTOM_KEYWORD
 	ER_VIEW_SELECT_CLAUSE
 	ER_OSC_KILL_FAILED
 	ER_NET_PACKETS_OUT_OF_ORDER
@@ -346,6 +347,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_NOT_SUPPORTED_ALTER_OPTION:          "Not supported statement of alter option",
 	ER_CONFLICTING_DECLARATIONS:            "Conflicting declarations: '%s%s' and '%s%s'",
 	ER_IDENT_USE_KEYWORD:                   "Identifier '%s' is keyword in MySQL.",
+	ER_IDENT_USE_CUSTOM_KEYWORD:            "Identifier '%s' is custom keyword.",
 	ER_VIEW_SELECT_CLAUSE:                  "View's SELECT contains a '%s' clause",
 	ER_OSC_KILL_FAILED:                     "Can not find OSC executing task",
 	ER_NET_PACKETS_OUT_OF_ORDER:            "Got packets out of order",
@@ -532,6 +534,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_NOT_SUPPORTED_ALTER_OPTION:          "Not supported statement of alter option",
 	ER_CONFLICTING_DECLARATIONS:            "Conflicting declarations: '%s%s' and '%s%s'",
 	ER_IDENT_USE_KEYWORD:                   "标识符 '%s' 是MySQL关键字.",
+	ER_IDENT_USE_CUSTOM_KEYWORD:            "标识符 '%s' 是自定义关键字.",
 	ER_VIEW_SELECT_CLAUSE:                  "View's SELECT contains a '%s' clause",
 	ER_OSC_KILL_FAILED:                     "Can not find OSC executing task",
 	ER_NET_PACKETS_OUT_OF_ORDER:            "Got packets out of order",
@@ -602,6 +605,7 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ER_CHARSET_ON_COLUMN,
 		ER_COLUMN_HAVE_NO_COMMENT,
 		ER_IDENT_USE_KEYWORD,
+		ER_IDENT_USE_CUSTOM_KEYWORD,
 		ER_INC_INIT_ERR,
 		ER_INDEX_NAME_IDX_PREFIX,
 		ER_INDEX_NAME_UNIQ_PREFIX,
@@ -1006,7 +1010,7 @@ func (e ErrorCode) String() string {
 		return "er_not_supported_alter_option"
 	case ER_CONFLICTING_DECLARATIONS:
 		return "er_conflicting_declarations"
-	case ER_IDENT_USE_KEYWORD:
+	case ER_IDENT_USE_KEYWORD, ER_IDENT_USE_CUSTOM_KEYWORD:
 		return "er_ident_use_keyword"
 	case ER_VIEW_SELECT_CLAUSE:
 		return "er_view_select_clause"
