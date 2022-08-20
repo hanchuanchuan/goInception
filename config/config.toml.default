@@ -65,6 +65,11 @@ check_read_only = true
 # 是否检查字段存在多个索引，比如索引 (a,b) 与索引 (a) 中，a字段就是被重复索引的，应当只保留索引 (a,b)
 check_index_column_repeat = false
 
+# 是否允许使用关键字，包括MYSQL关键字与自定义关键字（配置项：custom_keywords）
+enable_identifer_keyword = false
+# 额外的自定义关键字
+custom_keywords = []
+
 # 审核列类型变更
 check_column_type_change = true
 

@@ -7703,6 +7703,14 @@ func (s *session) checkKeyWords(name string) {
 		s.appendErrorNo(ER_INVALID_IDENT, name)
 	} else if _, ok := Keywords[strings.ToUpper(name)]; ok {
 		s.appendErrorNo(ER_IDENT_USE_KEYWORD, name)
+	} else {
+		// 检查自定义关键字
+		for _, k := range s.inc.CustomKeywords {
+			if k == strings.ToUpper(name) {
+				s.appendErrorNo(ER_IDENT_USE_CUSTOM_KEYWORD, name)
+				break
+			}
+		}
 	}
 
 	if len(name) > mysql.MaxTableNameLength {
@@ -7797,7 +7805,7 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		if s.inc.EnableColumnCharset {
 			return false
 		}
-	case ER_IDENT_USE_KEYWORD:
+	case ER_IDENT_USE_KEYWORD, ER_IDENT_USE_CUSTOM_KEYWORD:
 		if s.inc.EnableIdentiferKeyword {
 			return false
 		}
