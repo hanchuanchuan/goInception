@@ -75,7 +75,7 @@ func (s *session) checkAutoIncrement(stmt *ast.CreateTableStmt) {
 		for i, op := range colDef.Options {
 			ok, err := s.checkAutoIncrementOp(colDef, i)
 			if err != nil {
-				s.appendErrorMessage(err.Error())
+				s.appendErrorMsg(err.Error())
 				// return
 			}
 			if ok {
@@ -112,7 +112,7 @@ func (s *session) checkAutoIncrement(stmt *ast.CreateTableStmt) {
 	case mysql.TypeTiny, mysql.TypeShort, mysql.TypeLong,
 		mysql.TypeFloat, mysql.TypeDouble, mysql.TypeLonglong, mysql.TypeInt24:
 	default:
-		s.appendErrorMessage(
+		s.appendErrorMsg(
 			fmt.Sprintf("Incorrect column specifier for column '%s'", autoIncrementCol.Name.Name.O))
 	}
 }
@@ -323,13 +323,13 @@ func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string, alterT
 		return
 	}
 	if tp.Flen > math.MaxUint32 {
-		s.appendErrorMessage(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", cName, math.MaxUint32))
+		s.appendErrorMsg(fmt.Sprintf("Display width out of range for column '%s' (max = %d)", cName, math.MaxUint32))
 	}
 
 	switch tp.Tp {
 	case mysql.TypeString:
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > mysql.MaxFieldCharLength {
-			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, mysql.MaxFieldCharLength))
+			s.appendErrorMsg(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, mysql.MaxFieldCharLength))
 		}
 	case mysql.TypeVarchar:
 		maxFlen := mysql.MaxFieldVarCharLength
@@ -354,14 +354,14 @@ func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string, alterT
 		} else {
 			desc, err := charset.GetCharsetDesc(cs)
 			if err != nil {
-				s.appendErrorMessage(err.Error())
+				s.appendErrorMsg(err.Error())
 				return
 			}
 			maxFlen /= desc.Maxlen
 		}
 
 		if tp.Flen != types.UnspecifiedLength && tp.Flen > maxFlen {
-			s.appendErrorMessage(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
+			s.appendErrorMsg(fmt.Sprintf("Column length too big for column '%s' (max = %d); use BLOB or TEXT instead", cName, maxFlen))
 		}
 		// check varchar length and ignore other alter table operation
 		if alterTableType == ast.AlterTableAddColumns && tp.Flen != types.UnspecifiedLength &&
@@ -371,42 +371,42 @@ func (s *session) checkColumn(colDef *ast.ColumnDef, tableCharset string, alterT
 
 	case mysql.TypeFloat, mysql.TypeDouble:
 		if tp.Decimal > mysql.MaxFloatingTypeScale {
-			s.appendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxFloatingTypeScale))
+			s.appendErrorMsg(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxFloatingTypeScale))
 		}
 		if tp.Flen > mysql.MaxFloatingTypeWidth {
 
-			s.appendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxFloatingTypeWidth))
+			s.appendErrorMsg(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxFloatingTypeWidth))
 		}
 	case mysql.TypeSet:
 		if len(tp.Elems) > mysql.MaxTypeSetMembers {
-			s.appendErrorMessage(fmt.Sprintf("Too many strings for column %s and SET", cName))
+			s.appendErrorMsg(fmt.Sprintf("Too many strings for column %s and SET", cName))
 		}
 		// Check set elements. See https://dev.mysql.com/doc/refman/5.7/en/set.html .
 		for _, str := range colDef.Tp.Elems {
 			if strings.Contains(str, ",") {
-				s.appendErrorMessage(fmt.Sprintf("Illegal %s '%-.192s' value found during parsing", types.TypeStr(tp.Tp), str))
+				s.appendErrorMsg(fmt.Sprintf("Illegal %s '%-.192s' value found during parsing", types.TypeStr(tp.Tp), str))
 			}
 		}
 	case mysql.TypeNewDecimal:
 		if tp.Decimal > mysql.MaxDecimalScale {
-			s.appendErrorMessage(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxDecimalScale))
+			s.appendErrorMsg(fmt.Sprintf("Too big scale %d specified for column '%-.192s'. Maximum is %d.", tp.Decimal, cName, mysql.MaxDecimalScale))
 		}
 
 		if tp.Flen > mysql.MaxDecimalWidth {
-			s.appendErrorMessage(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxDecimalWidth))
+			s.appendErrorMsg(fmt.Sprintf("Too big precision %d specified for column '%-.192s'. Maximum is %d.", tp.Flen, cName, mysql.MaxDecimalWidth))
 		}
 	case mysql.TypeBit:
 		if tp.Flen <= 0 {
-			s.appendErrorMessage(fmt.Sprintf("Invalid size for column '%s'.", cName))
+			s.appendErrorMsg(fmt.Sprintf("Invalid size for column '%s'.", cName))
 		}
 		if tp.Flen > mysql.MaxBitDisplayWidth {
-			s.appendErrorMessage(fmt.Sprintf("Too big display width for column '%s' (max = %d).",
+			s.appendErrorMsg(fmt.Sprintf("Too big display width for column '%s' (max = %d).",
 				cName, mysql.MaxBitDisplayWidth))
 		}
 	case mysql.TypeTiny, mysql.TypeInt24, mysql.TypeLong,
 		mysql.TypeShort, mysql.TypeLonglong:
 		if tp.Flen > mysql.MaxFloatingTypeWidth {
-			s.appendErrorMessage(fmt.Sprintf("Too big display width for column '%-.192s' (max = %d).",
+			s.appendErrorMsg(fmt.Sprintf("Too big display width for column '%-.192s' (max = %d).",
 				cName, mysql.MaxFloatingTypeWidth))
 		}
 	default:
@@ -514,7 +514,7 @@ func (s *session) checkOnlyFullGroupByWithGroupClause(sel *ast.SelectStmt, table
 				col := findColumnWithList(c, tables)
 				if col != nil {
 					if _, ok := gbyCols[col.getName()]; ok {
-						s.appendErrorf("Can't group on '%s'", field.AsName.String())
+						s.appendErrorMsgf("Can't group on '%s'", field.AsName.String())
 						break
 					}
 				}
@@ -720,7 +720,7 @@ func (s *session) checkPartitionConvert(t *TableInfo, opts *ast.PartitionOptions
 		return
 	}
 	if len(t.Partitions) > 0 {
-		s.appendErrorMessage(fmt.Sprintf("Table '%s' is already a partitioned table", t.Name))
+		s.appendErrorMsg(fmt.Sprintf("Table '%s' is already a partitioned table", t.Name))
 	}
 	s.checkPartitionNameUnique(opts.Definitions)
 	s.checkPartitionNameExists(t, opts.Definitions)
@@ -729,6 +729,6 @@ func (s *session) checkPartitionConvert(t *TableInfo, opts *ast.PartitionOptions
 // checkPartitionConvert 检查分区表转为普通表
 func (s *session) checkPartitionRemove(t *TableInfo) {
 	if len(t.Partitions) == 0 {
-		s.appendErrorMessage("Partition management on a not partitioned table is not possible")
+		s.appendErrorMsg("Partition management on a not partitioned table is not possible")
 	}
 }

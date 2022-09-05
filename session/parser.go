@@ -254,7 +254,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 	logSync, err := b.StartSync(startPosition)
 	if err != nil {
 		log.Infof("Start sync error: %v\n", errors.ErrorStack(err))
-		s.appendErrorMessage(err.Error())
+		s.appendErrorMsg(err.Error())
 		return
 	}
 
@@ -278,7 +278,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 			}
 			log.Errorf("current pos: %s", currentPosition.String())
 			log.Errorf("%#v", err)
-			s.appendErrorMessage(fmt.Sprintf("%#v", err))
+			s.appendErrorMsg(fmt.Sprintf("%#v", err))
 		}
 	}()
 
@@ -286,7 +286,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 		e, err := logSync.GetEvent(context.Background())
 		if err != nil {
 			log.Infof("Get event error: %v\n", errors.ErrorStack(err))
-			s.appendErrorMessage(err.Error())
+			s.appendErrorMsg(err.Error())
 			break
 		}
 
@@ -439,7 +439,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 			// 进程Killed
 			if err := checkClose(ctx); err != nil {
 				log.Warn("Killed: ", err)
-				s.appendErrorMessage("Operation has been killed!")
+				s.appendErrorMsg("Operation has been killed!")
 				break
 			}
 		}
@@ -551,7 +551,7 @@ func (s *session) flush(table string, record *Record) {
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				record.appendErrorMessage(myErr.Message)
 			} else {
-				s.appendErrorMessage(err.Error())
+				s.appendErrorMsg(err.Error())
 			}
 			log.Errorf("con:%d %v sql:%s params:%v",
 				s.sessionVars.ConnectionID, err, sql, s.insertBuffer)
