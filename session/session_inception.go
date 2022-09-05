@@ -3076,8 +3076,12 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 			if !charset.ValidCharsetAndCollation(character, collation) {
 				s.appendErrorMessage("字符集和排序规则不匹配!")
 			} else {
-				if collation == "utf8mb4_0900_ai_ci" && s.dbVersion < 80000 {
-					s.appendErrorMessage("Collation utf8mb4_0900_ai_ci is only supported after mysql 8.0")
+				if s.dbVersion < 80000 {
+					if collationId, ok := mysql.CollationNames[strings.ToLower(collation)]; ok {
+						if collationId >= 255 {
+							s.appendErrorMessage(fmt.Sprintf("Collation %s is only supported after mysql 8.0", collation))
+						}
+					}
 				}
 			}
 		}
