@@ -153,9 +153,9 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 	if err := s.backupdb.Exec(sql).Error; err != nil {
 		log.Errorf("con:%d %v sql:%s", s.sessionVars.ConnectionID, err, sql)
 		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.appendErrorMessage(myErr.Message)
+			s.appendErrorMsg(myErr.Message)
 		} else {
-			s.appendErrorMessage(err.Error())
+			s.appendErrorMsg(err.Error())
 		}
 		record.StageStatus = StatusBackupFail
 	}
@@ -356,11 +356,11 @@ func (s *session) mysqlCreateBackupTable(record *Record) (
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1007 { /*ER_DB_CREATE_EXISTS*/
-					s.appendErrorMessage(myErr.Message)
+					s.appendErrorMsg(myErr.Message)
 					return
 				}
 			} else {
-				s.appendErrorMessage(err.Error())
+				s.appendErrorMsg(err.Error())
 				return
 			}
 		}
@@ -374,11 +374,11 @@ func (s *session) mysqlCreateBackupTable(record *Record) (
 			log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
-					s.appendErrorMessage(myErr.Message)
+					s.appendErrorMsg(myErr.Message)
 					return
 				}
 			} else {
-				s.appendErrorMessage(err.Error())
+				s.appendErrorMsg(err.Error())
 				return
 			}
 		}
@@ -395,7 +395,7 @@ func (s *session) mysqlCreateBackupTable(record *Record) (
 			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
 				if myErr.Number != 1050 { /*ER_TABLE_EXISTS_ERROR*/
 					log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
-					s.appendErrorMessage(myErr.Message)
+					s.appendErrorMsg(myErr.Message)
 					return
 				}
 				// 获取sql_statement字段类型,用以兼容类型为text的旧表结构
@@ -403,7 +403,7 @@ func (s *session) mysqlCreateBackupTable(record *Record) (
 				// host字段长度
 				hostMaxLength = s.checkBackupTableHostMaxLength(backupDBName)
 			} else {
-				s.appendErrorMessage(err.Error())
+				s.appendErrorMsg(err.Error())
 				return
 			}
 		} else {
@@ -439,9 +439,9 @@ func (s *session) checkBackupTableSqlStmtColumnType(dbname string) (longDataType
 	if err2 != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err2)
 		if myErr, ok := err2.(*mysqlDriver.MySQLError); ok {
-			s.appendErrorMessage(myErr.Message)
+			s.appendErrorMsg(myErr.Message)
 		} else {
-			s.appendErrorMessage(err2.Error())
+			s.appendErrorMsg(err2.Error())
 		}
 	}
 	if rows != nil {
@@ -470,9 +470,9 @@ func (s *session) checkBackupTableHostMaxLength(dbname string) (length int) {
 	if err2 != nil {
 		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err2)
 		if myErr, ok := err2.(*mysqlDriver.MySQLError); ok {
-			s.appendErrorMessage(myErr.Message)
+			s.appendErrorMsg(myErr.Message)
 		} else {
-			s.appendErrorMessage(err2.Error())
+			s.appendErrorMsg(err2.Error())
 		}
 	}
 	if rows != nil {

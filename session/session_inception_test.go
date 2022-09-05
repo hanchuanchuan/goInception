@@ -26,7 +26,6 @@ import (
 	"github.com/hanchuanchuan/goInception/util/testkit"
 	. "github.com/pingcap/check"
 	"golang.org/x/net/context"
-	"vitess.io/vitess/go/vt/log"
 )
 
 var _ = Suite(&testSessionIncSuite{})
@@ -636,7 +635,9 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	sql = "create table t1(a int) character set latin123;"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8,utf8mb4"),
-		session.NewErr(session.ErrUnknownCharset, "latin123"))
+		session.NewErr(session.ErrUnknownCharset, "latin123"),
+		session.NewErrf("COLLATION '' is not valid for CHARACTER SET 'latin123'!"),
+	)
 
 	sql = "create table t1(a int) character set gbk;"
 	s.testErrorCode(c, sql,
@@ -2852,6 +2853,20 @@ func (s *testSessionIncSuite) TestAlterTable(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCollationNotSupport, "utf8_bin"))
 
+	config.GetGlobalConfig().Inc.EnableSetCharset = true
+	config.GetGlobalConfig().Inc.EnableSetCollation = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8mb4"
+	config.GetGlobalConfig().Inc.SupportCollation = "utf8_general_ci,utf8mb4_general_ci,utf8mb4_0900_ai_ci,utf8mb4_zh_0900_as_cs"
+	sql = `drop table if exists t1;
+		create table t1(id int primary key);
+		alter table t1 DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_zh_0900_as_cs;`
+	if s.DBVersion >= 80000 {
+		s.testErrorCode(c, sql)
+	} else {
+		s.testErrorCode(c, sql,
+			session.NewErrf("Collation utf8mb4_zh_0900_as_cs is only supported after mysql 8.0."))
+	}
+
 }
 
 func (s *testSessionIncSuite) TestCreateTablePrimaryKey(c *C) {
@@ -2954,7 +2969,7 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8_bin;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrCharsetNotSupport, "utf8"),
-		session.NewErrf("字符集和排序规则不匹配!"))
+		session.NewErrf("COLLATION 'utf8_bin' is not valid for CHARACTER SET 'utf8mb4'!"))
 
 	config.GetGlobalConfig().Inc.SupportCollation = "utf8_bin"
 	sql = `create table t1(id int,c1 varchar(20)) character set utf8mb4 COLLATE utf8mb4_bin;`
@@ -3553,7 +3568,7 @@ func (s *testSessionIncSuite) TestCheckAuditSetting(c *C) {
 		name := e.String()
 		if level, ok := incLevel[name]; ok {
 			v := session.GetErrorLevel(e)
-			log.Errorf("name:%v,incLevel:%d, config: %d", name, level, v)
+			// log.Errorf("name:%v,incLevel:%d, config: %d", name, level, v)
 			c.Assert(level, Equals, v, Commentf("name:%v,incLevel:%d, config: %d", name, level, v))
 		}
 	}

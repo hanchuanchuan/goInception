@@ -384,7 +384,7 @@ func (s *session) audit(ctx context.Context, sql string) (err error) {
 				// 进程Killed
 				if err := checkClose(ctx); err != nil {
 					log.Warn("Killed: ", err)
-					s.appendErrorMessage("Operation has been killed!")
+					s.appendErrorMsg("Operation has been killed!")
 					if s.opt != nil && s.opt.Print {
 						s.printSets.Append(2, "", "", strings.TrimSpace(s.myRecord.Buf.String()))
 					} else if s.opt != nil && s.opt.split {
@@ -546,7 +546,7 @@ func (s *session) checkOptions() error {
 	s.setLockWaitTimeout()
 
 	if s.opt.Backup && s.dbType == DBTypeTiDB {
-		s.appendErrorMessage("TiDB暂不支持备份功能.")
+		s.appendErrorMsg("TiDB暂不支持备份功能.")
 	}
 
 	return nil
