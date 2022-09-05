@@ -2940,13 +2940,13 @@ func (s *testSessionIncSuite) TestTableCharsetCollation(c *C) {
 	s.testErrorCode(c, sql)
 
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb4"
-	config.GetGlobalConfig().Inc.SupportCollation = "utf8_general_ci,utf8mb4_general_ci,utf8mb4_0900_ai_ci"
-	sql = `create table t1(id int,c1 varchar(20)) DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_0900_ai_ci;`
+	config.GetGlobalConfig().Inc.SupportCollation = "utf8_general_ci,utf8mb4_general_ci,utf8mb4_0900_ai_ci,utf8mb4_zh_0900_as_cs"
+	sql = `create table t1(id int,c1 varchar(20)) DEFAULT CHARSET = utf8mb4 COLLATE utf8mb4_zh_0900_as_cs;`
 	if s.DBVersion >= 80000 {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql,
-			session.NewErrf("Collation utf8mb4_0900_ai_ci is only supported after mysql 8.0."))
+			session.NewErrf("Collation utf8mb4_zh_0900_as_cs is only supported after mysql 8.0."))
 	}
 
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8"
