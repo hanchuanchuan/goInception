@@ -107,7 +107,7 @@ type clientConn struct {
 }
 
 func (cc *clientConn) String() string {
-	collationStr := mysql.Collations[cc.collation]
+	collationStr := mysql.Collations[uint16(cc.collation)]
 	return fmt.Sprintf("id:%d, addr:%s status:%d, collation:%s, user:%s",
 		cc.connectionID, cc.bufReadConn.RemoteAddr(), cc.ctx.Status(), collationStr, cc.user,
 	)

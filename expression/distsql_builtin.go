@@ -35,7 +35,7 @@ func pbTypeToFieldType(tp *tipb.FieldType) *types.FieldType {
 		Flen:    int(tp.Flen),
 		Decimal: int(tp.Decimal),
 		Charset: tp.Charset,
-		Collate: mysql.Collations[uint8(tp.Collate)],
+		Collate: mysql.Collations[uint16(tp.Collate)],
 	}
 }
 
@@ -538,7 +538,7 @@ func fieldTypeFromPB(ft *tipb.FieldType) *types.FieldType {
 		Flag:    uint(ft.GetFlag()),
 		Flen:    int(ft.GetFlen()),
 		Decimal: int(ft.GetDecimal()),
-		Collate: mysql.Collations[uint8(ft.GetCollate())],
+		Collate: mysql.Collations[uint16(ft.GetCollate())],
 	}
 }
 
