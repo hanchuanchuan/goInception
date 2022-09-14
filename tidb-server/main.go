@@ -303,10 +303,10 @@ func overrideConfig() {
 	}
 
 	// cofiguration support environment variables
-	if backupHost := os.Getenv("backup-host"); backupHost != "" {
+	if backupHost := os.Getenv("BACKUP_HOST"); backupHost != "" {
 		cfg.Inc.BackupHost = backupHost
 	}
-	if backupPort := os.Getenv("backup-port"); backupPort != "" {
+	if backupPort := os.Getenv("BACKUP_PORT"); backupPort != "" {
 		portUint, err := strconv.ParseUint(backupPort, 10, 16)
 		if err != nil {
 			log.Errorf("backup port should be between 0 and 65535.")
@@ -314,10 +314,10 @@ func overrideConfig() {
 		}
 		cfg.Inc.BackupPort = uint(portUint)
 	}
-	if backupUser := os.Getenv("backup-user"); backupUser != "" {
+	if backupUser := os.Getenv("BACKUP_USER"); backupUser != "" {
 		cfg.Inc.BackupUser = backupUser
 	}
-	if backupPassword := os.Getenv("backup-password"); backupPassword != "" {
+	if backupPassword := os.Getenv("BACKUP_PASSWORD"); backupPassword != "" {
 		cfg.Inc.BackupPassword = backupPassword
 	}
 }
