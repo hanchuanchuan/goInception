@@ -524,10 +524,12 @@ const (
 )
 
 // IndexOption is the index options.
-//    KEY_BLOCK_SIZE [=] value
-//  | index_type
-//  | WITH PARSER parser_name
-//  | COMMENT 'string'
+//
+//	  KEY_BLOCK_SIZE [=] value
+//	| index_type
+//	| WITH PARSER parser_name
+//	| COMMENT 'string'
+//
 // See http://dev.mysql.com/doc/refman/5.7/en/create-table.html
 type IndexOption struct {
 	node
@@ -1205,6 +1207,7 @@ type CreateIndexStmt struct {
 	IndexOption   *IndexOption
 	KeyType       IndexKeyType
 	LockAlg       *IndexLockAndAlgorithm
+	Partition     *PartitionOptions
 }
 
 // Restore implements Node interface.
@@ -1238,6 +1241,11 @@ func (n *CreateIndexStmt) Restore(ctx *RestoreCtx) error {
 		}
 	}
 
+	if n.Partition != nil {
+		if err := n.Partition.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.PartitionOpt")
+		}
+	}
 	return nil
 }
 
@@ -1962,7 +1970,7 @@ const (
 	AlterTableDropStatistics
 	AlterTableAttributes
 
-// TODO: Add more actions
+	// TODO: Add more actions
 )
 
 // LockType is the type for AlterTableSpec.
@@ -3180,6 +3188,9 @@ func (n *PartitionMethod) acceptInPlace(v Visitor) bool {
 // PartitionOptions specifies the partition options.
 type PartitionOptions struct {
 	node
+
+	IndexType model.PartitionIndexType
+
 	PartitionMethod
 	Sub         *PartitionMethod
 	Definitions []*PartitionDefinition
@@ -3242,6 +3253,9 @@ func (n *PartitionOptions) Validate() error {
 }
 
 func (n *PartitionOptions) Restore(ctx *RestoreCtx) error {
+	if n.IndexType != model.PartitionIndexTypeInvalid {
+		ctx.WriteKeyWord(n.IndexType.String() + " ")
+	}
 	ctx.WriteKeyWord("PARTITION BY ")
 	if err := n.PartitionMethod.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PartitionOptions.PartitionMethod")
