@@ -387,6 +387,27 @@ type ViewInfo struct {
 	Cols        []CIStr            `json:"view_cols"`
 }
 
+// PartitionIndexType is the type for partition index
+type PartitionIndexType int
+
+// Partition index types.
+const (
+	PartitionIndexTypeInvalid PartitionIndexType = iota
+	PartitionIndexTypeLocal
+	PartitionIndexTypeGlobal
+)
+
+func (t PartitionIndexType) String() string {
+	switch t {
+	case PartitionIndexTypeLocal:
+		return "LOCAL"
+	case PartitionIndexTypeGlobal:
+		return "GLOBAL"
+	default:
+		return ""
+	}
+}
+
 // PartitionType is the type for PartitionInfo
 type PartitionType int
 
