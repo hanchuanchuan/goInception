@@ -4220,6 +4220,12 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 		s.appendErrorNo(ER_INVALID_DEFAULT, field.Name.Name.O)
 	}
 
+	if field.Tp.Tp == mysql.TypeDouble {
+		if field.Tp.Flen > 0 && field.Tp.Decimal == types.UnspecifiedLength {
+			s.appendErrorMsgf(`Please specify the number of digits of type double (column: "%s")`, field.Name.Name.O)
+		}
+	}
+
 	//有默认值，且不为NULL
 	if _, ok := defaultExpr.(*ast.ValueExpr); ok && hasDefaultValue && !defaultValue.IsNull() {
 		switch field.Tp.Tp {
