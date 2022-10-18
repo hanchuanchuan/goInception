@@ -402,6 +402,7 @@ var tokenMap = map[string]int{
 	"PASSWORD":                 password,
 	"PLUGINS":                  plugins,
 	"POSITION":                 position,
+	"PRE_SPLIT_REGIONS":        preSplitRegions,
 	"PRECISION":                precisionType,
 	"PREPARE":                  prepare,
 	"PRIMARY":                  primary,
