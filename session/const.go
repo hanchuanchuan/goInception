@@ -26,6 +26,7 @@ const (
 	DBTypeMysql = iota
 	DBTypeMariaDB
 	DBTypeTiDB
+	DBTypeOceanBase
 )
 
 // 审核阶段
