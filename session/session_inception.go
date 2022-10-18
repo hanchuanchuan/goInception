@@ -1687,7 +1687,7 @@ func (s *session) mysqlServerVersion() {
 	var name, value string
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
-	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
+	('innodb_large_prefix','version','version_comment','sql_mode','lower_case_table_names','wsrep_on',
 	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode',
 	'character_set_database');`
 
@@ -1714,6 +1714,8 @@ func (s *session) mysqlServerVersion() {
 					s.dbType = DBTypeMariaDB
 				} else if strings.Contains(strings.ToLower(value), "tidb") {
 					s.dbType = DBTypeTiDB
+				} else if strings.Contains(strings.ToLower(value), "oceanbase") {
+					s.dbType = DBTypeOceanBase
 				} else {
 					s.dbType = DBTypeMysql
 				}
@@ -1731,6 +1733,10 @@ func (s *session) mysqlServerVersion() {
 					s.appendErrorMsg(fmt.Sprintf("无法解析版本号:%s", value))
 				}
 				log.Debug("db version: ", s.dbVersion)
+			case "version_comment":
+				if strings.Contains(strings.ToLower(value), "oceanbase") {
+					s.dbType = DBTypeOceanBase
+				}
 			case "innodb_large_prefix":
 				emptyInnodbLargePrefix = false
 				s.innodbLargePrefix = (value == "ON" || value == "1")
