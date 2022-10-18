@@ -1015,6 +1015,11 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_INVALID_DEFAULT, "c1"))
 
+	sql = `CREATE TABLE t1(
+			c1 varchar(20) NOT NULL DEFAULT ''
+		) ENGINE = InnoDB SHARD_ROW_ID_BITS=4 PRE_SPLIT_REGIONS=2;`
+	s.testErrorCode(c, sql)
+
 	sql = `create table t1(id int primary key,
 			c1 datetime(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP);`
 	s.testErrorCode(c, sql,

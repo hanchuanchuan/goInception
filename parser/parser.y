@@ -377,6 +377,7 @@ import (
 	partitions             "PARTITIONS"
 	pipesAsOr
 	plugins                "PLUGINS"
+	preSplitRegions        "PRE_SPLIT_REGIONS"
 	prepare                "PREPARE"
 	privileges             "PRIVILEGES"
 	process                "PROCESS"
@@ -3863,6 +3864,7 @@ UnReservedKeyword:
 |	"PARSER"
 |	"PASSWORD" %prec lowerThanEq
 |	"PREPARE"
+|	"PRE_SPLIT_REGIONS"
 |	"QUICK"
 |	"REDUNDANT"
 |	"REORGANIZE"
@@ -7099,6 +7101,10 @@ TableOption:
 |	"SHARD_ROW_ID_BITS" EqOpt LengthNum
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionShardRowID, UintValue: $3.(uint64)}
+	}
+|	"PRE_SPLIT_REGIONS" EqOpt LengthNum
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionPreSplitRegion, UintValue: $3.(uint64)}
 	}
 |	"PACK_KEYS" EqOpt StatsPersistentVal
 	{
