@@ -1025,6 +1025,17 @@ primary key(id)) comment 'test';`
 			c1 int,c2 int);`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrMaxColumnCount, "t1", 2, 3))
+	config.GetGlobalConfig().Inc.MaxColumnCount = 0
+
+	sql = `CREATE TABLE t1 (
+			id bigint(20) COMMENT 'id',
+			c1 double(10) DEFAULT '0',
+			c2 DECIMAL(10) DEFAULT '0',
+			c3 float(10) DEFAULT '0',
+			PRIMARY KEY (id)
+			) ENGINE=InnoDB comment = 'test';`
+	s.testErrorCode(c, sql,
+		session.NewErrf("Please specify the number of digits of type double (column: \"%s\").", "c1"))
 
 }
 
