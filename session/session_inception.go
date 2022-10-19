@@ -2933,14 +2933,14 @@ func (s *session) checkTableOptions(options []*ast.TableOption, table string, is
 				s.appendErrorNo(ER_CANT_SET_ENGINE, table)
 			}
 		case ast.TableOptionCharset:
-			if s.inc.EnableSetCharset {
+			if s.inc.EnableSetCharset && s.dbType != DBTypeOceanBase {
 				s.checkCharset(opt.StrValue)
 			} else {
 				s.appendErrorNo(ER_TABLE_CHARSET_MUST_NULL, table)
 			}
 			character = opt.StrValue
 		case ast.TableOptionCollate:
-			if s.inc.EnableSetCollation {
+			if s.inc.EnableSetCollation && s.dbType != DBTypeOceanBase {
 				s.checkCollation(opt.StrValue)
 			} else {
 				s.appendErrorNo(ErrTableCollationNotSupport, table)
@@ -3918,6 +3918,12 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 列类型转换审核
 		fieldType := nc.Tp.CompactStr()
 		if s.inc.CheckColumnTypeChange && fieldType != foundField.Type {
+			if s.dbType == DBTypeOceanBase {
+				s.appendErrorNo(ER_CANT_CHANGE_COLUMN_TYPE,
+					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+					foundField.Type, fieldType)
+				return
+			}
 			switch nc.Tp.Tp {
 			case mysql.TypeDecimal, mysql.TypeNewDecimal,
 				mysql.TypeVarchar,
@@ -4724,6 +4730,10 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					}
 				}
 				if isPrimary || isUnique {
+					if s.dbType == DBTypeOceanBase {
+						s.appendErrorNo(ER_CANT_ADD_PK_OR_UK_COLUMN, nc.Name.Name.String())
+						break
+					}
 					rows := t.Indexes
 					indexName := ""
 					if isPrimary {
@@ -4836,6 +4846,15 @@ func checkExistsColumns(t *TableInfo) (count int) {
 }
 
 func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
+	if s.dbType == DBTypeOceanBase {
+		for _, index := range t.Indexes {
+			if strings.EqualFold(index.ColumnName, c.OldColumnName.Name.O) {
+				s.appendErrorNo(ER_CANT_DROP_INDEX_COLUMN,
+					fmt.Sprintf("%s.%s", t.Name, c.OldColumnName.Name.O))
+				return
+			}
+		}
+	}
 
 	found := false
 	for i, field := range t.Fields {
