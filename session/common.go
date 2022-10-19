@@ -7,6 +7,7 @@ package session
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"strconv"
@@ -179,6 +180,33 @@ type ExplainInfo struct {
 	Count string `gorm:"Column:count"`
 	// TiDB (v4.0及之后)的Explain预估行数存储在Count中
 	EstRows string `gorm:"Column:estRows"`
+}
+
+// OceanBaseQueryPlan OceanBase 执行计划信息
+type OceanBaseQueryPlan struct {
+	QueryPlan string `gorm:"Column:Query Plan"`
+}
+
+// OceanBaseExplainInfo OceanBase 执行计划标准格式
+type OceanBaseExplainInfo struct {
+	ID       int         `json:"ID"`
+	Operator string      `json:"OPERATOR"`
+	Name     string      `json:"NAME"`
+	EstRows  int64       `json:"EST.ROWS"`
+	Cost     int         `json:"COST"`
+	OutPut   interface{} `json:"output"`
+}
+
+// Unmarshal 将数据转化为 OceanBaseExplainInfo
+func (info *OceanBaseExplainInfo) Unmarshal(data interface{}) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	if b != nil {
+		return json.Unmarshal(b, &info)
+	}
+	return nil
 }
 
 // FieldInfo 字段信息
