@@ -768,6 +768,7 @@ var defaultConf = Config{
 		GhostDmlBatchSize:                  10,
 		GhostOkToDropTable:                 true,
 		GhostSkipForeignKeyChecks:          true,
+		GhostTimestampOldTable:				false,
 	},
 	IncLevel: defaultLevel,
 }
