@@ -307,6 +307,7 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 	buf.WriteString(fmt.Sprintf(" --throttle-additional-flag-file=%s", s.ghost.GhostThrottleAdditionalFlagFile))
 	buf.WriteString(fmt.Sprintf(" --postpone-cut-over-flag-file=%s", s.ghost.GhostPostponeCutOverFlagFile))
 	buf.WriteString(fmt.Sprintf(" --initially-drop-socket-file=%t", s.ghost.GhostInitiallyDropSocketFile))
+	buf.WriteString(fmt.Sprintf(" --timestamp-old-table=%t", s.ghost.GhostTimestampOldTable))
 
 	// unix socket file max 104 characters (or 107)
 	socketFile := s.getSocketFile(r)
