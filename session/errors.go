@@ -89,6 +89,7 @@ const (
 	ER_MULTIPLE_PRI_KEY
 	ER_DUP_KEYNAME
 	ER_TOO_LONG_INDEX_COMMENT
+	ER_CANT_ADD_PK_OR_UK_COLUMN
 	ER_DUP_INDEX
 	ER_INDEX_COLUMN_REPEAT
 	ER_TEMP_TABLE_TMP_PREFIX
@@ -104,6 +105,7 @@ const (
 	ER_COLUMN_EXISTED
 	ER_COLUMN_NOT_EXISTED
 	ER_CANT_DROP_FIELD_OR_KEY
+	ER_CANT_DROP_INDEX_COLUMN
 	ER_INVALID_DEFAULT
 	ER_USERNAME
 	ER_HOSTNAME
@@ -171,6 +173,7 @@ const (
 	ER_PK_TOO_MANY_PARTS
 	ER_REMOVED_SPACES
 	ER_CHANGE_COLUMN_TYPE
+	ER_CANT_CHANGE_COLUMN_TYPE
 	ER_CANT_DROP_TABLE
 	ER_CANT_DROP_DATABASE
 	ER_WRONG_TABLE_NAME
@@ -275,6 +278,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_MULTIPLE_PRI_KEY:                    "Multiple primary key defined.",
 	ER_DUP_KEYNAME:                         "Duplicate key name '%s'.",
 	ER_TOO_LONG_INDEX_COMMENT:              "Comment for index '%s' is too long (max = %lu).",
+	ER_CANT_ADD_PK_OR_UK_COLUMN:            "Can't add PK or UK column '%s'.",
 	ER_DUP_INDEX:                           "Duplicate index '%s' defined on the table '%s.%s'.",
 	ER_INDEX_COLUMN_REPEAT:                 "Column repeat index '%s' defined on the table '%s.%s' column('%s').",
 	ER_TEMP_TABLE_TMP_PREFIX:               "Set 'tmp' prefix for temporary table.",
@@ -291,6 +295,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_COLUMN_EXISTED:                      "Column '%s' have existed.",
 	ER_COLUMN_NOT_EXISTED:                  "Column '%s' not existed.",
 	ER_CANT_DROP_FIELD_OR_KEY:              "Can't DROP '%s'; check that column/key exists.",
+	ER_CANT_DROP_INDEX_COLUMN:              "Can't DROP index column '%s'.",
 	ER_INVALID_DEFAULT:                     "Invalid default value for column '%s'.",
 	ER_USERNAME:                            "user name",
 	ER_HOSTNAME:                            "host name",
@@ -358,6 +363,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_PK_TOO_MANY_PARTS:                   "Too many primary key part in table '%s'.'%s', max parts: %d",
 	ER_REMOVED_SPACES:                      "Leading spaces are removed from name '%s'",
 	ER_CHANGE_COLUMN_TYPE:                  "Type conversion warning for column '%s' %s -> %s.",
+	ER_CANT_CHANGE_COLUMN_TYPE:             "Cannot change column type '%s' %s -> %s.",
 	ER_CANT_DROP_TABLE:                     "Drop/truncate '%s' is not allowed, please replace with alter rename statement.",
 	ER_CANT_DROP_DATABASE:                  "Command is forbidden! Cannot drop database '%s'.",
 	ER_WRONG_TABLE_NAME:                    "Incorrect table name '%-.100s'",
@@ -462,6 +468,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_MULTIPLE_PRI_KEY:                    "定义了多个主键.",
 	ER_DUP_KEYNAME:                         "索引名 '%s' 重复.",
 	ER_TOO_LONG_INDEX_COMMENT:              "索引 '%s' 注释过长(max = %lu).",
+	ER_CANT_ADD_PK_OR_UK_COLUMN:            "禁止添加主键或唯一键列 '%s",
 	ER_DUP_INDEX:                           "索引 '%s' 定义重复(表'%s.%s').",
 	ER_INDEX_COLUMN_REPEAT:                 "索引 '%s' 的字段与索引 '%s.%s' 存在重复字段('%s').",
 	ER_TEMP_TABLE_TMP_PREFIX:               "临时表需要指定'tmp'前缀",
@@ -478,6 +485,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_COLUMN_EXISTED:                      "列 '%s' 已存在.",
 	ER_COLUMN_NOT_EXISTED:                  "列 '%s' 不存在.",
 	ER_CANT_DROP_FIELD_OR_KEY:              "无法删除 '%s'; 请检查字段/键是否存在.",
+	ER_CANT_DROP_INDEX_COLUMN:              "无法删除索引列 '%s'.",
 	ER_INVALID_DEFAULT:                     "列 '%s' 默认值无效.",
 	ER_USERNAME:                            "user name",
 	ER_HOSTNAME:                            "host name",
@@ -545,6 +553,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_PK_TOO_MANY_PARTS:                   "表 '%s'.'%s' 主键指定了太多的字段, 最多允许 %d 个字段",
 	ER_REMOVED_SPACES:                      "Leading spaces are removed from name '%s'",
 	ER_CHANGE_COLUMN_TYPE:                  "类型转换警告: 列 '%s' %s -> %s.",
+	ER_CANT_CHANGE_COLUMN_TYPE:             "禁止改变列的类型 '%s' %s -> %s.",
 	ER_CANT_DROP_TABLE:                     "禁用【DROP】|【TRUNCATE】删除/清空表 '%s', 请改用RENAME重写.",
 	ER_CANT_DROP_DATABASE:                  "命令禁止! 无法删除数据库'%s'.",
 	ER_WRONG_TABLE_NAME:                    "不正确的表名: '%-.100s'",
