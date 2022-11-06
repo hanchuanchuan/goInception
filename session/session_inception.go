@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -1687,7 +1688,7 @@ func (s *session) mysqlServerVersion() {
 	var name, value string
 	// sql := "select @@version;"
 	sql := `show variables where Variable_name in
-	('innodb_large_prefix','version','sql_mode','lower_case_table_names','wsrep_on',
+	('innodb_large_prefix','version','version_comment','sql_mode','lower_case_table_names','wsrep_on',
 	'explicit_defaults_for_timestamp','enforce_gtid_consistency','gtid_mode',
 	'character_set_database');`
 
@@ -1714,6 +1715,8 @@ func (s *session) mysqlServerVersion() {
 					s.dbType = DBTypeMariaDB
 				} else if strings.Contains(strings.ToLower(value), "tidb") {
 					s.dbType = DBTypeTiDB
+				} else if strings.Contains(strings.ToLower(value), "oceanbase") {
+					s.dbType = DBTypeOceanBase
 				} else {
 					s.dbType = DBTypeMysql
 				}
@@ -1731,6 +1734,10 @@ func (s *session) mysqlServerVersion() {
 					s.appendErrorMsg(fmt.Sprintf("无法解析版本号:%s", value))
 				}
 				log.Debug("db version: ", s.dbVersion)
+			case "version_comment":
+				if strings.Contains(strings.ToLower(value), "oceanbase") {
+					s.dbType = DBTypeOceanBase
+				}
 			case "innodb_large_prefix":
 				emptyInnodbLargePrefix = false
 				s.innodbLargePrefix = (value == "ON" || value == "1")
@@ -6810,17 +6817,50 @@ func (s *session) getExplainInfo(sql string, sqlId string) {
 
 	var rows []ExplainInfo
 
-	// if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
-	if err := s.rawScan(sql, &rows); err != nil {
-		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
-			s.appendErrorMsg(myErr.Message)
-			if newRecord != nil {
-				newRecord.appendErrorMessage(myErr.Message)
+	if s.dbType == DBTypeOceanBase {
+		var plan OceanBaseQueryPlan
+		if err := s.rawScan(sql, &plan); err != nil {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.appendErrorMsg(myErr.Message)
+				if newRecord != nil {
+					newRecord.appendErrorMessage(myErr.Message)
+				}
+			} else {
+				s.appendErrorMsg(err.Error())
+				if newRecord != nil {
+					newRecord.appendErrorMessage(err.Error())
+				}
 			}
-		} else {
-			s.appendErrorMsg(err.Error())
-			if newRecord != nil {
-				newRecord.appendErrorMessage(err.Error())
+		}
+		var planValue map[string]interface{}
+		_ = json.Unmarshal([]byte(plan.QueryPlan), &planValue)
+		if len(planValue) > 0 {
+			info := OceanBaseExplainInfo{}
+			_ = info.Unmarshal(planValue)
+			if info.Operator != "" {
+				rows = append(rows, ExplainInfo{Rows: info.EstRows})
+			}
+			for _, v := range planValue {
+				childInfo := OceanBaseExplainInfo{}
+				_ = childInfo.Unmarshal(v)
+				if childInfo.Operator != "" {
+					rows = append(rows, ExplainInfo{Rows: childInfo.EstRows})
+				}
+			}
+		}
+	} else {
+		// if err := s.db.Raw(sql).Scan(&rows).Error; err != nil {
+		if err := s.rawScan(sql, &rows); err != nil {
+			if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+				s.appendErrorMsg(myErr.Message)
+				if newRecord != nil {
+					newRecord.appendErrorMessage(myErr.Message)
+				}
+			} else {
+				s.appendErrorMsg(err.Error())
+				if newRecord != nil {
+					newRecord.appendErrorMessage(err.Error())
+				}
 			}
 		}
 	}
@@ -7006,6 +7046,9 @@ func (s *session) explainOrAnalyzeSql(sql string) {
 	}
 
 	explain = append(explain, "EXPLAIN ")
+	if s.dbType == DBTypeOceanBase {
+		explain = append(explain, "FORMAT=JSON ")
+	}
 	explain = append(explain, sql)
 
 	// rows := s.getExplainInfo(strings.Join(explain, ""))
