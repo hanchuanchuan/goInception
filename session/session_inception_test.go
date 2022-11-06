@@ -1285,6 +1285,12 @@ func (s *testSessionIncSuite) TestAlterTableAddColumn(c *C) {
 	alter table t1 add column c2 int;`
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ErrMaxColumnCount, "t1", 2, 3))
+	config.GetGlobalConfig().Inc.MaxColumnCount = 0
+
+	sql = `drop table if exists t1;
+		create table t1(id int,c1 char(10));
+		alter table t1 add column cc char(20) unique key;`
+	s.testErrorCode(c, sql)
 }
 
 func (s *testSessionIncSuite) TestAlterTableRenameColumn(c *C) {
