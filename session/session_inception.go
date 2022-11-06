@@ -4745,10 +4745,11 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					if len(rows) > 0 {
 						for _, row := range rows {
 							if !row.IsDeleted {
-								if strings.EqualFold(row.IndexName, mysql.PrimaryKeyName) {
+								if isPrimary && strings.EqualFold(row.IndexName, mysql.PrimaryKeyName) {
 									s.appendErrorNo(ER_DUP_INDEX, mysql.PrimaryKeyName, t.Schema, t.Name)
 									break
-								} else if strings.EqualFold(row.IndexName, indexName) {
+								}
+								if strings.EqualFold(row.IndexName, indexName) {
 									indexName = indexName + "_2"
 									break
 								}
