@@ -1275,11 +1275,11 @@ PARTITION BY RANGE (TO_DAYS(hiredate) ) (
 
 	sql = `drop table if exists t1;CREATE TABLE t1 (
 			customer_id int(10) unsigned NOT NULL COMMENT '登录用户ID',
-			login_time DATETIME NOT NULL COMMENT '用户登录时间',
+			bill_date DATETIME NOT NULL COMMENT '用户登录时间',
 			login_ip int(10) unsigned NOT NULL COMMENT '登录IP',
 			login_type tinyint(4) NOT NULL COMMENT '登录类型:0未成功 1成功'
 		  ) ENGINE=InnoDB
-		  PARTITION BY RANGE (YEAR(login_time))(
+		  PARTITION BY RANGE (YEAR(bill_date))(
 		  PARTITION p0 VALUES LESS THAN (2017),
 		  PARTITION p1 VALUES LESS THAN (2018));		  `
 	s.mustRunExec(c, sql)
