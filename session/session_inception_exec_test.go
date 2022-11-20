@@ -1288,8 +1288,7 @@ PARTITION BY RANGE (TO_DAYS(hiredate) ) (
 			partition p202201 values less than (to_days('2022-02-01')) ENGINE = InnoDB,
 			partition p202202 values less than (to_days('2022-03-01')) ENGINE = InnoDB
 			);`
-	s.testErrorCode(c, sql,
-		session.NewErrf("Table '%s' is already a partitioned table.", "t1"))
+	s.testErrorCode(c, sql)
 
 	sql = `alter table t1 remove partitioning;`
 	s.testErrorCode(c, sql)

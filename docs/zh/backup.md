@@ -10,6 +10,7 @@ backup_host   |  ""    |   string     |   备份数据库IP地址
 backup_port   |  0    |   int     |     备份数据库端口
 backup_user   |  ""    |   string     |   备份数据库用户名
 backup_password   |  ""    |   string    |   备份数据库密码
+backup_tls `v1.4.0`   |  ""    |   string    |   备份数据库ssl认证方式,可选值请参考 (https://github.com/go-sql-driver/mysql/issues/899#issuecomment-443493840)
 
 并且在执行sql时，添加 ```--backup=true``` 或 ```--backup=1``` 选项
 

@@ -9,6 +9,7 @@ backup_host   |  ""    |   string     |   Backup database ip address
 backup_port   |  0    |   int     |     Backup database port
 backup_user   |  ""    |   string     |   username to connect backup database
 backup_password   |  ""    |   string    |   password to connect backup database
+backup_tls `v1.4.0`   |  ""    |   string    |  Backup database ssl authentication method, please refer to the optional values (https://github.com/go-sql-driver/mysql/issues/899#issuecomment-443493840)
 
 Add ```--backup=true``` option when execute SQL
 
