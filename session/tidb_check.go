@@ -719,11 +719,11 @@ func (s *session) checkPartitionConvert(t *TableInfo, opts *ast.PartitionOptions
 	if opts == nil {
 		return
 	}
-	if len(t.Partitions) > 0 {
-		s.appendErrorMsg(fmt.Sprintf("Table '%s' is already a partitioned table", t.Name))
-	}
+	// if len(t.Partitions) > 0 {
+	// 	s.appendErrorMsg(fmt.Sprintf("Table '%s' is already a partitioned table", t.Name))
+	// }
 	s.checkPartitionNameUnique(opts.Definitions)
-	s.checkPartitionNameExists(t, opts.Definitions)
+	// s.checkPartitionNameExists(t, opts.Definitions)
 }
 
 // checkPartitionConvert 检查分区表转为普通表
