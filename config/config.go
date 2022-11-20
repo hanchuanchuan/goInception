@@ -225,6 +225,8 @@ type Inc struct {
 	BackupPassword string `toml:"backup_password" json:"backup_password"`
 	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
 	BackupUser     string `toml:"backup_user" json:"backup_user"`
+	// 指定backup mysql ssl认证规则,默认为空. 可指定tls=skip-verify等来跳过服务器ssl认证. https://github.com/go-sql-driver/mysql/issues/899#issuecomment-443493840
+	BackupTLS string `toml:"backup_tls" json:"backup_tls"`
 
 	CheckAutoIncrementDataType  bool `toml:"check_autoincrement_datatype" json:"check_autoincrement_datatype"`
 	CheckAutoIncrementInitValue bool `toml:"check_autoincrement_init_value" json:"check_autoincrement_init_value"`
@@ -768,7 +770,7 @@ var defaultConf = Config{
 		GhostDmlBatchSize:                  10,
 		GhostOkToDropTable:                 true,
 		GhostSkipForeignKeyChecks:          true,
-		GhostTimestampOldTable:				false,
+		GhostTimestampOldTable:             false,
 	},
 	IncLevel: defaultLevel,
 }

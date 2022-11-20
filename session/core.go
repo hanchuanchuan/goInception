@@ -516,6 +516,9 @@ func (s *session) checkOptions() error {
 		addr = fmt.Sprintf("%s:%s@tcp(%s:%d)/?charset=%s&parseTime=True&loc=Local&autocommit=1",
 			s.inc.BackupUser, s.inc.BackupPassword, s.inc.BackupHost, s.inc.BackupPort,
 			s.inc.DefaultCharset)
+		if s.inc.BackupTLS != "" {
+			addr += "&tls=" + s.inc.BackupTLS
+		}
 		backupdb, err := gorm.Open("mysql", addr)
 
 		if err != nil {
