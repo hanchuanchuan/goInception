@@ -534,6 +534,9 @@ const (
 type IndexOption struct {
 	node
 
+	// PartitionIndexType OceanBase:[GLOBAL|LOCAL]
+	PartitionIndexType model.PartitionIndexType
+
 	KeyBlockSize uint64
 	Tp           model.IndexType
 	Comment      string
@@ -544,16 +547,21 @@ type IndexOption struct {
 // Restore implements Node interface.
 func (n *IndexOption) Restore(ctx *RestoreCtx) error {
 	hasPrevOption := false
+	if n.PartitionIndexType != model.PartitionIndexTypeInvalid {
+		ctx.WritePlain(n.PartitionIndexType.String())
+		hasPrevOption = true
+	}
+
 	if n.KeyBlockSize > 0 {
+		if hasPrevOption {
+			ctx.WritePlain(" ")
+		}
 		ctx.WriteKeyWord("KEY_BLOCK_SIZE")
 		ctx.WritePlainf("=%d", n.KeyBlockSize)
 		hasPrevOption = true
 	}
 
 	if n.Tp != model.IndexTypeInvalid {
-		if hasPrevOption {
-			ctx.WritePlain(" ")
-		}
 		ctx.WriteKeyWord("USING ")
 		ctx.WritePlain(n.Tp.String())
 		hasPrevOption = true
@@ -1234,7 +1242,7 @@ func (n *CreateIndexStmt) Restore(ctx *RestoreCtx) error {
 	}
 	ctx.WritePlain(")")
 
-	if n.IndexOption.Tp != model.IndexTypeInvalid || n.IndexOption.KeyBlockSize > 0 || n.IndexOption.Comment != "" {
+	if n.IndexOption.Tp != model.IndexTypeInvalid || n.IndexOption.KeyBlockSize > 0 || n.IndexOption.Comment != "" || n.IndexOption.PartitionIndexType != 0 {
 		ctx.WritePlain(" ")
 		if err := n.IndexOption.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore CreateIndexStmt.IndexOption")
@@ -3188,9 +3196,6 @@ func (n *PartitionMethod) acceptInPlace(v Visitor) bool {
 // PartitionOptions specifies the partition options.
 type PartitionOptions struct {
 	node
-
-	IndexType model.PartitionIndexType
-
 	PartitionMethod
 	Sub         *PartitionMethod
 	Definitions []*PartitionDefinition
@@ -3253,9 +3258,6 @@ func (n *PartitionOptions) Validate() error {
 }
 
 func (n *PartitionOptions) Restore(ctx *RestoreCtx) error {
-	if n.IndexType != model.PartitionIndexTypeInvalid {
-		ctx.WriteKeyWord(n.IndexType.String() + " ")
-	}
 	ctx.WriteKeyWord("PARTITION BY ")
 	if err := n.PartitionMethod.Restore(ctx); err != nil {
 		return errors.Annotate(err, "An error occurred while restore PartitionOptions.PartitionMethod")

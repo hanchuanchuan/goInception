@@ -5102,6 +5102,12 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			}
 		}
 
+		if indexOption.PartitionIndexType != model.PartitionIndexTypeInvalid {
+			if s.dbType != DBTypeOceanBase {
+				s.appendErrorMsg("Index option [GLOBAL|LOCAL] is not supported")
+			}
+		}
+
 		if indexOption.ParserName.L != "" {
 			if tp != ast.ConstraintFulltext {
 				s.appendErrorMsg("WITH PARSER option can be used only with FULLTEXT indexes")
