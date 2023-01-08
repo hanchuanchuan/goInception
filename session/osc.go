@@ -1121,7 +1121,7 @@ func (s *session) getAlterPartSql(sql string) (string, bool) {
 					s.appendErrorMsg(err.Error())
 					return "", false
 				}
-				restoreSQL := builder.String()
+				restoreSQL := strings.TrimSpace(builder.String())
 				columns = append(columns, restoreSQL)
 			}
 		default:
