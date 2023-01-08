@@ -723,7 +723,9 @@ import (
 	IndexNameAndTypeOpt           "index name and index type"
 	IndexNameList                 "index name list"
 	IndexOption                   "Index Option"
+	PartitionIndexOpt             "Partition Index option"
 	IndexOptionList               "Index Option List or empty"
+	PartitionIndexOptionList      "Partition Index option list or empty"
 	IndexType                     "index type"
 	IndexTypeName                 "index type name"
 	IndexTypeOpt                  "optional index type"
@@ -757,7 +759,6 @@ import (
 	PartitionDefinition           "Partition definition"
 	PartitionDefinitionList       "Partition definition list"
 	PartitionDefinitionListOpt    "Partition definition list option"
-	PartitionIndexOpt             "Partition index option"
 	PartitionKeyAlgorithmOpt      "ALGORITHM = n option for KEY partition"
 	PartitionMethod               "Partition method"
 	PartitionOpt                  "Partition option"
@@ -2051,7 +2052,7 @@ ColumnOptionListOpt:
 	}
 
 ConstraintElem:
-	"PRIMARY" "KEY" IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
+	"PRIMARY" "KEY" IndexNameAndTypeOpt '(' IndexColNameList ')' PartitionIndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:   ast.ConstraintPrimaryKey,
@@ -2068,7 +2069,7 @@ ConstraintElem:
 		}
 		$$ = c
 	}
-|	"FULLTEXT" KeyOrIndexOpt IndexName '(' IndexColNameList ')' IndexOptionList
+|	"FULLTEXT" KeyOrIndexOpt IndexName '(' IndexColNameList ')' PartitionIndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:   ast.ConstraintFulltext,
@@ -2080,7 +2081,7 @@ ConstraintElem:
 		}
 		$$ = c
 	}
-|	"SPATIAL" KeyOrIndexOpt IndexName '(' IndexColNameList ')' IndexOptionList
+|	"SPATIAL" KeyOrIndexOpt IndexName '(' IndexColNameList ')' PartitionIndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:   ast.ConstraintSpatial,
@@ -2092,7 +2093,7 @@ ConstraintElem:
 		}
 		$$ = c
 	}
-|	KeyOrIndex IfNotExists IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
+|	KeyOrIndex IfNotExists IndexNameAndTypeOpt '(' IndexColNameList ')' PartitionIndexOptionList
 	{
 		c := &ast.Constraint{
 			IfNotExists: $2.(bool),
@@ -2111,7 +2112,7 @@ ConstraintElem:
 		}
 		$$ = c
 	}
-|	"UNIQUE" KeyOrIndexOpt IndexNameAndTypeOpt '(' IndexColNameList ')' IndexOptionList
+|	"UNIQUE" KeyOrIndexOpt IndexNameAndTypeOpt '(' IndexColNameList ')' PartitionIndexOptionList
 	{
 		c := &ast.Constraint{
 			Tp:   ast.ConstraintUniq,
@@ -2291,7 +2292,7 @@ NumLiteral:
  *     LOCK [=] {DEFAULT | NONE | SHARED | EXCLUSIVE}
  *******************************************************************************************/
 CreateIndexStmt:
-	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists Identifier IndexTypeOpt "ON" TableName '(' IndexColNameList ')' IndexOptionList IndexLockAndAlgorithmOpt PartitionIndexOpt PartitionOpt
+	"CREATE" IndexKeyTypeOpt "INDEX" IfNotExists Identifier IndexTypeOpt "ON" TableName '(' IndexColNameList ')' PartitionIndexOptionList IndexLockAndAlgorithmOpt PartitionOpt
 	{
 		var indexOption *ast.IndexOption
 		if $12 != nil {
@@ -2315,11 +2316,8 @@ CreateIndexStmt:
 			}
 		}
 		var partitionOpt *ast.PartitionOptions
-		if $15 != nil {
-			partitionOpt = $15.(*ast.PartitionOptions)
-			if $14 != nil {
-				partitionOpt.IndexType = $14.(model.PartitionIndexType)
-			}
+		if $14 != nil {
+			partitionOpt = $14.(*ast.PartitionOptions)
 		}
 		$$ = &ast.CreateIndexStmt{
 			IfNotExists:   $4.(bool),
@@ -2476,20 +2474,17 @@ DatabaseOptionList:
 	}
 
 CreateTableStmt:
-	"CREATE" "TABLE" IfNotExists TableName TableElementListOpt CreateTableOptionListOpt PartitionIndexOpt PartitionOpt DuplicateOpt AsOpt CreateTableSelectOpt
+	"CREATE" "TABLE" IfNotExists TableName TableElementListOpt CreateTableOptionListOpt PartitionOpt DuplicateOpt AsOpt CreateTableSelectOpt
 	{
 		stmt := $5.(*ast.CreateTableStmt)
 		stmt.Table = $4.(*ast.TableName)
 		stmt.IfNotExists = $3.(bool)
 		stmt.Options = $6.([]*ast.TableOption)
-		if $8 != nil {
-			stmt.Partition = $8.(*ast.PartitionOptions)
-			if $7 != nil {
-				stmt.Partition.IndexType = $7.(model.PartitionIndexType)
-			}
+		if $7 != nil {
+			stmt.Partition = $7.(*ast.PartitionOptions)
 		}
-		stmt.OnDuplicate = $9.(ast.OnDuplicateKeyHandlingType)
-		stmt.Select = $11.(*ast.CreateTableStmt).Select
+		stmt.OnDuplicate = $8.(ast.OnDuplicateKeyHandlingType)
+		stmt.Select = $10.(*ast.CreateTableStmt).Select
 		$$ = stmt
 	}
 |	"CREATE" "TABLE" IfNotExists TableName LikeTableWithOrWithoutParen
@@ -2504,19 +2499,6 @@ CreateTableStmt:
 DefaultKwdOpt:
 	{}
 |	"DEFAULT"
-
-PartitionIndexOpt:
-	{
-		$$ = nil
-	}
-|	"LOCAL"
-	{
-		$$ = model.PartitionIndexTypeLocal
-	}
-|	"GLOBAL"
-	{
-		$$ = model.PartitionIndexTypeGlobal
-	}
 
 PartitionOpt:
 	{
@@ -3716,6 +3698,40 @@ IndexOption:
 	{
 		$$ = &ast.IndexOption{
 			Visibility: $1.(ast.IndexVisibility),
+		}
+	}
+
+PartitionIndexOpt:
+	{
+		$$ = &ast.IndexOption{
+                     	PartitionIndexType: model.PartitionIndexTypeInvalid,
+		}
+	}
+|	"LOCAL"
+	{
+		$$ = &ast.IndexOption{
+                     	PartitionIndexType: model.PartitionIndexTypeLocal,
+		}
+	}
+|	"GLOBAL"
+	{
+		$$ = &ast.IndexOption{
+                     	PartitionIndexType: model.PartitionIndexTypeGlobal,
+		}
+	}
+
+PartitionIndexOptionList:
+	PartitionIndexOpt IndexOptionList
+	{
+		if $1 == nil {
+			$$ = $2
+		} else if $2 == nil {
+			$$ = $1
+		} else {
+			opt1 := $1.(*ast.IndexOption)
+			opt2 := $2.(*ast.IndexOption)
+			opt2.PartitionIndexType = opt1.PartitionIndexType
+			$$ = opt2
 		}
 	}
 
