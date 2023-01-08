@@ -1343,11 +1343,12 @@ AlterTableSpec:
 			LockType: $1.(ast.LockType),
 		}
 	}
-|	"ALGORITHM" EqOpt AlterAlgorithm
+|	AlgorithmClause
 	{
 		// Parse it and ignore it. Just for compatibility.
 		$$ = &ast.AlterTableSpec{
-			Tp: ast.AlterTableAlgorithm,
+			Tp:        ast.AlterTableAlgorithm,
+			Algorithm: $1.(ast.AlgorithmType),
 		}
 	}
 |	"FORCE"
@@ -1365,11 +1366,6 @@ AlterTableSpec:
 			Visibility: $4.(ast.IndexVisibility),
 		}
 	}
-
-AlterAlgorithm:
-	"DEFAULT"
-|	"INPLACE"
-|	"COPY"
 
 ReorganizePartitionRuleOpt:
 	/* empty */ %prec lowerThanRemove
@@ -1432,7 +1428,7 @@ AlgorithmClause:
 	}
 |	"ALGORITHM" EqOpt identifier
 	{
-		yylex.AppendError(ErrUnknownAlterAlgorithm.GenWithStackByArgs($1))
+		yylex.AppendError(ErrUnknownAlterAlgorithm.GenWithStackByArgs($3))
 		return 1
 	}
 
@@ -3704,19 +3700,19 @@ IndexOption:
 PartitionIndexOpt:
 	{
 		$$ = &ast.IndexOption{
-                     	PartitionIndexType: model.PartitionIndexTypeInvalid,
+			PartitionIndexType: model.PartitionIndexTypeInvalid,
 		}
 	}
 |	"LOCAL"
 	{
 		$$ = &ast.IndexOption{
-                     	PartitionIndexType: model.PartitionIndexTypeLocal,
+			PartitionIndexType: model.PartitionIndexTypeLocal,
 		}
 	}
 |	"GLOBAL"
 	{
 		$$ = &ast.IndexOption{
-                     	PartitionIndexType: model.PartitionIndexTypeGlobal,
+			PartitionIndexType: model.PartitionIndexTypeGlobal,
 		}
 	}
 
