@@ -1,4 +1,4 @@
-FROM golang:1.12-alpine as builder
+FROM golang:1.14-alpine as builder
 # MAINTAINER hanchuanchuan <chuanchuanhan@gmail.com>
 
 ENV TZ=Asia/Shanghai
@@ -59,9 +59,10 @@ ENV TZ=Asia/Shanghai
 
 
 RUN set -x \
-  && apk add --no-cache perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata /glibc.apk \
+  && apk add --no-cache --force-overwrite perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata /glibc.apk \
   && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
   && chmod +x /usr/local/bin/pt-online-schema-change \
-  && chmod +x /usr/local/bin/gh-ost
+  && chmod +x /usr/local/bin/gh-ost \
+  && apk fix --force-overwrite alpine-baselayout-data
 
 ENTRYPOINT ["/usr/local/bin/dumb-init", "/goInception","--config=/etc/config.toml"]
