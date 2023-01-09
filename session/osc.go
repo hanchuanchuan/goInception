@@ -72,13 +72,14 @@ func (s *session) mysqlComputeSqlSha1(r *Record) {
 		return
 	}
 
-	buf := bytes.NewBufferString(r.DBName)
-
-	buf.WriteString(s.opt.Password)
-	buf.WriteString(s.opt.Host)
-	buf.WriteString(s.opt.User)
-	buf.WriteString(strconv.Itoa(s.opt.Port))
+	var buf strings.Builder
+	if r.DBName != "" {
+		buf.WriteString(r.DBName)
+	} else {
+		buf.WriteString(s.dbName)
+	}
 	buf.WriteString(strconv.Itoa(r.SeqNo))
+	buf.WriteString(s.opt.Host)
 	buf.WriteString(r.Sql)
 
 	r.Sqlsha1 = auth.EncodePassword(buf.String())
