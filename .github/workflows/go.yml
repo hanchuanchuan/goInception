@@ -113,6 +113,12 @@ jobs:
           sudo chmod +x cmd/explaintest/run-tests.sh
           make checklist parserlib gotest
 
+      - name: Analyze with SonarCloud
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
       # - name: Send coverage
       #   env:
       #     TRAVIS_COVERAGE: 1
