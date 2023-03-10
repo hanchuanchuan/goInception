@@ -13,7 +13,6 @@ replace github.com/go-sql-driver/mysql => github.com/go-sql-driver/mysql v1.4.1-
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/CorgiMan/json2 v0.0.0-20150213135156-e72957aba209
-	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/blacktear23/go-proxyprotocol v0.0.0-20171102103907-62e368e1c470
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/coreos/bbolt v1.3.0 // indirect
@@ -37,10 +36,9 @@ require (
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20181024230925-c65c006176ff // indirect
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.4.3
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
 	github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c
-	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/gorilla/websocket v1.4.0 // indirect
@@ -60,7 +58,6 @@ require (
 	github.com/juju/testing v0.0.0-20180920084828-472a3e8b2073 // indirect
 	github.com/klauspost/cpuid v0.0.0-20170728055534-ae7887de9fa5
 	github.com/mattn/go-sqlite3 v1.10.0 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/montanaflynn/stats v0.0.0-20180911141734-db72e6cae808 // indirect
 	github.com/ngaut/pools v0.0.0-20180318154953-b7bc8c42aac7
 	github.com/ngaut/sync2 v0.0.0-20141008032647-7a24ed77b2ef
@@ -74,18 +71,13 @@ require (
 	github.com/pingcap/kvproto v0.0.0-20181206061346-54cf0a0dfe55
 	github.com/pingcap/pd v2.1.0+incompatible
 	github.com/pingcap/tipb v0.0.0-20190428032612-535e1abaa330
-	github.com/pkg/errors v0.9.0 // indirect
-	github.com/prometheus/client_golang v0.9.0 // indirect
-	github.com/prometheus/client_model v0.0.0-20180712105110-5c3871d89910 // indirect
-	github.com/prometheus/common v0.0.0-20181020173914-7e9e6cabbd39 // indirect
-	github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d // indirect
+	github.com/prometheus/client_golang v1.11.1 // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24
 	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.6.0
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/spaolacci/murmur3 v0.0.0-20180118202830-f09979ecbc72
 	github.com/spf13/viper v1.3.1
-	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20171017195756-830351dc03c6 // indirect
 	github.com/unrolled/render v0.0.0-20180914162206-b9786414de4d // indirect
 	github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 // indirect
