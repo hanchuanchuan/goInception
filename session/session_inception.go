@@ -1770,7 +1770,11 @@ func (s *session) mysqlServerVersion() {
 			case "gtid_mode":
 				s.gtidMode = value
 			case "character_set_database":
-				s.databaseCharset = value
+				if value == "utf8mb3" {
+					s.databaseCharset = "utf8"
+				} else {
+					s.databaseCharset = value
+				}
 			}
 		}
 
