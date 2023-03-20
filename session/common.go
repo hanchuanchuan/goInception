@@ -968,22 +968,12 @@ func Min(x, y int) int {
 
 // IsNumeric 判断是否为数字
 func IsNumeric(val interface{}) bool {
-	// switch str := val.(type) {
-	// case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-	// case float32, float64, complex64, complex128:
-	// 	return true
-	// case string:
-	// 	for _, v := range str {
-	// 		if !unicode.IsNumber(v) {
-	// 			return false
-	// 		}
-	// 	}
-	// }
-	// return false
 	switch v := val.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return true
 	case float32, float64, complex64, complex128:
+		return true
+	case []byte:
 		return true
 	case string:
 		str := v
@@ -1025,6 +1015,8 @@ func IsNumeric(val interface{}) bool {
 			}
 		}
 		return true
+	default:
+		// fmt.Printf("%#v %T\n", v, v)
 	}
 
 	return false
