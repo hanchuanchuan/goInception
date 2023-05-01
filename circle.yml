@@ -94,14 +94,21 @@ jobs:
                   GO111MODULE=on go get github.com/tcnksm/ghr@v0.14.0
                   ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -replace -c ${CIRCLE_SHA1} -b "### $GIT_COMMIT_DESC" -n ${CIRCLE_TAG} ${CIRCLE_TAG} ./release
                 else
-                  echo '无效$CIRCLE_TAG！'
+                  echo '无效$CIRCLE_TAG!'
                 fi
             else
-              echo "不符合发版格式，跳过Release！！！"
+              echo "不符合发版格式,跳过Release!"
             fi
 
       - run:
           name: Upload coverage
-          command: make dev upload-coverage
+          command: |
+            GIT_COMMIT_DESC=$(git log --format=oneline -n 1 ${CIRCLE_SHA1} | sed -E 's/^[^ ]+ (.*)$/\1/g')
+            echo 'commit message:' "$GIT_COMMIT_DESC"
+            if [[ "$GIT_COMMIT_DESC" =~ ^[vV][0123456789]+\.[0123456789]+.* ]] || [[ "$GIT_COMMIT_DESC" =~ ^[mM]erge.* ]]; then
+              echo "merged! ignore coverage"
+            else
+              make dev upload-coverage
+            fi
           environment:
             TRAVIS_COVERAGE: 1
