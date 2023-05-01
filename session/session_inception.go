@@ -6716,6 +6716,9 @@ func (s *session) checkAlterDB(node *ast.AlterDatabaseStmt, sql string) {
 }
 
 func (s *session) checkCharset(charset string) bool {
+	if s.dbVersion < 80000 && strings.EqualFold(charset, "utf8mb3") {
+		s.appendErrorNo(ErrUnknownCharset, charset)
+	}
 	if s.inc.SupportCharset != "" {
 		for _, item := range strings.Split(s.inc.SupportCharset, ",") {
 			if strings.EqualFold(item, charset) {
