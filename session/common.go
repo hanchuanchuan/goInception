@@ -68,6 +68,7 @@ var charSets = map[string]int{
 	"utf16le":  4,
 	"utf32":    4,
 	"utf8":     3,
+	"utf8mb3":  3,
 	"utf8mb4":  4,
 }
 

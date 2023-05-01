@@ -315,6 +315,16 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
         alter table t1 add column c1 char(200);
         alter table t1 add column c2 varchar(200);`)
 
+	config.GetGlobalConfig().Inc.EnableColumnCharset = true
+	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb3,utf8mb4"
+	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 add column c1 varchar(10) character set utf8mb3;"
+	if s.DBVersion > 80000 {
+		s.testErrorCode(c, sql)
+	} else {
+		s.testErrorCode(c, sql,
+			session.NewErr(session.ErrUnknownCharset, "utf8mb3"))
+	}
+
 	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 add column c1 bit default b'0';"
 	// pt-osc
 	config.GetGlobalConfig().Osc.OscOn = true
