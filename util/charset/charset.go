@@ -109,7 +109,7 @@ func GetAllCharsets() []*Desc {
 // and returns a boolean.
 func ValidCharsetAndCollation(cs string, co string) bool {
 	// We will use utf8 as a default charset.
-	if cs == "" {
+	if cs == "" || strings.EqualFold(cs, "utf8mb3") {
 		cs = "utf8"
 	}
 	cs = strings.ToLower(cs)
@@ -160,7 +160,7 @@ func GetCharsetInfo(cs string) (string, string, error) {
 // GetCharsetDesc gets charset descriptions in the local charsets.
 func GetCharsetDesc(cs string) (*Desc, error) {
 	switch strings.ToLower(cs) {
-	case CharsetUTF8:
+	case CharsetUTF8, CharsetUTF8MB3:
 		return descs[0], nil
 	case CharsetUTF8MB4:
 		return descs[1], nil
@@ -205,7 +205,8 @@ const (
 	// CollationBin is the default collation for CharsetBin.
 	CollationBin = "binary"
 	// CharsetUTF8 is the default charset for string types.
-	CharsetUTF8 = "utf8"
+	CharsetUTF8    = "utf8"
+	CharsetUTF8MB3 = "utf8mb3"
 	// CollationUTF8 is the default collation for CharsetUTF8.
 	CollationUTF8 = "utf8_bin"
 	// CharsetUTF8MB4 represents 4 bytes utf8, which works the same way as utf8 in Go.
