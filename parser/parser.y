@@ -723,9 +723,7 @@ import (
 	IndexNameAndTypeOpt           "index name and index type"
 	IndexNameList                 "index name list"
 	IndexOption                   "Index Option"
-	PartitionIndexOpt             "Partition Index option"
 	IndexOptionList               "Index Option List or empty"
-	PartitionIndexOptionList      "Partition Index option list or empty"
 	IndexType                     "index type"
 	IndexTypeName                 "index type name"
 	IndexTypeOpt                  "optional index type"
@@ -759,12 +757,14 @@ import (
 	PartitionDefinition           "Partition definition"
 	PartitionDefinitionList       "Partition definition list"
 	PartitionDefinitionListOpt    "Partition definition list option"
+	PartitionIndexOpt             "Partition Index option"
+	PartitionIndexOptionList      "Partition Index option list or empty"
 	PartitionKeyAlgorithmOpt      "ALGORITHM = n option for KEY partition"
 	PartitionMethod               "Partition method"
-	PartitionOpt                  "Partition option"
 	PartitionNameList             "Partition name list"
 	PartitionNameListOpt          "table partition names list optional"
 	PartitionNumOpt               "PARTITION NUM option"
+	PartitionOpt                  "Partition option"
 	PartDefValuesOpt              "VALUES {LESS THAN {(expr | value_list) | MAXVALUE} | IN {value_list}"
 	PartDefOptionList             "PartDefOption list"
 	PartDefOption                 "COMMENT [=] xxx | TABLESPACE [=] tablespace_name | ENGINE [=] xxx"
@@ -2331,7 +2331,7 @@ CreateIndexStmt:
 IndexColName:
 	ColumnName OptFieldLen Order
 	{
-		//Order is parsed but just ignored as MySQL did
+		// Order is parsed but just ignored as MySQL did
 		$$ = &ast.IndexColName{Column: $1.(*ast.ColumnName), Length: $2.(int)}
 	}
 
@@ -3632,7 +3632,7 @@ IndexName:
 	}
 |	Identifier
 	{
-		//"index name"
+		// "index name"
 		$$ = $1
 	}
 
