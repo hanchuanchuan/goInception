@@ -8245,7 +8245,7 @@ yynewstate:
 		}
 	case 195:
 		{
-			//Order is parsed but just ignored as MySQL did
+			// Order is parsed but just ignored as MySQL did
 			parser.yyVAL.item = &ast.IndexColName{Column: yyS[yypt-2].item.(*ast.ColumnName), Length: yyS[yypt-1].item.(int)}
 		}
 	case 196:
@@ -9299,7 +9299,7 @@ yynewstate:
 		}
 	case 420:
 		{
-			//"index name"
+			// "index name"
 			parser.yyVAL.item = yyS[yypt-0].ident
 		}
 	case 421:
