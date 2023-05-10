@@ -614,6 +614,13 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.TruncateTableStmt:
 		s.checkTruncateTable(node, currentSql)
 
+	case *ast.CreateTableGroupStmt:
+		s.checkCreateTableGroup(node, currentSql)
+	case *ast.AlterTableGroupStmt:
+		s.checkAlterTableGroup(node, currentSql)
+	case *ast.DropTableGroupStmt:
+		s.checkDropTableGroup(node, currentSql)
+
 	case *ast.CreateIndexStmt:
 		tp := ast.ConstraintIndex
 		if node.Unique {
@@ -2313,6 +2320,118 @@ func (s *session) checkDropTable(node *ast.DropTableStmt, sql string) {
 	}
 }
 
+func (s *session) supportTableGroup() bool {
+	return s.dbType == DBTypeOceanBase
+}
+
+type TableGroupColumn struct {
+	TableGroupName string `gorm:"Column:Tablegroup_name"`
+	DataBaseName   string `gorm:"Column:Database_name"`
+	TableName      string `gorm:"Column:Table_name"`
+}
+
+func (s *session) checkTableGroupExists(name string, reportNotExists bool) bool {
+	var tableGroups []TableGroupColumn
+	if err := s.rawScan("SHOW TABLEGROUPS", &tableGroups); err != nil {
+		s.appendErrorMsg(err.Error())
+		return false
+	}
+
+	found := false
+	for _, tableGroup := range tableGroups {
+		if name == tableGroup.TableGroupName {
+			found = true
+			break
+		}
+	}
+	if !found && reportNotExists {
+		s.appendErrorNo(ER_TABLE_GROUP_NOT_EXISTED_ERROR, name)
+	}
+	return found
+}
+
+func (s *session) checkCreateTableGroup(node *ast.CreateTableGroupStmt, sql string) {
+	log.Debug("checkCreateTableGroup")
+
+	if !s.supportTableGroup() {
+		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		return
+	}
+
+	s.checkKeyWords(node.TableGroup.Name.O)
+	if s.myRecord.ErrLevel == 2 {
+		return
+	}
+
+	if s.checkTableGroupExists(node.TableGroup.Name.O, false) {
+		if !node.IfNotExists {
+			s.appendErrorNo(ER_TABLE_GROUP_EXISTS_ERROR, node.TableGroup.Name.O)
+			return
+		}
+	}
+
+	if node.Partition != nil {
+		if !s.inc.EnablePartitionTable {
+			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+		}
+	}
+
+	if !s.hasError() && s.opt.Execute {
+		s.myRecord.DDLRollback = fmt.Sprintf("DROP TABLEGROUP %s`;", node.TableGroup.Name.O)
+	}
+}
+
+func (s *session) checkAlterTableGroup(node *ast.AlterTableGroupStmt, sql string) {
+	log.Debug("checkAlterTableGroup")
+
+	if !s.supportTableGroup() {
+		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		return
+	}
+
+	s.checkKeyWords(node.TableGroup.Name.O)
+	if s.myRecord.ErrLevel == 2 {
+		return
+	}
+
+	if !s.checkTableGroupExists(node.TableGroup.Name.O, true) {
+		return
+	}
+
+	for _, tableName := range node.Spec.Tables {
+		if tableName.Schema.O == "" {
+			tableName.Schema = model.NewCIStr(s.dbName)
+		}
+
+		if !s.checkDBExists(tableName.Schema.O, true) {
+			return
+		}
+
+		s.getTableFromCache(tableName.Schema.O, tableName.Name.O, true)
+	}
+
+	if !s.inc.EnablePartitionTable && (node.Spec.Partition != nil || len(node.Spec.PartitionNames) != 0) {
+		s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+	}
+}
+
+func (s *session) checkDropTableGroup(node *ast.DropTableGroupStmt, sql string) {
+	log.Debug("checkAlterTableGroup")
+
+	if !s.supportTableGroup() {
+		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+		return
+	}
+
+	s.checkKeyWords(node.TableGroup.Name.O)
+	if s.myRecord.ErrLevel == 2 {
+		return
+	}
+	if !s.checkTableGroupExists(node.TableGroup.Name.O, false) && !node.IfExists {
+		s.appendErrorNo(ER_TABLE_GROUP_NOT_EXISTED_ERROR, node.TableGroup.Name.O)
+	}
+}
+
 // mysqlShowTableStatus 获取表估计的受影响行数
 func (s *session) mysqlShowTableStatus(t *TableInfo) {
 
@@ -2963,6 +3082,14 @@ func (s *session) checkTableOptions(options []*ast.TableOption, table string, is
 			if opt.UintValue > 1 && isCreate {
 				s.appendErrorNo(ER_INC_INIT_ERR)
 			}
+		case ast.TableOptionTableGroup:
+			if s.supportTableGroup() {
+				if opt.StrValue != "" {
+					s.checkTableGroupExists(opt.StrValue, true)
+				}
+			} else {
+				s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+			}
 		default:
 			s.appendErrorNo(ER_NOT_SUPPORTED_ALTER_OPTION)
 		}
@@ -3399,7 +3526,11 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 		case ast.AlterTableIndexInvisible:
 			_ = s.checkIndexExists(table, alter)
-
+		case ast.AlterTableDropTableGroup:
+			if !s.supportTableGroup() {
+				s.appendErrorNo(ER_NOT_SUPPORTED_YET)
+				return
+			}
 		default:
 			s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 			log.Info("con:", s.sessionVars.ConnectionID, " 未定义的解析: ", alter.Tp)

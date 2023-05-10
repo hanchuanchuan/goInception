@@ -197,6 +197,7 @@ import (
 	partition         "PARTITION"
 	precisionType     "PRECISION"
 	primary           "PRIMARY"
+	primaryZone       "PRIMARY_ZONE"
 	procedure         "PROCEDURE"
 	shardRowIDBits    "SHARD_ROW_ID_BITS"
 	rangeKwd          "RANGE"
@@ -223,6 +224,8 @@ import (
 	starting          "STARTING"
 	straightJoin      "STRAIGHT_JOIN"
 	tableKwd          "TABLE"
+	tablegroup        "TABLEGROUP"
+	template          "TEMPLATE"
 	stored            "STORED"
 	terminated        "TERMINATED"
 	then              "THEN"
@@ -272,6 +275,7 @@ import (
 	avgRowLength           "AVG_ROW_LENGTH"
 	avg                    "AVG"
 	begin                  "BEGIN"
+	binding                "BINDING"
 	binlog                 "BINLOG"
 	bitType                "BIT"
 	booleanType            "BOOLEAN"
@@ -348,10 +352,12 @@ import (
 	jsonType               "JSON"
 	keyBlockSize           "KEY_BLOCK_SIZE"
 	local                  "LOCAL"
+	locality               "LOCALITY"
 	less                   "LESS"
 	level                  "LEVEL"
 	list                   "LIST"
 	master                 "MASTER"
+	maxUsedPartId          "MAX_USED_PART_ID"
 	microsecond            "MICROSECOND"
 	minute                 "MINUTE"
 	mode                   "MODE"
@@ -424,6 +430,8 @@ import (
 	super                  "SUPER"
 	some                   "SOME"
 	global                 "GLOBAL"
+	tablegroupId           "TABLEGROUP_ID"
+	tablegroups            "TABLEGROUPS"
 	tables                 "TABLES"
 	tablespace             "TABLESPACE"
 	temporary              "TEMPORARY"
@@ -585,6 +593,7 @@ import (
 %type	<statement>
 	AdminStmt            "Check table statement or show ddl statement"
 	AlterTableStmt       "Alter table statement"
+	AlterTableGroupStmt  "Alter table group statement"
 	AlterUserStmt        "Alter user statement"
 	AnalyzeTableStmt     "Analyze table statement"
 	BeginTransactionStmt "BEGIN TRANSACTION statement"
@@ -593,6 +602,7 @@ import (
 	InceptionStmt        "INCEPTION statement"
 	InceptionStartStmt   "INCEPTION_MAGIC_START statement"
 	InceptionCommitStmt  "INCEPTION_MAGIC_COMMIT statement"
+	CreateTableGroupStmt "CREATE TABLEGROUP Statement"
 	CreateTableStmt      "CREATE TABLE statement"
 	CreateViewStmt       "CREATE VIEW  stetement"
 	CreateUserStmt       "CREATE User statement"
@@ -604,6 +614,7 @@ import (
 	DropIndexStmt        "DROP INDEX statement"
 	DropStatsStmt        "DROP STATS statement"
 	DropTableStmt        "DROP TABLE statement"
+	DropTableGroupStmt   "DROP TABLEGROUP statement"
 	DropUserStmt         "DROP USER"
 	DropViewStmt         "DROP VIEW statement"
 	DeallocateStmt       "Deallocate prepared statement"
@@ -640,6 +651,9 @@ import (
 	AdminShowSlow                 "Admin Show Slow statement"
 	AllOrPartitionNameList        "All or partition name list"
 	AlgorithmClause               "Alter table algorithm"
+	AlterTableGroupOpt            "Alter table group option"
+	AlterTableGroupOptList        "Alter table group option list"
+	AlterTableGroupPartitionOpt   "Alter table group partition option"
 	AlterTablePartitionOpt        "Alter table partition option"
 	AlterTableSpec                "Alter table specification"
 	AlterTableSpecList            "Alter table specification list"
@@ -679,6 +693,7 @@ import (
 	DatabaseOptionListOpt         "CREATE Database specification list opt"
 	DBName                        "Database Name"
 	DistinctOpt                   "Explicit distinct option"
+	DropPartitionNameList         "Partition name list for drop action"
 	DefaultFalseDistinctOpt       "Distinct option which defaults to false"
 	DefaultTrueDistinctOpt        "Distinct option which defaults to true"
 	BuggyDefaultFalseDistinctOpt  "Distinct option which accepts DISTINCT ALL and defaults to false"
@@ -795,6 +810,7 @@ import (
 	SelectStmtFromDual            "SELECT statement from dual"
 	SelectStmtFromTable           "SELECT statement from table"
 	SelectStmtGroup               "SELECT statement optional GROUP BY clause"
+	SetOpt                        "SET or empty"
 	ShowTargetFilterable          "Show target that can be filtered by WHERE or LIKE"
 	ShowDatabaseNameOpt           "Show tables/columns statement database name option"
 	ShowTableAliasOpt             "Show table alias option"
@@ -817,6 +833,13 @@ import (
 	TableElementList              "table definition element list"
 	TableElementListOpt           "table definition element list optional"
 	TableFactor                   "table factor"
+	TableGroupOption              "table group option"
+	TableGroupOptionListOpt       "table group option list opt"
+	TableGroupOptionList          "table group option list"
+	TableGroupOptionWithSpaceList "table group option with space list"
+	TableGroupPartition           "table group partition"
+	TableGroupPartitionOpt        "table group partition option"
+	TableGroupSubPartitionOpt     "table group sub partition option"
 	TableLock                     "Table name and lock type"
 	TableLockList                 "Table lock list"
 	TableName                     "Table name"
@@ -892,6 +915,21 @@ import (
 	HintTableList                 "Table list in optimizer hint"
 	TableOptimizerHints           "Table level optimizer hints"
 	AttributesOpt                 "Attributes options"
+	Bool                          "A boolean value"
+	ListOrRangePartitionDefList   "List or Range partition definition list"
+	ListPartitionDef              "List partition definition"
+	ListPartitionDefList          "List partition definition list"
+	ListPartitionExpr             "List partition expression"
+	RangePartitionDef             "Range partiton definition"
+	RangePartitionDefList         "Range partiton definition list"
+	RangePartitionExpr            "Range partiton expression"
+	SubPartitionDefListOpt        "SubPartition list option"
+	HashSubPartitionDef           "Hash sub partition"
+	HashSubPartitionDefList       "Hash sub partition list"
+	ListSubPartitionDef           "List sub partition"
+	ListSubPartitionDefList       "List sub partition list"
+	RangeSubPartitionDef          "Range sub partition"
+	RangeSubPartitionDefList      "Range sub partition list"
 
 %type	<ident>
 	AsOpt             "AS or EmptyString"
@@ -1364,6 +1402,12 @@ AlterTableSpec:
 			Tp:         ast.AlterTableIndexInvisible,
 			IndexName:  model.NewCIStr($3),
 			Visibility: $4.(ast.IndexVisibility),
+		}
+	}
+|	"DROP" "TABLEGROUP"
+	{
+		$$ = &ast.AlterTableSpec{
+			Tp: ast.AlterTableDropTableGroup,
 		}
 	}
 
@@ -2469,6 +2513,551 @@ DatabaseOptionList:
 		$$ = append($1.([]*ast.DatabaseOption), $2.(*ast.DatabaseOption))
 	}
 
+/*******************************************************************
+ *
+ *  Create TableGroup Statement
+ *
+ *  CREATE TABLEGROUP [IF NOT EXISTS] tablegroup_name
+ *      [opt_tablegroup_option_list] [opt_tg_partition_option]
+ *******************************************************************/
+CreateTableGroupStmt:
+	"CREATE" "TABLEGROUP" IfNotExists Identifier TableGroupOptionListOpt TableGroupPartitionOpt
+	{
+		stmt := &ast.CreateTableGroupStmt{
+			IfNotExists: $3.(bool),
+			TableGroup:  &ast.TableGroupName{Name: model.NewCIStr($4)},
+		}
+		if $5 != nil {
+			stmt.Options = $5.([]*ast.TableGroupOption)
+		}
+		if $6 != nil {
+			opt := $6.(*ast.TableGroupPartitionOption)
+			if err := opt.Validate(); err != nil {
+				yylex.AppendError(err)
+				return 1
+			}
+			stmt.Partition = opt
+		}
+		$$ = stmt
+	}
+
+TableGroupOptionListOpt:
+	{
+		$$ = nil
+	}
+|	TableGroupOptionList
+
+TableGroupOptionList:
+	TableGroupOptionWithSpaceList
+|	TableGroupOptionList ',' TableGroupOption
+	{
+		$$ = append($1.([]*ast.TableGroupOption), $3.(*ast.TableGroupOption))
+	}
+
+TableGroupOptionWithSpaceList:
+	TableGroupOption
+	{
+		$$ = []*ast.TableGroupOption{$1.(*ast.TableGroupOption)}
+	}
+|	TableGroupOptionWithSpaceList TableGroupOption
+	{
+		$$ = append($1.([]*ast.TableGroupOption), $2.(*ast.TableGroupOption))
+	}
+
+TableGroupOption:
+	"LOCALITY" EqOpt StringName
+	{
+		$$ = &ast.TableGroupOption{
+			Tp:     ast.TableGroupOptionLocality,
+			String: $3.(string),
+		}
+	}
+|	"PRIMARY_ZONE" EqOpt StringName
+	{
+		$$ = &ast.TableGroupOption{
+			Tp:     ast.TableGroupOptionPrimaryZone,
+			String: $3.(string),
+		}
+	}
+|	"TABLEGROUP_ID" EqOpt NUM
+	{
+		$$ = &ast.TableGroupOption{
+			Tp:  ast.TableGroupOptionTableGroupId,
+			Num: getUint64FromNUM($3),
+		}
+	}
+|	"BINDING" EqOpt Bool
+	{
+		$$ = &ast.TableGroupOption{
+			Tp:   ast.TableGroupOptionBinding,
+			Bool: $3.(bool),
+		}
+	}
+|	"MAX_USED_PART_ID" EqOpt NUM
+	{
+		$$ = &ast.TableGroupOption{
+			Tp:  ast.TableGroupOptionMaxUsedPartId,
+			Num: getUint64FromNUM($3),
+		}
+	}
+
+Bool:
+	"TRUE"
+	{
+		$$ = true
+	}
+|	"FALSE"
+	{
+		$$ = false
+	}
+
+TableGroupPartitionOpt:
+	{
+		$$ = nil
+	}
+|	TableGroupPartition
+
+TableGroupPartition:
+	"PARTITION" "BY" "HASH" TableGroupSubPartitionOpt PartitionNumOpt
+	{
+		opt := &ast.TableGroupPartitionOption{
+			PartitionMethod: &ast.PartitionMethod{
+				Tp:  model.PartitionTypeHash,
+				Num: $5.(uint64),
+			},
+		}
+		if $4 != nil {
+			opt.Sub = $4.(*ast.PartitionMethod)
+		}
+		$$ = opt
+	}
+|	"PARTITION" "BY" "KEY" LengthNum TableGroupSubPartitionOpt PartitionNumOpt
+	{
+		opt := &ast.TableGroupPartitionOption{
+			PartitionMethod: &ast.PartitionMethod{
+				Tp:  model.PartitionTypeKey,
+				Num: $6.(uint64),
+			},
+		}
+		if $5 != nil {
+			opt.Sub = $5.(*ast.PartitionMethod)
+		}
+		$$ = opt
+	}
+|	"PARTITION" "BY" "RANGE" TableGroupSubPartitionOpt PartitionNumOpt '(' RangePartitionDefList ')'
+	{
+		opt := &ast.TableGroupPartitionOption{
+			PartitionMethod: &ast.PartitionMethod{
+				Tp:  model.PartitionTypeRange,
+				Num: $5.(uint64),
+			},
+			Definitions: $7.([]*ast.PartitionDefinition),
+		}
+		if $4 != nil {
+			opt.Sub = $4.(*ast.PartitionMethod)
+		}
+		$$ = opt
+	}
+|	"PARTITION" "BY" "RANGE" "COLUMNS" LengthNum TableGroupSubPartitionOpt PartitionNumOpt '(' RangePartitionDefList ')'
+	{
+		opt := &ast.TableGroupPartitionOption{
+			PartitionMethod: &ast.PartitionMethod{
+				Tp:  model.PartitionTypeRange,
+				Num: $7.(uint64),
+			},
+			Definitions: $9.([]*ast.PartitionDefinition),
+		}
+		if $6 != nil {
+			opt.Sub = $6.(*ast.PartitionMethod)
+		}
+		$$ = opt
+	}
+|	"PARTITION" "BY" "LIST" TableGroupSubPartitionOpt PartitionNumOpt '(' ListPartitionDefList ')'
+	{
+		opt := &ast.TableGroupPartitionOption{
+			PartitionMethod: &ast.PartitionMethod{
+				Tp:  model.PartitionTypeList,
+				Num: $5.(uint64),
+			},
+			Definitions: $7.([]*ast.PartitionDefinition),
+		}
+		if $4 != nil {
+			opt.Sub = $4.(*ast.PartitionMethod)
+		}
+		$$ = opt
+	}
+|	"PARTITION" "BY" "LIST" "COLUMNS" LengthNum TableGroupSubPartitionOpt PartitionNumOpt '(' ListPartitionDefList ')'
+	{
+		opt := &ast.TableGroupPartitionOption{
+			PartitionMethod: &ast.PartitionMethod{
+				Tp:  model.PartitionTypeList,
+				Num: $7.(uint64),
+			},
+			Definitions: $9.([]*ast.PartitionDefinition),
+		}
+		if $6 != nil {
+			opt.Sub = $6.(*ast.PartitionMethod)
+		}
+		$$ = opt
+	}
+
+TableGroupSubPartitionOpt:
+	{
+		$$ = nil
+	}
+|	"SUBPARTITION" "BY" "HASH" SubPartitionNumOpt
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:  model.PartitionTypeHash,
+			Num: $4.(uint64),
+		}
+	}
+|	"SUBPARTITION" "BY" "KEY" LengthNum SubPartitionNumOpt
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:  model.PartitionTypeKey,
+			Num: $5.(uint64),
+		}
+	}
+|	"SUBPARTITION" "BY" "LIST"
+	{
+		$$ = &ast.PartitionMethod{
+			Tp: model.PartitionTypeList,
+		}
+	}
+|	"SUBPARTITION" "BY" "LIST" "SUBPARTITION" "TEMPLATE" '(' ListSubPartitionDefList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:  model.PartitionTypeList,
+			Num: uint64(len($7.([]*ast.SubPartitionDefinition))),
+		}
+	}
+|	"SUBPARTITION" "BY" "LIST" "COLUMNS" LengthNum
+	{
+		$$ = &ast.PartitionMethod{
+			Tp: model.PartitionTypeList,
+		}
+	}
+|	"SUBPARTITION" "BY" "LIST" "COLUMNS" LengthNum "SUBPARTITION" "TEMPLATE" '(' ListSubPartitionDefList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:  model.PartitionTypeList,
+			Num: uint64(len($9.([]*ast.SubPartitionDefinition))),
+		}
+	}
+|	"SUBPARTITION" "BY" "RANGE"
+	{
+		$$ = &ast.PartitionMethod{
+			Tp: model.PartitionTypeRange,
+		}
+	}
+|	"SUBPARTITION" "BY" "RANGE" "SUBPARTITION" "TEMPLATE" '(' RangeSubPartitionDefList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:  model.PartitionTypeRange,
+			Num: uint64(len($7.([]*ast.SubPartitionDefinition))),
+		}
+	}
+|	"SUBPARTITION" "BY" "RANGE" "COLUMNS" LengthNum
+	{
+		$$ = &ast.PartitionMethod{
+			Tp: model.PartitionTypeRange,
+		}
+	}
+|	"SUBPARTITION" "BY" "RANGE" "COLUMNS" LengthNum "SUBPARTITION" "TEMPLATE" '(' RangeSubPartitionDefList ')'
+	{
+		$$ = &ast.PartitionMethod{
+			Tp:  model.PartitionTypeRange,
+			Num: uint64(len($9.([]*ast.SubPartitionDefinition))),
+		}
+	}
+
+ListPartitionDefList:
+	ListPartitionDef
+	{
+		$$ = []*ast.PartitionDefinition{$1.(*ast.PartitionDefinition)}
+	}
+|	ListPartitionDefList ',' ListPartitionDef
+	{
+		$$ = append($1.([]*ast.PartitionDefinition), $3.(*ast.PartitionDefinition))
+	}
+
+ListPartitionDef:
+	"PARTITION" Identifier "VALUES" "IN" ListPartitionExpr SubPartitionDefListOpt
+	{
+		exprs := $5.([]ast.ExprNode)
+		values := make([][]ast.ExprNode, 0, len(exprs))
+		for _, expr := range exprs {
+			if row, ok := expr.(*ast.RowExpr); ok {
+				values = append(values, row.Values)
+			} else {
+				values = append(values, []ast.ExprNode{expr})
+			}
+		}
+		def := &ast.PartitionDefinition{
+			Name: model.NewCIStr($2),
+			Clause: &ast.PartitionDefinitionClauseIn{
+				Values: values,
+			},
+		}
+		if $6 != nil {
+			def.Sub = $6.([]*ast.SubPartitionDefinition)
+		}
+		$$ = def
+	}
+
+ListPartitionExpr:
+	'(' ExpressionList ')'
+	{
+		$$ = $2.([]ast.ExprNode)
+	}
+|	'(' "DEFAULT" ')'
+	{
+		$$ = []ast.ExprNode{&ast.DefaultExpr{}}
+	}
+
+RangePartitionDefList:
+	RangePartitionDef
+	{
+		$$ = []*ast.PartitionDefinition{$1.(*ast.PartitionDefinition)}
+	}
+|	RangePartitionDefList ',' RangePartitionDef
+	{
+		$$ = append($1.([]*ast.PartitionDefinition), $3.(*ast.PartitionDefinition))
+	}
+
+RangePartitionDef:
+	"PARTITION" Identifier "VALUES" "LESS" "THAN" RangePartitionExpr SubPartitionDefListOpt
+	{
+		def := &ast.PartitionDefinition{
+			Name: model.NewCIStr($2),
+			Clause: &ast.PartitionDefinitionClauseLessThan{
+				Exprs: $6.([]ast.ExprNode),
+			},
+		}
+		if $7 != nil {
+			def.Sub = $7.([]*ast.SubPartitionDefinition)
+		}
+		$$ = def
+	}
+
+RangePartitionExpr:
+	'(' MaxValueOrExpressionList ')'
+	{
+		$$ = $2
+	}
+|	"MAXVALUE"
+	{
+		$$ = []ast.ExprNode{&ast.MaxValueExpr{}}
+	}
+
+SubPartitionDefListOpt:
+	{
+		$$ = nil
+	}
+|	'(' HashSubPartitionDefList ')'
+	{
+		$$ = $2
+	}
+|	'(' ListSubPartitionDefList ')'
+	{
+		$$ = $2
+	}
+|	'(' RangeSubPartitionDefList ')'
+	{
+		$$ = $2
+	}
+
+HashSubPartitionDefList:
+	HashSubPartitionDef
+	{
+		$$ = []*ast.SubPartitionDefinition{$1.(*ast.SubPartitionDefinition)}
+	}
+|	HashSubPartitionDefList ',' HashSubPartitionDef
+	{
+		$$ = append($1.([]*ast.SubPartitionDefinition), $3.(*ast.SubPartitionDefinition))
+	}
+
+HashSubPartitionDef:
+	"SUBPARTITION" Identifier
+	{
+		$$ = &ast.SubPartitionDefinition{
+			Name: model.NewCIStr($2),
+		}
+	}
+
+ListSubPartitionDefList:
+	ListSubPartitionDef
+	{
+		$$ = []*ast.SubPartitionDefinition{$1.(*ast.SubPartitionDefinition)}
+	}
+|	ListSubPartitionDefList ',' ListSubPartitionDef
+	{
+		$$ = append($1.([]*ast.SubPartitionDefinition), $3.(*ast.SubPartitionDefinition))
+	}
+
+ListSubPartitionDef:
+	"SUBPARTITION" Identifier "VALUES" "IN" ListPartitionExpr
+	{
+		$$ = &ast.SubPartitionDefinition{
+			Name: model.NewCIStr($2),
+		}
+	}
+
+RangeSubPartitionDefList:
+	RangeSubPartitionDef
+	{
+		$$ = []*ast.SubPartitionDefinition{$1.(*ast.SubPartitionDefinition)}
+	}
+|	RangeSubPartitionDefList ',' RangeSubPartitionDef
+	{
+		$$ = append($1.([]*ast.SubPartitionDefinition), $3.(*ast.SubPartitionDefinition))
+	}
+
+RangeSubPartitionDef:
+	"SUBPARTITION" Identifier "VALUES" "LESS" "THAN" RangePartitionExpr
+	{
+		$$ = &ast.SubPartitionDefinition{
+			Name: model.NewCIStr($2),
+		}
+	}
+
+/*******************************************************************
+ *
+ *  ALTER TABLEGROUP Statement
+ *
+ *******************************************************************/
+AlterTableGroupStmt:
+	"ALTER" "TABLEGROUP" Identifier "ADD" OptTable TableNameList
+	{
+		$$ = &ast.AlterTableGroupStmt{
+			TableGroup: &ast.TableGroupName{Name: model.NewCIStr($3)},
+			Spec: &ast.AlterTableGroupSpec{
+				Tp:     ast.AlterTableGroupTypeAddTable,
+				Tables: $6.([]*ast.TableName),
+			},
+		}
+	}
+|	"ALTER" "TABLEGROUP" Identifier AlterTableGroupOptList
+	{
+		$$ = &ast.AlterTableGroupStmt{
+			TableGroup: &ast.TableGroupName{Name: model.NewCIStr($3)},
+			Spec: &ast.AlterTableGroupSpec{
+				Tp:      ast.AlterTableGroupTypeSetOption,
+				Options: $4.([]*ast.TableGroupOption),
+			},
+		}
+	}
+|	"ALTER" "TABLEGROUP" Identifier AlterTableGroupPartitionOpt
+	{
+		$$ = &ast.AlterTableGroupStmt{
+			TableGroup: &ast.TableGroupName{Name: model.NewCIStr($3)},
+			Spec:       $4.(*ast.AlterTableGroupSpec),
+		}
+	}
+
+AlterTableGroupOptList:
+	AlterTableGroupOpt
+|	AlterTableGroupOptList ',' AlterTableGroupOpt
+	{
+		$$ = append($1.([]*ast.TableGroupOption), $3.([]*ast.TableGroupOption)...)
+	}
+
+AlterTableGroupOpt:
+	SetOpt TableGroupOptionWithSpaceList
+	{
+		$$ = $2
+	}
+
+SetOpt:
+	{}
+|	"SET"
+	{
+		$$ = nil
+	}
+
+AlterTableGroupPartitionOpt:
+	TableGroupPartition
+	{
+		$$ = &ast.AlterTableGroupSpec{
+			Tp:        ast.AlterTableGroupTypeSetPartition,
+			Partition: $1.(*ast.TableGroupPartitionOption),
+		}
+	}
+|	"DROP" "PARTITION" DropPartitionNameList
+	{
+		$$ = &ast.AlterTableGroupSpec{
+			Tp:             ast.AlterTableGroupTypeDropPartition,
+			PartitionNames: $3.([]model.CIStr),
+		}
+	}
+|	"DROP" "SUBPARTITION" DropPartitionNameList
+	{
+		$$ = &ast.AlterTableGroupSpec{
+			Tp:             ast.AlterTableGroupTypeDropSubPartition,
+			PartitionNames: $3.([]model.CIStr),
+		}
+	}
+|	"ADD" "PARTITION" '(' ListOrRangePartitionDefList ')'
+	{
+		$$ = &ast.AlterTableGroupSpec{
+			Tp: ast.AlterTableGroupTypeAddPartition,
+			Partition: &ast.TableGroupPartitionOption{
+				Definitions: $4.([]*ast.PartitionDefinition),
+			},
+		}
+	}
+|	"REORGANIZE" "PARTITION" PartitionNameList "INTO" '(' ListOrRangePartitionDefList ')'
+	{
+		$$ = &ast.AlterTableGroupSpec{
+			Tp: ast.AlterTableGroupTypeReorganizePartition,
+			Partition: &ast.TableGroupPartitionOption{
+				Definitions: $6.([]*ast.PartitionDefinition),
+			},
+			PartitionNames: $3.([]model.CIStr),
+		}
+	}
+|	"TRUNCATE" "PARTITION" PartitionNameList %prec lowerThanComma
+	{
+		$$ = &ast.AlterTableGroupSpec{
+			Tp:             ast.AlterTableGroupTypeTruncatePartition,
+			PartitionNames: $3.([]model.CIStr),
+		}
+	}
+
+DropPartitionNameList:
+	PartitionNameList %prec lowerThanComma
+	{
+		$$ = $1
+	}
+|	'(' PartitionNameList ')'
+	{
+		$$ = $2
+	}
+
+ListOrRangePartitionDefList:
+	ListPartitionDefList
+|	RangePartitionDefList
+
+/*******************************************************************
+ *
+ *  DROP TABLEGROUP Statement
+ *
+ *******************************************************************/
+DropTableGroupStmt:
+	"DROP" "TABLEGROUP" IfExists Identifier
+	{
+		$$ = &ast.DropTableGroupStmt{
+			IfExists:   $3.(bool),
+			TableGroup: &ast.TableGroupName{Name: model.NewCIStr($4)},
+		}
+	}
+
+/*******************************************************************
+ *
+ *  CREATE TABLE Statement
+ *
+ *******************************************************************/
 CreateTableStmt:
 	"CREATE" "TABLE" IfNotExists TableName TableElementListOpt CreateTableOptionListOpt PartitionOpt DuplicateOpt AsOpt CreateTableSelectOpt
 	{
@@ -3823,6 +4412,7 @@ UnReservedKeyword:
 |	"ALWAYS"
 |	"AVG"
 |	"BEGIN"
+|	"BINDING"
 |	"BIT"
 |	"BOOL"
 |	"BOOLEAN"
@@ -3871,6 +4461,7 @@ UnReservedKeyword:
 |	"LESS"
 |	"LIST"
 |	"LOCAL"
+|	"LOCALITY"
 |	"NAMES"
 |	"OFFSET"
 |	"PARSER"
@@ -3889,6 +4480,8 @@ UnReservedKeyword:
 |	"SUBPARTITIONS"
 |	"SUBPARTITION"
 |	"SYSTEM_TIME"
+|	"TABLEGROUP_ID"
+|	"TABLEGROUPS"
 |	"TABLES"
 |	"TABLESPACE"
 |	"TEXT"
@@ -3917,6 +4510,7 @@ UnReservedKeyword:
 |	"KEY_BLOCK_SIZE"
 |	"MASTER"
 |	"MAX_ROWS"
+|	"MAX_USED_PART_ID"
 |	"MIN_ROWS"
 |	"NATIONAL"
 |	"ROW"
@@ -6756,6 +7350,12 @@ ShowTargetFilterable:
 			Tp: ast.ShowPlugins,
 		}
 	}
+|	"TABLEGROUPS"
+	{
+		$$ = &ast.ShowStmt{
+			Tp: ast.ShowTableGroups,
+		}
+	}
 
 ShowLikeOrWhereOpt:
 	{
@@ -6877,6 +7477,7 @@ Statement:
 	EmptyStmt
 |	AdminStmt
 |	AlterTableStmt
+|	AlterTableGroupStmt
 |	AlterUserStmt
 |	AnalyzeTableStmt
 |	BeginTransactionStmt
@@ -6892,6 +7493,7 @@ Statement:
 |	CreateDatabaseStmt
 |	AlterDatabaseStmt
 |	CreateIndexStmt
+|	CreateTableGroupStmt
 |	CreateTableStmt
 |	CreateViewStmt
 |	CreateUserStmt
@@ -6899,6 +7501,7 @@ Statement:
 |	DropDatabaseStmt
 |	DropIndexStmt
 |	DropTableStmt
+|	DropTableGroupStmt
 |	DropViewStmt
 |	DropUserStmt
 |	DropStatsStmt
@@ -7126,6 +7729,10 @@ TableOption:
 |	"AUTO_RANDOM_BASE" EqOpt LengthNum
 	{
 		$$ = &ast.TableOption{Tp: ast.TableOptionAutoRandomBase, UintValue: $3.(uint64)}
+	}
+|	SetOpt "TABLEGROUP" EqOpt StringName
+	{
+		$$ = &ast.TableOption{Tp: ast.TableOptionTableGroup, StrValue: $4.(string)}
 	}
 
 StatsPersistentVal:
