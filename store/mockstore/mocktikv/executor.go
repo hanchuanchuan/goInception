@@ -566,9 +566,7 @@ func (e *topNExec) evalTopN(value [][]byte) error {
 	}
 
 	if e.heap.tryToAddRow(newRow) {
-		for _, val := range value {
-			newRow.data = append(newRow.data, val)
-		}
+		newRow.data = append(newRow.data, value...)
 	}
 	return errors.Trace(e.heap.err)
 }
