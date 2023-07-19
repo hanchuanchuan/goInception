@@ -1489,15 +1489,15 @@ func (s *testDBSuite) TestCreateTableWithLike(c *C) {
 	c.Assert(tbl1.Meta().ForeignKeys, IsNil)
 
 	// for failure cases
-	failSQL := fmt.Sprintf("create table t1 like test_not_exist.t")
+	failSQL := "create table t1 like test_not_exist.t"
 	s.testErrorCode(c, failSQL, tmysql.ErrNoSuchTable)
-	failSQL = fmt.Sprintf("create table t1 like test.t_not_exist")
+	failSQL = "create table t1 like test.t_not_exist"
 	s.testErrorCode(c, failSQL, tmysql.ErrNoSuchTable)
-	failSQL = fmt.Sprintf("create table t1 (like test_not_exist.t)")
+	failSQL = "create table t1 (like test_not_exist.t)"
 	s.testErrorCode(c, failSQL, tmysql.ErrNoSuchTable)
-	failSQL = fmt.Sprintf("create table test_not_exis.t1 like ctwl_db.t")
+	failSQL = "create table test_not_exis.t1 like ctwl_db.t"
 	s.testErrorCode(c, failSQL, tmysql.ErrBadDB)
-	failSQL = fmt.Sprintf("create table t1 like ctwl_db.t")
+	failSQL = "create table t1 like ctwl_db.t"
 	s.testErrorCode(c, failSQL, tmysql.ErrTableExists)
 
 	s.tk.MustExec("drop database ctwl_db")
@@ -1957,7 +1957,7 @@ func (s *testDBSuite) TestRenameMultiTables(c *C) {
 	s.tk.MustExec("create table t1(id int)")
 	s.tk.MustExec("create table t2(id int)")
 	// Currently it will fail only.
-	sql := fmt.Sprintf("rename table t1 to t3, t2 to t4")
+	sql := "rename table t1 to t3, t2 to t4"
 	_, err := s.tk.Exec(sql)
 	c.Assert(err, NotNil)
 	originErr := errors.Cause(err)
