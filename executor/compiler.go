@@ -123,6 +123,8 @@ func GetStmtLabel(stmtNode ast.StmtNode) string {
 	switch x := stmtNode.(type) {
 	case *ast.AlterTableStmt:
 		return "AlterTable"
+	case *ast.AlterTableGroupStmt:
+		return "AlterTableGroup"
 	case *ast.AnalyzeTableStmt:
 		return "AnalyzeTable"
 	case *ast.BeginStmt:
@@ -135,6 +137,8 @@ func GetStmtLabel(stmtNode ast.StmtNode) string {
 		return "CreateIndex"
 	case *ast.CreateTableStmt:
 		return "CreateTable"
+	case *ast.CreateTableGroupStmt:
+		return "CreateTableGroup"
 	case *ast.CreateUserStmt:
 		return "CreateUser"
 	case *ast.DeleteStmt:
@@ -145,6 +149,8 @@ func GetStmtLabel(stmtNode ast.StmtNode) string {
 		return "DropIndex"
 	case *ast.DropTableStmt:
 		return "DropTable"
+	case *ast.DropTableGroupStmt:
+		return "DropTableGroup"
 	case *ast.ExplainStmt:
 		return "Explain"
 	case *ast.InsertStmt:

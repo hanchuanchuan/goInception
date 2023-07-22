@@ -42,6 +42,7 @@ var (
 	_ Node = &OnCondition{}
 	_ Node = &OrderByClause{}
 	_ Node = &SelectField{}
+	_ Node = &TableGroupName{}
 	_ Node = &TableName{}
 	_ Node = &TableRefsClause{}
 	_ Node = &TableSource{}
@@ -209,6 +210,29 @@ func (n *TableName) Restore(ctx *RestoreCtx) error {
 	}
 
 	return nil
+}
+
+// TableGroupName represents a table group name.
+type TableGroupName struct {
+	node
+
+	Name model.CIStr
+}
+
+// Restore implements Node interface.
+func (n *TableGroupName) Restore(ctx *RestoreCtx) error {
+	ctx.WriteName(n.Name.String())
+	return nil
+}
+
+// Accept implements Node Accept interface.
+func (n *TableGroupName) Accept(v Visitor) (Node, bool) {
+	newNode, skipChildren := v.Enter(n)
+	if skipChildren {
+		return v.Leave(newNode)
+	}
+	n = newNode.(*TableGroupName)
+	return v.Leave(n)
 }
 
 // IndexHintType is the type for index hint use, ignore or force.
@@ -1825,6 +1849,7 @@ const (
 	ShowOpenTables
 	ShowAnalyzeStatus
 	ShowRegions
+	ShowTableGroups
 )
 
 const (
@@ -2103,6 +2128,8 @@ func (n *ShowStmt) Restore(ctx *RestoreCtx) error {
 				return err
 			}
 			return nil
+		case ShowTableGroups:
+			ctx.WriteKeyWord("TABLEGROUPS")
 		default:
 			return errors.New("Unknown ShowStmt type")
 		}
