@@ -16,7 +16,8 @@ jobs:
 
       - name: Set MySQL Config
         run: |
-          mysql -e "show variables like 'log_error';"
+          sudo tail -100 /var/log/mysql/error.log
+          # mysql -e "show variables like 'log_error';"
           sudo service mysql stop
           sudo mkdir -p /etc/mysql/ || true
           echo '[mysqld]'            | sudo tee /etc/mysql/my.cnf
@@ -32,7 +33,7 @@ jobs:
 
       - name: Startup MySQL
         run: |
-          sudo systemctl start mysql || sudo systemctl status mysql -l
+          sudo systemctl start mysql || sudo systemctl status mysql -l ; sudo tail -100 /var/log/mysql/error.log
           sudo tail -100 /var/log/mysql/error.log
 
       - name: Show MySQL Variables
