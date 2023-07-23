@@ -31,7 +31,7 @@ jobs:
 
       - name: Startup MySQL
         run: |
-          sudo service mysql start || true
+          sudo systemctl start mysql || sudo systemctl status mysql -l
           sudo tail -100 /var/log/mysql/error.log
 
       - name: Show MySQL Variables
