@@ -16,6 +16,7 @@ jobs:
 
       - name: Set MySQL Config
         run: |
+          mysql -e "show variables like 'log_error';"
           sudo service mysql stop
           sudo mkdir -p /etc/mysql/ || true
           echo '[mysqld]'            | sudo tee /etc/mysql/my.cnf
