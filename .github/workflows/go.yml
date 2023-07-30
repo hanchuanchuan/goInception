@@ -28,12 +28,9 @@ jobs:
       #     echo 'lower_case_table_names = 1' | sudo tee -a /etc/mysql/my.cnf
       #     echo 'character_set_server = utf8' | sudo tee -a /etc/mysql/my.cnf
 
-          # cat /etc/mysql/my.cnf || true
-
       - name: Startup MySQL
         run: |
           sudo systemctl start mysql || sudo systemctl status mysql -l
-          sudo mysqladmin --print-defaults
           sudo tail -100 /var/log/mysql/error.log
 
       - name: Show MySQL Variables
@@ -44,8 +41,8 @@ jobs:
 
       - name: Init MySQL Database and User
         run: |
-          mysql -uroot -p'root' -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;"
-          mysql -uroot -p'root' -e "grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;"
+          export MYSQL_PWD=root mysql -uroot -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;create user test@'127.0.0.1' identified by 'test';"
+          export MYSQL_PWD=root mysql -uroot -e "grant all on *.* to ;FLUSH PRIVILEGES;"
           mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
 
       # - name: Setup MySQL
@@ -70,12 +67,6 @@ jobs:
       #     mysql root password: 'root'
       #     mysql user: 'test'
       #     mysql password: 'test'
-
-      # - name: docker ps
-      #   run: |
-      #     date "+%Y-%m-%d %H:%M:%S"
-      #     docker ps
-      #     # docker logs $(docker ps -q)
 
       - name: Waiting for MySQL to be ready
         run: |
