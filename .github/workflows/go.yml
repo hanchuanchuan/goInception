@@ -41,8 +41,9 @@ jobs:
 
       - name: Init MySQL Database and User
         run: |
-          export MYSQL_PWD=root mysql -uroot -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;create user test@'127.0.0.1' identified by 'test';"
-          export MYSQL_PWD=root mysql -uroot -e "grant all on *.* to ;FLUSH PRIVILEGES;"
+          export MYSQL_PWD=root
+          mysql -uroot -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;create user test@'127.0.0.1' identified by 'test';"
+          mysql -uroot -e "grant all on *.* to ;FLUSH PRIVILEGES;"
           mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
 
       # - name: Setup MySQL
