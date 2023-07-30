@@ -575,13 +575,12 @@ func (s *testCommon) mysqlServerVersion() error {
 	if err != nil {
 		return err
 	}
-	// emptyInnodbLargePrefix := true
+	emptyInnodbLargePrefix := true
 	for rows.Next() {
 		rows.Scan(&name, &value)
 
 		switch name {
 		case "version":
-
 			if strings.Contains(strings.ToLower(value), "mariadb") {
 				s.DBType = DBTypeMariaDB
 			} else if strings.Contains(strings.ToLower(value), "tidb") {
@@ -622,13 +621,13 @@ func (s *testCommon) mysqlServerVersion() error {
 	}
 
 	// 如果没有innodb_large_prefix系统变量
-	// if emptyInnodbLargePrefix {
-	// 	if s.DBVersion > 50700 {
-	// 		s.innodbLargePrefix = true
-	// 	} else {
-	// 		s.innodbLargePrefix = false
-	// 	}
-	// }
+	if emptyInnodbLargePrefix {
+		if s.DBVersion > 50700 {
+			s.innodbLargePrefix = true
+		} else {
+			s.innodbLargePrefix = false
+		}
+	}
 	return nil
 }
 

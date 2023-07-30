@@ -1801,7 +1801,7 @@ func (s *session) mysqlServerVersion() {
 		if s.databaseCharset == "" {
 			s.databaseCharset = s.inc.DefaultCharset
 		}
-		// log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
+		log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
 	}
 
 }
