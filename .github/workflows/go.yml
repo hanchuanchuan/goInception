@@ -6,18 +6,30 @@ on:
       - release/*
   pull_request:
 
+
 jobs:
   build:
     name: Build
     runs-on: ubuntu-20.04
+
+
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_DATABASE: test
+          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+        ports:
+          - 33306:3306
+        options: --health-cmd="mysqladmin ping"
+
     steps:
       # - name: show mysql info
       #   run: ls -l /etc/my* || true
 
       - name: Set MySQL Config
         run: |
-          sudo tail -100 /var/log/mysql/error.log
-          # mysql -e "show variables like 'log_error';"
           sudo service mysql stop
           sudo mkdir -p /etc/mysql/ || true
           echo '[mysqld]'            | sudo tee /etc/mysql/my.cnf
@@ -33,7 +45,7 @@ jobs:
 
       - name: Startup MySQL
         run: |
-          sudo systemctl start mysql || sudo systemctl status mysql -l ; sudo tail -100 /var/log/mysql/error.log
+          sudo systemctl start mysql || sudo systemctl status mysql -l
           sudo tail -100 /var/log/mysql/error.log
 
       - name: Show MySQL Variables
