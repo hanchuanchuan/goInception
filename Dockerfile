@@ -16,11 +16,20 @@ RUN wget -q -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releas
 && wget -q -O /glibc.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.28-r0/glibc-2.28-r0.apk \
  && chmod +x /usr/local/bin/dumb-init
 
-COPY bin/goInception /goInception
-# COPY bin/percona-toolkit.tar.gz /tmp/percona-toolkit.tar.gz
-COPY bin/pt-online-schema-change /tmp/pt-online-schema-change
-COPY bin/gh-ost /tmp/gh-ost
-COPY config/config.toml.default /etc/config.toml
+
+ENV REPO_NAME=git.umlife.net/backend/goInception
+
+# GOPATH -> /go
+WORKDIR $GOPATH/src/$REPO_NAME
+COPY . .
+RUN go mod tidy \
+    && go mod vendor \
+    && go build -o goInception tidb-server/main.go \
+    && mv goInception  /goInception
+
+COPY ./bin/pt-online-schema-change /tmp/pt-online-schema-change
+COPY ./bin/gh-ost /tmp/gh-ost
+COPY ./config/config.toml.default /etc/config.toml
 
 # Executable image
 FROM alpine

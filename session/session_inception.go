@@ -4323,6 +4323,9 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 				isPrimary = true
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
+				if !op.Stored {
+					s.myRecord.useOsc = false
+				}
 			case ast.ColumnOptionCollate:
 				if s.inc.EnableColumnCharset {
 					s.checkCollation(op.StrValue)
