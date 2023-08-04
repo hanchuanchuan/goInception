@@ -28,7 +28,7 @@ RUN go mod tidy \
     && mv goInception  /goInception
 
 COPY ./bin/pt-online-schema-change /tmp/pt-online-schema-change
-COPY ./bin/gh-ost /tmp/gh-ost
+#COPY ./bin/gh-ost /tmp/gh-ost
 COPY ./config/config.toml.default /etc/config.toml
 
 # Executable image
