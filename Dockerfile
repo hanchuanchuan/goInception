@@ -42,7 +42,7 @@ COPY --from=builder /usr/local/bin/dumb-init /usr/local/bin/dumb-init
 
 # COPY --from=builder /tmp/percona-toolkit.tar.gz /tmp/percona-toolkit.tar.gz
 COPY --from=builder /tmp/pt-online-schema-change /usr/local/bin/pt-online-schema-change
-COPY --from=builder /tmp/gh-ost /usr/local/bin/gh-ost
+#COPY --from=builder /tmp/gh-ost /usr/local/bin/gh-ost
 
 WORKDIR /
 
@@ -71,7 +71,7 @@ RUN set -x \
   && apk add --no-cache --force-overwrite perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata /glibc.apk \
   && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
   && chmod +x /usr/local/bin/pt-online-schema-change \
-  && chmod +x /usr/local/bin/gh-ost \
+#  && chmod +x /usr/local/bin/gh-ost \
   && apk fix --force-overwrite alpine-baselayout-data
 
 ENTRYPOINT ["/usr/local/bin/dumb-init", "/goInception","--config=/etc/config.toml"]
