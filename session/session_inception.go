@@ -4860,7 +4860,7 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !s.hasError() {
 				isPrimary := false
 				isUnique := false
-				var isVirtualColumn, isStoredColumn bool
+				var isStore *bool
 				for _, op := range nc.Options {
 					switch op.Tp {
 					case ast.ColumnOptionPrimaryKey:
@@ -4868,23 +4868,10 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					case ast.ColumnOptionUniqKey:
 						isUnique = true
 					case ast.ColumnOptionGenerated:
-						if op.Stored {
-							isStoredColumn = true
-						} else {
-							isVirtualColumn = true
-						}
+						isStore = &op.Stored
 					}
 				}
-				// 新增这三种字段不管5.7 ｜ 8.0 版本都不支持metadata only
-				if !isPrimary && !isUnique && !isStoredColumn {
-					// 8.0以上数据库add column(virtual column)支持metadata only
-					if s.dbVersion >= 80000 {
-						s.myRecord.useOsc = false
-					} else if isVirtualColumn {
-						// 5.7版本add virtual column 支持metadata only
-						s.myRecord.useOsc = false
-					}
-				}
+
 				if isPrimary || isUnique {
 					if s.dbType == DBTypeOceanBase {
 						s.appendErrorNo(ER_CANT_ADD_PK_OR_UK_COLUMN, nc.Name.Name.String())
@@ -4930,6 +4917,17 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 							NonUnique:  0,
 						}
 						t.Indexes = append(t.Indexes, index)
+					}
+				} else {
+					// 此时已经排除主键/唯一键的情况
+					// 添加generated virtual column的操作是modify metadata only
+					if nil != isStore && !*isStore {
+						s.myRecord.useOsc = false
+					}
+
+					// 当版本大于等于8.0时，对所有非generated stored column的操作都是modify metadata only
+					if nil == isStore && s.dbVersion >= 80000 {
+						s.myRecord.useOsc = false
 					}
 				}
 			}
