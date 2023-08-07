@@ -4323,9 +4323,6 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 				isPrimary = true
 			case ast.ColumnOptionGenerated:
 				hasGenerated = true
-				if !op.Stored {
-					s.myRecord.useOsc = false
-				}
 			case ast.ColumnOptionCollate:
 				if s.inc.EnableColumnCharset {
 					s.checkCollation(op.StrValue)
@@ -4863,12 +4860,29 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !s.hasError() {
 				isPrimary := false
 				isUnique := false
+				var isVirtualColumn, isStoredColumn bool
 				for _, op := range nc.Options {
 					switch op.Tp {
 					case ast.ColumnOptionPrimaryKey:
 						isPrimary = true
 					case ast.ColumnOptionUniqKey:
 						isUnique = true
+					case ast.ColumnOptionGenerated:
+						if op.Stored {
+							isStoredColumn = true
+						} else {
+							isVirtualColumn = true
+						}
+					}
+				}
+				// 新增这三种字段不管5.7 ｜ 8.0 版本都不支持metadata only
+				if !isPrimary && !isUnique && !isStoredColumn {
+					// 8.0以上数据库add column(virtual column)支持metadata only
+					if s.dbVersion >= 80000 {
+						s.myRecord.useOsc = false
+					} else if isVirtualColumn {
+						// 5.7版本add virtual column 支持metadata only
+						s.myRecord.useOsc = false
 					}
 				}
 				if isPrimary || isUnique {
