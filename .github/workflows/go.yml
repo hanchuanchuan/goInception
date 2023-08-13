@@ -5,6 +5,7 @@ on:
       - master
       - release/*
   pull_request:
+    types: [opened, synchronize, reopened]
 
 # services:
 #   mysql:
@@ -26,6 +27,9 @@ jobs:
           sudo systemctl stop mysql
 
       - uses: actions/checkout@v3
+      with:
+        # Disabling shallow clone is recommended for improving relevancy of reporting
+        fetch-depth: 0
       - name: Install MySQL Service
         uses: shogo82148/actions-setup-mysql@v1
         with:
