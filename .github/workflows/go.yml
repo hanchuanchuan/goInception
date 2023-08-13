@@ -21,44 +21,34 @@ jobs:
     name: Build
     runs-on: ubuntu-20.04
     steps:
-      # - name: show mysql info
-      #   run: ls -l /etc/my* || true
-
-      # - name: Set MySQL Config
-      #   run: |
-      #     sudo service mysql stop
-      #     sudo mkdir -p /etc/mysql/ || true
-      #     echo '[mysqld]'            | sudo tee /etc/mysql/my.cnf
-      #     echo 'server-id=111'         | sudo tee -a /etc/mysql/my.cnf
-      #     echo 'log-bin=on'       | sudo tee -a /etc/mysql/my.cnf
-      #     echo 'binlog-format = row' | sudo tee -a /etc/mysql/my.cnf
-      #     echo 'gtid-mode = ON'      | sudo tee -a /etc/mysql/my.cnf
-      #     echo 'enforce_gtid_consistency = ON' | sudo tee -a /etc/mysql/my.cnf
-      #     echo 'lower_case_table_names = 1' | sudo tee -a /etc/mysql/my.cnf
-      #     echo 'character_set_server = utf8' | sudo tee -a /etc/mysql/my.cnf
-
-      - name: Startup MySQL
+      - name: Stop default MySQL
         run: |
-          sudo systemctl stop mysql || sudo systemctl status mysql -l
-          sudo tail -100 /var/log/mysql/error.log
+          sudo systemctl stop mysql
 
       - uses: actions/checkout@v3
-      - uses: shogo82148/actions-setup-mysql@v1
+      - name: Install MySQL Service
+        uses: shogo82148/actions-setup-mysql@v1
         with:
           mysql-version: "5.7"
           root-password: "root"
           my-cnf: |
+            [mysqld]
             innodb_log_file_size=256MB
             innodb_buffer_pool_size=512MB
             max_allowed_packet=16MB
             max_connections=500
+            log-bin=1
+            server_id=222
+            innodb-large-prefix=1
+            character_set_server=utf8mb4
+            lower_case_table_names=1
+            binlog-format = row
+            gtid-mode = ON
+            enforce_gtid_consistency = ON
       - run: mysql -uroot -p'root' -e 'SELECT version()'
 
       - name: Show MySQL Variables
         run: mysql -uroot -p'root' -e "show variables where Variable_name in ('server_id','log_bin','lower_case_table_names','version');"
-
-      # - name: Show MySQL buffer_pool
-      #   run: mysql -uroot -p'root' -e "show variables like '%buffer_pool%'"
 
       - name: Init MySQL Database and User
         run: |
@@ -66,29 +56,6 @@ jobs:
           mysql -uroot -e "create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;create user test@'127.0.0.1' identified by 'test';"
           mysql -uroot -e "grant all on *.* to test@'127.0.0.1';FLUSH PRIVILEGES;"
           mysql -uroot -p'root' -e "show databases;show variables like 'explicit_defaults_for_timestamp';"
-
-      # - name: Setup MySQL
-      #   uses: samin/mysql-action@v1
-      #   with:
-      #     host port: 3306 # Optional, default value is 3306. The port of host
-      #     container name: mysql
-      #     container label: mysql
-      #     container port: 3306
-      #     character set server: 'utf8mb4'
-      #     collation server: 'utf8_general_ci'
-      #     lower case table names: 1
-      #     log bin: 1
-      #     server id: 111
-      #     binlog format: 'row'
-      #     gtid mode: 1
-      #     bind address: '*'
-      #     enforce gtid consistency: 1
-      #     skip name resolve: 1
-      #     mysql version: '5.7'
-      #     mysql database: 'test'
-      #     mysql root password: 'root'
-      #     mysql user: 'test'
-      #     mysql password: 'test'
 
       - name: Waiting for MySQL to be ready
         run: |
