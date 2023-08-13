@@ -30,8 +30,20 @@ jobs:
 
       - name: Startup MySQL
         run: |
-          sudo systemctl start mysql || sudo systemctl status mysql -l
+          sudo systemctl stop mysql || sudo systemctl status mysql -l
           sudo tail -100 /var/log/mysql/error.log
+
+      - uses: actions/checkout@v3
+      - uses: shogo82148/actions-setup-mysql@v1
+        with:
+          mysql-version: "5.7"
+          root-password: "root"
+          my-cnf: |
+            innodb_log_file_size=256MB
+            innodb_buffer_pool_size=512MB
+            max_allowed_packet=16MB
+            max_connections=500
+      - run: mysql -uroot -e 'SELECT version()'
 
       - name: Show MySQL Variables
         run: mysql -uroot -p'root' -e "show variables where Variable_name in ('server_id','log_bin','lower_case_table_names','version');"
