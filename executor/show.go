@@ -620,7 +620,7 @@ func (e *ShowExec) fetchShowCreateTable() error {
 	if partitionInfo != nil {
 		// this if statement takes care of range columns case
 		if partitionInfo.Columns != nil && partitionInfo.Type == model.PartitionTypeRange {
-			buf.WriteString(fmt.Sprintf("\nPARTITION BY RANGE COLUMNS("))
+			buf.WriteString("\nPARTITION BY RANGE COLUMNS(")
 			for i, col := range partitionInfo.Columns {
 				buf.WriteString(col.L)
 				if i < len(partitionInfo.Columns)-1 {
