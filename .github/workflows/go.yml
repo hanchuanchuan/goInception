@@ -7,16 +7,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# services:
-#   mysql:
-#     image: mysql:5.7
-#     env:
-#         MYSQL_ALLOW_EMPTY_PASSWORD: yes
-#         MYSQL_DATABASE: test
-#     ports:
-#         - 3306
-#     options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
 jobs:
   build:
     name: Build
@@ -27,9 +17,9 @@ jobs:
           sudo systemctl stop mysql
 
       - uses: actions/checkout@v3
-      with:
-        # Disabling shallow clone is recommended for improving relevancy of reporting
-        fetch-depth: 0
+        with:
+          # Disabling shallow clone is recommended for improving relevancy of reporting
+          fetch-depth: 0
       - name: Install MySQL Service
         uses: shogo82148/actions-setup-mysql@v1
         with:
