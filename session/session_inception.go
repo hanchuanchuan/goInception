@@ -4920,13 +4920,12 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					}
 				} else {
 					// 此时已经排除主键/唯一键的情况
-					// 添加generated virtual column的操作是modify metadata only
-					if nil != isStore && !*isStore {
+					// 8.0版本下只有STORED column不支持Only Modifies Metadata
+					if s.dbVersion >= 80000 && (nil == isStore || !*isStore) {
 						s.myRecord.useOsc = false
 					}
-
-					// 当版本大于等于8.0时，对所有非generated stored column的操作都是modify metadata only
-					if nil == isStore && s.dbVersion >= 80000 {
+					// 如果mysql版本小于8.0,只有VIRTUAL column支持Only Modifies Metadata
+					if s.dbVersion < 80000 && nil != isStore && !*isStore {
 						s.myRecord.useOsc = false
 					}
 				}
