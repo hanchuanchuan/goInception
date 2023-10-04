@@ -4860,14 +4860,18 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !s.hasError() {
 				isPrimary := false
 				isUnique := false
+				var isStore *bool
 				for _, op := range nc.Options {
 					switch op.Tp {
 					case ast.ColumnOptionPrimaryKey:
 						isPrimary = true
 					case ast.ColumnOptionUniqKey:
 						isUnique = true
+					case ast.ColumnOptionGenerated:
+						isStore = &op.Stored
 					}
 				}
+
 				if isPrimary || isUnique {
 					if s.dbType == DBTypeOceanBase {
 						s.appendErrorNo(ER_CANT_ADD_PK_OR_UK_COLUMN, nc.Name.Name.String())
@@ -4913,6 +4917,16 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 							NonUnique:  0,
 						}
 						t.Indexes = append(t.Indexes, index)
+					}
+				} else {
+					// 此时已经排除主键/唯一键的情况
+					// 8.0版本下只有STORED column不支持Only Modifies Metadata
+					if s.dbVersion >= 80000 && (nil == isStore || !*isStore) {
+						s.myRecord.useOsc = false
+					}
+					// 如果mysql版本小于8.0,只有VIRTUAL column支持Only Modifies Metadata
+					if s.dbVersion < 80000 && nil != isStore && !*isStore {
+						s.myRecord.useOsc = false
 					}
 				}
 			}
