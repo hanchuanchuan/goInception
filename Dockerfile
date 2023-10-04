@@ -16,20 +16,11 @@ RUN wget -q -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releas
 && wget -q -O /glibc.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.28-r0/glibc-2.28-r0.apk \
  && chmod +x /usr/local/bin/dumb-init
 
-
-ENV REPO_NAME=git.umlife.net/backend/goInception
-
-# GOPATH -> /go
-WORKDIR $GOPATH/src/$REPO_NAME
-COPY . .
-RUN go mod tidy \
-    && go mod vendor \
-    && go build -o goInception tidb-server/main.go \
-    && mv goInception  /goInception
-
-COPY ./bin/pt-online-schema-change /tmp/pt-online-schema-change
-#COPY ./bin/gh-ost /tmp/gh-ost
-COPY ./config/config.toml.default /etc/config.toml
+COPY bin/goInception /goInception
+# COPY bin/percona-toolkit.tar.gz /tmp/percona-toolkit.tar.gz
+COPY bin/pt-online-schema-change /tmp/pt-online-schema-change
+COPY bin/gh-ost /tmp/gh-ost
+COPY config/config.toml.default /etc/config.toml
 
 # Executable image
 FROM alpine
@@ -42,7 +33,7 @@ COPY --from=builder /usr/local/bin/dumb-init /usr/local/bin/dumb-init
 
 # COPY --from=builder /tmp/percona-toolkit.tar.gz /tmp/percona-toolkit.tar.gz
 COPY --from=builder /tmp/pt-online-schema-change /usr/local/bin/pt-online-schema-change
-#COPY --from=builder /tmp/gh-ost /usr/local/bin/gh-ost
+COPY --from=builder /tmp/gh-ost /usr/local/bin/gh-ost
 
 WORKDIR /
 
@@ -71,7 +62,7 @@ RUN set -x \
   && apk add --no-cache --force-overwrite perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata /glibc.apk \
   && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
   && chmod +x /usr/local/bin/pt-online-schema-change \
-#  && chmod +x /usr/local/bin/gh-ost \
+  && chmod +x /usr/local/bin/gh-ost \
   && apk fix --force-overwrite alpine-baselayout-data
 
 ENTRYPOINT ["/usr/local/bin/dumb-init", "/goInception","--config=/etc/config.toml"]
