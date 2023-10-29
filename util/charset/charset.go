@@ -191,8 +191,22 @@ func GetCollations() []*Collation {
 	return collations
 }
 
+func utf8Alias(csname string) string {
+	switch csname {
+	case "utf8mb3_bin":
+		csname = "utf8_bin"
+	case "utf8mb3_unicode_ci":
+		csname = "utf8_unicode_ci"
+	case "utf8mb3_general_ci":
+		csname = "utf8_general_ci"
+	default:
+	}
+	return csname
+}
+
 func GetCollationByName(name string) (*Collation, error) {
-	collation, ok := collationsNameMap[strings.ToLower(name)]
+	csname := utf8Alias(strings.ToLower(name))
+	collation, ok := collationsNameMap[csname]
 	if !ok {
 		return nil, ErrUnknownCollation.GenWithStackByArgs(name)
 	}
