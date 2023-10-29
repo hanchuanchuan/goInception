@@ -4591,7 +4591,7 @@ func (s *session) checkIndexAttr(tp ast.ConstraintType, name string,
 		if s.inc.IndexPrefix != "" {
 			var found bool
 			for _, v := range strings.Split(s.inc.IndexPrefix, ",") {
-				if strings.HasPrefix(name, v) {
+				if strings.HasPrefix(strings.ToLower(name), v) {
 					found = true
 					break
 				}
