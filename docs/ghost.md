@@ -2,8 +2,8 @@
 
 ### gh-ost
 
-- gh-ost is built-in GoInception. No additional installation.
-- About Stop, Pause, Recover are contained in GoInception command.
+- gh-ost is built-in GoInception. No additional installation. About Stop, Pause, Recover are contained in GoInception command.
+- Support calling gh-ost in binary mode, the parameter switch is `ghost_bin_dir`, please refer to the `osc_bin_dir` parameter of pt-osc for usage, if this parameter is not specified, it will still be called with the built-in gh-ost.
 
 #### Options
 
