@@ -97,7 +97,12 @@ func (s *session) getNextBackupRecord() *Record {
 				// }
 
 				// 如果开始位置和结果位置相同,说明无变更(受影响行数为0)
-				if r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
+				if !s.needTransactionMark() && r.StartFile == r.EndFile && r.StartPosition == r.EndPosition {
+					continue
+				}
+
+				// 当使用事务标记时，不再使用 binlog 偏移量判断是否有变更
+				if s.needTransactionMark() && r.AffectedRows == 0 {
 					continue
 				}
 
@@ -282,6 +287,8 @@ func (s *session) parserBinlog(ctx context.Context) {
 		}
 	}()
 
+	var started bool
+
 	for {
 		e, err := logSync.GetEvent(context.Background())
 		if err != nil {
@@ -301,9 +308,21 @@ func (s *session) parserBinlog(ctx context.Context) {
 			}
 		}
 
-		// 如果还没有到操作的binlog范围,跳过
-		if currentPosition.Compare(startPosition) == -1 {
-			continue
+		if s.needTransactionMark() {
+			if !started {
+				txMark := s.toTransactionMark(e)
+				if txMark != nil && txMark.MarkType == transactionMarkTypeStart && txMark.LogFile == record.StartFile && txMark.LogPosition == record.StartPosition {
+					started = true
+					currentThreadID = txMark.ThreadID
+					log.Infof("found transaction start mark: %+v, binlog parser started", txMark)
+				}
+				continue
+			}
+		} else {
+			// 如果还没有到操作的binlog范围,跳过
+			if currentPosition.Compare(startPosition) == -1 {
+				continue
+			}
 		}
 
 		// log.Errorf("binlog pos: %d", int(currentPosition.Pos))
@@ -327,7 +346,7 @@ func (s *session) parserBinlog(ctx context.Context) {
 			// 	log.Error(string(event.Query))
 			// }
 
-			if s.dbType == DBTypeMariaDB && s.dbVersion >= 100000 {
+			if s.dbType == DBTypeOceanBase || (s.dbType == DBTypeMariaDB && s.dbVersion >= 100000) {
 				goto ENDCHECK
 			}
 
@@ -385,8 +404,16 @@ func (s *session) parserBinlog(ctx context.Context) {
 		}
 
 	ENDCHECK:
+		if s.needTransactionMark() {
+			txMark := s.toTransactionMark(e)
+			if txMark != nil && txMark.MarkType == transactionMarkTypeEnd && txMark.LogFile == record.StartFile && txMark.LogPosition == record.StartPosition {
+				log.Infof("found transaction end mark: %+v, binlog parsing finished", txMark)
+				break
+			}
+		}
+
 		// 如果操作已超过binlog范围,切换到下一日志
-		if currentPosition.Compare(stopPosition) > -1 {
+		if !s.needTransactionMark() && currentPosition.Compare(stopPosition) > -1 {
 			// sql被kill后,如果备份时可以检测到行,则认为执行成功
 			// 工单只有执行成功,才允许标记为备份成功
 			// if (record.StageStatus == StatusExecFail && record.AffectedRows > 0) ||
@@ -433,6 +460,10 @@ func (s *session) parserBinlog(ctx context.Context) {
 					s.myRecord = next
 					record = next
 				} else {
+					if s.needTransactionMark() {
+						continue
+					}
+					log.Info("all binlog records processed, exit binlog parser")
 					break
 				}
 			}
