@@ -15,6 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows && !nacl && !plan9
 // +build !windows,!nacl,!plan9
 
 package session
@@ -292,7 +293,7 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 	buf.WriteString(fmt.Sprintf(" --cut-over-lock-timeout-seconds=%d", s.ghost.GhostCutOverLockTimeoutSeconds))
 	buf.WriteString(fmt.Sprintf(" --nice-ratio=%f", s.ghost.GhostNiceRatio))
 	buf.WriteString(fmt.Sprintf(" --max-lag-millis=%d", s.ghost.GhostMaxLagMillis))
-	buf.WriteString(fmt.Sprintf(" --replication-lag-query=%s", s.ghost.GhostReplicationLagQuery))
+	buf.WriteString(fmt.Sprintf(" --replication-lag-query='%s'", s.ghost.GhostReplicationLagQuery))
 	if s.ghost.GhostThrottleControlReplicas != "" {
 		buf.WriteString(fmt.Sprintf(" --throttle-control-replicas=%s", s.ghost.GhostThrottleControlReplicas))
 	}
