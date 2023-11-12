@@ -92,8 +92,9 @@ type Record struct {
 	// 是否开启OSC
 	useOsc bool
 
-	// update多表时,记录多余的表
+	// update/delete多表时,记录多余的表
 	// update多表时,默认set第一列的表为主表,其余表才会记录到该处
+	// delete多表时,默认delete后第一个表为主表,其余表才会记录到该处
 	// 仅在发现多表操作时,初始化该参数
 	MultiTables map[string]*TableInfo
 }

@@ -351,9 +351,13 @@ func (s *session) parserBinlog(ctx context.Context) {
 		case replication.DELETE_ROWS_EVENTv1, replication.DELETE_ROWS_EVENTv2:
 
 			if event, ok := e.Event.(*replication.RowsEvent); ok {
-				if s.checkFilter(event, record, currentThreadID) {
+				if ok, t := s.checkUpdateFilter(event, record, currentThreadID); ok {
 					changeRows += len(event.Rows)
-					_, err = s.generateInsertSql(record.TableInfo, event, e)
+					if t != nil {
+						_, err = s.generateInsertSql(t, event, e)
+					} else {
+						_, err = s.generateInsertSql(record.TableInfo, event, e)
+					}
 					if err != nil {
 						log.Error(err)
 					}
