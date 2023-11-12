@@ -1801,7 +1801,7 @@ func (s *session) mysqlServerVersion() {
 		if s.databaseCharset == "" {
 			s.databaseCharset = s.inc.DefaultCharset
 		}
-		log.Errorf("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
+		log.Infof("s.innodbLargePrefix: %v ", s.innodbLargePrefix)
 	}
 
 }
@@ -7728,6 +7728,15 @@ func (s *session) checkDelete(node *ast.DeleteStmt, sql string) {
 					(strings.EqualFold(tName, name.Name.L)) {
 					if s.myRecord.TableInfo == nil {
 						s.myRecord.TableInfo = tableInfoList[i]
+					} else {
+						key := fmt.Sprintf("%s.%s", t.Schema, t.Name)
+						key = strings.ToLower(key)
+						if s.myRecord.MultiTables == nil {
+							s.myRecord.MultiTables = make(map[string]*TableInfo, 0)
+							s.myRecord.MultiTables[key] = tableInfoList[i]
+						} else if _, ok := s.myRecord.MultiTables[key]; !ok {
+							s.myRecord.MultiTables[key] = tableInfoList[i]
+						}
 					}
 					found = true
 					break

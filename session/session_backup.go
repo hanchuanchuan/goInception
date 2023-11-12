@@ -158,8 +158,9 @@ func (s *session) mysqlExecuteBackupSqlForDDL(record *Record) {
 			s.appendErrorMsg(err.Error())
 		}
 		record.StageStatus = StatusBackupFail
+	} else {
+		record.StageStatus = StatusBackupOK
 	}
-	record.StageStatus = StatusBackupOK
 }
 
 // mysqlExecuteBackupInfoInsertSql 写入备份记录表
@@ -478,7 +479,7 @@ func (s *session) checkBackupTableHostMaxLength(dbname string) (length int) {
 	if rows != nil {
 		defer rows.Close()
 		for rows.Next() {
-			rows.Scan(&res)
+			_ = rows.Scan(&res)
 		}
 		if res != "" {
 			typeLength := GetDataTypeLength(res)
