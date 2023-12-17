@@ -3518,7 +3518,9 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			ast.AlterTableOptimizePartition,
 			ast.AlterTableRepairPartition,
 			ast.AlterTableImportPartitionTablespace,
-			ast.AlterTableDiscardPartitionTablespace:
+			ast.AlterTableDiscardPartitionTablespace,
+			ast.AlterTablePartitionAttributes,
+			ast.AlterTablePartitionOptions:
 			s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
 			_ = s.fetchPartitionFromDB(table)
 
@@ -3547,6 +3549,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			}
 		}
 	}
+
+	s.checkMultiPartitionParts(node.Specs)
 
 	if !s.hasError() && s.inc.ColumnsMustHaveIndex != "" {
 		tableCopy := s.getTableFromCache(node.Table.Schema.O, node.Table.Name.O, true)
@@ -3601,6 +3605,39 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			s.appendErrorMsg(err.Error())
 			return
 		}
+	}
+}
+
+func (s *session) checkMultiPartitionParts(specs []*ast.AlterTableSpec) {
+	if len(specs) <= 1 {
+		return
+	}
+	count := 0
+	for _, alter := range specs {
+		switch alter.Tp {
+		/* 分区表 */
+		case ast.AlterTableAddPartitions,
+			ast.AlterTableDropPartition,
+			ast.AlterTableRemovePartitioning,
+			ast.AlterTablePartition,
+			ast.AlterTableAlterPartition,
+			ast.AlterTableCoalescePartitions,
+			ast.AlterTableTruncatePartition,
+			ast.AlterTableRebuildPartition,
+			ast.AlterTableReorganizePartition,
+			ast.AlterTableCheckPartitions,
+			ast.AlterTableExchangePartition,
+			ast.AlterTableOptimizePartition,
+			ast.AlterTableRepairPartition,
+			ast.AlterTableImportPartitionTablespace,
+			ast.AlterTableDiscardPartitionTablespace,
+			ast.AlterTablePartitionAttributes,
+			ast.AlterTablePartitionOptions:
+			count++
+		}
+	}
+	if count > 1 {
+		s.appendErrorMsg("Syntax error, PARTITION does not support multiple clauses.")
 	}
 }
 
