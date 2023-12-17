@@ -626,6 +626,9 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		if node.Unique {
 			tp = ast.ConstraintUniq
 		}
+		if node.KeyType == ast.IndexKeyTypeFullText {
+			tp = ast.ConstraintFulltext
+		}
 		s.checkCreateIndex(node.Table, node.IndexName,
 			node.IndexColNames, node.IndexOption, nil, node.Unique, tp)
 
@@ -5228,8 +5231,8 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 	if !isBlobColumn && !isOverflowIndexLength {
 		// --删除!-- mysql 5.6版本索引长度限制是767,5.7及之后变为3072
 		// 未开启innodbLargePrefix时,单列长度不能超过767
-		// 所有情况下,总长度不能超过3072
-		if keyMaxLen > maxKeyLength57 {
+		// 大部分情况下,总长度不能超过3072，但全文索引允许
+		if keyMaxLen > maxKeyLength57 && tp != ast.ConstraintFulltext {
 			s.appendErrorNo(ER_TOO_LONG_KEY, IndexName, maxKeyLength57)
 		}
 
