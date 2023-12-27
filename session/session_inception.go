@@ -1809,6 +1809,38 @@ func (s *session) mysqlServerVersion() {
 
 }
 
+func (s *session) fetchSlaveHosts(sql string) string {
+	fmt.Println("fetchSlaveHosts")
+	var hosts []string
+	rows, err := s.raw(sql)
+	if rows == nil {
+		rows.Close()
+		return ""
+	} else {
+		for rows.Next() {
+			var host string
+			rows.Scan(&host)
+			fmt.Println("slave")
+			fmt.Println(host)
+			hosts = append(hosts, strings.Split(host, ":")[0])
+		}
+	}
+
+	if err != nil {
+		// log.Error(err, s.threadID)
+		log.Errorf("con:%d thread id:%d %v", s.sessionVars.ConnectionID, s.threadID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.appendErrorMsg(myErr.Message)
+		} else {
+			s.appendErrorMsg(err.Error())
+		}
+	}
+
+	result := strings.Join(hosts, ",")
+	fmt.Println(result)
+	return result
+}
+
 func (s *session) fetchThreadID() uint32 {
 
 	if s.threadID > 0 {

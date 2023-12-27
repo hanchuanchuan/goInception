@@ -265,7 +265,9 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 	} else {
 		masterHost = s.ghost.GhostAssumeMasterHost
 	}
-
+	if s.ghost.GhostThrottleControlReplicasQuery != "" && s.ghost.GhostThrottleControlReplicas == "" {
+		s.ghost.GhostThrottleControlReplicas = s.fetchSlaveHosts(s.ghost.GhostThrottleControlReplicasQuery)
+	}
 	buf.WriteString(fmt.Sprintf(" --assume-master-host=%s", masterHost))
 	buf.WriteString(fmt.Sprintf(" --exact-rowcount=%t", s.ghost.GhostExactRowcount))
 	buf.WriteString(fmt.Sprintf(" --concurrent-rowcount=%t", s.ghost.GhostConcurrentRowcount))
@@ -487,7 +489,12 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// maxLagMillis := flag.Int64("max-lag-millis", 1500, "replication lag at which to throttle operation")
 	replicationLagQuery := s.ghost.GhostReplicationLagQuery
 	// replicationLagQuery := flag.String("replication-lag-query", "", "Deprecated. gh-ost uses an internal, subsecond resolution query")
-	throttleControlReplicas := s.ghost.GhostThrottleControlReplicas
+	var throttleControlReplicas string
+	if s.ghost.GhostThrottleControlReplicasQuery != "" && s.ghost.GhostThrottleControlReplicas == "" {
+		throttleControlReplicas = s.fetchSlaveHosts(s.ghost.GhostThrottleControlReplicasQuery)
+	} else {
+		throttleControlReplicas = s.ghost.GhostThrottleControlReplicas
+	}
 	// throttleControlReplicas := flag.String("throttle-control-replicas", "", "List of replicas on which to check for lag; comma delimited. Example: myhost1.com:3306,myhost2.com,myhost3.com:3307")
 	throttleQuery := s.ghost.GhostThrottleQuery
 	// throttleQuery := flag.String("throttle-query", "", "when given, issued (every second) to check if operation should throttle. Expecting to return zero for no-throttle, >0 for throttle. Query is issued on the migrated server. Make sure this query is lightweight")

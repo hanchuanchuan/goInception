@@ -601,12 +601,13 @@ type Ghost struct {
 	// 	列出所有需要被检查主从复制延迟的从库。
 	// e.g:
 	// -throttle-control-replica=192.16.12.22:3306,192.16.12.23:3307,192.16.13.12:3308
-	GhostThrottleControlReplicas    string `toml:"ghost_throttle_control_replicas"`
-	GhostThrottleHTTP               string `toml:"ghost_throttle_http"`
-	GhostTimestampOldTable          bool   `toml:"ghost_timestamp_old_table"`
-	GhostThrottleQuery              string `toml:"ghost_throttle_query"`
-	GhostThrottleFlagFile           string `toml:"ghost_throttle_flag_file"`
-	GhostThrottleAdditionalFlagFile string `toml:"ghost_throttle_additional_flag_file"`
+	GhostThrottleControlReplicas      string `toml:"ghost_throttle_control_replicas"`
+	GhostThrottleControlReplicasQuery string `toml:"ghost_throttle_control_replicas_query"`
+	GhostThrottleHTTP                 string `toml:"ghost_throttle_http"`
+	GhostTimestampOldTable            bool   `toml:"ghost_timestamp_old_table"`
+	GhostThrottleQuery                string `toml:"ghost_throttle_query"`
+	GhostThrottleFlagFile             string `toml:"ghost_throttle_flag_file"`
+	GhostThrottleAdditionalFlagFile   string `toml:"ghost_throttle_additional_flag_file"`
 
 	// 告诉gh-ost你正在运行的是一个tungsten-replication拓扑结构。
 	GhostTungsten            bool   `toml:"ghost_tungsten"`
