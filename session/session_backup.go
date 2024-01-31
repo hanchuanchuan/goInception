@@ -10,8 +10,10 @@ import (
 	"unicode/utf8"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
+	"github.com/hanchuanchuan/go-mysql/replication"
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/mysql"
+	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -422,6 +424,7 @@ func (s *session) mysqlCreateBackupTable(record *Record) (
 		longDataType = cache.longDataType
 		hostMaxLength = cache.hostMaxLength
 	}
+
 	record.TableInfo.IsCreated = true
 	return
 }
@@ -492,4 +495,91 @@ func (s *session) checkBackupTableHostMaxLength(dbname string) (length int) {
 
 	return 0
 
+}
+
+func (s *session) needTransactionMark() bool {
+	return s.dbType == DBTypeOceanBase
+}
+
+type transactionMarkType int
+
+const (
+	transactionMarkTypeStart transactionMarkType = iota
+	transactionMarkTypeEnd
+)
+
+type TransactionMarkData struct {
+	ThreadID    uint32
+	LogFile     string
+	LogPosition int
+}
+
+func (s *session) createTransactionMarkTable() {
+	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", transactionMarkDb)
+	if s.executeInternal(sql) {
+		sql = fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%s`.`%s` ("+
+			"id INT AUTO_INCREMENT PRIMARY KEY, "+
+			"mark_type INT, "+
+			"thread_id INT UNSIGNED, "+
+			"log_file VARCHAR(40), "+
+			"log_position INT "+
+			")", transactionMarkDb, transactionMarkTable)
+		s.executeInternal(sql)
+	}
+}
+
+func (s *session) markTransactionStart(tx *gorm.DB, data *TransactionMarkData) *gorm.DB {
+	return s.insertTransactionMark(tx, transactionMarkTypeStart, data)
+}
+
+func (s *session) markTransactionEnd(tx *gorm.DB, data *TransactionMarkData) *gorm.DB {
+	return s.insertTransactionMark(tx, transactionMarkTypeEnd, data)
+}
+
+func (s *session) insertTransactionMark(tx *gorm.DB, markType transactionMarkType, data *TransactionMarkData) *gorm.DB {
+	sql := fmt.Sprintf("INSERT INTO `%s`.`%s` "+
+		"(mark_type, thread_id, log_file, log_position) "+
+		"VALUES (%d, %d,'%s', %d)", transactionMarkDb, transactionMarkTable,
+		markType, data.ThreadID, data.LogFile, data.LogPosition)
+	return tx.Exec(sql)
+}
+
+func (s *session) isTransactionMark(dbname string, table string) bool {
+	return strings.EqualFold(dbname, transactionMarkDb) && strings.EqualFold(table, transactionMarkTable)
+}
+
+type transactionMark struct {
+	ID       int32
+	MarkType transactionMarkType
+	TransactionMarkData
+}
+
+func (s *session) toTransactionMark(e *replication.BinlogEvent) *transactionMark {
+	if event, ok := e.Event.(*replication.RowsEvent); ok {
+		if s.isTransactionMark(string(event.Table.Schema), string(event.Table.Table)) {
+			for _, rows := range event.Rows {
+				mark := &transactionMark{}
+				mark.ID = rows[0].(int32)
+				mark.MarkType = transactionMarkType(rows[1].(int32))
+				mark.ThreadID = uint32(1<<32 + int64(rows[2].(int32)))
+				mark.LogFile = rows[3].(string)
+				mark.LogPosition = int(rows[4].(int32))
+				return mark
+			}
+		}
+	}
+	return nil
+}
+
+func (s *session) executeInternal(sql string) bool {
+	if _, err := s.exec(sql, true); err != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		if myErr, ok := err.(*mysqlDriver.MySQLError); ok {
+			s.appendErrorMsg(myErr.Message + " (sql: " + sql + ")")
+		} else {
+			s.appendErrorMsg(err.Error())
+		}
+		return false
+	}
+	return true
 }
