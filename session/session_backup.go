@@ -266,7 +266,7 @@ func (s *session) mysqlCreateSqlBackupTable(dbname string) string {
 	buf.WriteString("end_binlog_file varchar(512),")
 	buf.WriteString("end_binlog_pos int,")
 	buf.WriteString("sql_statement mediumtext,")
-	buf.WriteString("host VARCHAR(64),")
+	buf.WriteString("host VARCHAR(256),")
 	buf.WriteString("dbname VARCHAR(64),")
 	buf.WriteString("tablename VARCHAR(64),")
 	buf.WriteString("port INT,")
