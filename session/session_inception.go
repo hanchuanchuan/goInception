@@ -6903,11 +6903,12 @@ func (s *session) checkAlterDB(node *ast.AlterDatabaseStmt, sql string) {
 }
 
 func (s *session) checkCharset(charset string) bool {
-	if s.dbVersion < 80000 && strings.EqualFold(charset, "utf8mb3") {
+	if s.dbVersion < 50700 && strings.EqualFold(charset, "utf8mb3") {
 		s.appendErrorNo(ErrUnknownCharset, charset)
 	}
 	if s.inc.SupportCharset != "" {
 		for _, item := range strings.Split(s.inc.SupportCharset, ",") {
+			item = strings.TrimSpace(item)
 			if strings.EqualFold(item, charset) {
 				return true
 			}
@@ -6921,6 +6922,8 @@ func (s *session) checkCharset(charset string) bool {
 func (s *session) checkCollation(collation string) bool {
 	if s.inc.SupportCollation != "" {
 		for _, item := range strings.Split(s.inc.SupportCollation, ",") {
+			// Support collation of utf8mb3 aliases
+			item = strings.TrimSpace(strings.ReplaceAll(item, "utf8mb3", "utf8"))
 			if strings.EqualFold(item, collation) {
 				return true
 			}
@@ -6934,6 +6937,7 @@ func (s *session) checkCollation(collation string) bool {
 func (s *session) checkEngine(engine string) bool {
 	if s.inc.SupportEngine != "" {
 		for _, item := range strings.Split(s.inc.SupportEngine, ",") {
+			item = strings.TrimSpace(item)
 			if strings.EqualFold(item, engine) {
 				return true
 			}

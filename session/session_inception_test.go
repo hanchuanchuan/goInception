@@ -649,7 +649,7 @@ func (s *testSessionIncSuite) TestCreateTable(c *C) {
 	s.testErrorCode(c, sql)
 
 	sql = "create table t1(a int) character set utf8mb3;"
-	if s.DBVersion > 80000 {
+	if s.DBVersion > 50700 {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql,

@@ -318,7 +318,7 @@ func (s *testSessionIncExecSuite) TestAlterTableAddColumn(c *C) {
 	config.GetGlobalConfig().Inc.EnableColumnCharset = true
 	config.GetGlobalConfig().Inc.SupportCharset = "utf8,utf8mb3,utf8mb4"
 	sql = "drop table if exists t1;create table t1(id int primary key);alter table t1 add column c1 varchar(10) character set utf8mb3;"
-	if s.DBVersion > 80000 {
+	if s.DBVersion > 50700 {
 		s.testErrorCode(c, sql)
 	} else {
 		s.testErrorCode(c, sql,
