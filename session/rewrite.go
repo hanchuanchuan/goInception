@@ -24,20 +24,23 @@ import (
 
 // Rewrite 用于重写SQL
 type Rewrite struct {
-	SQL  string
-	Stmt sqlparser.Statement
+	SQL    string
+	parser *sqlparser.Parser
+	Stmt   sqlparser.Statement
 }
 
 // NewRewrite 返回一个*Rewrite对象，如果SQL无法被正常解析，将错误输出到日志中，返回一个nil
 func NewRewrite(sql string) (*Rewrite, error) {
-	stmt, err := sqlparser.Parse(sql)
+	parser, err := sqlparser.New(sqlparser.Options{})
+	stmt, err := parser.Parse(sql)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Rewrite{
-		SQL:  sql,
-		Stmt: stmt,
+		SQL:    sql,
+		Stmt:   stmt,
+		parser: parser,
 	}, err
 }
 
@@ -62,7 +65,7 @@ func (rw *Rewrite) RewriteDML2Select() error {
 		rw.SQL = update2Select(stmt)
 	}
 	var err error
-	rw.Stmt, err = sqlparser.Parse(rw.SQL)
+	rw.Stmt, err = rw.parser.Parse(rw.SQL)
 	return err
 }
 
@@ -98,7 +101,8 @@ func update2Select(stmt *sqlparser.Update) string {
 func insert2Select(stmt *sqlparser.Insert) string {
 	switch row := stmt.Rows.(type) {
 	// 如果insert包含子查询，只需要explain该子树
-	case *sqlparser.Select, *sqlparser.Union, *sqlparser.ParenSelect:
+	// case *sqlparser.Select, *sqlparser.Union, *sqlparser.ParenSelect:
+	case *sqlparser.Select, *sqlparser.Union:
 		return sqlparser.String(row)
 	}
 
@@ -126,7 +130,8 @@ func (rw *Rewrite) select2Count() string {
 			SelectExprs: []sqlparser.SelectExpr{
 				&sqlparser.AliasedExpr{
 					Expr: &sqlparser.FuncExpr{
-						Name: sqlparser.NewColIdent("count"),
+						// Name: sqlparser.NewColIdent("count"),
+						Name: sqlparser.NewIdentifierCI("count"),
 						Exprs: []sqlparser.SelectExpr{
 							new(sqlparser.StarExpr),
 						},

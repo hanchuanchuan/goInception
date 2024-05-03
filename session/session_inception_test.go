@@ -2344,6 +2344,16 @@ WHERE tt1.id=1;`
 	sql = `update t1 set c1 = c1 +10 where c2 like '%\_a%';`
 	s.mustCheck(c, sql)
 	s.testAffectedRows(c, 1)
+
+	s.realRowCount = false
+	// 受影响行数: explain计算规则
+	s.mustRunExec(c, `drop table if exists t1,t2;
+			create table t1(id int primary key,c1 int,c2 varchar(100));
+			insert into t1(id,c1,c2)values(1,1,'_aaa'),(2,2,'aaa');`)
+	// 检查转义符
+	sql = `update t1 set c1 = c1 +10 where c2 like '%\_a%';`
+	s.mustCheck(c, sql)
+	s.testAffectedRows(c, 2)
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
