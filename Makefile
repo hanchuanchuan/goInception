@@ -89,11 +89,19 @@ parser/parser.go: parser/parser.y bin/goyacc
 	@echo "bin/goyacc -o $@ -p yy -t Parser $<"
 	@bin/goyacc -o $@ -p yy -t Parser $< && echo 'SUCCESS!' || ( rm -f $@ && echo 'Please check y.output for more information' && exit 1 )
 	@rm -f y.output
+	# Clean invalid UTF-8 encoding at the end
+	@echo "sed -i '$$d' $@"
+	sed -i '' '$$d' $@
+	gofmt -s -w $@
 
 parser/hintparser.go: parser/hintparser.y bin/goyacc
 	@echo "bin/goyacc -o $@ -p yyhint -t hintParser $<"
 	@bin/goyacc -o $@ -p yyhint -t hintParser $< && echo 'SUCCESS!' || ( rm -f $@ && echo 'Please check y.output for more information' && exit 1 )
 	@rm -f y.output
+	# Clean invalid UTF-8 encoding at the end
+	@echo "sed -i '$$d' $@"
+	sed -i '' '$$d' $@
+	gofmt -s -w $@
 
 # %arser.go: prefix = $(@:parser.go=)
 # %arser.go: %arser.y bin/goyacc
