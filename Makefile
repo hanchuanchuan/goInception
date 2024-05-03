@@ -90,12 +90,12 @@ parser/parser.go: parser/parser.y bin/goyacc
 	@bin/goyacc -o $@ -p yy -t Parser $< && echo 'SUCCESS!' || ( rm -f $@ && echo 'Please check y.output for more information' && exit 1 )
 	@rm -f y.output
 	# Clean invalid UTF-8 encoding at the end
-	ifeq ($(UNAME_S),Linux)
-        sed -i '$$d' $@;
-    endif
-    ifeq ($(UNAME_S),Darwin)
-        sed -i '' '$$d' $@;
-    endif
+ifeq ($(UNAME_S),Linux)
+	sed -i '$$d' $@;
+endif
+ifeq ($(UNAME_S),Darwin)
+	sed -i '' '$$d' $@;
+endif
 	gofmt -s -w $@
 
 parser/hintparser.go: parser/hintparser.y bin/goyacc
@@ -104,12 +104,12 @@ parser/hintparser.go: parser/hintparser.y bin/goyacc
 	@rm -f y.output
 	# Clean invalid UTF-8 encoding at the end
 	UNAME_S := $(shell uname -s)
-	ifeq ($(UNAME_S),Linux)
-        sed -i '$$d' $@;
-    endif
-    ifeq ($(UNAME_S),Darwin)
-        sed -i '' '$$d' $@;
-    endif
+ifeq ($(UNAME_S),Linux)
+	sed -i '$$d' $@;
+endif
+ifeq ($(UNAME_S),Darwin)
+	sed -i '' '$$d' $@;
+endif
 	gofmt -s -w $@
 
 # %arser.go: prefix = $(@:parser.go=)
