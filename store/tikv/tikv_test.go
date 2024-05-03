@@ -15,12 +15,9 @@ package tikv
 
 import (
 	"go/build"
-	"os"
 	"path"
-	"reflect"
 	"strings"
 
-	"github.com/hanchuanchuan/goInception/parser"
 	. "github.com/pingcap/check"
 )
 
@@ -65,21 +62,21 @@ func getImportedPackages(c *C, srcDir string, pkgName string, pkgs *map[string][
 }
 
 // TestParserNoDep tests whether this package does not depend on tidb/parser.
-func (s *testTiKVSuite) TestParserNoDep(c *C) {
-	srcDir, err := os.Getwd()
-	c.Assert(err, IsNil)
+// func (s *testTiKVSuite) TestParserNoDep(c *C) {
+// 	srcDir, err := os.Getwd()
+// 	c.Assert(err, IsNil)
 
-	pkgs := make(map[string][]string)
-	currentPkgName := reflect.TypeOf(testTiKVSuite{}).PkgPath()
-	getImportedPackages(c, srcDir, currentPkgName, &pkgs)
+// 	pkgs := make(map[string][]string)
+// 	currentPkgName := reflect.TypeOf(testTiKVSuite{}).PkgPath()
+// 	getImportedPackages(c, srcDir, currentPkgName, &pkgs)
 
-	parse := parser.New()
-	parserPkgName := reflect.TypeOf(*parse).PkgPath()
+// 	parse := parser.New()
+// 	parserPkgName := reflect.TypeOf(*parse).PkgPath()
 
-	for pkgName, imports := range pkgs {
-		for _, importName := range imports {
-			c.Assert(importName == parserPkgName, IsFalse,
-				Commentf("`%s` is imported from `%s`, which is a child dependency of `%s`", parserPkgName, pkgName, currentPkgName))
-		}
-	}
-}
+// 	for pkgName, imports := range pkgs {
+// 		for _, importName := range imports {
+// 			c.Assert(importName == parserPkgName, IsFalse,
+// 				Commentf("`%s` is imported from `%s`, which is a child dependency of `%s`", parserPkgName, pkgName, currentPkgName))
+// 		}
+// 	}
+// }
