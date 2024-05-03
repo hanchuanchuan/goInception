@@ -18,7 +18,7 @@ jobs:
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
 
-    working_directory: /home/circleci/goInception
+    working_directory: /home/circleci/go/src/github.com/hanchuanchuan/goInception
 
     steps:
       - checkout
