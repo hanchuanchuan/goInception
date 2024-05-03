@@ -18,6 +18,7 @@ package session
 
 import (
 	"fmt"
+
 	"vitess.io/vitess/go/vt/sqlparser"
 )
 
@@ -117,7 +118,7 @@ func (rw *Rewrite) select2Count() string {
 
 	switch stmt := rw.Stmt.(type) {
 	case *sqlparser.Select:
-		if stmt.Distinct != "" || stmt.GroupBy != nil || stmt.Having != nil {
+		if stmt.Distinct || stmt.GroupBy != nil || stmt.Having != nil {
 			return fmt.Sprintf("SELECT COUNT(1) FROM (%s)t", rw.SQL)
 		}
 
