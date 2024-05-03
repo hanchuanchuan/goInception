@@ -91,10 +91,10 @@ parser/parser.go: parser/parser.y bin/goyacc
 	@rm -f y.output
 	# Clean invalid UTF-8 encoding at the end
 	ifeq ($(UNAME_S),Linux)
-        sed -i '$$d' $@
+        sed -i '$$d' $@;
     endif
     ifeq ($(UNAME_S),Darwin)
-        sed -i '' '$$d' $@
+        sed -i '' '$$d' $@;
     endif
 	gofmt -s -w $@
 
@@ -104,11 +104,11 @@ parser/hintparser.go: parser/hintparser.y bin/goyacc
 	@rm -f y.output
 	# Clean invalid UTF-8 encoding at the end
 	UNAME_S := $(shell uname -s)
-    ifeq ($(UNAME_S),Linux)
-        sed -i '$$d' $@
+	ifeq ($(UNAME_S),Linux)
+        sed -i '$$d' $@;
     endif
     ifeq ($(UNAME_S),Darwin)
-        sed -i '' '$$d' $@
+        sed -i '' '$$d' $@;
     endif
 	gofmt -s -w $@
 
