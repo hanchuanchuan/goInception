@@ -222,7 +222,7 @@ gotest: parserlib
 ifeq ("$(TRAVIS_COVERAGE)", "1")
 	@echo "Running in TRAVIS_COVERAGE mode."
 	@export log_level=error; \
-	go get github.com/go-playground/overalls
+	go install github.com/go-playground/overalls@7df9f728c018
 	# go get github.com/mattn/goveralls
 	# $(OVERALLS) -project=github.com/hanchuanchuan/goInception -covermode=count -ignore='.git,vendor,cmd,docs,LICENSES' || { $(GOFAIL_DISABLE); exit 1; }
 	# $(GOVERALLS) -service=$(GOVERALLS_SERVICE) -coverprofile=overalls.coverprofile || { $(GOFAIL_DISABLE); exit 1; }
