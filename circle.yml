@@ -12,20 +12,20 @@ jobs:
         - gh-pages
 
     docker:
-      - image: circleci/golang:1.14
+      - image: cimg/go:1.22.1
       - image: circleci/mysql:5.7.31
         command: mysqld --lower_case_table_names=1 --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --log-bin=on --server_id=111
         environment:
           - MYSQL_ALLOW_EMPTY_PASSWORD=true
 
-    working_directory: /go/src/github.com/hanchuanchuan/goInception
+    working_directory: /home/circleci/go/src/github.com/hanchuanchuan/goInception
 
     steps:
       - checkout
       - run:
           name: Install mysql-client
           # command: sudo apt install default-mysql-client
-          command: sudo apt-get update -y --allow-releaseinfo-change && sudo apt upgrade -y && sudo apt-get install default-mysql-client && sudo apt-get install --reinstall ca-certificates libgnutls30 -y
+          command: sudo apt-get update -y --allow-releaseinfo-change && sudo apt upgrade -y && sudo apt-get install default-mysql-client libdbi-perl libdbd-mysql-perl && sudo apt-get install --reinstall ca-certificates libgnutls30 -y
       - run:
           name: Waiting for MySQL to be ready
           command: |
@@ -39,7 +39,7 @@ jobs:
       - run:
           name: mysql init
           command: mysql -h 127.0.0.1 -u root -e "select version();create database if not exists test DEFAULT CHARACTER SET utf8;create database if not exists test_inc DEFAULT CHARACTER SET utf8;grant all on *.* to test@'127.0.0.1' identified by 'test';FLUSH PRIVILEGES;show databases;show variables like 'explicit_defaults_for_timestamp';"
-      - run: rm -f go.sum
+      # - run: rm -f go.sum
       # - run: sudo wget -O /usr/local/bin/pt-online-schema-change percona.com/get/pt-online-schema-change
       - run: sudo cp ./bin/pt-online-schema-change  /usr/local/bin/pt-online-schema-change
       - run: sudo wget -O gh-ost.tar.gz https://github.com/github/gh-ost/releases/download/v1.1.0/gh-ost-binary-linux-20200828140552.tar.gz

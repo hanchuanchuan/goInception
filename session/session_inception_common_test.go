@@ -514,7 +514,7 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) runTranSQL(sql string, batch int) *testkit.Result {
-	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--trans=%d;*/
+	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;--trans=%d;*/
 inception_magic_start;
 %s
 %s;
@@ -526,7 +526,7 @@ inception_magic_commit;`
 }
 
 func (s *testCommon) mustrunTranSQL(c *C, sql string) *testkit.Result {
-	a := `/*%s;--execute=1;--backup=1;--execute=1;--enable-ignore-warnings;real_row_count=%v;--trans=10;*/
+	a := `/*%s;--execute=1;--backup=1;--enable-ignore-warnings;real_row_count=%v;--trans=10;*/
 inception_magic_start;
 %s
 %s;

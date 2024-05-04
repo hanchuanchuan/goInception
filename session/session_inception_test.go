@@ -2334,6 +2334,26 @@ WHERE tt1.id=1;`
 		create table table1(id1 int primary key,c1 int,c2 int);
 		update table1 t1 join (select 1 as id2 union all select 2) t2 set c1=2 where t1.id1=t2.id2;`
 	s.testErrorCode(c, sql)
+
+	s.realRowCount = true
+	// 受影响行数: explain计算规则
+	s.mustRunExec(c, `drop table if exists t1,t2;
+			create table t1(id int primary key,c1 int,c2 varchar(100));
+			insert into t1(id,c1,c2)values(1,1,'_aaa'),(2,2,'aaa');`)
+	// 检查转义符
+	sql = `update t1 set c1 = c1 +10 where c2 like '%\_a%';`
+	s.mustCheck(c, sql)
+	s.testAffectedRows(c, 1)
+
+	s.realRowCount = false
+	// 受影响行数: explain计算规则
+	s.mustRunExec(c, `drop table if exists t1,t2;
+			create table t1(id int primary key,c1 int,c2 varchar(100));
+			insert into t1(id,c1,c2)values(1,1,'_aaa'),(2,2,'aaa');`)
+	// 检查转义符
+	sql = `update t1 set c1 = c1 +10 where c2 like '%\_a%';`
+	s.mustCheck(c, sql)
+	s.testAffectedRows(c, 2)
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
