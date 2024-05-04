@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>goInception Syntax tree print | goInception Docs</title>
+    <meta name="generator" content="VuePress 1.8.2">
+    
+    <meta name="description" content="goInception extension of the usage of Inception, to specify the remote server by adding annotations before the SQL review, and for distinguishing SQL and review adding special comments at the beginning and the end of SQL.">
+    
+    <link rel="preload" href="/goInception/assets/css/0.styles.b57c7c20.css" as="style"><link rel="preload" href="/goInception/assets/js/app.35e44c5d.js" as="script"><link rel="preload" href="/goInception/assets/js/3.a468a5ac.js" as="script"><link rel="preload" href="/goInception/assets/js/36.c789dffd.js" as="script"><link rel="prefetch" href="/goInception/assets/js/10.44eb2437.js"><link rel="prefetch" href="/goInception/assets/js/11.05fdc934.js"><link rel="prefetch" href="/goInception/assets/js/12.5c06c266.js"><link rel="prefetch" href="/goInception/assets/js/13.bbd07852.js"><link rel="prefetch" href="/goInception/assets/js/14.222eb434.js"><link rel="prefetch" href="/goInception/assets/js/15.1cb8c282.js"><link rel="prefetch" href="/goInception/assets/js/16.6124a5c8.js"><link rel="prefetch" href="/goInception/assets/js/17.7b28b5b1.js"><link rel="prefetch" href="/goInception/assets/js/18.f6a993f8.js"><link rel="prefetch" href="/goInception/assets/js/19.caafd667.js"><link rel="prefetch" href="/goInception/assets/js/20.21a5c394.js"><link rel="prefetch" href="/goInception/assets/js/21.c7454f11.js"><link rel="prefetch" href="/goInception/assets/js/22.c2b2daca.js"><link rel="prefetch" href="/goInception/assets/js/23.d15fb4c3.js"><link rel="prefetch" href="/goInception/assets/js/24.f9fc20d1.js"><link rel="prefetch" href="/goInception/assets/js/25.7c473ba8.js"><link rel="prefetch" href="/goInception/assets/js/26.e910ea3c.js"><link rel="prefetch" href="/goInception/assets/js/27.7e628298.js"><link rel="prefetch" href="/goInception/assets/js/28.e23b8266.js"><link rel="prefetch" href="/goInception/assets/js/29.e351c224.js"><link rel="prefetch" href="/goInception/assets/js/30.11de2771.js"><link rel="prefetch" href="/goInception/assets/js/31.3bf72658.js"><link rel="prefetch" href="/goInception/assets/js/32.d8822cad.js"><link rel="prefetch" href="/goInception/assets/js/33.d4d8a1ce.js"><link rel="prefetch" href="/goInception/assets/js/34.bd66eb0b.js"><link rel="prefetch" href="/goInception/assets/js/35.206cd400.js"><link rel="prefetch" href="/goInception/assets/js/37.4ba29217.js"><link rel="prefetch" href="/goInception/assets/js/38.95671f5a.js"><link rel="prefetch" href="/goInception/assets/js/39.4e46b7ce.js"><link rel="prefetch" href="/goInception/assets/js/4.edffa37c.js"><link rel="prefetch" href="/goInception/assets/js/40.789c8cb7.js"><link rel="prefetch" href="/goInception/assets/js/41.d4792fc5.js"><link rel="prefetch" href="/goInception/assets/js/42.45c371f3.js"><link rel="prefetch" href="/goInception/assets/js/43.e30bc9ac.js"><link rel="prefetch" href="/goInception/assets/js/44.c6fe8287.js"><link rel="prefetch" href="/goInception/assets/js/45.6a810bc3.js"><link rel="prefetch" href="/goInception/assets/js/46.6ad33969.js"><link rel="prefetch" href="/goInception/assets/js/47.14da7ce7.js"><link rel="prefetch" href="/goInception/assets/js/48.d03fb0bb.js"><link rel="prefetch" href="/goInception/assets/js/49.e2b534ae.js"><link rel="prefetch" href="/goInception/assets/js/5.264a70d7.js"><link rel="prefetch" href="/goInception/assets/js/50.16ca0037.js"><link rel="prefetch" href="/goInception/assets/js/51.3f01183e.js"><link rel="prefetch" href="/goInception/assets/js/52.97fd4f1e.js"><link rel="prefetch" href="/goInception/assets/js/6.43094ae0.js"><link rel="prefetch" href="/goInception/assets/js/7.d744fe65.js"><link rel="prefetch" href="/goInception/assets/js/8.0f8f0b66.js"><link rel="prefetch" href="/goInception/assets/js/9.83817072.js"><link rel="prefetch" href="/goInception/assets/js/vendors~docsearch.6cb0424f.js">
+    <link rel="stylesheet" href="/goInception/assets/css/0.styles.b57c7c20.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/goInception/" class="home-link router-link-active"><!----> <span class="site-name">goInception Docs</span></a> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <nav class="nav-links can-hide"><div class="nav-item"><div class="dropdown-wrapper"><button type="button" aria-label="Languages" class="dropdown-title"><span class="title">Languages</span> <span class="arrow down"></span></button> <button type="button" aria-label="Languages" class="mobile-dropdown-title"><span class="title">Languages</span> <span class="arrow right"></span></button> <ul class="nav-dropdown" style="display:none;"><li class="dropdown-item"><!----> <a href="/goInception/tree.html" aria-current="page" class="nav-link router-link-exact-active router-link-active">
+  English
+</a></li><li class="dropdown-item"><!----> <a href="/goInception/zh/tree.html" class="nav-link">
+  简体中文
+</a></li></ul></div></div> <a href="https://github.com/hanchuanchuan/goInception" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><nav class="nav-links"><div class="nav-item"><div class="dropdown-wrapper"><button type="button" aria-label="Languages" class="dropdown-title"><span class="title">Languages</span> <span class="arrow down"></span></button> <button type="button" aria-label="Languages" class="mobile-dropdown-title"><span class="title">Languages</span> <span class="arrow right"></span></button> <ul class="nav-dropdown" style="display:none;"><li class="dropdown-item"><!----> <a href="/goInception/tree.html" aria-current="page" class="nav-link router-link-exact-active router-link-active">
+  English
+</a></li><li class="dropdown-item"><!----> <a href="/goInception/zh/tree.html" class="nav-link">
+  简体中文
+</a></li></ul></div></div> <a href="https://github.com/hanchuanchuan/goInception" target="_blank" rel="noopener noreferrer" class="repo-link">
+    GitHub
+    <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></a></nav>  <ul class="sidebar-links"><li><a href="/goInception/" aria-current="page" class="sidebar-link">Introdunction</a></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading"><span>Start</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/goInception/install.html" class="sidebar-link">Install</a></li><li><a href="/goInception/params.html" class="sidebar-link">Params</a></li><li><a href="/goInception/demo.html" class="sidebar-link">Demo</a></li><li><a href="/goInception/result.html" class="sidebar-link">Result Desc</a></li><li><a href="/goInception/config.html" class="sidebar-link">config.toml Desc</a></li><li><a href="/goInception/permission.html" class="sidebar-link">Permission Desc</a></li></ul></section></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading"><span>Config</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/goInception/options.html" class="sidebar-link">Options</a></li><li><a href="/goInception/rules.html" class="sidebar-link">Rules</a></li><li><a href="/goInception/backup.html" class="sidebar-link">Backup</a></li><li><a href="/goInception/osc.html" class="sidebar-link">Online-DDL: pt-osc</a></li><li><a href="/goInception/ghost.html" class="sidebar-link">Online-DDL: gh-ost</a></li></ul></section></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading open"><span>Advanced</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/goInception/levels.html" class="sidebar-link">Custom audit level</a></li><li><a href="/goInception/kill_stmt.html" class="sidebar-link">Kill Operation</a></li><li><a href="/goInception/statistics.html" class="sidebar-link">Statistics</a></li><li><a href="/goInception/tree.html" aria-current="page" class="active sidebar-link">Syntax tree</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/goInception/tree.html#demo" class="sidebar-link">Demo</a></li><li class="sidebar-sub-header"><a href="/goInception/tree.html#others" class="sidebar-link">Others</a></li><li class="sidebar-sub-header"><a href="/goInception/tree.html#tag-definations" class="sidebar-link">tag definations</a></li><li class="sidebar-sub-header"><a href="/goInception/tree.html#expression-type" class="sidebar-link">Expression Type</a></li><li class="sidebar-sub-header"><a href="/goInception/tree.html#tips" class="sidebar-link">Tips</a></li></ul></li><li><a href="/goInception/trans.html" class="sidebar-link">Transaction</a></li><li><a href="/goInception/safe.html" class="sidebar-link">[Safe] User authentication</a></li><li><a href="/goInception/diff.html" class="sidebar-link">VS Inception</a></li></ul></section></li><li><a href="/goInception/support.html" class="sidebar-link">Support</a></li><li><a href="/goInception/changelog.html" class="sidebar-link">Changelog</a></li></ul> </aside> <main class="page"> <div class="theme-default-content content__default"><h3 id="goinception-syntax-tree-print"><a href="#goinception-syntax-tree-print" class="header-anchor">#</a> goInception Syntax tree print</h3> <h4 id="result-set"><a href="#result-set" class="header-anchor">#</a> result set</h4> <p>Setting <code>--query-print=1</code> or <code>--enable-query-print</code> to turn on print syntax tree.</p> <p>Similarly, other options enable the beginning of it are mutually exclusive, can not be set at the same time, after switching, reconnection goInception, execution returns a result set included as follows:</p> <ul><li>1.<code>ID</code>: query number.</li> <li>2.<code>STATEMENT</code>: query text.</li> <li>3.<code>ERRLEVEL</code>: error level when print error.</li> <li>4.<code>QUERY_TREE</code>: tree information.</li> <li>5.<code>ERRMSG</code>: error message.</li></ul> <h2 id="demo"><a href="#demo" class="header-anchor">#</a> Demo</h2> <p>SQL:</p> <div class="language- extra-class"><pre class="language-text"><code>insert into t (sno,name)
+        select sno, name from t alias_t
+        where sno=(
+                select sno+1 from my
+                where
+                name like &quot;%zhufeng%&quot; and
+                sno &gt; '10010' and
+                name=alias_t.name
+        )
+        order by name
+        limit 100, 10;
+</code></pre></div><p>Return query_tree in Json:</p> <div class="language- extra-class"><pre class="language-text"><code>{
+  &quot;text&quot;: &quot;insert into t (sno,name)\n        select sno, name from t alias_t\n        where sno=(\n                select sno+1 from my\n                where\n                name like \&quot;%zhufeng%\&quot; and\n                sno &gt; '10010' and\n                name=alias_t.name\n        )\n        order by name\n        limit 100, 10&quot;,
+  &quot;IsReplace&quot;: false,
+  &quot;IgnoreErr&quot;: false,
+  &quot;Table&quot;: {
+    &quot;text&quot;: &quot;&quot;,
+    &quot;TableRefs&quot;: {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;resultFields&quot;: null,
+      &quot;Left&quot;: {
+        &quot;text&quot;: &quot;&quot;,
+        &quot;Source&quot;: {
+          &quot;text&quot;: &quot;&quot;,
+          &quot;resultFields&quot;: null,
+          &quot;Schema&quot;: {
+            &quot;O&quot;: &quot;&quot;,
+            &quot;L&quot;: &quot;&quot;
+          },
+          &quot;Name&quot;: {
+            &quot;O&quot;: &quot;t&quot;,
+            &quot;L&quot;: &quot;t&quot;
+          },
+          &quot;DBInfo&quot;: null,
+          &quot;TableInfo&quot;: null,
+          &quot;IndexHints&quot;: null
+        },
+        &quot;AsName&quot;: {
+          &quot;O&quot;: &quot;&quot;,
+          &quot;L&quot;: &quot;&quot;
+        }
+      },
+      &quot;Right&quot;: null,
+      &quot;Tp&quot;: 0,
+      &quot;On&quot;: null,
+      &quot;Using&quot;: null,
+      &quot;NaturalJoin&quot;: false,
+      &quot;StraightJoin&quot;: false
+    }
+  },
+  &quot;Columns&quot;: [
+    {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;Schema&quot;: {
+        &quot;O&quot;: &quot;&quot;,
+        &quot;L&quot;: &quot;&quot;
+      },
+      &quot;Table&quot;: {
+        &quot;O&quot;: &quot;&quot;,
+        &quot;L&quot;: &quot;&quot;
+      },
+      &quot;Name&quot;: {
+        &quot;O&quot;: &quot;sno&quot;,
+        &quot;L&quot;: &quot;sno&quot;
+      }
+    },
+    {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;Schema&quot;: {
+        &quot;O&quot;: &quot;&quot;,
+        &quot;L&quot;: &quot;&quot;
+      },
+      &quot;Table&quot;: {
+        &quot;O&quot;: &quot;&quot;,
+        &quot;L&quot;: &quot;&quot;
+      },
+      &quot;Name&quot;: {
+        &quot;O&quot;: &quot;name&quot;,
+        &quot;L&quot;: &quot;name&quot;
+      }
+    }
+  ],
+  &quot;Lists&quot;: null,
+  &quot;Setlist&quot;: null,
+  &quot;Priority&quot;: 0,
+  &quot;OnDuplicate&quot;: null,
+  &quot;Select&quot;: {
+    &quot;text&quot;: &quot;&quot;,
+    &quot;resultFields&quot;: null,
+    &quot;SQLCache&quot;: true,
+    &quot;CalcFoundRows&quot;: false,
+    &quot;StraightJoin&quot;: false,
+    &quot;Priority&quot;: 0,
+    &quot;Distinct&quot;: false,
+    &quot;From&quot;: {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;TableRefs&quot;: {
+        &quot;text&quot;: &quot;&quot;,
+        &quot;resultFields&quot;: null,
+        &quot;Left&quot;: {
+          &quot;text&quot;: &quot;&quot;,
+          &quot;Source&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;resultFields&quot;: null,
+            &quot;Schema&quot;: {
+              &quot;O&quot;: &quot;&quot;,
+              &quot;L&quot;: &quot;&quot;
+            },
+            &quot;Name&quot;: {
+              &quot;O&quot;: &quot;t&quot;,
+              &quot;L&quot;: &quot;t&quot;
+            },
+            &quot;DBInfo&quot;: null,
+            &quot;TableInfo&quot;: null,
+            &quot;IndexHints&quot;: null
+          },
+          &quot;AsName&quot;: {
+            &quot;O&quot;: &quot;alias_t&quot;,
+            &quot;L&quot;: &quot;alias_t&quot;
+          }
+        },
+        &quot;Right&quot;: null,
+        &quot;Tp&quot;: 0,
+        &quot;On&quot;: null,
+        &quot;Using&quot;: null,
+        &quot;NaturalJoin&quot;: false,
+        &quot;StraightJoin&quot;: false
+      }
+    },
+    &quot;Where&quot;: {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;k&quot;: 0,
+      &quot;collation&quot;: 0,
+      &quot;decimal&quot;: 0,
+      &quot;length&quot;: 0,
+      &quot;i&quot;: 0,
+      &quot;b&quot;: null,
+      &quot;x&quot;: null,
+      &quot;Type&quot;: {
+        &quot;Tp&quot;: 0,
+        &quot;Flag&quot;: 0,
+        &quot;Flen&quot;: 0,
+        &quot;Decimal&quot;: 0,
+        &quot;Charset&quot;: &quot;&quot;,
+        &quot;Collate&quot;: &quot;&quot;,
+        &quot;Elems&quot;: null
+      },
+      &quot;flag&quot;: 40,
+      &quot;Op&quot;: 7,
+      &quot;L&quot;: {
+        &quot;text&quot;: &quot;&quot;,
+        &quot;k&quot;: 0,
+        &quot;collation&quot;: 0,
+        &quot;decimal&quot;: 0,
+        &quot;length&quot;: 0,
+        &quot;i&quot;: 0,
+        &quot;b&quot;: null,
+        &quot;x&quot;: null,
+        &quot;Type&quot;: {
+          &quot;Tp&quot;: 0,
+          &quot;Flag&quot;: 0,
+          &quot;Flen&quot;: 0,
+          &quot;Decimal&quot;: 0,
+          &quot;Charset&quot;: &quot;&quot;,
+          &quot;Collate&quot;: &quot;&quot;,
+          &quot;Elems&quot;: null
+        },
+        &quot;flag&quot;: 8,
+        &quot;Name&quot;: {
+          &quot;text&quot;: &quot;&quot;,
+          &quot;Schema&quot;: {
+            &quot;O&quot;: &quot;&quot;,
+            &quot;L&quot;: &quot;&quot;
+          },
+          &quot;Table&quot;: {
+            &quot;O&quot;: &quot;&quot;,
+            &quot;L&quot;: &quot;&quot;
+          },
+          &quot;Name&quot;: {
+            &quot;O&quot;: &quot;sno&quot;,
+            &quot;L&quot;: &quot;sno&quot;
+          }
+        },
+        &quot;Refer&quot;: null
+      },
+      &quot;R&quot;: {
+        &quot;text&quot;: &quot;&quot;,
+        &quot;k&quot;: 0,
+        &quot;collation&quot;: 0,
+        &quot;decimal&quot;: 0,
+        &quot;length&quot;: 0,
+        &quot;i&quot;: 0,
+        &quot;b&quot;: null,
+        &quot;x&quot;: null,
+        &quot;Type&quot;: {
+          &quot;Tp&quot;: 0,
+          &quot;Flag&quot;: 0,
+          &quot;Flen&quot;: 0,
+          &quot;Decimal&quot;: 0,
+          &quot;Charset&quot;: &quot;&quot;,
+          &quot;Collate&quot;: &quot;&quot;,
+          &quot;Elems&quot;: null
+        },
+        &quot;flag&quot;: 32,
+        &quot;Query&quot;: {
+          &quot;text&quot;: &quot;select sno+1 from my\n                where\n                name like \&quot;%zhufeng%\&quot; and\n                sno &gt; '10010' and\n                name=alias_t.name\n        &quot;,
+          &quot;resultFields&quot;: null,
+          &quot;SQLCache&quot;: true,
+          &quot;CalcFoundRows&quot;: false,
+          &quot;StraightJoin&quot;: false,
+          &quot;Priority&quot;: 0,
+          &quot;Distinct&quot;: false,
+          &quot;From&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;TableRefs&quot;: {
+              &quot;text&quot;: &quot;&quot;,
+              &quot;resultFields&quot;: null,
+              &quot;Left&quot;: {
+                &quot;text&quot;: &quot;&quot;,
+                &quot;Source&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;resultFields&quot;: null,
+                  &quot;Schema&quot;: {
+                    &quot;O&quot;: &quot;&quot;,
+                    &quot;L&quot;: &quot;&quot;
+                  },
+                  &quot;Name&quot;: {
+                    &quot;O&quot;: &quot;my&quot;,
+                    &quot;L&quot;: &quot;my&quot;
+                  },
+                  &quot;DBInfo&quot;: null,
+                  &quot;TableInfo&quot;: null,
+                  &quot;IndexHints&quot;: null
+                },
+                &quot;AsName&quot;: {
+                  &quot;O&quot;: &quot;&quot;,
+                  &quot;L&quot;: &quot;&quot;
+                }
+              },
+              &quot;Right&quot;: null,
+              &quot;Tp&quot;: 0,
+              &quot;On&quot;: null,
+              &quot;Using&quot;: null,
+              &quot;NaturalJoin&quot;: false,
+              &quot;StraightJoin&quot;: false
+            }
+          },
+          &quot;Where&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;k&quot;: 0,
+            &quot;collation&quot;: 0,
+            &quot;decimal&quot;: 0,
+            &quot;length&quot;: 0,
+            &quot;i&quot;: 0,
+            &quot;b&quot;: null,
+            &quot;x&quot;: null,
+            &quot;Type&quot;: {
+              &quot;Tp&quot;: 0,
+              &quot;Flag&quot;: 0,
+              &quot;Flen&quot;: 0,
+              &quot;Decimal&quot;: 0,
+              &quot;Charset&quot;: &quot;&quot;,
+              &quot;Collate&quot;: &quot;&quot;,
+              &quot;Elems&quot;: null
+            },
+            &quot;flag&quot;: 8,
+            &quot;Op&quot;: 1,
+            &quot;L&quot;: {
+              &quot;text&quot;: &quot;&quot;,
+              &quot;k&quot;: 0,
+              &quot;collation&quot;: 0,
+              &quot;decimal&quot;: 0,
+              &quot;length&quot;: 0,
+              &quot;i&quot;: 0,
+              &quot;b&quot;: null,
+              &quot;x&quot;: null,
+              &quot;Type&quot;: {
+                &quot;Tp&quot;: 0,
+                &quot;Flag&quot;: 0,
+                &quot;Flen&quot;: 0,
+                &quot;Decimal&quot;: 0,
+                &quot;Charset&quot;: &quot;&quot;,
+                &quot;Collate&quot;: &quot;&quot;,
+                &quot;Elems&quot;: null
+              },
+              &quot;flag&quot;: 8,
+              &quot;Op&quot;: 1,
+              &quot;L&quot;: {
+                &quot;text&quot;: &quot;&quot;,
+                &quot;k&quot;: 0,
+                &quot;collation&quot;: 0,
+                &quot;decimal&quot;: 0,
+                &quot;length&quot;: 0,
+                &quot;i&quot;: 0,
+                &quot;b&quot;: null,
+                &quot;x&quot;: null,
+                &quot;Type&quot;: {
+                  &quot;Tp&quot;: 0,
+                  &quot;Flag&quot;: 0,
+                  &quot;Flen&quot;: 0,
+                  &quot;Decimal&quot;: 0,
+                  &quot;Charset&quot;: &quot;&quot;,
+                  &quot;Collate&quot;: &quot;&quot;,
+                  &quot;Elems&quot;: null
+                },
+                &quot;flag&quot;: 8,
+                &quot;Expr&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;k&quot;: 0,
+                  &quot;collation&quot;: 0,
+                  &quot;decimal&quot;: 0,
+                  &quot;length&quot;: 0,
+                  &quot;i&quot;: 0,
+                  &quot;b&quot;: null,
+                  &quot;x&quot;: null,
+                  &quot;Type&quot;: {
+                    &quot;Tp&quot;: 0,
+                    &quot;Flag&quot;: 0,
+                    &quot;Flen&quot;: 0,
+                    &quot;Decimal&quot;: 0,
+                    &quot;Charset&quot;: &quot;&quot;,
+                    &quot;Collate&quot;: &quot;&quot;,
+                    &quot;Elems&quot;: null
+                  },
+                  &quot;flag&quot;: 8,
+                  &quot;Name&quot;: {
+                    &quot;text&quot;: &quot;&quot;,
+                    &quot;Schema&quot;: {
+                      &quot;O&quot;: &quot;&quot;,
+                      &quot;L&quot;: &quot;&quot;
+                    },
+                    &quot;Table&quot;: {
+                      &quot;O&quot;: &quot;&quot;,
+                      &quot;L&quot;: &quot;&quot;
+                    },
+                    &quot;Name&quot;: {
+                      &quot;O&quot;: &quot;name&quot;,
+                      &quot;L&quot;: &quot;name&quot;
+                    }
+                  },
+                  &quot;Refer&quot;: null
+                },
+                &quot;Pattern&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;k&quot;: 5,
+                  &quot;collation&quot;: 0,
+                  &quot;decimal&quot;: 0,
+                  &quot;length&quot;: 0,
+                  &quot;i&quot;: 0,
+                  &quot;b&quot;: &quot;JXpodWZlbmcl&quot;,
+                  &quot;x&quot;: null,
+                  &quot;Type&quot;: {
+                    &quot;Tp&quot;: 253,
+                    &quot;Flag&quot;: 0,
+                    &quot;Flen&quot;: 9,
+                    &quot;Decimal&quot;: -1,
+                    &quot;Charset&quot;: &quot;utf8&quot;,
+                    &quot;Collate&quot;: &quot;utf8_bin&quot;,
+                    &quot;Elems&quot;: null
+                  },
+                  &quot;flag&quot;: 0,
+                  &quot;projectionOffset&quot;: -1
+                },
+                &quot;Not&quot;: false,
+                &quot;Escape&quot;: 92,
+                &quot;PatChars&quot;: null,
+                &quot;PatTypes&quot;: null
+              },
+              &quot;R&quot;: {
+                &quot;text&quot;: &quot;&quot;,
+                &quot;k&quot;: 0,
+                &quot;collation&quot;: 0,
+                &quot;decimal&quot;: 0,
+                &quot;length&quot;: 0,
+                &quot;i&quot;: 0,
+                &quot;b&quot;: null,
+                &quot;x&quot;: null,
+                &quot;Type&quot;: {
+                  &quot;Tp&quot;: 0,
+                  &quot;Flag&quot;: 0,
+                  &quot;Flen&quot;: 0,
+                  &quot;Decimal&quot;: 0,
+                  &quot;Charset&quot;: &quot;&quot;,
+                  &quot;Collate&quot;: &quot;&quot;,
+                  &quot;Elems&quot;: null
+                },
+                &quot;flag&quot;: 8,
+                &quot;Op&quot;: 10,
+                &quot;L&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;k&quot;: 0,
+                  &quot;collation&quot;: 0,
+                  &quot;decimal&quot;: 0,
+                  &quot;length&quot;: 0,
+                  &quot;i&quot;: 0,
+                  &quot;b&quot;: null,
+                  &quot;x&quot;: null,
+                  &quot;Type&quot;: {
+                    &quot;Tp&quot;: 0,
+                    &quot;Flag&quot;: 0,
+                    &quot;Flen&quot;: 0,
+                    &quot;Decimal&quot;: 0,
+                    &quot;Charset&quot;: &quot;&quot;,
+                    &quot;Collate&quot;: &quot;&quot;,
+                    &quot;Elems&quot;: null
+                  },
+                  &quot;flag&quot;: 8,
+                  &quot;Name&quot;: {
+                    &quot;text&quot;: &quot;&quot;,
+                    &quot;Schema&quot;: {
+                      &quot;O&quot;: &quot;&quot;,
+                      &quot;L&quot;: &quot;&quot;
+                    },
+                    &quot;Table&quot;: {
+                      &quot;O&quot;: &quot;&quot;,
+                      &quot;L&quot;: &quot;&quot;
+                    },
+                    &quot;Name&quot;: {
+                      &quot;O&quot;: &quot;sno&quot;,
+                      &quot;L&quot;: &quot;sno&quot;
+                    }
+                  },
+                  &quot;Refer&quot;: null
+                },
+                &quot;R&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;k&quot;: 5,
+                  &quot;collation&quot;: 0,
+                  &quot;decimal&quot;: 0,
+                  &quot;length&quot;: 0,
+                  &quot;i&quot;: 0,
+                  &quot;b&quot;: &quot;MTAwMTA=&quot;,
+                  &quot;x&quot;: null,
+                  &quot;Type&quot;: {
+                    &quot;Tp&quot;: 253,
+                    &quot;Flag&quot;: 0,
+                    &quot;Flen&quot;: 5,
+                    &quot;Decimal&quot;: -1,
+                    &quot;Charset&quot;: &quot;utf8&quot;,
+                    &quot;Collate&quot;: &quot;utf8_bin&quot;,
+                    &quot;Elems&quot;: null
+                  },
+                  &quot;flag&quot;: 0,
+                  &quot;projectionOffset&quot;: -1
+                }
+              }
+            },
+            &quot;R&quot;: {
+              &quot;text&quot;: &quot;&quot;,
+              &quot;k&quot;: 0,
+              &quot;collation&quot;: 0,
+              &quot;decimal&quot;: 0,
+              &quot;length&quot;: 0,
+              &quot;i&quot;: 0,
+              &quot;b&quot;: null,
+              &quot;x&quot;: null,
+              &quot;Type&quot;: {
+                &quot;Tp&quot;: 0,
+                &quot;Flag&quot;: 0,
+                &quot;Flen&quot;: 0,
+                &quot;Decimal&quot;: 0,
+                &quot;Charset&quot;: &quot;&quot;,
+                &quot;Collate&quot;: &quot;&quot;,
+                &quot;Elems&quot;: null
+              },
+              &quot;flag&quot;: 8,
+              &quot;Op&quot;: 7,
+              &quot;L&quot;: {
+                &quot;text&quot;: &quot;&quot;,
+                &quot;k&quot;: 0,
+                &quot;collation&quot;: 0,
+                &quot;decimal&quot;: 0,
+                &quot;length&quot;: 0,
+                &quot;i&quot;: 0,
+                &quot;b&quot;: null,
+                &quot;x&quot;: null,
+                &quot;Type&quot;: {
+                  &quot;Tp&quot;: 0,
+                  &quot;Flag&quot;: 0,
+                  &quot;Flen&quot;: 0,
+                  &quot;Decimal&quot;: 0,
+                  &quot;Charset&quot;: &quot;&quot;,
+                  &quot;Collate&quot;: &quot;&quot;,
+                  &quot;Elems&quot;: null
+                },
+                &quot;flag&quot;: 8,
+                &quot;Name&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;Schema&quot;: {
+                    &quot;O&quot;: &quot;&quot;,
+                    &quot;L&quot;: &quot;&quot;
+                  },
+                  &quot;Table&quot;: {
+                    &quot;O&quot;: &quot;&quot;,
+                    &quot;L&quot;: &quot;&quot;
+                  },
+                  &quot;Name&quot;: {
+                    &quot;O&quot;: &quot;name&quot;,
+                    &quot;L&quot;: &quot;name&quot;
+                  }
+                },
+                &quot;Refer&quot;: null
+              },
+              &quot;R&quot;: {
+                &quot;text&quot;: &quot;&quot;,
+                &quot;k&quot;: 0,
+                &quot;collation&quot;: 0,
+                &quot;decimal&quot;: 0,
+                &quot;length&quot;: 0,
+                &quot;i&quot;: 0,
+                &quot;b&quot;: null,
+                &quot;x&quot;: null,
+                &quot;Type&quot;: {
+                  &quot;Tp&quot;: 0,
+                  &quot;Flag&quot;: 0,
+                  &quot;Flen&quot;: 0,
+                  &quot;Decimal&quot;: 0,
+                  &quot;Charset&quot;: &quot;&quot;,
+                  &quot;Collate&quot;: &quot;&quot;,
+                  &quot;Elems&quot;: null
+                },
+                &quot;flag&quot;: 8,
+                &quot;Name&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;Schema&quot;: {
+                    &quot;O&quot;: &quot;&quot;,
+                    &quot;L&quot;: &quot;&quot;
+                  },
+                  &quot;Table&quot;: {
+                    &quot;O&quot;: &quot;alias_t&quot;,
+                    &quot;L&quot;: &quot;alias_t&quot;
+                  },
+                  &quot;Name&quot;: {
+                    &quot;O&quot;: &quot;name&quot;,
+                    &quot;L&quot;: &quot;name&quot;
+                  }
+                },
+                &quot;Refer&quot;: null
+              }
+            }
+          },
+          &quot;Fields&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;Fields&quot;: [
+              {
+                &quot;text&quot;: &quot;sno+1&quot;,
+                &quot;Offset&quot;: 108,
+                &quot;WildCard&quot;: null,
+                &quot;Expr&quot;: {
+                  &quot;text&quot;: &quot;&quot;,
+                  &quot;k&quot;: 0,
+                  &quot;collation&quot;: 0,
+                  &quot;decimal&quot;: 0,
+                  &quot;length&quot;: 0,
+                  &quot;i&quot;: 0,
+                  &quot;b&quot;: null,
+                  &quot;x&quot;: null,
+                  &quot;Type&quot;: {
+                    &quot;Tp&quot;: 0,
+                    &quot;Flag&quot;: 0,
+                    &quot;Flen&quot;: 0,
+                    &quot;Decimal&quot;: 0,
+                    &quot;Charset&quot;: &quot;&quot;,
+                    &quot;Collate&quot;: &quot;&quot;,
+                    &quot;Elems&quot;: null
+                  },
+                  &quot;flag&quot;: 8,
+                  &quot;Op&quot;: 11,
+                  &quot;L&quot;: {
+                    &quot;text&quot;: &quot;&quot;,
+                    &quot;k&quot;: 0,
+                    &quot;collation&quot;: 0,
+                    &quot;decimal&quot;: 0,
+                    &quot;length&quot;: 0,
+                    &quot;i&quot;: 0,
+                    &quot;b&quot;: null,
+                    &quot;x&quot;: null,
+                    &quot;Type&quot;: {
+                      &quot;Tp&quot;: 0,
+                      &quot;Flag&quot;: 0,
+                      &quot;Flen&quot;: 0,
+                      &quot;Decimal&quot;: 0,
+                      &quot;Charset&quot;: &quot;&quot;,
+                      &quot;Collate&quot;: &quot;&quot;,
+                      &quot;Elems&quot;: null
+                    },
+                    &quot;flag&quot;: 8,
+                    &quot;Name&quot;: {
+                      &quot;text&quot;: &quot;&quot;,
+                      &quot;Schema&quot;: {
+                        &quot;O&quot;: &quot;&quot;,
+                        &quot;L&quot;: &quot;&quot;
+                      },
+                      &quot;Table&quot;: {
+                        &quot;O&quot;: &quot;&quot;,
+                        &quot;L&quot;: &quot;&quot;
+                      },
+                      &quot;Name&quot;: {
+                        &quot;O&quot;: &quot;sno&quot;,
+                        &quot;L&quot;: &quot;sno&quot;
+                      }
+                    },
+                    &quot;Refer&quot;: null
+                  },
+                  &quot;R&quot;: {
+                    &quot;text&quot;: &quot;&quot;,
+                    &quot;k&quot;: 1,
+                    &quot;collation&quot;: 0,
+                    &quot;decimal&quot;: 0,
+                    &quot;length&quot;: 0,
+                    &quot;i&quot;: 1,
+                    &quot;b&quot;: null,
+                    &quot;x&quot;: null,
+                    &quot;Type&quot;: {
+                      &quot;Tp&quot;: 8,
+                      &quot;Flag&quot;: 128,
+                      &quot;Flen&quot;: 1,
+                      &quot;Decimal&quot;: 0,
+                      &quot;Charset&quot;: &quot;binary&quot;,
+                      &quot;Collate&quot;: &quot;binary&quot;,
+                      &quot;Elems&quot;: null
+                    },
+                    &quot;flag&quot;: 0,
+                    &quot;projectionOffset&quot;: -1
+                  }
+                },
+                &quot;AsName&quot;: {
+                  &quot;O&quot;: &quot;&quot;,
+                  &quot;L&quot;: &quot;&quot;
+                },
+                &quot;Auxiliary&quot;: false
+              }
+            ]
+          },
+          &quot;GroupBy&quot;: null,
+          &quot;Having&quot;: null,
+          &quot;OrderBy&quot;: null,
+          &quot;Limit&quot;: null,
+          &quot;LockTp&quot;: 0,
+          &quot;TableHints&quot;: null,
+          &quot;IsAfterUnionDistinct&quot;: false,
+          &quot;IsInBraces&quot;: false
+        },
+        &quot;Evaluated&quot;: false,
+        &quot;Correlated&quot;: false,
+        &quot;MultiRows&quot;: false,
+        &quot;Exists&quot;: false
+      }
+    },
+    &quot;Fields&quot;: {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;Fields&quot;: [
+        {
+          &quot;text&quot;: &quot;sno&quot;,
+          &quot;Offset&quot;: 40,
+          &quot;WildCard&quot;: null,
+          &quot;Expr&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;k&quot;: 0,
+            &quot;collation&quot;: 0,
+            &quot;decimal&quot;: 0,
+            &quot;length&quot;: 0,
+            &quot;i&quot;: 0,
+            &quot;b&quot;: null,
+            &quot;x&quot;: null,
+            &quot;Type&quot;: {
+              &quot;Tp&quot;: 0,
+              &quot;Flag&quot;: 0,
+              &quot;Flen&quot;: 0,
+              &quot;Decimal&quot;: 0,
+              &quot;Charset&quot;: &quot;&quot;,
+              &quot;Collate&quot;: &quot;&quot;,
+              &quot;Elems&quot;: null
+            },
+            &quot;flag&quot;: 8,
+            &quot;Name&quot;: {
+              &quot;text&quot;: &quot;&quot;,
+              &quot;Schema&quot;: {
+                &quot;O&quot;: &quot;&quot;,
+                &quot;L&quot;: &quot;&quot;
+              },
+              &quot;Table&quot;: {
+                &quot;O&quot;: &quot;&quot;,
+                &quot;L&quot;: &quot;&quot;
+              },
+              &quot;Name&quot;: {
+                &quot;O&quot;: &quot;sno&quot;,
+                &quot;L&quot;: &quot;sno&quot;
+              }
+            },
+            &quot;Refer&quot;: null
+          },
+          &quot;AsName&quot;: {
+            &quot;O&quot;: &quot;&quot;,
+            &quot;L&quot;: &quot;&quot;
+          },
+          &quot;Auxiliary&quot;: false
+        },
+        {
+          &quot;text&quot;: &quot;name&quot;,
+          &quot;Offset&quot;: 45,
+          &quot;WildCard&quot;: null,
+          &quot;Expr&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;k&quot;: 0,
+            &quot;collation&quot;: 0,
+            &quot;decimal&quot;: 0,
+            &quot;length&quot;: 0,
+            &quot;i&quot;: 0,
+            &quot;b&quot;: null,
+            &quot;x&quot;: null,
+            &quot;Type&quot;: {
+              &quot;Tp&quot;: 0,
+              &quot;Flag&quot;: 0,
+              &quot;Flen&quot;: 0,
+              &quot;Decimal&quot;: 0,
+              &quot;Charset&quot;: &quot;&quot;,
+              &quot;Collate&quot;: &quot;&quot;,
+              &quot;Elems&quot;: null
+            },
+            &quot;flag&quot;: 8,
+            &quot;Name&quot;: {
+              &quot;text&quot;: &quot;&quot;,
+              &quot;Schema&quot;: {
+                &quot;O&quot;: &quot;&quot;,
+                &quot;L&quot;: &quot;&quot;
+              },
+              &quot;Table&quot;: {
+                &quot;O&quot;: &quot;&quot;,
+                &quot;L&quot;: &quot;&quot;
+              },
+              &quot;Name&quot;: {
+                &quot;O&quot;: &quot;name&quot;,
+                &quot;L&quot;: &quot;name&quot;
+              }
+            },
+            &quot;Refer&quot;: null
+          },
+          &quot;AsName&quot;: {
+            &quot;O&quot;: &quot;&quot;,
+            &quot;L&quot;: &quot;&quot;
+          },
+          &quot;Auxiliary&quot;: false
+        }
+      ]
+    },
+    &quot;GroupBy&quot;: null,
+    &quot;Having&quot;: null,
+    &quot;OrderBy&quot;: {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;Items&quot;: [
+        {
+          &quot;text&quot;: &quot;&quot;,
+          &quot;Expr&quot;: {
+            &quot;text&quot;: &quot;&quot;,
+            &quot;k&quot;: 0,
+            &quot;collation&quot;: 0,
+            &quot;decimal&quot;: 0,
+            &quot;length&quot;: 0,
+            &quot;i&quot;: 0,
+            &quot;b&quot;: null,
+            &quot;x&quot;: null,
+            &quot;Type&quot;: {
+              &quot;Tp&quot;: 0,
+              &quot;Flag&quot;: 0,
+              &quot;Flen&quot;: 0,
+              &quot;Decimal&quot;: 0,
+              &quot;Charset&quot;: &quot;&quot;,
+              &quot;Collate&quot;: &quot;&quot;,
+              &quot;Elems&quot;: null
+            },
+            &quot;flag&quot;: 8,
+            &quot;Name&quot;: {
+              &quot;text&quot;: &quot;&quot;,
+              &quot;Schema&quot;: {
+                &quot;O&quot;: &quot;&quot;,
+                &quot;L&quot;: &quot;&quot;
+              },
+              &quot;Table&quot;: {
+                &quot;O&quot;: &quot;&quot;,
+                &quot;L&quot;: &quot;&quot;
+              },
+              &quot;Name&quot;: {
+                &quot;O&quot;: &quot;name&quot;,
+                &quot;L&quot;: &quot;name&quot;
+              }
+            },
+            &quot;Refer&quot;: null
+          },
+          &quot;Desc&quot;: false
+        }
+      ],
+      &quot;ForUnion&quot;: false
+    },
+    &quot;Limit&quot;: {
+      &quot;text&quot;: &quot;&quot;,
+      &quot;Count&quot;: {
+        &quot;text&quot;: &quot;&quot;,
+        &quot;k&quot;: 2,
+        &quot;collation&quot;: 0,
+        &quot;decimal&quot;: 0,
+        &quot;length&quot;: 0,
+        &quot;i&quot;: 10,
+        &quot;b&quot;: null,
+        &quot;x&quot;: null,
+        &quot;Type&quot;: {
+          &quot;Tp&quot;: 8,
+          &quot;Flag&quot;: 160,
+          &quot;Flen&quot;: 2,
+          &quot;Decimal&quot;: 0,
+          &quot;Charset&quot;: &quot;binary&quot;,
+          &quot;Collate&quot;: &quot;binary&quot;,
+          &quot;Elems&quot;: null
+        },
+        &quot;flag&quot;: 0,
+        &quot;projectionOffset&quot;: -1
+      },
+      &quot;Offset&quot;: {
+        &quot;text&quot;: &quot;&quot;,
+        &quot;k&quot;: 2,
+        &quot;collation&quot;: 0,
+        &quot;decimal&quot;: 0,
+        &quot;length&quot;: 0,
+        &quot;i&quot;: 100,
+        &quot;b&quot;: null,
+        &quot;x&quot;: null,
+        &quot;Type&quot;: {
+          &quot;Tp&quot;: 8,
+          &quot;Flag&quot;: 160,
+          &quot;Flen&quot;: 3,
+          &quot;Decimal&quot;: 0,
+          &quot;Charset&quot;: &quot;binary&quot;,
+          &quot;Collate&quot;: &quot;binary&quot;,
+          &quot;Elems&quot;: null
+        },
+        &quot;flag&quot;: 0,
+        &quot;projectionOffset&quot;: -1
+      }
+    },
+    &quot;LockTp&quot;: 0,
+    &quot;TableHints&quot;: null,
+    &quot;IsAfterUnionDistinct&quot;: false,
+    &quot;IsInBraces&quot;: false
+  }
+}
+</code></pre></div><h2 id="others"><a href="#others" class="header-anchor">#</a> Others</h2> <p>The SQL statement above actually does not make sense, here just to be the best possible expression of each type and print out random structure.</p> <p>You can see this JSON string is very long. But the entire statement is very clear after structuring. It shows which type of statement, which table to use, which column and no ORDER BY, etc. Statement analysis is no longer a difficult thing. Use the program to do this structured statement analysis should be very easy and accurate.</p> <h2 id="tag-definations"><a href="#tag-definations" class="header-anchor">#</a> tag definations</h2> <ul><li>1.<code>command</code>: SQL type, support: <code>insert</code>, <code>update</code>, <code>delete</code>, <code>select</code>.</li> <li>2.<code>table_object</code>: <code>insert/delete</code> which table. <code>update</code> can check by update columns.</li> <li>3.<code>fields</code>: array type, <code>insert</code> fields.contains all column informations.each column is an expression which contains dbname,tablename and column name.the expression type is FIELD_ITEM.</li> <li>4.<code>select_insert_values</code>: the select part of <code>insert</code>. contains all items in this query, columns, tables,where and order by, etc.</li> <li>5.<code>select_list</code>: 表示当前查询语句（或者子查询）要查询的表达式信息，这里可以是列，也可以是其它计算出来的值，例子中就有select sno+1...这样的查询。</li> <li>6.<code>table_ref</code>: array type. shows the reference table information.</li> <li>7.<code>where</code>: where expresions.</li> <li>8.<code>OrderBy</code>: array type.</li> <li>9.<code>limit</code>: limit numbers.</li> <li>10.<code>GroupBy</code>: array type.</li> <li>11.<code>Having</code>: Having expression</li> <li>12.<code>subselect</code>: <code>dic</code> type, show sub-query.</li> <li>13.<code>many_values</code>: <code>insert</code> values in <code>select</code>.</li> <li>14.<code>values</code>: array type, each item is a column expression. show <code>insert</code> rows. it belong to <code>many_values</code>. if <code>update</code>, the same.</li> <li>15.<code>set_fields</code>: array type, <code>udpate</code> column informations.each item is a column expresion</li></ul> <p>The above statement is currently supported appearing label instructions, but lots of them are the expression, when you print an expression, every object has a public KEY, called type. For different type, KEY is not the same, you can try to find the details.</p> <h2 id="expression-type"><a href="#expression-type" class="header-anchor">#</a> Expression Type</h2> <p>The following is a list of all expressions currently supported are listed below only different values for type:</p> <ul><li>1.<code>STRING_ITEM</code>: string, storage at other keys.有其它KEY用来存储其具体值信息。</li> <li>2.<code>FIELD_ITEM</code>: column information, storage at other keys.</li> <li>3.<code>FUNC_ITEM,COND_ITEM</code>: logical caculation information, contains comparison operators, <code>AND</code>, <code>OR</code>, <code>ISNULL</code>, <code>ISNOTNULL</code>, <code>LIKE</code>,<code>BETWEEN</code>, <code>IN</code>, <code>NOT</code>, <code>NOW</code>, etc.</li> <li>4.<code>INT_ITEM</code>: <code>integer</code> expression.</li> <li>5.<code>REAL_ITEM</code>: <code>float</code> expression.</li> <li>6.<code>NULL_ITEM</code>: <code>NULL</code> expression.</li> <li>7.<code>SUBSELECT_ITEM</code>: <code>sub-query</code> expression.</li> <li>8.<code>SUM_FUNC_ITEM</code>: <code>sum()</code>expression.</li> <li>9.<code>ROW_ITEM</code>:  row expression, eg: <code>select * from t where (sno,name) = (select sno,name from t1)</code></li> <li>10.<code>DECIMAL_ITEM</code>: <code>DECIMAL</code> expression.</li></ul> <p>Above is the expression types currently supported, already covers all common expressions.</p> <p>The last thing to note is that the information printed here is not exactly the information after the end of the grammatical analysis, but processed by Inception. For example, when a subquery is used in a query statement, it is also used when there are different contexts. In these cases, Inception has printed the library name table name corresponding to each column, so that the printed information does not exist without positioning (find its library name table) Name) is listed, it is more friendly and accurate in use. For example, in the above example, there is such a situation (the alias of the t table named alisa_t).</p> <h2 id="tips"><a href="#tips" class="header-anchor">#</a> Tips</h2> <p>This feature is a new development to achieve, without much verification (but there was no big problem), but also need to constantly improve and update, if you have any comments or suggestions, you can add QQ Group or contact me to discuss and resolve together.</p></div> <footer class="page-edit"><div class="edit-link"><a href="https://github.com/hanchuanchuan/goInception/edit/master/docs/tree.md" target="_blank" rel="noopener noreferrer">Edit this page on GitHub</a> <span><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> <span class="sr-only">(opens new window)</span></span></div> <div class="last-updated"><span class="prefix">Last Updated:</span> <span class="time">7/7/2021, 11:19:31 PM</span></div></footer> <div class="page-nav"><p class="inner"><span class="prev">
+      ←
+      <a href="/goInception/statistics.html" class="prev">
+        Statistics
+      </a></span> <span class="next"><a href="/goInception/trans.html">
+        Transaction
+      </a>
+      →
+    </span></p></div> </main></div><div class="global-ui"></div></div>
+    <script src="/goInception/assets/js/app.35e44c5d.js" defer></script><script src="/goInception/assets/js/3.a468a5ac.js" defer></script><script src="/goInception/assets/js/36.c789dffd.js" defer></script>
+  </body>
+</html>
