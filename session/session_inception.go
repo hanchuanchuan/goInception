@@ -2093,8 +2093,10 @@ func (s *session) parseOptions(sql string) {
 
 	viper := viper.New()
 	viper.SetConfigType("yaml")
-	viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
-
+	err := viper.ReadConfig(bytes.NewBuffer([]byte(opt)))
+	if err != nil {
+		log.Errorf("con:%d, config: %s, parsed: %#v (err: %v)", s.sessionVars.ConnectionID, opt, viper.AllSettings(), err)
+	}
 	// 设置默认值
 	// viper.SetDefault("db", "mysql")
 
@@ -2148,7 +2150,7 @@ func (s *session) parseOptions(sql string) {
 	}
 
 	if err := s.checkOptions(); err != nil {
-		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		log.Errorf("con:%d, config: %s, parsed: %#v (err: %v)", s.sessionVars.ConnectionID, opt, viper.AllSettings(), err)
 		s.appendErrorMsg(err.Error())
 	}
 }

@@ -65,7 +65,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14
+          go-version: 1.22.1
         id: go
 
       - name: Check out code
@@ -85,9 +85,9 @@ jobs:
 
       - name: "Build & Test"
         run: |
-          rm -f go.sum
+          # rm -f go.sum
           sudo chmod +x cmd/explaintest/run-tests.sh
-          make checklist parserlib gotest
+          make checklist gotest
 
       # - name: Analyze with SonarCloud
       #   uses: sonarsource/sonarcloud-github-action@master
