@@ -469,6 +469,7 @@ import (
 	cast             "CAST"
 	copyKwd          "COPY"
 	count            "COUNT"
+	curDate          "CURDATE"
 	curTime          "CURTIME"
 	dateAdd          "DATE_ADD"
 	dateSub          "DATE_SUB"
@@ -589,6 +590,8 @@ import (
 	SignedLiteral          "Literal or NumLiteral with sign"
 	DefaultValueExpr       "DefaultValueExpr(Now or Signed Literal)"
 	NowSymOptionFraction   "NowSym with optional fraction part"
+	NowSymOptionFractionParentheses "NowSym with optional fraction part within potential parentheses"
+	BuiltinFunction        "Default builtin functions for columns"
 
 %type	<statement>
 	AdminStmt            "Check table statement or show ddl statement"
@@ -938,6 +941,7 @@ import (
 	PrimaryOpt        "Optional primary keyword"
 	NowSym            "CURRENT_TIMESTAMP/LOCALTIME/LOCALTIMESTAMP"
 	NowSymFunc        "CURRENT_TIMESTAMP/LOCALTIME/LOCALTIMESTAMP/NOW"
+	CurdateSym        "CURDATE or CURRENT_DATE"
 	DefaultKwdOpt     "optional DEFAULT keyword"
 	DatabaseSym       "DATABASE or SCHEMA"
 	ExplainSym        "EXPLAIN or DESCRIBE or DESC"
@@ -2250,8 +2254,35 @@ ReferOpt:
  *      https://github.com/mysql/mysql-server/blob/5.7/sql/sql_yacc.yy#L6832
  */
 DefaultValueExpr:
-	NowSymOptionFraction
+	NowSymOptionFractionParentheses
 |	SignedLiteral
+|	BuiltinFunction
+
+BuiltinFunction:
+	'(' BuiltinFunction ')'
+	{
+		$$ = $2.(*ast.FuncCallExpr)
+	}
+|	identifier '(' ')'
+	{
+		$$ = &ast.FuncCallExpr{
+			FnName: model.NewCIStr($1),
+		}
+	}
+|	identifier '(' ExpressionList ')'
+	{
+		$$ = &ast.FuncCallExpr{
+			FnName: model.NewCIStr($1),
+			Args:   $3.([]ast.ExprNode),
+		}
+	}
+
+NowSymOptionFractionParentheses:
+	'(' NowSymOptionFractionParentheses ')'
+	{
+		$$ = $2.(*ast.FuncCallExpr)
+	}
+|	NowSymOptionFraction
 
 NowSymOptionFraction:
 	NowSym
@@ -2266,6 +2297,14 @@ NowSymOptionFraction:
 	{
 		$$ = &ast.FuncCallExpr{FnName: model.NewCIStr("CURRENT_TIMESTAMP"),
 			Args: []ast.ExprNode{ast.NewValueExpr($3)}}
+	}
+|	CurdateSym '(' ')'
+	{
+		$$ = &ast.FuncCallExpr{FnName: model.NewCIStr("CURRENT_DATE")}
+	}
+|	"CURRENT_DATE"
+	{
+		$$ = &ast.FuncCallExpr{FnName: model.NewCIStr("CURRENT_DATE")}
 	}
 
 /*
@@ -2282,6 +2321,10 @@ NowSym:
 	"CURRENT_TIMESTAMP"
 |	"LOCALTIME"
 |	"LOCALTIMESTAMP"
+
+CurdateSym:
+	builtinCurDate
+|	"CURRENT_DATE"
 
 SignedLiteral:
 	Literal
@@ -4628,6 +4671,7 @@ NotKeywordToken:
 |	"COPY"
 |	"COUNT"
 |	"CURTIME"
+|	"CURDATE"
 |	"DATE_ADD"
 |	"DATE_SUB"
 |	"EXTRACT"
