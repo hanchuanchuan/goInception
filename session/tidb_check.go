@@ -708,6 +708,11 @@ func (s *session) checkPartitionDrop(t *TableInfo, parts []model.CIStr) {
 				break
 			}
 		}
+		if found && s.dbType == DBTypeOceanBase && s.inc.CheckOfflineDDL {
+			s.appendErrorNo(ER_CANT_DROP_PARTITION, part.String())
+			break
+		}
+
 		if !found {
 			s.appendErrorNo(ErrPartitionNotExisted, part.String())
 		}

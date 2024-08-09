@@ -226,6 +226,13 @@ const (
 	ErrMaxVarcharLength
 	ErrMaxColumnCount
 	ER_ERROR_LAST
+	ER_CANT_ADD_AUTO_INCREMENT_COLUMN
+	ER_CANT_ADD_STORED_GENERATED_COLUMN
+	ER_CANT_MODIFY_AUTO_INCREMENT_COLUMN
+	ER_CANT_MODIFY_PK_OR_UK_COLUMN
+	ER_CANT_DROP_COLUMN
+	ER_CANT_DROP_PARTITION
+	ER_CANT_TRUNCATE_PARTITION
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -396,29 +403,36 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErCantChangeColumn:                     "Not supported statement of change column('%s').",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
-	ER_DATETIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
-	ER_TOO_MUCH_AUTO_DATETIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
-	ErrFloatDoubleToDecimal:        "Set column '%s' to DECIMAL type.",
-	ErrIdentifierUpper:             "Identifier '%s' must be capitalized.",
-	ErrIdentifierLower:             "Identifier '%s' must be lowercase.",
-	ErrWrongAndExpr:                "May be the wrong syntax! Separate multiple fields with commas.",
-	ErrCannotAddForeign:            "Cannot add foreign key constraint",
-	ErrWrongFkDefWithMatch:         "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
-	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
-	ErrJoinNoOnCondition:           "set the on clause for join statement.",
-	ErrImplicitTypeConversion:      "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
-	ErrUseValueExpr:                "Please confirm if you want to use value expression in where condition.",
-	ErrUseIndexVisibility:          "The back-end database does not support the index to specify the visible option.",
-	ErrViewSupport:                 "Not allowed to create or use views '%s'.",
-	ErrViewColumnCount:             "View's SELECT and view's field list have different column counts",
-	ErrIncorrectDateTimeValue:      "Incorrect datetime value: '%v'(column '%s')",
-	ErrSameNamePartition:           "Duplicate partition name %-.192s",
-	ErrRepeatConstDefinition:       "Duplicate partition constant definition: '%v'",
-	ErrPartitionNotExisted:         "Partition '%-.64s' does not exist",
-	ErrIndexNotExisted:             "Index '%-.64s' does not exist",
-	ErrMaxVarcharLength:            "Column length too big for column '%s' (Custom maximum is %d)",
-	ErrMaxColumnCount:              "Table '%s' has too many columns(limit %d,current %d)",
-	ER_ERROR_LAST:                  "TheLastError,ByeBye",
+	ER_DATETIME_DEFAULT:                  "Set default value for DATETIME column '%s'.",
+	ER_TOO_MUCH_AUTO_DATETIME_COLS:       "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
+	ErrFloatDoubleToDecimal:              "Set column '%s' to DECIMAL type.",
+	ErrIdentifierUpper:                   "Identifier '%s' must be capitalized.",
+	ErrIdentifierLower:                   "Identifier '%s' must be lowercase.",
+	ErrWrongAndExpr:                      "May be the wrong syntax! Separate multiple fields with commas.",
+	ErrCannotAddForeign:                  "Cannot add foreign key constraint",
+	ErrWrongFkDefWithMatch:               "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
+	ErrFkDupName:                         "Duplicate foreign key constraint name '%s'",
+	ErrJoinNoOnCondition:                 "set the on clause for join statement.",
+	ErrImplicitTypeConversion:            "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
+	ErrUseValueExpr:                      "Please confirm if you want to use value expression in where condition.",
+	ErrUseIndexVisibility:                "The back-end database does not support the index to specify the visible option.",
+	ErrViewSupport:                       "Not allowed to create or use views '%s'.",
+	ErrViewColumnCount:                   "View's SELECT and view's field list have different column counts",
+	ErrIncorrectDateTimeValue:            "Incorrect datetime value: '%v'(column '%s')",
+	ErrSameNamePartition:                 "Duplicate partition name %-.192s",
+	ErrRepeatConstDefinition:             "Duplicate partition constant definition: '%v'",
+	ErrPartitionNotExisted:               "Partition '%-.64s' does not exist",
+	ErrIndexNotExisted:                   "Index '%-.64s' does not exist",
+	ErrMaxVarcharLength:                  "Column length too big for column '%s' (Custom maximum is %d)",
+	ErrMaxColumnCount:                    "Table '%s' has too many columns(limit %d,current %d)",
+	ER_ERROR_LAST:                        "TheLastError,ByeBye",
+	ER_CANT_ADD_AUTO_INCREMENT_COLUMN:    "Can't add AUTO_INCREMENT column '%s'.",
+	ER_CANT_MODIFY_AUTO_INCREMENT_COLUMN: "Can't modify column '%s' to AUTO_INCREMENT.",
+	ER_CANT_ADD_STORED_GENERATED_COLUMN:  "Can't add stored generated column '%s'.",
+	ER_CANT_MODIFY_PK_OR_UK_COLUMN:       "Can't modify column '%s' to PK or UK.",
+	ER_CANT_DROP_COLUMN:                  "Can't drop column '%s'.",
+	ER_CANT_DROP_PARTITION:               "Can't drop partition '%s'.",
+	ER_CANT_TRUNCATE_PARTITION:           "Can't truncate partition '%s'.",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -603,6 +617,13 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrIndexNotExisted:                     "Index '%-.64s' 不存在",
 	ErrMaxVarcharLength:                    "列'%s'指定长度过长(自定义上限为%d)",
 	ErrMaxColumnCount:                      "表'%s'列数过多(上限:%d,当前:%d)",
+	ER_CANT_ADD_AUTO_INCREMENT_COLUMN:      "禁止添加自增列 '%s'.",
+	ER_CANT_MODIFY_AUTO_INCREMENT_COLUMN:   "禁止修改列 '%s' 为AUTO_INCREMENT列.",
+	ER_CANT_ADD_STORED_GENERATED_COLUMN:    "禁止添加Stored生成列 '%s'.",
+	ER_CANT_MODIFY_PK_OR_UK_COLUMN:         "禁止修改列 '%s' 为 PK or UK列.",
+	ER_CANT_DROP_COLUMN:                    "禁止删除列 '%s'.",
+	ER_CANT_DROP_PARTITION:                 "禁止删除分区 '%s'.",
+	ER_CANT_TRUNCATE_PARTITION:             "禁止清空分区 '%s'.",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
