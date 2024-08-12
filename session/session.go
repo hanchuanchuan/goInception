@@ -135,7 +135,19 @@ func (h *StmtHistory) Count() int {
 	return len(h.history)
 }
 
+// jwx added
+type alterTableInfo struct {
+	Name          string
+	alterCount    int
+	alterStmtList []ast.AlterTableStmt
+	mergedSql     string
+}
+
 type session struct {
+
+	//jwx added
+	alterTableInfoList []alterTableInfo
+
 	// processInfo is used by ShowProcess(), and should be modified atomically.
 	processInfo atomic.Value
 	txn         TxnState

@@ -297,7 +297,7 @@ func NewRecordSets() *MyRecordSets {
 		fieldCount: 0,
 	}
 
-	rc.fields = make([]*ast.ResultField, 12)
+	rc.fields = make([]*ast.ResultField, 13)
 
 	// 序号
 	rc.CreateFiled("order_id", mysql.TypeLong)
@@ -321,6 +321,8 @@ func NewRecordSets() *MyRecordSets {
 	rc.CreateFiled("sqlsha1", mysql.TypeString)
 	// 备份用时
 	rc.CreateFiled("backup_time", mysql.TypeString)
+	// SQL语句类型(select, alter, create index .....)
+	rc.CreateFiled("type", mysql.TypeString)
 
 	t.rc = rc
 	return t
@@ -392,6 +394,15 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[11].SetString("0")
 	} else {
 		row[11].SetString(r.BackupCostTime)
+	}
+
+	_, isAlterTable := r.Type.(*ast.AlterTableStmt)
+	_, isCreateIndex := r.Type.(*ast.CreateIndexStmt)
+	_, isDropIndex := r.Type.(*ast.DropIndexStmt)
+	if isAlterTable || isCreateIndex || isDropIndex {
+		row[12].SetString("alterTable")
+	} else {
+		row[12].SetNull()
 	}
 
 	s.rc.data[s.rc.count] = row
