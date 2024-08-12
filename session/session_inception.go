@@ -630,7 +630,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 	case *ast.CreateTableStmt:
 		s.checkCreateTable(node, currentSql)
 	case *ast.AlterTableStmt:
-		s.checkAlterTable(node, currentSql)
+		s.checkAlterTable(node, currentSql, false)
 	case *ast.DropTableStmt:
 		s.checkDropTable(node, currentSql)
 	case *ast.RenameTableStmt:
@@ -657,8 +657,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 			s.checkCreateIndex(node.Table, node.IndexName,
 				node.IndexColNames, node.IndexOption, nil, node.Unique, tp)
 		} else {
-			alter := s.convertCreateIndexToAddConstrain(node)
-			s.checkAlterTable(alter, node.Text())
+			alter := s.convertCreateIndexToAlterTable(node)
+			s.checkAlterTable(alter, node.Text(), true)
 			s.checkCreateIndex(node.Table, node.IndexName,
 				node.IndexColNames, node.IndexOption, nil, node.Unique, tp)
 		}
@@ -667,8 +667,8 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		if s.opt == nil || !s.opt.checkMerge { // jwx added
 			s.checkDropIndex(node, currentSql)
 		} else {
-			alter := s.convertDropIndexToDropIndex(node)
-			s.checkAlterTable(alter, node.Text())
+			alter := s.convertDropIndexToAlterTable(node)
+			s.checkAlterTable(alter, node.Text(), true)
 			s.checkDropIndex(node, currentSql)
 		}
 
@@ -3332,7 +3332,7 @@ func (s *session) checkTableCharsetCollation(character, collation string) {
 	}
 }
 
-func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
+func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnly bool) {
 	log.Debug("checkAlterTable")
 
 	if node.Table.Schema.O == "" {
@@ -3361,14 +3361,15 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			}
 		}
 		if found {
-			s.alterTableInfoList[seq].alterCount++
 			s.alterTableInfoList[seq].alterStmtList = append(s.alterTableInfoList[seq].alterStmtList, *node)
 		} else {
-			var info alterTableInfo = alterTableInfo{Name: tableNameInString, alterCount: 0}
+			var info alterTableInfo = alterTableInfo{Name: tableNameInString}
 			info.alterStmtList = append(info.alterStmtList, *node)
 			s.alterTableInfoList = append(s.alterTableInfoList, info)
 		}
-		return
+		if mergeOnly {
+			return
+		}
 	}
 	/******************************/
 
@@ -5570,8 +5571,8 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 	}
 }
 
-func (s *session) convertCreateIndexToAddConstrain(node *ast.CreateIndexStmt) *ast.AlterTableStmt {
-	log.Debug("convertCreateIndexToAddConstrain")
+func (s *session) convertCreateIndexToAlterTable(node *ast.CreateIndexStmt) *ast.AlterTableStmt {
+	log.Debug("convertCreateIndexToAlterTable")
 	var alter *ast.AlterTableStmt = &ast.AlterTableStmt{Specs: []*ast.AlterTableSpec{}}
 	var spec *ast.AlterTableSpec = &ast.AlterTableSpec{Tp: ast.AlterTableAddConstraint, Constraint: &ast.Constraint{}}
 	spec.IfNotExists = node.IfNotExists
@@ -5597,8 +5598,8 @@ func (s *session) convertCreateIndexToAddConstrain(node *ast.CreateIndexStmt) *a
 	return alter
 }
 
-func (s *session) convertDropIndexToDropIndex(node *ast.DropIndexStmt) *ast.AlterTableStmt {
-	log.Debug("convertDropIndexToDropIndex")
+func (s *session) convertDropIndexToAlterTable(node *ast.DropIndexStmt) *ast.AlterTableStmt {
+	log.Debug("convertDropIndexToAlterTable")
 	var alter *ast.AlterTableStmt = &ast.AlterTableStmt{Specs: []*ast.AlterTableSpec{}}
 	var spec *ast.AlterTableSpec = &ast.AlterTableSpec{Tp: ast.AlterTableDropIndex}
 	spec.IfExists = node.IfExists
