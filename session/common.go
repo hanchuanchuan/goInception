@@ -159,9 +159,6 @@ type SourceOptions struct {
 
 	// // 扩展参数,支持一次性会话设置
 	// extendParams string
-
-	// jwx added 查看提交的SQL中是否有一些可以合并成一条
-	checkMerge bool
 }
 
 // ExplainInfo 执行计划信息

@@ -321,8 +321,8 @@ func NewRecordSets() *MyRecordSets {
 	rc.CreateFiled("sqlsha1", mysql.TypeString)
 	// 备份用时
 	rc.CreateFiled("backup_time", mysql.TypeString)
-	// SQL语句类型(select, alter, create index .....)
-	rc.CreateFiled("type", mysql.TypeString)
+	// 该语句是否是需要被合并的(只有 alter table, create index, drop index三种语句需要被合并)，需要为1，不需要为0，已经被合并过的SQL会被设置为2
+	rc.CreateFiled("needMerge", mysql.TypeTiny)
 
 	t.rc = rc
 	return t
@@ -396,13 +396,15 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[11].SetString(r.BackupCostTime)
 	}
 
-	_, isAlterTable := r.Type.(*ast.AlterTableStmt)
-	_, isCreateIndex := r.Type.(*ast.CreateIndexStmt)
-	_, isDropIndex := r.Type.(*ast.DropIndexStmt)
-	if isAlterTable || isCreateIndex || isDropIndex {
-		row[12].SetString("alterTable")
-	} else {
-		row[12].SetNull()
+	switch r.Type.(type) {
+	case *ast.AlterTableStmt, *ast.CreateIndexStmt, *ast.DropIndexStmt:
+		if r.ErrorMessage == "MERGED" {
+			row[12].SetValue(2)
+		} else {
+			row[12].SetValue(1)
+		}
+	default:
+		row[12].SetValue(0)
 	}
 
 	s.rc.data[s.rc.count] = row

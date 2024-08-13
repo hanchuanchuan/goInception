@@ -138,7 +138,6 @@ func (h *StmtHistory) Count() int {
 // jwx added
 type alterTableInfo struct {
 	Name          string
-	alterCount    int
 	alterStmtList []ast.AlterTableStmt
 	mergedSql     string
 }

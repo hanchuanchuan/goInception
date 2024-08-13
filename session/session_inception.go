@@ -319,7 +319,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					continue
 				case *ast.InceptionCommitStmt:
 					/******* jwx added 将对同一个表的多条alter语句合并成一条 ******/
-					if s.opt.checkMerge {
+					if s.inc.AlterAutoMerge {
 						for _, info := range s.alterTableInfoList {
 							merged := info.alterStmtList[0]
 							for seq, alterStmt := range info.alterStmtList {
@@ -653,7 +653,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		if node.KeyType == ast.IndexKeyTypeFullText {
 			tp = ast.ConstraintFulltext
 		}
-		if s.opt == nil || !s.opt.checkMerge { // jwx added
+		if !s.inc.AlterAutoMerge { // jwx added
 			s.checkCreateIndex(node.Table, node.IndexName,
 				node.IndexColNames, node.IndexOption, nil, node.Unique, tp)
 		} else {
@@ -664,7 +664,7 @@ func (s *session) processCommand(ctx context.Context, stmtNode ast.StmtNode,
 		}
 
 	case *ast.DropIndexStmt:
-		if s.opt == nil || !s.opt.checkMerge { // jwx added
+		if !s.inc.AlterAutoMerge { // jwx added
 			s.checkDropIndex(node, currentSql)
 		} else {
 			alter := s.convertDropIndexToAlterTable(node)
@@ -2171,8 +2171,7 @@ func (s *session) parseOptions(sql string) {
 		sslKey:  viper.GetString("sslKey"),
 
 		// 开启事务功能，设置一次提交多少记录
-		tranBatch:  viper.GetInt("trans"),
-		checkMerge: viper.GetBool("checkMerge"), // jwx added
+		tranBatch: viper.GetInt("trans"),
 	}
 
 	if s.opt.split || s.opt.Check || s.opt.Print || s.opt.Masking {
@@ -3349,7 +3348,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 	}
 
 	/*********** jwx added **********/
-	if s.opt != nil && s.opt.checkMerge {
+	if s.inc.AlterAutoMerge {
 		tableNameInString := fmt.Sprintf("%s.%s", node.Table.Schema.O, node.Table.Name.O)
 		var found bool = false
 		var seq int = 0

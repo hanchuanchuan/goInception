@@ -221,6 +221,7 @@ type Binlog struct {
 
 // Inc is the inception section of the config.
 type Inc struct {
+	AlterAutoMerge bool   `toml:"alter_auto_merge" json:"alter_auto_merge"`
 	BackupHost     string `toml:"backup_host" json:"backup_host"` // 远程备份库信息
 	BackupPassword string `toml:"backup_password" json:"backup_password"`
 	BackupPort     uint   `toml:"backup_port" json:"backup_port"`
