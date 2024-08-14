@@ -1063,7 +1063,7 @@ primary key(id)) comment 'test';`
 			PARTITION BY RANGE (c2) (
 				PARTITION p0 VALUES LESS THAN (1));`
 	s.testErrorCode(c, sql,
-		session.NewErr(session.ErrUniqueKeyNeedAllFieldsInPf))
+		session.NewErr(session.ErrUniqueKeyNeedAllFieldsInPf, "PRIMARY KEY"))
 }
 
 func (s *testSessionIncSuite) TestCreateTableAsSelect(c *C) {
