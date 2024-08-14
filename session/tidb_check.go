@@ -732,3 +732,88 @@ func (s *session) checkPartitionRemove(t *TableInfo) {
 		s.appendErrorMsg("Partition management on a not partitioned table is not possible")
 	}
 }
+
+// checkPartitionFuncType checks partition function return type.
+func (s *session) checkPartitionFuncType(table *ast.CreateTableStmt) {
+	if table.Partition.Expr == nil {
+		return
+	}
+	buf := new(bytes.Buffer)
+	table.Partition.Expr.Format(buf)
+	exprStr := buf.String()
+	if table.Partition.Tp == model.PartitionTypeRange {
+		// if partition by columnExpr, check the column type
+		if _, ok := table.Partition.Expr.(*ast.ColumnNameExpr); ok {
+			for _, col := range table.Cols {
+				name := strings.Replace(col.Name.String(), ".", "`.`", -1)
+				// Range partitioning key supported types: tinyint, smallint, mediumint, int and bigint.
+				if !validRangePartitionType(col) && fmt.Sprintf("`%s`", name) == exprStr {
+					s.appendErrorNo(ErrNotAllowedTypeInPartition, name)
+				}
+			}
+		}
+	}
+}
+
+// validRangePartitionType checks the type supported by the range partitioning key.
+func validRangePartitionType(col *ast.ColumnDef) bool {
+	switch col.Tp.EvalType() {
+	case types.ETInt:
+		return true
+	default:
+		return false
+	}
+}
+
+// checkRangePartitioningKeysConstraints checks that the range partitioning key is included in the table constraint.
+func (s *session) checkRangePartitioningKeysConstraints(table *ast.CreateTableStmt) {
+	// Returns directly if there is no constraint in the partition table.
+	// TODO: Remove the test 's.Partition.Expr == nil' when we support 'PARTITION BY RANGE COLUMNS'
+	if len(table.Constraints) == 0 || table.Partition.Expr == nil {
+		return
+	}
+	// Extract the column names in table constraints to []map[string]struct{}.
+	consColNames := extractConstraintsColumnNames(table.Constraints)
+	// Parse partitioning key, extract the column names in the partitioning key to slice.
+	buf := new(bytes.Buffer)
+	table.Partition.Expr.Format(buf)
+	var partkeys []string
+	partkeys = append(partkeys, buf.String())
+	// Checks that the partitioning key is included in the constraint.
+	for _, con := range consColNames {
+		// Every unique key on the table must use every column in the table's partitioning expression.
+		// See https://dev.mysql.com/doc/refman/5.7/en/partitioning-limitations-partitioning-keys-unique-keys.html.
+		if !checkConstraintIncludePartKey(partkeys, con) {
+			s.appendErrorNo(ErrUniqueKeyNeedAllFieldsInPf, "PRIMARY KEY")
+		}
+	}
+}
+
+// extractConstraintsColumnNames extract the column names in table constraints to []map[string]struct{}.
+func extractConstraintsColumnNames(cons []*ast.Constraint) []map[string]struct{} {
+	var constraints []map[string]struct{}
+	for _, v := range cons {
+		if v.Tp == ast.ConstraintUniq || v.Tp == ast.ConstraintPrimaryKey {
+			uniKeys := make(map[string]struct{})
+			for _, key := range v.Keys {
+				uniKeys[key.Column.Name.L] = struct{}{}
+			}
+			// Extract every unique key and primary key.
+			if len(uniKeys) != 0 {
+				constraints = append(constraints, uniKeys)
+			}
+		}
+	}
+	return constraints
+}
+
+// checkConstraintIncludePartKey checks that the partitioning key is included in the constraint.
+func checkConstraintIncludePartKey(partkeys []string, constraints map[string]struct{}) bool {
+	for _, pk := range partkeys {
+		name := strings.Replace(pk, "`", "", -1)
+		if _, ok := constraints[name]; !ok {
+			return false
+		}
+	}
+	return true
+}

@@ -1044,6 +1044,26 @@ primary key(id)) comment 'test';`
 	s.testErrorCode(c, sql,
 		session.NewErrf("Please specify the number of digits of type double (column: \"%s\").", "c1"))
 
+	// 检查分区表RANGE类型
+	config.GetGlobalConfig().Inc.EnablePartitionTable = true
+	sql = `CREATE TABLE t1 (
+			c1  VARCHAR(10)
+			)
+			PARTITION BY RANGE (c1) (
+				PARTITION p0 VALUES LESS THAN (1));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrNotAllowedTypeInPartition, "c1"))
+	// 检查主键,唯一键必需包含所有分区键
+	config.GetGlobalConfig().Inc.EnablePartitionTable = true
+	sql = `CREATE TABLE t1 (
+			c1  INT,
+			c2  INT,
+			PRIMARY KEY (c1)
+			)
+			PARTITION BY RANGE (c2) (
+				PARTITION p0 VALUES LESS THAN (1));`
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ErrUniqueKeyNeedAllFieldsInPf))
 }
 
 func (s *testSessionIncSuite) TestCreateTableAsSelect(c *C) {

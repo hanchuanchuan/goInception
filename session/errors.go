@@ -226,6 +226,8 @@ const (
 	ErrMaxVarcharLength
 	ErrMaxColumnCount
 	ER_ERROR_LAST
+	ErrNotAllowedTypeInPartition
+	ErrUniqueKeyNeedAllFieldsInPf
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -419,6 +421,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrMaxVarcharLength:            "Column length too big for column '%s' (Custom maximum is %d)",
 	ErrMaxColumnCount:              "Table '%s' has too many columns(limit %d,current %d)",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
+	ErrNotAllowedTypeInPartition:   "Field '%-.192s' is of a not allowed type for this type of partitioning",
+	ErrUniqueKeyNeedAllFieldsInPf:  "A %-.192s must include all columns in the table's partitioning function",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -603,6 +607,8 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrIndexNotExisted:                     "Index '%-.64s' 不存在",
 	ErrMaxVarcharLength:                    "列'%s'指定长度过长(自定义上限为%d)",
 	ErrMaxColumnCount:                      "表'%s'列数过多(上限:%d,当前:%d)",
+	ErrNotAllowedTypeInPartition:           "分区不允许此数据类型'%-.192s'",
+	ErrUniqueKeyNeedAllFieldsInPf:          "主键唯一键必需包含所有分区键'%-.192s'",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -728,6 +734,8 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrMaxVarcharLength,
 		ER_FOREIGN_KEY,
 		ER_TOO_MUCH_AUTO_DATETIME_COLS,
+		ErrNotAllowedTypeInPartition,
+		ErrUniqueKeyNeedAllFieldsInPf,
 		ER_INCEPTION_EMPTY_QUERY:
 		return 2
 
@@ -1139,6 +1147,10 @@ func (e ErrorCode) String() string {
 		return "er_max_column_count"
 	case ER_ERROR_LAST:
 		return "er_error_last"
+	case ErrNotAllowedTypeInPartition:
+		return "errnotallowedtypeinpartition"
+	case ErrUniqueKeyNeedAllFieldsInPf:
+		return "erruniquekeyneedallfieldsinpf"
 	}
 	return ""
 }
