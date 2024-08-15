@@ -231,6 +231,8 @@ const (
 	ER_CANT_MODIFY_AUTO_INCREMENT_COLUMN
 	ER_CANT_MODIFY_PK_OR_UK_COLUMN
 	ER_CANT_DROP_COLUMN
+	ER_CANT_DROP_PRIMARY_KEY
+	ER_CANT_ADD_PRIMARY_KEY
 	ER_CANT_DROP_PARTITION
 	ER_CANT_TRUNCATE_PARTITION
 )
@@ -431,6 +433,8 @@ var ErrorsDefault = map[ErrorCode]string{
 	ER_CANT_ADD_STORED_GENERATED_COLUMN:  "Can't add stored generated column '%s'.",
 	ER_CANT_MODIFY_PK_OR_UK_COLUMN:       "Can't modify column '%s' to PK or UK.",
 	ER_CANT_DROP_COLUMN:                  "Can't drop column '%s'.",
+	ER_CANT_DROP_PRIMARY_KEY:             "Can't drop PRIMARY KEY '%s'.",
+	ER_CANT_ADD_PRIMARY_KEY:              "Can't add PRIMARY KEY '%s'.",
 	ER_CANT_DROP_PARTITION:               "Can't drop partition '%s'.",
 	ER_CANT_TRUNCATE_PARTITION:           "Can't truncate partition '%s'.",
 }
@@ -622,6 +626,8 @@ var ErrorsChinese = map[ErrorCode]string{
 	ER_CANT_ADD_STORED_GENERATED_COLUMN:    "禁止添加Stored生成列 '%s'.",
 	ER_CANT_MODIFY_PK_OR_UK_COLUMN:         "禁止修改列 '%s' 为 PK or UK列.",
 	ER_CANT_DROP_COLUMN:                    "禁止删除列 '%s'.",
+	ER_CANT_DROP_PRIMARY_KEY:               "禁止执行DROP PRIMARY KEY操作 '%s'.",
+	ER_CANT_ADD_PRIMARY_KEY:                "禁止执行ADD PRIMARY KEY操作 '%s'.",
 	ER_CANT_DROP_PARTITION:                 "禁止删除分区 '%s'.",
 	ER_CANT_TRUNCATE_PARTITION:             "禁止清空分区 '%s'.",
 }

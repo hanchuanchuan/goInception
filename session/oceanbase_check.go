@@ -49,3 +49,14 @@ func (s *session) checkCharsetChange(charset string, table string) bool {
 	}
 	return false
 }
+
+func (s *session) checkAddPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
+	if s.inc.CheckOfflineDDL && s.dbType == DBTypeOceanBase {
+		var primaryNames []string
+		for _, key := range c.Constraint.Keys {
+			primaryNames = append(primaryNames, key.Column.Name.O)
+		}
+		s.appendErrorNo(ER_CANT_ADD_PRIMARY_KEY,
+			fmt.Sprintf("%s.%s", t.Name, primaryNames))
+	}
+}

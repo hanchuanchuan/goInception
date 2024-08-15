@@ -4917,6 +4917,10 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 
 func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkDropPrimaryKey")
+	if s.inc.CheckOfflineDDL && s.dbType == DBTypeOceanBase {
+		s.appendErrorNo(ER_CANT_DROP_PRIMARY_KEY,
+			fmt.Sprintf("%s", t.Name))
+	}
 
 	s.checkAlterTableDropIndex(t, "PRIMARY")
 }
@@ -5558,6 +5562,7 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 
 	case ast.ConstraintPrimaryKey:
+		s.checkAddPrimaryKey(t, c)
 		s.checkCreateIndex(nil, "PRIMARY",
 			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 	case ast.ConstraintForeignKey:
