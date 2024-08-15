@@ -321,24 +321,30 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					/******* jwx added 将对同一个表的多条alter语句合并成一条 ******/
 					if s.inc.AlterAutoMerge {
 						for _, info := range s.alterTableInfoList {
-							merged := info.alterStmtList[0]
-							for seq, alterStmt := range info.alterStmtList {
-								if seq > 0 {
-									merged.Specs = append(merged.Specs, alterStmt.Specs...)
+							if len(info.alterStmtList) >= 2 {
+								merged := info.alterStmtList[0]
+								for seq, alterStmt := range info.alterStmtList {
+									if seq > 0 {
+										merged.Specs = append(merged.Specs, alterStmt.Specs...)
+									}
+								}
+								var builder strings.Builder
+								_ = merged.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
+								info.mergedSql = builder.String()
+								mergedRecord := &Record{
+									Sql:          info.mergedSql,
+									Buf:          new(bytes.Buffer),
+									Type:         &merged,
+									Stage:        StageCheck,
+									ErrorMessage: "MERGED",
+									NeedMerge:    -1,
+								}
+								s.recordSets.Append(mergedRecord)
+								for _, pos := range info.recordSetsPosList {
+									s.recordSets.records[pos].NeedMerge = s.recordSets.SeqNo
 								}
 							}
-							var builder strings.Builder
-							_ = merged.Restore(format.NewRestoreCtx(format.DefaultRestoreFlags, &builder))
-							info.mergedSql = builder.String()
-							mergedRecord := &Record{
-								Sql:          info.mergedSql,
-								Buf:          new(bytes.Buffer),
-								Type:         &merged,
-								Stage:        StageCheck,
-								ErrorMessage: "MERGED",
-							}
 
-							s.recordSets.Append(mergedRecord)
 						}
 					}
 					/****************/
@@ -3361,11 +3367,14 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 		}
 		if found {
 			s.alterTableInfoList[seq].alterStmtList = append(s.alterTableInfoList[seq].alterStmtList, *node)
+			s.alterTableInfoList[seq].recordSetsPosList = append(s.alterTableInfoList[seq].recordSetsPosList, s.recordSets.SeqNo)
 		} else {
 			var info alterTableInfo = alterTableInfo{Name: tableNameInString}
 			info.alterStmtList = append(info.alterStmtList, *node)
+			info.recordSetsPosList = append(info.recordSetsPosList, s.recordSets.SeqNo)
 			s.alterTableInfoList = append(s.alterTableInfoList, info)
 		}
+
 		if mergeOnly {
 			return
 		}

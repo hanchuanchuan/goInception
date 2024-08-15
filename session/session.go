@@ -137,9 +137,10 @@ func (h *StmtHistory) Count() int {
 
 // jwx added
 type alterTableInfo struct {
-	Name          string
-	alterStmtList []ast.AlterTableStmt
-	mergedSql     string
+	Name              string
+	alterStmtList     []ast.AlterTableStmt
+	mergedSql         string
+	recordSetsPosList []int //  记录当前语句在s.recordSets里的位置，用于修改needMerge字段
 }
 
 type session struct {

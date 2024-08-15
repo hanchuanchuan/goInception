@@ -97,6 +97,9 @@ type Record struct {
 	// delete多表时,默认delete后第一个表为主表,其余表才会记录到该处
 	// 仅在发现多表操作时,初始化该参数
 	MultiTables map[string]*TableInfo
+
+	// 判断该语句是否是需要被合并的(只有 alter table, create index, drop index三种语句需要被合并)，不需要为0，已经被合并过的SQL会被设置为-1，需要的数字为对应的合并后的SQL的行号
+	NeedMerge int
 }
 
 func (r *Record) appendWarningMessage(msg string) {
@@ -321,7 +324,7 @@ func NewRecordSets() *MyRecordSets {
 	rc.CreateFiled("sqlsha1", mysql.TypeString)
 	// 备份用时
 	rc.CreateFiled("backup_time", mysql.TypeString)
-	// 该语句是否是需要被合并的(只有 alter table, create index, drop index三种语句需要被合并)，需要为1，不需要为0，已经被合并过的SQL会被设置为2
+	// 判断该语句是否是需要被合并的(只有 alter table, create index, drop index三种语句需要被合并)，不需要为0，已经被合并过的SQL会被设置为-1，需要的数字为对应的合并后的SQL的行号
 	rc.CreateFiled("needMerge", mysql.TypeTiny)
 
 	t.rc = rc
@@ -396,16 +399,7 @@ func (s *MyRecordSets) setFields(r *Record) {
 		row[11].SetString(r.BackupCostTime)
 	}
 
-	switch r.Type.(type) {
-	case *ast.AlterTableStmt, *ast.CreateIndexStmt, *ast.DropIndexStmt:
-		if r.ErrorMessage == "MERGED" {
-			row[12].SetValue(2)
-		} else {
-			row[12].SetValue(1)
-		}
-	default:
-		row[12].SetValue(0)
-	}
+	row[12].SetValue(r.NeedMerge)
 
 	s.rc.data[s.rc.count] = row
 	s.rc.count++
