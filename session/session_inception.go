@@ -120,7 +120,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		atomic.StoreUint32(&variable.ProcessGeneralLog, 0)
 	}
 
-	s.recordSets = NewRecordSets()
+	s.recordSets = NewRecordSets(false)
 
 	if recordSets, err = s.executeInc(ctx, sql); err != nil {
 		err = errors.Trace(err)
@@ -3682,58 +3682,56 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 	}
 }
 
-// checkDDLInstant 检查是否支持 ALGORITHM=INSTANT, 当支持时自动关闭pt-osc/gh-ost.
-func (s *session) checkDDLInstant(node *ast.AlterTableStmt, t *TableInfo) {
-	if !s.inc.EnableDDLInstant || !s.myRecord.useOsc || s.dbVersion < 50700 {
-		return
-	}
-
-	if s.dbVersion < 80000 {
-		// 如果mysql版本小于8.0,只有VIRTUAL column支持Only Modifies Metadata
-		for _, alter := range node.Specs {
-			switch alter.Tp {
-			case ast.AlterTableAddColumns:
-				newColumns := len(alter.NewColumns)
-				virtualColumns := 0
-				for _, nc := range alter.NewColumns {
-					isPrimary := false
-					isUnique := false
-					var isStore *bool
-					for _, op := range nc.Options {
-						switch op.Tp {
-						case ast.ColumnOptionPrimaryKey:
-							isPrimary = true
-						case ast.ColumnOptionUniqKey:
-							isUnique = true
-						case ast.ColumnOptionGenerated:
-							isStore = &op.Stored
-						}
-					}
-
-					if !isPrimary && !isUnique {
-						if s.dbVersion < 80000 && isStore != nil && !*isStore {
-							virtualColumns++
-						}
+// checkDDLInstantMySQL57
+func checkDDLInstantMySQL57(node *ast.AlterTableStmt) (canInstant bool) {
+	// 如果mysql版本小于8.0,只有VIRTUAL column支持Only Modifies Metadata
+	for _, alter := range node.Specs {
+		switch alter.Tp {
+		case ast.AlterTableAddColumns:
+			newColumns := len(alter.NewColumns)
+			virtualColumns := 0
+			for _, nc := range alter.NewColumns {
+				isPrimary := false
+				isUnique := false
+				var isStore *bool
+				for _, op := range nc.Options {
+					switch op.Tp {
+					case ast.ColumnOptionPrimaryKey:
+						isPrimary = true
+					case ast.ColumnOptionUniqKey:
+						isUnique = true
+					case ast.ColumnOptionGenerated:
+						isStore = &op.Stored
 					}
 				}
-				if virtualColumns == newColumns {
-					s.myRecord.useOsc = false
-					return
+
+				if !isPrimary && !isUnique {
+					if isStore != nil && !*isStore {
+						virtualColumns++
+					}
 				}
-			default:
+			}
+			if virtualColumns == newColumns {
+				canInstant = true
 				return
 			}
+		default:
+			return
 		}
-		return
 	}
+	return false
+}
 
+// checkDDLInstantMySQL80
+func checkDDLInstantMySQL80(node *ast.AlterTableStmt, t *TableInfo, dbVersion int) (canInstant bool) {
 	canInstantSpecs := 0
 	for _, alter := range node.Specs {
 		// 当用户指定了 ALGORITHM=INSTANT 时,忽略检查并关闭osc
 		if alter.Algorithm == ast.AlgorithmTypeInstant {
-			s.myRecord.useOsc = false
+			canInstant = true
 			return
 		}
+
 		switch alter.Tp {
 		case ast.AlterTableAddColumns:
 			newColumns := len(alter.NewColumns)
@@ -3762,7 +3760,7 @@ func (s *session) checkDDLInstant(node *ast.AlterTableStmt, t *TableInfo) {
 				}
 			}
 			if alter.Position.Tp != ast.ColumnPositionNone {
-				if s.dbVersion < 80029 {
+				if dbVersion < 80029 {
 					return
 				} else {
 					canInstantSpecs++
@@ -3795,6 +3793,25 @@ func (s *session) checkDDLInstant(node *ast.AlterTableStmt, t *TableInfo) {
 		}
 	}
 	if canInstantSpecs == len(node.Specs) {
+		canInstant = true
+	}
+	return canInstant
+}
+
+// checkDDLInstant 检查是否支持 ALGORITHM=INSTANT, 当支持时自动关闭pt-osc/gh-ost.
+func (s *session) checkDDLInstant(node *ast.AlterTableStmt, t *TableInfo) {
+	if !s.inc.EnableDDLInstant || !s.myRecord.useOsc || s.dbVersion < 50700 {
+		return
+	}
+
+	if s.dbVersion < 80000 {
+		if checkDDLInstantMySQL57(node) {
+			s.myRecord.useOsc = false
+		}
+		return
+	}
+
+	if checkDDLInstantMySQL80(node, t, s.dbVersion) {
 		s.myRecord.useOsc = false
 	}
 }
