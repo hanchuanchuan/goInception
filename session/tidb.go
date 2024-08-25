@@ -238,7 +238,8 @@ func RegisterStore(name string, driver kv.Driver) error {
 // session.Open() but with the dbname cut off.
 // Examples:
 //    goleveldb://relative/path
-//    boltdb:///absolute/path
+
+//	boltdb:///absolute/path
 //
 // The engine should be registered before creating storage.
 func NewStore(path string) (kv.Storage, error) {
