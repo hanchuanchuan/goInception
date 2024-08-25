@@ -305,6 +305,8 @@ type Inc struct {
 	EnableSetCollation bool `toml:"enable_set_collation" json:"enable_set_collation"`
 	// 开启sql统计
 	EnableSqlStatistic bool `toml:"enable_sql_statistic" json:"enable_sql_statistic"`
+	// 在MySQL8.0检测是否支持 ALGORITHM=INSTANT, 当支持时自动关闭pt-osc/gh-ost.
+	EnableDDLInstant bool `toml:"enable_ddl_instant" json:"enable_ddl_instant"`
 
 	// explain判断受影响行数时使用的规则, 默认值"first"
 	// 可选值: "first", "max"
@@ -704,6 +706,7 @@ var defaultConf = Config{
 		CheckIdentifierUpper:  false,
 		CheckIdentifierLower:  false,
 		CheckReadOnly:         true,
+		EnableDDLInstant:      true,
 		SqlSafeUpdates:        -1,
 		LockWaitTimeout:       -1,
 		SupportCharset:        "utf8,utf8mb4",
