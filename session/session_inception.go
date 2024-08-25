@@ -120,7 +120,7 @@ func (s *session) ExecuteInc(ctx context.Context, sql string) (recordSets []sqle
 		atomic.StoreUint32(&variable.ProcessGeneralLog, 0)
 	}
 
-	s.recordSets = NewRecordSets(false)
+	s.recordSets = NewRecordSets()
 
 	if recordSets, err = s.executeInc(ctx, sql); err != nil {
 		err = errors.Trace(err)
