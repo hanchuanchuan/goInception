@@ -25,11 +25,6 @@ func Test_checkDDLInstantMySQL(t *testing.T) {
 	parser := parser.New()
 	sessionVars := variable.NewSessionVars()
 	parser.SetSQLMode(sessionVars.SQLMode)
-	sql := "alter table t1 add column c1 int;"
-	stmts, _, err := parser.Parse(sql, "", "")
-	if err != nil {
-		t.Error(err)
-	}
 
 	table := &TableInfo{Name: "t1",
 		Fields: []FieldInfo{
@@ -37,75 +32,34 @@ func Test_checkDDLInstantMySQL(t *testing.T) {
 			{Field: "c2", Extra: "VIRTUAL"},
 			{Field: "c3", Extra: "STORED"}}}
 
-	for _, stmtNode := range stmts {
-		switch node := stmtNode.(type) {
-		case *ast.AlterTableStmt:
-			canInstant := checkDDLInstantMySQL57(node)
-			if canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
-			}
+	tests := []struct {
+		sql     string
+		mysql57 bool
+		mysql80 bool
+	}{
+		{"alter table t1 add column c1 int;", false, true},
+		{"ALTER TABLE t1 ADD COLUMN c2 INT GENERATED ALWAYS AS (c1 + 1) VIRTUAL;", true, true},
+		{"ALTER TABLE t1 ADD COLUMN c4 INT AFTER c1;", false, false},
+		{"ALTER TABLE t1 ADD COLUMN c3 INT GENERATED ALWAYS AS (c1 + 1) STORED;", false, false},
+	}
 
-			canInstant = checkDDLInstantMySQL80(node, table, 80000)
-			if !canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
-			}
-
+	for _, test := range tests {
+		stmts, _, err := parser.Parse(test.sql, "", "")
+		if err != nil {
+			t.Error(err)
 		}
-	}
+		for _, stmtNode := range stmts {
+			switch node := stmtNode.(type) {
+			case *ast.AlterTableStmt:
+				canInstant := checkDDLInstantMySQL57(node)
+				if canInstant != test.mysql57 {
+					t.Errorf("canInstant is %v, but excepted %v: sql: %v", canInstant, test.mysql57, test.sql)
+				}
 
-	sql = "ALTER TABLE t1 ADD COLUMN c2 INT GENERATED ALWAYS AS (c1 + 1) VIRTUAL;"
-	stmts, _, err = parser.Parse(sql, "", "")
-	if err != nil {
-		t.Error(err)
-	}
-
-	for _, stmtNode := range stmts {
-		switch node := stmtNode.(type) {
-		case *ast.AlterTableStmt:
-			canInstant := checkDDLInstantMySQL57(node)
-			if !canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
-			}
-
-			canInstant = checkDDLInstantMySQL80(node, table, 80000)
-			if !canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
-			}
-		}
-	}
-
-	sql = "ALTER TABLE t1 ADD COLUMN c3 INT GENERATED ALWAYS AS (c1 + 1) STORED;"
-	stmts, _, err = parser.Parse(sql, "", "")
-	if err != nil {
-		t.Error(err)
-	}
-
-	for _, stmtNode := range stmts {
-		switch node := stmtNode.(type) {
-		case *ast.AlterTableStmt:
-			canInstant := checkDDLInstantMySQL57(node)
-			if canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
-			}
-
-			canInstant = checkDDLInstantMySQL80(node, table, 80000)
-			if canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
-			}
-		}
-	}
-
-	sql = "ALTER TABLE t1 ADD COLUMN c4 INT AFTER c1;"
-	stmts, _, err = parser.Parse(sql, "", "")
-	if err != nil {
-		t.Error(err)
-	}
-	for _, stmtNode := range stmts {
-		switch node := stmtNode.(type) {
-		case *ast.AlterTableStmt:
-			canInstant := checkDDLInstantMySQL80(node, table, 80000)
-			if canInstant {
-				t.Errorf("canInstant is %v, but excepted %v", canInstant, !canInstant)
+				canInstant = checkDDLInstantMySQL80(node, table, 80000)
+				if canInstant != test.mysql80 {
+					t.Errorf("canInstant is %v, but excepted %v: sql: %v", canInstant, test.mysql57, test.sql)
+				}
 			}
 		}
 	}
