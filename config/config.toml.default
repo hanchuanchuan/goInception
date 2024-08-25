@@ -61,6 +61,8 @@ check_float_double = false
 check_identifier_upper = false
 check_identifier_lower = false
 check_read_only = true
+# 在MySQL8.0检测是否支持ALGORITHM=INSTANT, 当支持时自动关闭pt-osc/gh-ost.
+enable_ddl_instant = true
 
 # 是否检查字段存在多个索引，比如索引 (a,b) 与索引 (a) 中，a字段就是被重复索引的，应当只保留索引 (a,b)
 check_index_column_repeat = false
