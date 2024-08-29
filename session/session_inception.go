@@ -319,7 +319,7 @@ func (s *session) executeInc(ctx context.Context, sql string) (recordSets []sqle
 					continue
 				case *ast.InceptionCommitStmt:
 					/******* jwx added 将对同一个表的多条alter语句合并成一条 ******/
-					if s.inc.AlterAutoMerge {
+					if s.inc.AlterAutoMerge && s.opt.Check && !s.opt.Execute {
 						for _, info := range s.alterTableInfoList {
 							if len(info.alterStmtList) >= 2 {
 								merged := info.alterStmtList[0]
