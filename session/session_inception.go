@@ -3425,13 +3425,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 
 	// 设置osc开关
 	s.checkAlterUseOsc(table)
+	s.checkDDLInstant(node, table)
 
 	// 如果修改了表名,则调整回滚语句
 	hasRenameTable := false
 	for _, alter := range node.Specs {
 		if alter.Tp == ast.AlterTableRenameTable {
 			hasRenameTable = true
-			s.myRecord.useOsc = false
 			break
 		}
 	}
@@ -3494,6 +3494,7 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 		return
 	}
+
 	for i, alter := range node.Specs {
 		switch alter.Tp {
 		case ast.AlterTableOption:
@@ -3678,6 +3679,140 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 			s.appendErrorMsg(err.Error())
 			return
 		}
+	}
+}
+
+// checkDDLInstantMySQL57
+func checkDDLInstantMySQL57(node *ast.AlterTableStmt) (canInstant bool) {
+	// 如果mysql版本小于8.0,只有VIRTUAL column支持Only Modifies Metadata
+	for _, alter := range node.Specs {
+		switch alter.Tp {
+		case ast.AlterTableAddColumns:
+			newColumns := len(alter.NewColumns)
+			virtualColumns := 0
+			for _, nc := range alter.NewColumns {
+				isPrimary := false
+				isUnique := false
+				var isStore *bool
+				for _, op := range nc.Options {
+					switch op.Tp {
+					case ast.ColumnOptionPrimaryKey:
+						isPrimary = true
+					case ast.ColumnOptionUniqKey:
+						isUnique = true
+					case ast.ColumnOptionGenerated:
+						isStore = &op.Stored
+					}
+				}
+
+				if !isPrimary && !isUnique {
+					if isStore != nil && !*isStore {
+						virtualColumns++
+					}
+				}
+			}
+			if virtualColumns == newColumns {
+				canInstant = true
+				return
+			}
+		default:
+			return
+		}
+	}
+	return false
+}
+
+// checkDDLInstantMySQL80
+func checkDDLInstantMySQL80(node *ast.AlterTableStmt, t *TableInfo, dbVersion int) (canInstant bool) {
+	canInstantSpecs := 0
+	for _, alter := range node.Specs {
+		// 当用户指定了 ALGORITHM=INSTANT 时,忽略检查并关闭osc
+		if alter.Algorithm == ast.AlgorithmTypeInstant {
+			canInstant = true
+			return
+		}
+
+		switch alter.Tp {
+		case ast.AlterTableAddColumns:
+			newColumns := len(alter.NewColumns)
+			virtualColumns := 0
+			for _, nc := range alter.NewColumns {
+				isPrimary := false
+				isUnique := false
+				var isStore *bool
+				for _, op := range nc.Options {
+					switch op.Tp {
+					case ast.ColumnOptionPrimaryKey:
+						isPrimary = true
+					case ast.ColumnOptionUniqKey:
+						isUnique = true
+					case ast.ColumnOptionGenerated:
+						isStore = &op.Stored
+					}
+				}
+
+				if !isPrimary && !isUnique {
+					// 此时已经排除主键/唯一键的情况
+					// 8.0版本下只有STORED column不支持Only Modifies Metadata
+					if isStore == nil || !*isStore {
+						virtualColumns++
+					}
+				}
+			}
+			if alter.Position.Tp != ast.ColumnPositionNone {
+				if dbVersion < 80029 {
+					return
+				} else {
+					canInstantSpecs++
+				}
+			}
+			if virtualColumns == newColumns {
+				canInstantSpecs++
+			} else {
+				return
+			}
+
+		case ast.AlterTableDropColumn:
+			for _, field := range t.Fields {
+				if strings.EqualFold(field.Field, alter.OldColumnName.Name.O) && !field.IsDeleted {
+					if strings.Contains(field.Extra, "VIRTUAL") {
+						canInstantSpecs++
+					}
+					break
+				}
+			}
+
+		case ast.AlterTableRenameTable:
+			canInstantSpecs++
+
+		case ast.AlterTableAlterColumn:
+			canInstantSpecs++
+
+		default:
+			return
+		}
+	}
+	if canInstantSpecs == len(node.Specs) {
+		canInstant = true
+	}
+	return canInstant
+}
+
+// checkDDLInstant 检查是否支持 ALGORITHM=INSTANT, 当支持时自动关闭pt-osc/gh-ost.
+func (s *session) checkDDLInstant(node *ast.AlterTableStmt, t *TableInfo) {
+	if !s.inc.EnableDDLInstant || !s.myRecord.useOsc || s.dbVersion < 50700 {
+		return
+	}
+
+	if s.dbVersion < 80000 {
+		if checkDDLInstantMySQL57(node) {
+			s.myRecord.useOsc = false
+		}
+		return
+	}
+
+	if checkDDLInstantMySQL80(node, t, s.dbVersion) {
+		s.myRecord.useOsc = false
 	}
 }
 
@@ -4973,15 +5108,12 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !s.hasError() {
 				isPrimary := false
 				isUnique := false
-				var isStore *bool
 				for _, op := range nc.Options {
 					switch op.Tp {
 					case ast.ColumnOptionPrimaryKey:
 						isPrimary = true
 					case ast.ColumnOptionUniqKey:
 						isUnique = true
-					case ast.ColumnOptionGenerated:
-						isStore = &op.Stored
 					}
 				}
 
@@ -5030,16 +5162,6 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 							NonUnique:  0,
 						}
 						t.Indexes = append(t.Indexes, index)
-					}
-				} else {
-					// 此时已经排除主键/唯一键的情况
-					// 8.0版本下只有STORED column不支持Only Modifies Metadata
-					if s.dbVersion >= 80000 && (nil == isStore || !*isStore) {
-						s.myRecord.useOsc = false
-					}
-					// 如果mysql版本小于8.0,只有VIRTUAL column支持Only Modifies Metadata
-					if s.dbVersion < 80000 && nil != isStore && !*isStore {
-						s.myRecord.useOsc = false
 					}
 				}
 			}
