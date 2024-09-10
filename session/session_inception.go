@@ -3423,6 +3423,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 		s.appendErrorNo(ER_NOT_SUPPORTED_YET)
 		return
 	}
+
+	var addColumnAndIndex = 0
 	for i, alter := range node.Specs {
 		switch alter.Tp {
 		case ast.AlterTableOption:
@@ -3434,10 +3436,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
+			addColumnAndIndex += 1
 		case ast.AlterTableDropColumn:
 			s.checkDropColumn(table, alter)
 
 		case ast.AlterTableAddConstraint:
+			addColumnAndIndex += 1
 			s.checkAddConstraint(table, alter)
 
 		case ast.AlterTableDropPrimaryKey:
@@ -3556,6 +3560,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string) {
 			if table == nil {
 				return
 			}
+		}
+	}
+
+	if s.dbType == DBTypeOceanBase && s.inc.CheckOfflineDDL {
+		if addColumnAndIndex >= 2 {
+			s.appendErrorNo(ER_CANT_ADD_COLUMNS_AND_CONSTRAINTS_IN_ONE_STATEMENT)
 		}
 	}
 
@@ -4137,12 +4147,6 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 列类型转换审核
 		fieldType := nc.Tp.CompactStr()
 		if s.inc.CheckColumnTypeChange && fieldType != foundField.Type {
-			if s.dbType == DBTypeOceanBase {
-				s.appendErrorNo(ER_CANT_CHANGE_COLUMN_TYPE,
-					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-					foundField.Type, fieldType)
-				return
-			}
 			switch nc.Tp.Tp {
 			case mysql.TypeDecimal, mysql.TypeNewDecimal,
 				mysql.TypeVarchar,
@@ -4153,6 +4157,12 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 						foundField.Type, fieldType)
+				} else if s.dbType == DBTypeOceanBase && GetDataTypeLength(fieldType)[0] > GetDataTypeLength(foundField.Type)[0] {
+					if s.inc.CheckOfflineDDL {
+						// OceanBase改变类型长度，不属于offline DDL
+						s.appendWarningMessage(fmt.Sprintf("Warning: Changing Column Type Length %s.%s", foundField.Type, fieldType))
+						return
+					}
 				} else if GetDataTypeLength(fieldType)[0] < GetDataTypeLength(foundField.Type)[0] {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
@@ -4189,6 +4199,12 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					(oldType == "enum" || oldType == "set") {
 
 				} else {
+					if s.dbType == DBTypeOceanBase && s.inc.CheckOfflineDDL {
+						s.appendErrorNo(ER_CANT_CHANGE_COLUMN_TYPE,
+							fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+							foundField.Type, fieldType)
+						continue
+					}
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 						foundField.Type, fieldType)
