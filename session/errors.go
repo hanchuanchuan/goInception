@@ -226,6 +226,7 @@ const (
 	ErrMaxVarcharLength
 	ErrMaxColumnCount
 	ER_ERROR_LAST
+	ER_HAVE_UNIQUE_INDEX_WARNING
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -419,6 +420,7 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErrMaxVarcharLength:            "Column length too big for column '%s' (Custom maximum is %d)",
 	ErrMaxColumnCount:              "Table '%s' has too many columns(limit %d,current %d)",
 	ER_ERROR_LAST:                  "TheLastError,ByeBye",
+	ER_HAVE_UNIQUE_INDEX_WARNING:   "Unique index exists, executing the statement may cause duplicate data loss, it is recommended to review for potential risks",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -603,6 +605,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrIndexNotExisted:                     "Index '%-.64s' 不存在",
 	ErrMaxVarcharLength:                    "列'%s'指定长度过长(自定义上限为%d)",
 	ErrMaxColumnCount:                      "表'%s'列数过多(上限:%d,当前:%d)",
+	ER_HAVE_UNIQUE_INDEX_WARNING:           "存在唯一索引，执行语句可能导致重复数据丢失，建议复查是否存在风险",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -669,7 +672,8 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrImplicitTypeConversion,
 		ErrUseValueExpr,
 		ErrMaxColumnCount,
-		ER_WITH_INSERT_FIELD:
+		ER_WITH_INSERT_FIELD,
+		ER_HAVE_UNIQUE_INDEX_WARNING:
 		return 1
 
 	case ER_CONFLICTING_DECLARATIONS,
@@ -1139,6 +1143,9 @@ func (e ErrorCode) String() string {
 		return "er_max_column_count"
 	case ER_ERROR_LAST:
 		return "er_error_last"
+	case ER_HAVE_UNIQUE_INDEX_WARNING:
+		return "er_have_unique_index_warning"
+
 	}
 	return ""
 }

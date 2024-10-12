@@ -5555,6 +5555,9 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 		}
 		t.Indexes = append(t.Indexes, index)
 	}
+	if unique == true {
+		s.appendErrorNo(ER_HAVE_UNIQUE_INDEX_WARNING)
+	}
 
 	if s.opt.Execute {
 		var rollbackSql string
@@ -8381,6 +8384,8 @@ func (s *session) checkInceptionVariables(number ErrorCode) bool {
 		return s.inc.CheckIdentifierLower
 	case ErCantChangeColumn:
 		return !s.inc.EnableChangeColumn
+	case ER_HAVE_UNIQUE_INDEX_WARNING:
+		return s.inc.CheckHaveUniqueIndex
 	}
 
 	return true

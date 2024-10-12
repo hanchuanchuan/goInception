@@ -2719,6 +2719,10 @@ func (s *testSessionIncSuite) TestCreateView(c *C) {
 func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
 	config.GetGlobalConfig().Inc.CheckTableComment = false
+	sql = "create table t1(id int, c1 int);alter table t1 add unique index uniq_idx (c1)"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_HAVE_UNIQUE_INDEX_WARNING),
+	)
 
 	// add index
 	sql = "create table t1(id int);alter table t1 add index idx (c1)"
@@ -2799,6 +2803,7 @@ func (s *testSessionIncSuite) TestAlterTableAddIndex(c *C) {
 		sql = `create table t1(id int,c1 int,key idx(c1));
 				alter table t1 alter index idx visible;`
 		s.testErrorCode(c, sql)
+
 	}
 }
 
