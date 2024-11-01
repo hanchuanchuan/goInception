@@ -226,6 +226,7 @@ const (
 	ErrMaxVarcharLength
 	ErrMaxColumnCount
 	ER_ERROR_LAST
+	ER_TOOL_BASED_UNIQUE_INDEX_WARNING
 )
 
 var ErrorsDefault = map[ErrorCode]string{
@@ -396,29 +397,30 @@ var ErrorsDefault = map[ErrorCode]string{
 	ErCantChangeColumn:                     "Not supported statement of change column('%s').",
 	// ErrMixOfGroupFuncAndFields:             "Mixing of GROUP columns (MIN(),MAX(),COUNT(),...) with no GROUP columns is illegal if there is no GROUP BY clause",
 	//ER_NULL_NAME_FOR_INDEX:                 "Index name cannot be null in table '%s'.",
-	ER_DATETIME_DEFAULT:            "Set default value for DATETIME column '%s'.",
-	ER_TOO_MUCH_AUTO_DATETIME_COLS: "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
-	ErrFloatDoubleToDecimal:        "Set column '%s' to DECIMAL type.",
-	ErrIdentifierUpper:             "Identifier '%s' must be capitalized.",
-	ErrIdentifierLower:             "Identifier '%s' must be lowercase.",
-	ErrWrongAndExpr:                "May be the wrong syntax! Separate multiple fields with commas.",
-	ErrCannotAddForeign:            "Cannot add foreign key constraint",
-	ErrWrongFkDefWithMatch:         "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
-	ErrFkDupName:                   "Duplicate foreign key constraint name '%s'",
-	ErrJoinNoOnCondition:           "set the on clause for join statement.",
-	ErrImplicitTypeConversion:      "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
-	ErrUseValueExpr:                "Please confirm if you want to use value expression in where condition.",
-	ErrUseIndexVisibility:          "The back-end database does not support the index to specify the visible option.",
-	ErrViewSupport:                 "Not allowed to create or use views '%s'.",
-	ErrViewColumnCount:             "View's SELECT and view's field list have different column counts",
-	ErrIncorrectDateTimeValue:      "Incorrect datetime value: '%v'(column '%s')",
-	ErrSameNamePartition:           "Duplicate partition name %-.192s",
-	ErrRepeatConstDefinition:       "Duplicate partition constant definition: '%v'",
-	ErrPartitionNotExisted:         "Partition '%-.64s' does not exist",
-	ErrIndexNotExisted:             "Index '%-.64s' does not exist",
-	ErrMaxVarcharLength:            "Column length too big for column '%s' (Custom maximum is %d)",
-	ErrMaxColumnCount:              "Table '%s' has too many columns(limit %d,current %d)",
-	ER_ERROR_LAST:                  "TheLastError,ByeBye",
+	ER_DATETIME_DEFAULT:                "Set default value for DATETIME column '%s'.",
+	ER_TOO_MUCH_AUTO_DATETIME_COLS:     "Incorrect table definition; there can be only one DATETIME column with CURRENT_TIMESTAMP in DEFAULT or ON UPDATE clause",
+	ErrFloatDoubleToDecimal:            "Set column '%s' to DECIMAL type.",
+	ErrIdentifierUpper:                 "Identifier '%s' must be capitalized.",
+	ErrIdentifierLower:                 "Identifier '%s' must be lowercase.",
+	ErrWrongAndExpr:                    "May be the wrong syntax! Separate multiple fields with commas.",
+	ErrCannotAddForeign:                "Cannot add foreign key constraint",
+	ErrWrongFkDefWithMatch:             "Incorrect foreign key definition for '%-.192s': Key reference and table reference don't match",
+	ErrFkDupName:                       "Duplicate foreign key constraint name '%s'",
+	ErrJoinNoOnCondition:               "set the on clause for join statement.",
+	ErrImplicitTypeConversion:          "Implicit type conversion is not allowed(column '%s.%s',type '%s').",
+	ErrUseValueExpr:                    "Please confirm if you want to use value expression in where condition.",
+	ErrUseIndexVisibility:              "The back-end database does not support the index to specify the visible option.",
+	ErrViewSupport:                     "Not allowed to create or use views '%s'.",
+	ErrViewColumnCount:                 "View's SELECT and view's field list have different column counts",
+	ErrIncorrectDateTimeValue:          "Incorrect datetime value: '%v'(column '%s')",
+	ErrSameNamePartition:               "Duplicate partition name %-.192s",
+	ErrRepeatConstDefinition:           "Duplicate partition constant definition: '%v'",
+	ErrPartitionNotExisted:             "Partition '%-.64s' does not exist",
+	ErrIndexNotExisted:                 "Index '%-.64s' does not exist",
+	ErrMaxVarcharLength:                "Column length too big for column '%s' (Custom maximum is %d)",
+	ErrMaxColumnCount:                  "Table '%s' has too many columns(limit %d,current %d)",
+	ER_ERROR_LAST:                      "TheLastError,ByeBye",
+	ER_TOOL_BASED_UNIQUE_INDEX_WARNING: "Existing unique indexes may cause duplicate data loss when executing statements using schema-altering tools. It is recommended to review and assess potential risks.",
 }
 
 var ErrorsChinese = map[ErrorCode]string{
@@ -603,6 +605,7 @@ var ErrorsChinese = map[ErrorCode]string{
 	ErrIndexNotExisted:                     "Index '%-.64s' 不存在",
 	ErrMaxVarcharLength:                    "列'%s'指定长度过长(自定义上限为%d)",
 	ErrMaxColumnCount:                      "表'%s'列数过多(上限:%d,当前:%d)",
+	ER_TOOL_BASED_UNIQUE_INDEX_WARNING:     "存在唯一索引，使用改表工具执行语句可能导致重复数据丢失，建议复查是否存在风险",
 }
 
 func GetErrorLevel(code ErrorCode) uint8 {
@@ -669,7 +672,8 @@ func GetErrorLevel(code ErrorCode) uint8 {
 		ErrImplicitTypeConversion,
 		ErrUseValueExpr,
 		ErrMaxColumnCount,
-		ER_WITH_INSERT_FIELD:
+		ER_WITH_INSERT_FIELD,
+		ER_TOOL_BASED_UNIQUE_INDEX_WARNING:
 		return 1
 
 	case ER_CONFLICTING_DECLARATIONS,
@@ -1139,6 +1143,9 @@ func (e ErrorCode) String() string {
 		return "er_max_column_count"
 	case ER_ERROR_LAST:
 		return "er_error_last"
+	case ER_TOOL_BASED_UNIQUE_INDEX_WARNING:
+		return "er_tool_based_unique_index_warning"
+
 	}
 	return ""
 }

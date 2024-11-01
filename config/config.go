@@ -250,6 +250,7 @@ type Inc struct {
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
 	CheckTimestampCount         bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
+	CheckToolBasedUniqueIndex   bool `toml:"check_tool_based_unique_index" json:"check_tool_based_unique_index"`
 
 	EnableTimeStampType  bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
 	EnableZeroDate       bool `toml:"enable_zero_date" json:"enable_zero_date"`
