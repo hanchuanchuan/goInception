@@ -237,6 +237,7 @@ ifeq ("$(API)", "1")
 else
 	@echo "Running in native mode."
 	@export log_level=error;
+	$(GO) mod tidy;
 	$(GOTEST) -timeout 30m -ldflags '$(TEST_LDFLAGS)' -cover $(PACKAGES) || { $(GOFAIL_DISABLE); exit 1; }
 endif
 

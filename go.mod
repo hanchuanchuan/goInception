@@ -4,6 +4,9 @@ go 1.22.1
 
 replace gopkg.in/gcfg.v1 => github.com/hanchuanchuan/gcfg.v1 v0.0.0-20190302111942-77c0f3dcc0b3
 
+// replace go.etcd.io/gofail => github.com/etcd-io/gofail v0.0.0-20180808172546-51ce9a71510a
+replace github.com/etcd-io/gofail => go.etcd.io/gofail v0.0.0-20180808172546-51ce9a71510a
+
 // replace vitess.io/vitess => github.com/vitessio/vitess v3.0.0-rc.3+incompatible
 replace vitess.io/vitess => github.com/vitessio/vitess v0.19.1
 
@@ -33,7 +36,8 @@ require (
 	github.com/cznic/sortutil v0.0.0-20181122101858-f5f958428db8
 	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537
 	github.com/cznic/y v0.0.0-20181122101901-b05e8c2e8d7b
-	github.com/go-mysql-org/go-mysql v1.9.1
+	github.com/etcd-io/gofail v0.0.0-00010101000000-000000000000
+	github.com/go-mysql-org/go-mysql v1.5.1
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang/protobuf v1.5.4
