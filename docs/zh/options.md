@@ -25,6 +25,7 @@ inception set check_dml_limit = true;
 
 参数  |  默认值  |  可选范围 | 说明
 ------------ | ------------- | ------------ | ------------
+alter_auto_merge   |  false    |   true,false     |   当同一个表出现多条alter table/create index/drop index语句时，goInception会将这些SQL合并成一条，并将合并后的SQL连同原始SQL的校验结果一起返回
 check_autoincrement_datatype   |  false    |   true,false     |   当建表时自增列的类型不为int或者bigint时报错
 check_autoincrement_init_value   |  false    |   true,false     |     当建表时自增列的值指定的不为1，则报错
 check_autoincrement_name   |  false    |   true,false     |   建表时，如果指定的自增列的名字不为ID，则报错，说明是有意义的，给提示
