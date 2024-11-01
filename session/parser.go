@@ -13,9 +13,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/go-mysql-org/go-mysql/replication"
 	mysqlDriver "github.com/go-sql-driver/mysql"
-	"github.com/hanchuanchuan/go-mysql/mysql"
-	"github.com/hanchuanchuan/go-mysql/replication"
 	"github.com/juju/errors"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
