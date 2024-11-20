@@ -4666,7 +4666,11 @@ func (s *session) mysqlCheckField(t *TableInfo, field *ast.ColumnDef, alterTable
 		if isPrimary {
 			return
 		}
-		s.appendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
+
+		// blob/text/json 配置 EnableBlobNotNull 时，单独判断允许为 null 值，防止旧业务异常
+		if (field.Tp.Tp != mysql.TypeJSON && field.Tp.Tp != mysql.TypeBlob && field.Tp.Tp != mysql.TypeLongBlob) || s.inc.EnableBlobNotNull {
+			s.appendErrorNo(ER_NOT_ALLOWED_NULLABLE, field.Name.Name, tableName)
+		}
 	}
 
 	// 审核所有指定了charset或collate的字段
