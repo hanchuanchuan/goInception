@@ -274,6 +274,7 @@ import (
 	autoRandomBase         "AUTO_RANDOM_BASE"
 	avgRowLength           "AVG_ROW_LENGTH"
 	avg                    "AVG"
+	before                 "BEFORE"
 	begin                  "BEGIN"
 	binding                "BINDING"
 	binlog                 "BINLOG"
@@ -567,31 +568,31 @@ import (
 
 %token not2
 %type	<expr>
-	Expression             "expression"
-	MaxValueOrExpression   "maxvalue or expression"
-	BoolPri                "boolean primary expression"
-	ExprOrDefault          "expression or default"
-	PredicateExpr          "Predicate expression factor"
-	SetExpr                "Set variable statement value's expression"
-	BitExpr                "bit expression"
-	SimpleExpr             "simple expression"
-	SimpleIdent            "Simple Identifier expression"
-	SumExpr                "aggregate functions"
-	FunctionCallGeneric    "Function call with Identifier"
-	FunctionCallKeyword    "Function call with keyword as function name"
-	FunctionCallNonKeyword "Function call with nonkeyword as function name"
-	Literal                "literal value"
-	Variable               "User or system variable"
-	SystemVariable         "System defined variable name"
-	UserVariable           "User defined variable name"
-	SubSelect              "Sub Select"
-	StringLiteral          "text literal"
-	ExpressionOpt          "Optional expression"
-	SignedLiteral          "Literal or NumLiteral with sign"
-	DefaultValueExpr       "DefaultValueExpr(Now or Signed Literal)"
-	NowSymOptionFraction   "NowSym with optional fraction part"
+	Expression                      "expression"
+	MaxValueOrExpression            "maxvalue or expression"
+	BoolPri                         "boolean primary expression"
+	ExprOrDefault                   "expression or default"
+	PredicateExpr                   "Predicate expression factor"
+	SetExpr                         "Set variable statement value's expression"
+	BitExpr                         "bit expression"
+	SimpleExpr                      "simple expression"
+	SimpleIdent                     "Simple Identifier expression"
+	SumExpr                         "aggregate functions"
+	FunctionCallGeneric             "Function call with Identifier"
+	FunctionCallKeyword             "Function call with keyword as function name"
+	FunctionCallNonKeyword          "Function call with nonkeyword as function name"
+	Literal                         "literal value"
+	Variable                        "User or system variable"
+	SystemVariable                  "System defined variable name"
+	UserVariable                    "User defined variable name"
+	SubSelect                       "Sub Select"
+	StringLiteral                   "text literal"
+	ExpressionOpt                   "Optional expression"
+	SignedLiteral                   "Literal or NumLiteral with sign"
+	DefaultValueExpr                "DefaultValueExpr(Now or Signed Literal)"
+	NowSymOptionFraction            "NowSym with optional fraction part"
 	NowSymOptionFractionParentheses "NowSym with optional fraction part within potential parentheses"
-	BuiltinFunction        "Default builtin functions for columns"
+	BuiltinFunction                 "Default builtin functions for columns"
 
 %type	<statement>
 	AdminStmt            "Check table statement or show ddl statement"
@@ -787,7 +788,7 @@ import (
 	PartDefOptionList             "PartDefOption list"
 	PartDefOption                 "COMMENT [=] xxx | TABLESPACE [=] tablespace_name | ENGINE [=] xxx"
 	PasswordOpt                   "Password option"
-	ColumnPosition                "Column position [First|After ColumnName]"
+	ColumnPosition                "Column position [First|After|Before ColumnName]"
 	PrepareSQL                    "Prepare statement sql string"
 	PriorityOpt                   "Statement priority option"
 	PrivElem                      "Privilege element"
@@ -1526,6 +1527,13 @@ ColumnPosition:
 	{
 		$$ = &ast.ColumnPosition{
 			Tp:             ast.ColumnPositionAfter,
+			RelativeColumn: $2.(*ast.ColumnName),
+		}
+	}
+|	"BEFORE" ColumnName
+	{
+		$$ = &ast.ColumnPosition{
+			Tp:             ast.ColumnPositionBefore,
 			RelativeColumn: $2.(*ast.ColumnName),
 		}
 	}
@@ -4462,6 +4470,7 @@ UnReservedKeyword:
 |	"AFTER"
 |	"ALWAYS"
 |	"AVG"
+|	"BEFORE"
 |	"BEGIN"
 |	"BINDING"
 |	"BIT"

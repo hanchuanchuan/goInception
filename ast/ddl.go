@@ -2157,6 +2157,7 @@ const (
 	ColumnPositionNone ColumnPositionType = iota
 	ColumnPositionFirst
 	ColumnPositionAfter
+	ColumnPositionBefore
 )
 
 // ColumnPosition represent the position of the newly added column
@@ -2177,6 +2178,11 @@ func (n *ColumnPosition) Restore(ctx *RestoreCtx) error {
 		ctx.WriteKeyWord("FIRST")
 	case ColumnPositionAfter:
 		ctx.WriteKeyWord("AFTER ")
+		if err := n.RelativeColumn.Restore(ctx); err != nil {
+			return errors.Annotate(err, "An error occurred while restore ColumnPosition.RelativeColumn")
+		}
+	case ColumnPositionBefore:
+		ctx.WriteKeyWord("BEFORE ")
 		if err := n.RelativeColumn.Restore(ctx); err != nil {
 			return errors.Annotate(err, "An error occurred while restore ColumnPosition.RelativeColumn")
 		}

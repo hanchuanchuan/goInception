@@ -3495,6 +3495,8 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 		return
 	}
 
+	var addColumn = 0
+	var addConstraint = 0
 	for i, alter := range node.Specs {
 		switch alter.Tp {
 		case ast.AlterTableOption:
@@ -3506,10 +3508,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 
 		case ast.AlterTableAddColumns:
 			s.checkAddColumn(table, alter)
+			addColumn += 1
 		case ast.AlterTableDropColumn:
 			s.checkDropColumn(table, alter)
 
 		case ast.AlterTableAddConstraint:
+			addConstraint += 1
 			s.checkAddConstraint(table, alter)
 
 		case ast.AlterTableDropPrimaryKey:
@@ -3568,6 +3572,13 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 				_ = s.fetchPartitionFromDB(table)
 				s.checkPartitionDrop(table, alter.PartitionNames)
 			}
+		case ast.AlterTableTruncatePartition:
+			if !s.inc.EnablePartitionTable {
+				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
+			} else {
+				_ = s.fetchPartitionFromDB(table)
+				s.checkPartitionTruncate(table, alter.PartitionNames)
+			}
 		case ast.AlterTableRemovePartitioning:
 			if !s.inc.EnablePartitionTable {
 				s.appendErrorNo(ER_PARTITION_NOT_ALLOWED)
@@ -3581,10 +3592,10 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 			} else {
 				_ = s.fetchPartitionFromDB(table)
 				s.checkPartitionConvert(table, alter.Partition)
+				s.checkAlterPartitionRule(table, alter.Partition)
 			}
 		case ast.AlterTableAlterPartition,
 			ast.AlterTableCoalescePartitions,
-			ast.AlterTableTruncatePartition,
 			ast.AlterTableRebuildPartition,
 			ast.AlterTableReorganizePartition,
 			ast.AlterTableCheckPartitions,
@@ -3621,6 +3632,12 @@ func (s *session) checkAlterTable(node *ast.AlterTableStmt, sql string, mergeOnl
 			if table == nil {
 				return
 			}
+		}
+	}
+
+	if s.dbType == DBTypeOceanBase && s.inc.CheckOfflineDDL {
+		if addColumn >= 1 && addConstraint >= 1 {
+			s.appendErrorNo(ER_CANT_ADD_COLUMNS_AND_CONSTRAINTS_IN_ONE_STATEMENT)
 		}
 	}
 
@@ -4029,6 +4046,37 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !found {
 				s.appendErrorNo(ER_COLUMN_NOT_EXISTED, fmt.Sprintf("%s.%s", t.Name, nc.Name.Name))
 			} else {
+				// ER_CANT_MODIFY_AUTO_INCREMENT_COLUMN
+				if s.inc.CheckOfflineDDL && !s.hasError() {
+					isPrimary := false
+					isUnique := false
+					isAutoIncrement := false
+					for _, op := range nc.Options {
+						switch op.Tp {
+						case ast.ColumnOptionPrimaryKey:
+							isPrimary = true
+						case ast.ColumnOptionUniqKey:
+							isUnique = true
+						case ast.ColumnOptionAutoIncrement:
+							isAutoIncrement = true
+						}
+					}
+
+					if isAutoIncrement {
+						if s.dbType == DBTypeOceanBase {
+							s.appendErrorNo(ER_CANT_MODIFY_AUTO_INCREMENT_COLUMN, nc.Name.Name.String())
+							break
+						}
+					}
+
+					if isPrimary || isUnique {
+						if s.dbType == DBTypeOceanBase {
+							s.appendErrorNo(ER_CANT_MODIFY_PK_OR_UK_COLUMN, nc.Name.Name.String())
+							break
+						}
+					}
+				}
+
 				if nc.Tp.Tp == mysql.TypeVarchar && nc.Tp.Flen > 0 &&
 					s.inc.MaxVarcharLength > 0 {
 					if strings.Contains(GetDataTypeBase(foundField.Type), "char") {
@@ -4305,12 +4353,6 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 		// 列类型转换审核
 		fieldType := nc.Tp.CompactStr()
 		if s.inc.CheckColumnTypeChange && fieldType != foundField.Type {
-			if s.dbType == DBTypeOceanBase {
-				s.appendErrorNo(ER_CANT_CHANGE_COLUMN_TYPE,
-					fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-					foundField.Type, fieldType)
-				return
-			}
 			switch nc.Tp.Tp {
 			case mysql.TypeDecimal, mysql.TypeNewDecimal,
 				mysql.TypeVarchar,
@@ -4321,6 +4363,12 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 						foundField.Type, fieldType)
+				} else if s.dbType == DBTypeOceanBase && GetDataTypeLength(fieldType)[0] >= GetDataTypeLength(foundField.Type)[0] {
+					if s.inc.CheckOfflineDDL {
+						s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
+							fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+							foundField.Type, fieldType)
+					}
 				} else if GetDataTypeLength(fieldType)[0] < GetDataTypeLength(foundField.Type)[0] {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
@@ -4357,6 +4405,12 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 					(oldType == "enum" || oldType == "set") {
 
 				} else {
+					if s.dbType == DBTypeOceanBase && s.inc.CheckOfflineDDL {
+						s.appendErrorNo(ER_CANT_CHANGE_COLUMN_TYPE,
+							fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+							foundField.Type, fieldType)
+						continue
+					}
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 						foundField.Type, fieldType)
@@ -5085,6 +5139,10 @@ func (s *session) checkAlterTableDropIndex(t *TableInfo, indexName string) bool 
 
 func (s *session) checkDropPrimaryKey(t *TableInfo, c *ast.AlterTableSpec) {
 	log.Debug("checkDropPrimaryKey")
+	if s.inc.CheckOfflineDDL && s.dbType == DBTypeOceanBase {
+		s.appendErrorNo(ER_CANT_DROP_PRIMARY_KEY,
+			fmt.Sprintf("%s", t.Name))
+	}
 
 	s.checkAlterTableDropIndex(t, "PRIMARY")
 }
@@ -5108,12 +5166,32 @@ func (s *session) checkAddColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			if !s.hasError() {
 				isPrimary := false
 				isUnique := false
+				var isStore *bool
+				isAutoIncrement := false
 				for _, op := range nc.Options {
 					switch op.Tp {
 					case ast.ColumnOptionPrimaryKey:
 						isPrimary = true
 					case ast.ColumnOptionUniqKey:
 						isUnique = true
+					case ast.ColumnOptionGenerated:
+						isStore = &op.Stored
+					case ast.ColumnOptionAutoIncrement:
+						isAutoIncrement = true
+					}
+				}
+
+				if s.inc.CheckOfflineDDL && isAutoIncrement {
+					if s.dbType == DBTypeOceanBase {
+						s.appendErrorNo(ER_CANT_ADD_AUTO_INCREMENT_COLUMN, nc.Name.Name.String())
+						break
+					}
+				}
+
+				if s.inc.CheckOfflineDDL && isStore != nil && *isStore {
+					if s.dbType == DBTypeOceanBase {
+						s.appendErrorNo(ER_CANT_ADD_STORED_GENERATED_COLUMN, nc.Name.Name.String())
+						break
 					}
 				}
 
@@ -5236,6 +5314,11 @@ func checkExistsColumns(t *TableInfo) (count int) {
 
 func (s *session) checkDropColumn(t *TableInfo, c *ast.AlterTableSpec) {
 	if s.dbType == DBTypeOceanBase {
+		if s.inc.CheckOfflineDDL {
+			s.appendErrorNo(ER_CANT_DROP_COLUMN, fmt.Sprintf("%s", c.OldColumnName.Name.O))
+			return
+		}
+
 		for _, index := range t.Indexes {
 			if strings.EqualFold(index.ColumnName, c.OldColumnName.Name.O) {
 				s.appendErrorNo(ER_CANT_DROP_INDEX_COLUMN,
@@ -5695,6 +5778,7 @@ func (s *session) checkAddConstraint(t *TableInfo, c *ast.AlterTableSpec) {
 			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 
 	case ast.ConstraintPrimaryKey:
+		s.checkAddPrimaryKey(t, c)
 		s.checkCreateIndex(nil, "PRIMARY",
 			c.Constraint.Keys, c.Constraint.Option, t, true, c.Constraint.Tp)
 	case ast.ConstraintForeignKey:

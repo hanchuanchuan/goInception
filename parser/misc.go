@@ -155,6 +155,7 @@ var tokenMap = map[string]int{
 	"AUTO_RANDOM_BASE": autoRandomBase,
 	"AVG":              avg,
 	"AVG_ROW_LENGTH":   avgRowLength,
+	"BEFORE":           before,
 	"BEGIN":            begin,
 	"BETWEEN":          between,
 	"BIGINT":           bigIntType,

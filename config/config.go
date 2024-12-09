@@ -250,6 +250,7 @@ type Inc struct {
 	CheckTableComment           bool `toml:"check_table_comment" json:"check_table_comment"`
 	CheckTimestampDefault       bool `toml:"check_timestamp_default" json:"check_timestamp_default"`
 	CheckTimestampCount         bool `toml:"check_timestamp_count" json:"check_timestamp_count"`
+	CheckOfflineDDL             bool `toml:"check_offline_ddl" json:"check_offline_ddl"`
 	CheckToolBasedUniqueIndex   bool `toml:"check_tool_based_unique_index" json:"check_tool_based_unique_index"`
 
 	EnableTimeStampType  bool `toml:"enable_timestamp_type" json:"enable_timestamp_type"`
@@ -714,6 +715,7 @@ var defaultConf = Config{
 		SupportEngine:         "innodb",
 		Lang:                  "en-US",
 		CheckColumnTypeChange: true,
+		CheckOfflineDDL:       true,
 
 		// 连接服务器选项
 		DefaultCharset:   "utf8mb4",
