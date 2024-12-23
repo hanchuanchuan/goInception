@@ -171,12 +171,16 @@ type expressionRewriter struct {
 // 1. If op are EQ or NE or NullEQ, constructBinaryOpFunctions converts (a0,a1,a2) op (b0,b1,b2) to (a0 op b0) and (a1 op b1) and (a2 op b2)
 // 2. If op are LE or GE, constructBinaryOpFunctions converts (a0,a1,a2) op (b0,b1,b2) to
 // `IF( (a0 op b0) EQ 0, 0,
-//      IF ( (a1 op b1) EQ 0, 0, a2 op b2))`
+//
+//	IF ( (a1 op b1) EQ 0, 0, a2 op b2))`
+//
 // 3. If op are LT or GT, constructBinaryOpFunctions converts (a0,a1,a2) op (b0,b1,b2) to
 // `IF( a0 NE b0, a0 op b0,
-//      IF( a1 NE b1,
-//          a1 op b1,
-//          a2 op b2)
+//
+//	IF( a1 NE b1,
+//	    a1 op b1,
+//	    a2 op b2)
+//
 // )`
 func (er *expressionRewriter) constructBinaryOpFunction(l expression.Expression, r expression.Expression, op string) (expression.Expression, error) {
 	lLen, rLen := expression.GetRowLen(l), expression.GetRowLen(r)
@@ -752,7 +756,7 @@ func (er *expressionRewriter) Leave(originInNode ast.Node) (retNode ast.Node, ok
 	}
 	switch v := inNode.(type) {
 	case *ast.AggregateFuncExpr, *ast.ColumnNameExpr, *ast.ParenthesesExpr, *ast.WhenClause,
-		*ast.SubqueryExpr, *ast.ExistsSubqueryExpr, *ast.CompareSubqueryExpr, *ast.ValuesExpr:
+		*ast.SubqueryExpr, *ast.ExistsSubqueryExpr, *ast.CompareSubqueryExpr, *ast.ValuesExpr, *ast.WindowFuncExpr:
 	case *ast.ValueExpr:
 		value := &expression.Constant{Value: v.Datum, RetType: &v.Type}
 		er.ctxStack = append(er.ctxStack, value)
@@ -801,6 +805,21 @@ func (er *expressionRewriter) Leave(originInNode ast.Node) (retNode ast.Node, ok
 		er.isNullToExpression(v)
 	case *ast.IsTruthExpr:
 		er.isTrueToScalarFunc(v)
+	case *ast.TrimDirectionExpr:
+		er.ctxStack = append(er.ctxStack, &expression.Constant{
+			Value:   types.NewIntDatum(int64(v.Direction)),
+			RetType: types.NewFieldType(mysql.TypeTiny),
+		})
+	case *ast.TimeUnitExpr:
+		er.ctxStack = append(er.ctxStack, &expression.Constant{
+			Value:   types.NewStringDatum(v.Unit.String()),
+			RetType: types.NewFieldType(mysql.TypeVarchar),
+		})
+	case *ast.GetFormatSelectorExpr:
+		er.ctxStack = append(er.ctxStack, &expression.Constant{
+			Value:   types.NewStringDatum(v.Selector.String()),
+			RetType: types.NewFieldType(mysql.TypeVarchar),
+		})
 	default:
 		er.err = errors.Errorf("UnknownType: %T", v)
 		return retNode, false

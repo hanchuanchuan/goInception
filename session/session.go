@@ -871,6 +871,7 @@ func (s *session) SetGlobalSysVar(name, value string) error {
 
 func (s *session) ParseSQL(ctx context.Context, sql, charset, collation string) ([]ast.StmtNode, error) {
 	s.parser.SetSQLMode(s.sessionVars.SQLMode)
+	s.parser.EnableWindowFunc(true)
 	stmts, _, err := s.parser.Parse(sql, charset, collation)
 	return stmts, err
 }
