@@ -4315,7 +4315,16 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			case mysql.TypeDecimal, mysql.TypeNewDecimal,
 				mysql.TypeVarchar,
 				mysql.TypeVarString:
-				str := string([]byte(foundField.Type)[:7])
+				/* 
+				这里如果foundField.Type的长度不足7位，直接取[:7],会导致数据越界
+				所以如果foundField.Type长度小于7位，以实际长度进行截取，如果大于等于7位，就按照7位进行截取 
+				*/
+				length := 7
+				legnthOfFoundFieldType := len(foundField.Type)
+				if legnthOfFoundFieldType < length {
+					length = legnthOfFoundFieldType
+				}
+				str := string([]byte(foundField.Type)[:length])
 				// 类型不一致
 				if !strings.Contains(fieldType, str) {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
