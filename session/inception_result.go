@@ -26,7 +26,7 @@ import (
 	"github.com/hanchuanchuan/goInception/util/chunk"
 	"github.com/hanchuanchuan/goInception/util/sqlexec"
 
-	// log "github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -150,6 +150,7 @@ func (r *Record) cut() {
 	if r.ErrorMessage == "" {
 		r.ErrorMessage = strings.TrimSpace(r.Buf.String())
 	}
+
 	r.Buf = nil
 	r.Type = nil
 	r.TableInfo = nil
@@ -349,15 +350,22 @@ func (s *MyRecordSets) setFields(r *Record) {
 	row[2].SetInt64(int64(r.ErrLevel))
 	row[3].SetString(StatusList[r.StageStatus])
 
+	// 获取 ErrorMessage
+	var errMsg string
 	if r.ErrorMessage != "" {
-		row[4].SetString(r.ErrorMessage)
+		errMsg = r.ErrorMessage
+	} else if r.Buf != nil {
+		errMsg = strings.TrimSpace(r.Buf.String())
+	}
+
+	if errMsg != "" {
+		log.Debugf("setFields: SeqNo=%d ErrLevel=%d ErrorMessage=%s", r.SeqNo, r.ErrLevel, errMsg)
+	}
+
+	if errMsg == "" {
+		row[4].SetNull()
 	} else {
-		e := strings.TrimSpace(r.Buf.String())
-		if e == "" {
-			row[4].SetNull()
-		} else {
-			row[4].SetString(e)
-		}
+		row[4].SetString(errMsg)
 	}
 
 	row[5].SetString(r.Sql)

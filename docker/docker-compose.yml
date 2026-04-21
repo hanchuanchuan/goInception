@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  goinception-build:
+    image: golang:1.22-alpine
+    container_name: goinception-build
+    volumes:
+      - /data/dockerfile/goInception:/data/goInception
+    working_dir: /data/goInception
+    environment:
+      - GO111MODULE=on
+      #- GOPROXY=https://goproxy.cn,direct
+    command: sh -c "sleep 999d"

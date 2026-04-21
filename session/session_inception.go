@@ -1648,7 +1648,12 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	log.Debug("mysqlFetchMasterBinlogPosition")
 
+	// MySQL 8.4.0+ removes SHOW MASTER STATUS; use SHOW BINARY LOG STATUS (same columns).
+	// MariaDB/TiDB 等仍走原语句。dbVersion 由 mysqlServerVersion() 解析，如 8.4.8 -> 80408。
 	sql := "SHOW MASTER STATUS;"
+	if s.dbType == DBTypeMysql && s.dbVersion >= 80400 {
+		sql = "SHOW BINARY LOG STATUS;"
+	}
 	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
 	}
@@ -8175,6 +8180,7 @@ func (s *session) appendErrorMsgf(format string, args ...interface{}) {
 		}
 	}
 	s.recordSets.MaxLevel = 2
+	s.myRecord.Buf.WriteString("[error] ")
 	s.myRecord.appendErrorMessage(msg)
 }
 
@@ -8186,6 +8192,7 @@ func (s *session) appendWarningMessage(msg string) {
 			s.myRecord.Buf.WriteString("Execute: ")
 		}
 	}
+	s.myRecord.Buf.WriteString("[warn] ")
 	s.myRecord.appendWarningMessage(msg)
 	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 }
@@ -8196,6 +8203,7 @@ func (s *session) appendWarning(number ErrorCode, values ...interface{}) {
 	} else if s.stage == StageExec {
 		s.myRecord.Buf.WriteString("Execute: ")
 	}
+	s.myRecord.Buf.WriteString("[warn] ")
 	s.myRecord.appendWarning(s.inc.Lang, number, values...)
 	s.recordSets.MaxLevel = uint8(Max(int(s.recordSets.MaxLevel), int(s.myRecord.ErrLevel)))
 }
@@ -8227,6 +8235,12 @@ func (s *session) appendErrorWithLevel(number ErrorCode, customizeLevel uint8, v
 			r.Buf.WriteString("Backup: ")
 		} else if s.stage == StageExec {
 			r.Buf.WriteString("Execute: ")
+		}
+		// 添加级别前缀
+		if level == 1 {
+			r.Buf.WriteString("[warn] ")
+		} else if level == 2 {
+			r.Buf.WriteString("[error] ")
 		}
 		if len(values) == 0 {
 			r.Buf.WriteString(s.getErrorMessage(number))

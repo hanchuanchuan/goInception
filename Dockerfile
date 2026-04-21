@@ -1,68 +1,40 @@
-FROM golang:1.14-alpine as builder
-# MAINTAINER hanchuanchuan <chuanchuanhan@gmail.com>
+# Stage 1: Build
+FROM golang:1.22-alpine AS builder
 
 ENV TZ=Asia/Shanghai
-ENV LANG="en_US.UTF-8"
+ENV GO111MODULE=on
+#ENV GOPROXY=https://goproxy.cn,direct
 
-RUN apk add --no-cache \
-    ca-certificates wget \
-    make \
-    git \
-    gcc \
-    musl-dev
+RUN apk add --no-cache make git gcc musl-dev bash
 
-RUN wget -q -O /usr/local/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_amd64 \
-&& wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub \
-&& wget -q -O /glibc.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.28-r0/glibc-2.28-r0.apk \
- && chmod +x /usr/local/bin/dumb-init
+WORKDIR /go/src/goInception
+COPY . .
 
-COPY bin/goInception /goInception
-# COPY bin/percona-toolkit.tar.gz /tmp/percona-toolkit.tar.gz
-COPY bin/pt-online-schema-change /tmp/pt-online-schema-change
-COPY bin/gh-ost /tmp/gh-ost
-COPY config/config.toml.default /etc/config.toml
+RUN make server
 
-# Executable image
+# Stage 2: Runtime
 FROM alpine
 
-COPY --from=builder /glibc.apk /glibc.apk
-COPY --from=builder /etc/apk/keys/sgerrand.rsa.pub /etc/apk/keys/sgerrand.rsa.pub
-COPY --from=builder /goInception /goInception
-COPY --from=builder /etc/config.toml /etc/config.toml
-COPY --from=builder /usr/local/bin/dumb-init /usr/local/bin/dumb-init
-
-# COPY --from=builder /tmp/percona-toolkit.tar.gz /tmp/percona-toolkit.tar.gz
-COPY --from=builder /tmp/pt-online-schema-change /usr/local/bin/pt-online-schema-change
-COPY --from=builder /tmp/gh-ost /usr/local/bin/gh-ost
-
-WORKDIR /
-
-EXPOSE 4000
-
 ENV LANG="en_US.UTF-8"
 ENV TZ=Asia/Shanghai
-
-# ENV PERCONA_TOOLKIT_VERSION 3.0.4
-
-# && wget -O /tmp/percona-toolkit.tar.gz https://www.percona.com/downloads/percona-toolkit/${PERCONA_TOOLKIT_VERSION}/source/tarball/percona-toolkit-${PERCONA_TOOLKIT_VERSION}.tar.gz \
-
-#RUN set -x \
-#  && apk add --no-cache perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey make tzdata \
-#  && tar -xzvf /tmp/percona-toolkit.tar.gz -C /tmp \
-#  && cd /tmp/percona-toolkit-${PERCONA_TOOLKIT_VERSION} \
-#  && perl Makefile.PL \
-#  && make \
-#  && make test \
-#  && make install \
-#  && apk del make \
-#  && rm -rf /var/cache/apk/* /tmp/percona-toolkit*
-
+EXPOSE 4000
 
 RUN set -x \
-  && apk add --no-cache --force-overwrite perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata /glibc.apk \
-  && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
-  && chmod +x /usr/local/bin/pt-online-schema-change \
-  && chmod +x /usr/local/bin/gh-ost \
-  && apk fix --force-overwrite alpine-baselayout-data
+    && apk add --no-cache perl perl-dbi perl-dbd-mysql perl-io-socket-ssl perl-term-readkey tzdata wget \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-ENTRYPOINT ["/usr/local/bin/dumb-init", "/goInception","--config=/etc/config.toml"]
+ADD https://github.com/Yelp/dumb-init/releases/download/v1.2.2/dumb-init_1.2.2_amd64 /usr/local/bin/dumb-init
+RUN chmod +x /usr/local/bin/dumb-init
+
+COPY --from=builder /go/src/goInception/bin/goInception /goInception
+COPY config/config.toml.default /etc/config.toml
+COPY bin/pt-online-schema-change /usr/local/bin/pt-online-schema-change
+
+RUN wget -O /tmp/gh-ost.tar.gz https://github.com/github/gh-ost/releases/download/v1.1.6/gh-ost-binary-linux-amd64-20231207144046.tar.gz \
+    && tar -xzf /tmp/gh-ost.tar.gz -C /usr/local/bin/ \
+    && rm -f /tmp/gh-ost.tar.gz \
+    && chmod +x /usr/local/bin/gh-ost \
+    && chmod +x /usr/local/bin/pt-online-schema-change \
+    && apk del wget
+
+ENTRYPOINT ["/usr/local/bin/dumb-init", "/goInception", "--config=/etc/config.toml"]
