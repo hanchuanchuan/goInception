@@ -853,22 +853,19 @@ func (s *session) execCommand(r *Record, socketFile string, commandName string, 
 
 	//实时循环读取输出流中的一行内容
 	f := func(reader *bufio.Reader) {
+		defer wg.Done()
 		for {
 			line, err2 := reader.ReadString('\n')
 			if err2 != nil || io.EOF == err2 {
-				wg.Done()
 				break
 			}
 
 			if s.ghost.GhostOn {
-				if strings.Contains("[info]", line) {
+				if strings.Contains(line, "[info]") {
 					continue
 				}
 				buf.WriteString(line)
-				if ok := s.mysqlAnalyzeGhostOutput(line, p); ok {
-					wg.Done()
-					break
-				}
+				s.mysqlAnalyzeGhostOutput(line, p)
 			} else {
 				buf.WriteString(line)
 				s.mysqlAnalyzeOscOutput(line, p)
