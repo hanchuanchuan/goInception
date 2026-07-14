@@ -1649,6 +1649,10 @@ func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	log.Debug("mysqlFetchMasterBinlogPosition")
 
 	sql := "SHOW MASTER STATUS;"
+	// MySQL 8.4+ renamed "SHOW MASTER STATUS" to "SHOW BINARY LOG STATUS"
+	if s.dbVersion >= 80400 && s.dbType == DBTypeMysql {
+		sql = "SHOW BINARY LOG STATUS;"
+	}
 	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
 	}
