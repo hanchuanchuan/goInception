@@ -18,8 +18,10 @@
 package session
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"time"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
@@ -117,6 +119,98 @@ func (s *session) exec(sqlStr string, retry bool) (res sql.Result, err error) {
 		return
 	}
 	return
+}
+
+// execDMLWithThreadID 在一条独占连接上执行 DML，并取回该连接的线程号。
+//
+// 备份解析 binlog 时按线程号过滤事件（checkFilter），线程号必须来自真正执行
+// 语句的连接。原实现先经连接池执行语句，再用另一条池化查询 select connection_id()
+// 取线程号；一旦连接池换连（如坏连接被 database/sql 透明替换、代理按语句断连），
+// 线程号与实际执行连接不一致，binlog 中匹配不到变更行，语句会被误判为
+// "Backup failed" 且无任何错误信息（相关 issue #666）。
+//
+// 使用独占连接（*sql.Conn）保证执行与取号在同一条连接上：用户持有的 *sql.Conn
+// 在连接失效时返回错误而不是静默切换到别的连接。同时把影响 DML 语义的会话状态
+// （当前库、备份所需的 binlog 变量、sql_safe_updates、lock_wait_timeout）在该连接
+// 上对齐——这些 SET 原本只作用于池化连接，换连后即失效。
+//
+// 与 s.exec 的 retry=false 语义一致：不做坏连接重试，避免语句实际已执行导致重复提交。
+func (s *session) execDMLWithThreadID(sqlStr string) (res sql.Result, err error, threadID uint32) {
+	db := s.db.DB()
+	ctx := context.Background()
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, err)
+		// 获取独占连接失败时退回常规执行路径，线程号由 fetchThreadID 兜底
+		res, err = s.exec(sqlStr, false)
+		return res, err, s.fetchThreadID()
+	}
+	defer conn.Close()
+
+	if setErr := s.alignSessionStateOnConn(ctx, conn); setErr != nil {
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, setErr)
+		s.appendErrorMsg(setErr.Error())
+		return nil, setErr, 0
+	}
+
+	res, err = conn.ExecContext(ctx, sqlStr)
+	if err != nil {
+		return res, err, 0
+	}
+
+	query := "select connection_id();"
+	if s.isMiddleware() {
+		query = s.opt.middlewareExtend + query
+	}
+	var tid uint64
+	if qErr := conn.QueryRowContext(ctx, query).Scan(&tid); qErr != nil {
+		// 语句本身已执行成功，取号失败仅记录日志，线程号交由调用方兜底
+		log.Errorf("con:%d %v", s.sessionVars.ConnectionID, qErr)
+		return res, err, 0
+	}
+
+	// thread_id溢出处理，与 fetchThreadID 保持一致
+	if tid > math.MaxUint32 {
+		tid %= 1 << 32
+	}
+	return res, err, uint32(tid)
+}
+
+// alignSessionStateOnConn 把会影响 DML 执行语义的会话变量对齐到独占连接上。
+// 这些变量在 initConnection/executeCommit 中通过 s.exec 只设置在池化连接上，
+// 独占连接上需要重新设置。任一设置失败即返回错误（此时语句尚未执行）。
+func (s *session) alignSessionStateOnConn(ctx context.Context, conn *sql.Conn) error {
+	if s.dbName != "" {
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE `%s`", s.dbName)); err != nil {
+			return fmt.Errorf("use database %s: %w", s.dbName, err)
+		}
+	}
+
+	if s.opt.Backup {
+		if _, err := conn.ExecContext(ctx, "set session binlog_format='row';"); err != nil {
+			return fmt.Errorf("set binlog_format=row: %w", err)
+		}
+		if _, err := conn.ExecContext(ctx, "set session binlog_row_image='FULL';"); err != nil {
+			return fmt.Errorf("set binlog_row_image=FULL: %w", err)
+		}
+	}
+
+	if s.inc.SqlSafeUpdates == 0 || s.inc.SqlSafeUpdates == 1 {
+		if _, err := conn.ExecContext(ctx,
+			fmt.Sprintf("set session sql_safe_updates=%d;", s.inc.SqlSafeUpdates)); err != nil {
+			return fmt.Errorf("set sql_safe_updates=%d: %w", s.inc.SqlSafeUpdates, err)
+		}
+	}
+
+	if s.inc.LockWaitTimeout > 0 {
+		if _, err := conn.ExecContext(ctx,
+			fmt.Sprintf("set session lock_wait_timeout=%d;", s.inc.LockWaitTimeout)); err != nil {
+			return fmt.Errorf("set lock_wait_timeout=%d: %w", s.inc.LockWaitTimeout, err)
+		}
+	}
+
+	return nil
 }
 
 // execDDL 执行sql语句,连接失败时自动重连,自动重置当前数据库

@@ -1527,7 +1527,14 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 	if isTran {
 		res, err = s.execDDL(sqlStmt, false)
 	} else {
-		res, err = s.exec(sqlStmt, false)
+		switch record.Type.(type) {
+		case *ast.InsertStmt, *ast.DeleteStmt, *ast.UpdateStmt:
+			// DML 在独占连接上执行并取回线程号，保证备份校验
+			// (parserBinlog/checkFilter) 使用的线程号与实际执行连接一致
+			res, err, record.ThreadId = s.execDMLWithThreadID(sqlStmt)
+		default:
+			res, err = s.exec(sqlStmt, false)
+		}
 	}
 
 	record.ExecTime = fmt.Sprintf("%.3f", time.Since(start).Seconds())
@@ -1572,7 +1579,10 @@ func (s *session) executeRemoteStatement(record *Record, isTran bool) {
 		s.appendErrorMsg(err.Error())
 	}
 	record.AffectedRows = affectedRows
-	record.ThreadId = s.fetchThreadID()
+	if record.ThreadId == 0 {
+		// 非 DML 路径或独占连接取号失败时，退回池化查询取线程号
+		record.ThreadId = s.fetchThreadID()
+	}
 	if record.ThreadId == 0 {
 		s.appendErrorMsg("无法获取线程号")
 	} else {

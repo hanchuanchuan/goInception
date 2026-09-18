@@ -394,6 +394,12 @@ func (s *session) parserBinlog(ctx context.Context) {
 			if record.AffectedRows > 0 {
 				if int64(changeRows) >= record.AffectedRows {
 					record.StageStatus = StatusBackupOK
+				} else {
+					// 备份校验未确认到全部变更行时补充错误信息，
+					// 避免仅返回 "Backup failed" 而没有任何错误详情
+					record.appendErrorMessage(fmt.Sprintf(
+						"备份校验未确认到全部变更行: 期望 %d 行, 实际解析 %d 行 (thread id: %d)",
+						record.AffectedRows, changeRows, record.ThreadId))
 				}
 			}
 
