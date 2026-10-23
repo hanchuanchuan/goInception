@@ -1470,6 +1470,35 @@ func (s *testSessionIncSuite) TestAlterTableModifyColumn(c *C) {
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "char(100)", "char(20)"))
 
+	// text/blob 家族: 同家族扩容不丢数据, 放行; 缩容与跨家族仍告警
+	// 大对象类型受 enable_blob_type 开关影响, 显式打开并还原, 不依赖前序用例的状态
+	blobTypeBak := config.GetGlobalConfig().Inc.EnableBlobType
+	config.GetGlobalConfig().Inc.EnableBlobType = true
+
+	sql = "create table t1(c1 text);alter table t1 modify column c1 mediumtext;"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(c1 mediumtext);alter table t1 modify column c1 longtext;"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(c1 mediumtext);alter table t1 modify column c1 text;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "mediumtext", "text"))
+
+	sql = "create table t1(c1 blob);alter table t1 modify column c1 longblob;"
+	s.testErrorCode(c, sql)
+
+	sql = "create table t1(c1 longblob);alter table t1 modify column c1 blob;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "longblob", "blob"))
+
+	// text 与 blob 存储语义不同(字符集 vs 二进制), 跨家族仍按类型变更告警
+	sql = "create table t1(c1 text);alter table t1 modify column c1 blob;"
+	s.testErrorCode(c, sql,
+		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "text", "blob"))
+
+	config.GetGlobalConfig().Inc.EnableBlobType = blobTypeBak
+
 	sql = "create table t1(c1 varchar(100));alter table t1 modify column c1 char(10);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_CHANGE_COLUMN_TYPE, "t1.c1", "varchar(100)", "char(10)"))
