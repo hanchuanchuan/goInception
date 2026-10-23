@@ -4356,6 +4356,14 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 				} else if oldType == newType &&
 					(oldType == "enum" || oldType == "set") {
 
+				} else if _, isLob := TextBlobOrderedMaps[oldType]; isLob {
+					// text/blob 家族: 同家族且容量不变小属扩容, 不丢数据, 放行;
+					// 跨家族(text <-> blob)或容量变小仍按类型变更告警
+					if !lobTypeChangeAllowed(oldType, newType) {
+						s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
+							fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
+							foundField.Type, fieldType)
+					}
 				} else {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),

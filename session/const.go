@@ -72,6 +72,25 @@ var IntegerOrderedMaps2 = map[byte]int{
 	mysql.TypeLonglong: 6,
 }
 
+// TextBlobOrder 大对象列的容量档位, 用于列类型变更审核时判断是否为扩容。
+// Family 区分 text 与 blob 两个家族: 前者带字符集, 后者是二进制, 互转不等价。
+type TextBlobOrder struct {
+	Family string
+	Size   int
+}
+
+// text/blob类型map(用以大对象列类型变更审核: 同家族扩容放行, 缩容/跨家族告警)
+var TextBlobOrderedMaps = map[string]TextBlobOrder{
+	"tinytext":   {"text", 1},
+	"text":       {"text", 2},
+	"mediumtext": {"text", 3},
+	"longtext":   {"text", 4},
+	"tinyblob":   {"blob", 1},
+	"blob":       {"blob", 2},
+	"mediumblob": {"blob", 3},
+	"longblob":   {"blob", 4},
+}
+
 // Keywords 数据库关键字
 var Keywords = map[string]bool{
 	"ACCESSIBLE":                      true,

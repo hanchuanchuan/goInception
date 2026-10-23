@@ -830,6 +830,22 @@ func GetDataTypeLength(dataType string) []int {
 	return length
 }
 
+// lobTypeChangeAllowed 判断大对象列的类型变更是否属于同家族扩容。
+// 仅当新旧类型同属 text 或同属 blob 家族、且新容量不小于旧容量时返回 true。
+// 两端都必须是 text/blob 类型: 跨家族(text <-> blob)因字符集/二进制语义不同而不等价,
+// 非 text/blob 类型一律返回 false, 由调用方按原有规则处理。
+func lobTypeChangeAllowed(oldType, newType string) bool {
+	oldLob, ok := TextBlobOrderedMaps[GetDataTypeBase(oldType)]
+	if !ok {
+		return false
+	}
+	newLob, ok := TextBlobOrderedMaps[GetDataTypeBase(newType)]
+	if !ok {
+		return false
+	}
+	return newLob.Family == oldLob.Family && newLob.Size >= oldLob.Size
+}
+
 // func getDefaultValue(ctx sessionctx.Context, c *ast.ColumnOption, tp byte, fsp int) (interface{}, error) {
 // 	if tp == mysql.TypeTimestamp || tp == mysql.TypeDatetime {
 // 		vd, err := expression.GetTimeValue(ctx, c.Expr, tp, fsp)
