@@ -1892,6 +1892,10 @@ type ShowStmt struct {
 	ShowProfileTypes []int  // Used for `SHOW PROFILE` syntax
 	ShowProfileArgs  *int64 // Used for `SHOW PROFILE` syntax
 	ShowProfileLimit *Limit // Used for `SHOW PROFILE` syntax
+
+	// ShowBinaryLogStatus distinguishes MySQL 8.4+ SHOW BINARY LOG STATUS
+	// from the legacy SHOW MASTER STATUS spelling.
+	ShowBinaryLogStatus bool
 }
 
 // Restore implements Node interface.
@@ -1973,7 +1977,11 @@ func (n *ShowStmt) Restore(ctx *RestoreCtx) error {
 			}
 		}
 	case ShowMasterStatus:
-		ctx.WriteKeyWord("MASTER STATUS")
+		if n.ShowBinaryLogStatus {
+			ctx.WriteKeyWord("BINARY LOG STATUS")
+		} else {
+			ctx.WriteKeyWord("MASTER STATUS")
+		}
 	case ShowProcessList:
 		restoreOptFull()
 		ctx.WriteKeyWord("PROCESSLIST")

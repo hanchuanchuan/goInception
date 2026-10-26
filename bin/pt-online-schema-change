@@ -4363,7 +4363,9 @@ sub _find_slaves_by_hosts {
    my ( $self, $dsn_parser, $dbh, $dsn ) = @_;
 
    my @slaves;
-   my $sql = 'SHOW SLAVE HOSTS';
+   my $sql = $self->_uses_mysql84_replica_terms($dbh)
+      ? 'SHOW REPLICAS'
+      : 'SHOW SLAVE HOSTS';
    PTDEBUG && _d($dbh, $sql);
    @slaves = @{$dbh->selectall_arrayref($sql, { Slice => {} })};
 
@@ -4377,7 +4379,7 @@ sub _find_slaves_by_hosts {
             . ( $hash{password} ? ",p=$hash{password}" : '');
          my $dsn           = $dsn_parser->parse($spec, $dsn);
          $dsn->{server_id} = $hash{server_id};
-         $dsn->{master_id} = $hash{master_id};
+         $dsn->{master_id} = $hash{master_id} || $hash{source_id};
          $dsn->{source}    = 'hosts';
          $dsn;
       } @slaves;
@@ -4477,15 +4479,58 @@ sub get_master_dsn {
    return       $dsn_parser->parse($spec, $dsn);
 }
 
+sub _uses_mysql84_replica_terms {
+   my ( $self, $dbh ) = @_;
+
+   return $self->{mysql84_replica_terms}->{$dbh}
+      if exists $self->{mysql84_replica_terms}->{$dbh};
+
+   my $uses_new_terms = 0;
+   my $version = eval { VersionParser->new($dbh) };
+   if ( $version && $version->normalized_version() >= 80400
+      && ($version->flavor || '') !~ /mariadb/i )
+   {
+      $uses_new_terms = 1;
+   }
+   $self->{mysql84_replica_terms}->{$dbh} = $uses_new_terms;
+   return $uses_new_terms;
+}
+
+sub _normalize_replica_status {
+   my ( $self, $status ) = @_;
+   my %aliases = (
+      replica_io_state      => 'slave_io_state',
+      replica_io_running    => 'slave_io_running',
+      replica_sql_running   => 'slave_sql_running',
+      source_host           => 'master_host',
+      source_port           => 'master_port',
+      source_user           => 'master_user',
+      source_log_file       => 'master_log_file',
+      read_source_log_pos   => 'read_master_log_pos',
+      relay_source_log_file => 'relay_master_log_file',
+      exec_source_log_pos   => 'exec_master_log_pos',
+      seconds_behind_source => 'seconds_behind_master',
+   );
+   for my $new ( keys %aliases ) {
+      my $old = $aliases{$new};
+      $status->{$old} = $status->{$new}
+         if exists $status->{$new} && !exists $status->{$old};
+   }
+   return $status;
+}
+
 sub get_slave_status {
    my ( $self, $dbh ) = @_;
 
    if ( !$self->{not_a_slave}->{$dbh} ) {
-      my $sth = $self->{sths}->{$dbh}->{SLAVE_STATUS}
-            ||= $dbh->prepare('SHOW SLAVE STATUS');
-      PTDEBUG && _d($dbh, 'SHOW SLAVE STATUS');
+      my $uses_new_terms = $self->_uses_mysql84_replica_terms($dbh);
+      my $status_sql = $uses_new_terms ? 'SHOW REPLICA STATUS' : 'SHOW SLAVE STATUS';
+      my $status_key = $uses_new_terms ? 'REPLICA_STATUS' : 'SLAVE_STATUS';
+      my $sth = $self->{sths}->{$dbh}->{$status_key}
+            ||= $dbh->prepare($status_sql);
+      PTDEBUG && _d($dbh, $status_sql);
       $sth->execute();
-      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Slave Status rows
+      my ($sss_rows) = $sth->fetchall_arrayref({}); # Show Replica Status rows
 
       my $ss;
       if ( $sss_rows && @$sss_rows ) {
@@ -4510,7 +4555,7 @@ sub get_slave_status {
 
           if ( $ss && %$ss ) {
              $ss = { map { lc($_) => $ss->{$_} } keys %$ss }; # lowercase the keys
-             return $ss;
+             return $self->_normalize_replica_status($ss);
           }
       }
 
@@ -4527,9 +4572,12 @@ sub get_master_status {
       return;
    }
 
-   my $sth = $self->{sths}->{$dbh}->{MASTER_STATUS}
-         ||= $dbh->prepare('SHOW MASTER STATUS');
-   PTDEBUG && _d($dbh, 'SHOW MASTER STATUS');
+   my $uses_new_terms = $self->_uses_mysql84_replica_terms($dbh);
+   my $status_sql = $uses_new_terms ? 'SHOW BINARY LOG STATUS' : 'SHOW MASTER STATUS';
+   my $status_key = $uses_new_terms ? 'BINARY_LOG_STATUS' : 'MASTER_STATUS';
+   my $sth = $self->{sths}->{$dbh}->{$status_key}
+         ||= $dbh->prepare($status_sql);
+   PTDEBUG && _d($dbh, $status_sql);
    $sth->execute();
    my ($ms) = @{$sth->fetchall_arrayref({})};
    PTDEBUG && _d(
@@ -4567,9 +4615,11 @@ sub wait_for_master {
               error  =>'Wait for master: this is a multi-master slave but "channel" was not specified on the command line',
           };
       }
-      my $server_version = VersionParser->new($slave_dbh);
+         my $server_version = VersionParser->new($slave_dbh);
+      my $uses_new_terms = $self->_uses_mysql84_replica_terms($slave_dbh);
       my $channel_sql = $server_version > '5.6' && $self->{channel} ? ", '$self->{channel}'" : '';
-      my $sql = "SELECT MASTER_POS_WAIT('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
+      my $wait_function = $uses_new_terms ? 'SOURCE_POS_WAIT' : 'MASTER_POS_WAIT';
+      my $sql = "SELECT $wait_function('$master_status->{file}', $master_status->{position}, $timeout $channel_sql)";
       PTDEBUG && _d($slave_dbh, $sql);
       my $start = time;
       ($result) = $slave_dbh->selectrow_array($sql);
@@ -4591,23 +4641,31 @@ sub wait_for_master {
 
 sub stop_slave {
    my ( $self, $dbh ) = @_;
-   my $sth = $self->{sths}->{$dbh}->{STOP_SLAVE}
-         ||= $dbh->prepare('STOP SLAVE');
+   my $uses_new_terms = $self->_uses_mysql84_replica_terms($dbh);
+   my $command = $uses_new_terms ? 'STOP REPLICA' : 'STOP SLAVE';
+   my $key = $uses_new_terms ? 'STOP_REPLICA' : 'STOP_SLAVE';
+   my $sth = $self->{sths}->{$dbh}->{$key}
+         ||= $dbh->prepare($command);
    PTDEBUG && _d($dbh, $sth->{Statement});
    $sth->execute();
 }
 
 sub start_slave {
    my ( $self, $dbh, $pos ) = @_;
+   my $uses_new_terms = $self->_uses_mysql84_replica_terms($dbh);
+   my $start_command = $uses_new_terms ? 'START REPLICA' : 'START SLAVE';
    if ( $pos ) {
-      my $sql = "START SLAVE UNTIL MASTER_LOG_FILE='$pos->{file}', "
-              . "MASTER_LOG_POS=$pos->{position}";
+      my $log_file_key = $uses_new_terms ? 'SOURCE_LOG_FILE' : 'MASTER_LOG_FILE';
+      my $log_pos_key = $uses_new_terms ? 'SOURCE_LOG_POS' : 'MASTER_LOG_POS';
+      my $sql = "$start_command UNTIL $log_file_key='$pos->{file}', "
+              . "$log_pos_key=$pos->{position}";
       PTDEBUG && _d($dbh, $sql);
       $dbh->do($sql);
    }
    else {
-      my $sth = $self->{sths}->{$dbh}->{START_SLAVE}
-            ||= $dbh->prepare('START SLAVE');
+      my $key = $uses_new_terms ? 'START_REPLICA' : 'START_SLAVE';
+      my $sth = $self->{sths}->{$dbh}->{$key}
+            ||= $dbh->prepare($start_command);
       PTDEBUG && _d($dbh, $sth->{Statement});
       $sth->execute();
    }
@@ -4699,7 +4757,10 @@ sub slave_is_running {
 
 sub has_slave_updates {
    my ( $self, $dbh ) = @_;
-   my $sql = q{SHOW VARIABLES LIKE 'log_slave_updates'};
+   my $variable = $self->_uses_mysql84_replica_terms($dbh)
+      ? 'log_replica_updates'
+      : 'log_slave_updates';
+   my $sql = "SHOW VARIABLES LIKE '$variable'";
    PTDEBUG && _d($dbh, $sql);
    my ($name, $value) = $dbh->selectrow_array($sql);
    return $value && $value =~ m/^(1|ON)$/;
@@ -4845,7 +4906,10 @@ sub get_replication_filters {
          replicate_wild_ignore_table
       );
 
-      my $sql = "SHOW VARIABLES LIKE 'slave_skip_errors'";
+      my $skip_errors_variable = $self->_uses_mysql84_replica_terms($dbh)
+         ? 'replica_skip_errors'
+         : 'slave_skip_errors';
+      my $sql = "SHOW VARIABLES LIKE '$skip_errors_variable'";
       PTDEBUG && _d($dbh, $sql);
       my $row = $dbh->selectrow_arrayref($sql);
       $filters{slave_skip_errors} = $row->[1] if $row->[1] && $row->[1] ne 'OFF';

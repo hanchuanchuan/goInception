@@ -43,6 +43,7 @@ var defaultLengthAndDecimal = map[byte]lengthAndDecimal{
 	TypeMediumBlob: {16777215, 0},
 	TypeLongBlob:   {4294967295, 0},
 	TypeJSON:       {4294967295, 0},
+	TypeVector:     {2048, 0},
 	TypeNull:       {0, 0},
 	TypeSet:        {-1, 0},
 	TypeEnum:       {-1, 0},

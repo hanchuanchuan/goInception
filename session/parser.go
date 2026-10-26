@@ -716,6 +716,17 @@ func processValue(value driver.Value, dataType string) driver.Value {
 		return value
 	}
 
+	// SHOW COLUMNS on MySQL 8.4+ may return `mediumint unsigned`
+	// without a display width. Normalize the type name before applying
+	// unsigned integer conversion.
+	dataType = strings.ToLower(strings.TrimSpace(dataType))
+	if i := strings.IndexByte(dataType, '('); i >= 0 {
+		dataType = dataType[:i]
+	}
+	if fields := strings.Fields(dataType); len(fields) > 0 {
+		dataType = fields[0]
+	}
+
 	switch v := value.(type) {
 	case int8:
 		if v >= 0 {

@@ -2136,6 +2136,7 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	s.testAffectedRows(c, 0)
 
 	// 受影响行数: explain计算规则
+	s.realRowCount = true
 	s.mustRunExec(c, `drop table if exists t1,t2;
 			create table t1(id int primary key,c1 int);
 			create table t2(id int primary key,c1 int);
@@ -2145,7 +2146,11 @@ func (s *testSessionIncSuite) TestUpdate(c *C) {
 	config.GetGlobalConfig().Inc.ExplainRule = "first"
 	sql = `update t1 inner join t2 on 1=1 set t1.c1=t2.c1 where 1=1;`
 	s.mustCheck(c, sql)
-	s.testAffectedRows(c, 1)
+	if s.DBVersion >= 80000 {
+		s.testAffectedRows(c, 3)
+	} else {
+		s.testAffectedRows(c, 1)
+	}
 
 	config.GetGlobalConfig().Inc.ExplainRule = "max"
 	s.mustCheck(c, sql)
@@ -2353,7 +2358,11 @@ WHERE tt1.id=1;`
 	// 检查转义符
 	sql = `update t1 set c1 = c1 +10 where c2 like '%\_a%';`
 	s.mustCheck(c, sql)
-	s.testAffectedRows(c, 2)
+	if s.DBVersion >= 80000 {
+		s.testAffectedRows(c, 0)
+	} else {
+		s.testAffectedRows(c, 2)
+	}
 }
 
 func (s *testSessionIncSuite) TestDelete(c *C) {
@@ -3140,32 +3149,32 @@ func (s *testSessionIncSuite) TestIdentifierLower(c *C) {
 func (s *testSessionIncSuite) TestMaxKeys(c *C) {
 	//er_too_many_keys
 	config.GetGlobalConfig().Inc.MaxKeys = 2
-	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(name);"
+	sql = "drop table if exists t1; create table t1(id int primary key,col_name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(col_name);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_MANY_KEYS, "t1", 2))
 
 	config.GetGlobalConfig().Inc.MaxKeys = 3
-	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(name);"
+	sql = "drop table if exists t1; create table t1(id int primary key,col_name varchar(10),age varchar(10));alter table t1 add index idx_test(id),add index idx_test2(col_name);"
 	s.testErrorCode(c, sql)
 
 	//er_too_many_key_parts
 	config.GetGlobalConfig().Inc.MaxKeyParts = 2
-	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id,name,age);"
+	sql = "drop table if exists t1; create table t1(id int primary key,col_name varchar(10),age varchar(10));alter table t1 add index idx_test(id,col_name,age);"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_TOO_MANY_KEY_PARTS, "idx_test", "t1", 2))
 
 	config.GetGlobalConfig().Inc.MaxKeyParts = 3
-	sql = "drop table if exists t1; create table t1(id int primary key,name varchar(10),age varchar(10));alter table t1 add index idx_test(id,name,age);"
+	sql = "drop table if exists t1; create table t1(id int primary key,col_name varchar(10),age varchar(10));alter table t1 add index idx_test(id,col_name,age);"
 	s.testErrorCode(c, sql)
 
 	//er_pk_too_many_parts
 	config.GetGlobalConfig().Inc.MaxPrimaryKeyParts = 2
-	sql = "drop table if exists t1; create table t1(id int,name varchar(10),age varchar(10),primary key(id,name,age));"
+	sql = "drop table if exists t1; create table t1(id int,col_name varchar(10),age varchar(10),primary key(id,col_name,age));"
 	s.testErrorCode(c, sql,
 		session.NewErr(session.ER_PK_TOO_MANY_PARTS, "test_inc", "t1", 2))
 
 	config.GetGlobalConfig().Inc.MaxPrimaryKeyParts = 3
-	sql = "drop table if exists t1; create table t1(id int,name varchar(10),age varchar(10),primary key(id,name));"
+	sql = "drop table if exists t1; create table t1(id int,col_name varchar(10),age varchar(10),primary key(id,col_name));"
 	s.testErrorCode(c, sql)
 }
 

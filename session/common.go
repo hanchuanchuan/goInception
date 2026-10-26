@@ -299,6 +299,7 @@ type TableInfo struct {
 	TableSize uint
 
 	// 字符集&排序规则
+	Charset   string
 	Collation string
 
 	// 有效列数，移除已删除列和生成列
@@ -396,6 +397,7 @@ func (t *TableInfo) copy() *TableInfo {
 	p.AsName = t.AsName
 	p.AlterCount = t.AlterCount
 	p.TableSize = t.TableSize
+	p.Charset = t.Charset
 	p.Collation = t.Collation
 
 	p.Fields = make([]FieldInfo, len(t.Fields))
@@ -477,6 +479,12 @@ func (f *FieldInfo) getDataBytes(dbVersion int, defaultCharset string) int {
 		return 1<<24 - 1
 	case "longblob", "longtext":
 		return 1<<32 - 1
+	case "vector":
+		length := GetDataTypeLength(f.Type)
+		if length[0] > 0 {
+			return length[0] * 4
+		}
+		return -1
 	// case "tinyblob", "tinytext", "blob", "text", "mediumblob", "mediumtext",
 	// 	"longblob", "longtext":
 	// 	// strings length depend on it's values
@@ -525,6 +533,11 @@ func (f *FieldInfo) getDataLength(dbVersion int, defaultCharset string) int {
 		// 二进制不限长度
 	case "binary", "varbinary", "tinyblob", "blob", "mediumblob", "longblob":
 		return length
+	case "vector":
+		if length > 0 {
+			return length * 4
+		}
+		return 0
 
 	// 	// strings length depend on it's values
 	// 	// 这些字段为不定长字段，添加索引时必须指定前缀，索引前缀与字符集相关

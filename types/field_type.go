@@ -227,8 +227,9 @@ func (ft *FieldType) CompactStr() string {
 		}
 	case mysql.TypeNewDecimal:
 		suffix = fmt.Sprintf("(%d,%d)", displayFlen, displayDecimal)
-	case mysql.TypeBit, mysql.TypeShort, mysql.TypeTiny, mysql.TypeInt24, mysql.TypeLong, mysql.TypeLonglong, mysql.TypeVarchar, mysql.TypeString, mysql.TypeVarString:
-		// Flen is always shown.
+	case mysql.TypeBit, mysql.TypeShort, mysql.TypeTiny, mysql.TypeInt24, mysql.TypeLong, mysql.TypeLonglong, mysql.TypeVarchar, mysql.TypeString, mysql.TypeVarString, mysql.TypeVector:
+		// Flen is always shown for these types. For VECTOR, Flen is the
+		// dimensionality supplied by the MySQL DDL.
 		suffix = fmt.Sprintf("(%d)", displayFlen)
 	}
 	return ts + suffix

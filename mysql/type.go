@@ -33,6 +33,8 @@ const (
 	TypeNewDate  byte = 14
 	TypeVarchar  byte = 15
 	TypeBit      byte = 16
+	// TypeVector is MySQL 9.x VECTOR data type (protocol type 0xf2).
+	TypeVector byte = 0xf2
 
 	TypeJSON       byte = 0xf5
 	TypeNewDecimal byte = 0xf6

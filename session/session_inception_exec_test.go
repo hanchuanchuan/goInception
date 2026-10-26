@@ -929,11 +929,14 @@ func (s *testSessionIncExecSuite) TestTableCharsetCollation(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
+	s.skipIfPtOSCUnavailable(c)
 	saved := config.GetGlobalConfig().Inc
 	savedOsc := config.GetGlobalConfig().Osc
+	savedGhost := config.GetGlobalConfig().Ghost
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 		config.GetGlobalConfig().Osc = savedOsc
+		config.GetGlobalConfig().Ghost = savedGhost
 	}()
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
@@ -972,9 +975,11 @@ func (s *testSessionIncExecSuite) TestAlterTablePtOSC(c *C) {
 func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 	saved := config.GetGlobalConfig().Inc
 	savedOsc := config.GetGlobalConfig().Osc
+	savedGhost := config.GetGlobalConfig().Ghost
 	defer func() {
 		config.GetGlobalConfig().Inc = saved
 		config.GetGlobalConfig().Osc = savedOsc
+		config.GetGlobalConfig().Ghost = savedGhost
 	}()
 
 	config.GetGlobalConfig().Inc.CheckColumnComment = false
@@ -982,6 +987,9 @@ func (s *testSessionIncExecSuite) TestAlterTableGhost(c *C) {
 	config.GetGlobalConfig().Inc.EnableDropTable = true
 	config.GetGlobalConfig().Osc.OscOn = false
 	config.GetGlobalConfig().Ghost.GhostOn = true
+	config.GetGlobalConfig().Ghost.GhostInitiallyDropSocketFile = true
+	config.GetGlobalConfig().Ghost.GhostInitiallyDropGhostTable = true
+	config.GetGlobalConfig().Ghost.GhostInitiallyDropOldTable = true
 	config.GetGlobalConfig().Osc.OscMinTableSize = 0
 
 	sql := "drop table if exists t1;create table t1(id int auto_increment primary key,c1 int);"
@@ -1115,6 +1123,7 @@ func (s *testSessionIncExecSuite) TestExecAnyStatement(c *C) {
 }
 
 func (s *testSessionIncExecSuite) TestMaxExecutionTime(c *C) {
+	s.skipIfPtOSCUnavailable(c)
 	saved := config.GetGlobalConfig().Inc
 	savedOsc := config.GetGlobalConfig().Osc
 	defer func() {

@@ -244,6 +244,7 @@ var tokenMap = map[string]int{
 	"DIV":                      div,
 	"DO":                       do,
 	"DOUBLE":                   doubleType,
+	"VECTOR":                   vectorType,
 	"DROP":                     drop,
 	"DUAL":                     dual,
 	"DUPLICATE":                duplicate,

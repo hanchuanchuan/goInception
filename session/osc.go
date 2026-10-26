@@ -34,15 +34,14 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/hanchuanchuan/goInception/ast"
 	"github.com/hanchuanchuan/goInception/format"
 	"github.com/hanchuanchuan/goInception/util"
 	"github.com/hanchuanchuan/goInception/util/auth"
 
-	"github.com/hanchuanchuan/gh-ost/go/base"
-	"github.com/hanchuanchuan/gh-ost/go/logic"
+	"github.com/github/gh-ost/go/base"
+	"github.com/github/gh-ost/go/logic"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -313,6 +312,9 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 
 	// unix socket file max 104 characters (or 107)
 	socketFile := s.getSocketFile(r)
+	if s.ghost.GhostInitiallyDropSocketFile {
+		_ = os.Remove(socketFile)
+	}
 	if !s.ghost.GhostInitiallyDropSocketFile {
 		if _, err := os.Stat(socketFile); err == nil {
 			s.appendErrorMsg("listen unix socket file already in use, need to clean up manually")
@@ -384,6 +386,10 @@ func (s *session) mysqlExecuteWithGhost(r *Record) {
 
 func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	migrationContext := base.NewMigrationContext()
+	if err := migrationContext.SetConnectionConfig("innodb"); err != nil {
+		s.appendErrorMsg(err.Error())
+		return
+	}
 	// flag.StringVar(&migrationContext.InspectorConnectionConfig.Key.Hostname, "host", "127.0.0.1", "MySQL hostname (preferably a replica, not the master)")
 	migrationContext.InspectorConnectionConfig.Key.Hostname = s.opt.Host
 	// flag.StringVar(&migrationContext.AssumeMasterHostname, "assume-master-host", "", "(optional) explicitly tell gh-ost the identity of the master. Format: some.host.com[:port] This is useful in master-master setups where you wish to pick an explicit master, or in a tungsten-replicator where gh-ost is unable to determine the master")
@@ -643,6 +649,9 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	if migrationContext.ServeSocketFile == "" {
 		// unix socket file max 104 characters (or 107)
 		socketFile := s.getSocketFile(r)
+		if s.ghost.GhostInitiallyDropSocketFile {
+			_ = os.Remove(socketFile)
+		}
 		if _, err := os.Stat(socketFile); err == nil {
 			s.appendErrorMsg("listen unix socket file already in use, need to clean up manually")
 			return
@@ -653,6 +662,7 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		}
 		migrationContext.ServeSocketFile = socketFile
 	}
+	defer os.Remove(migrationContext.ServeSocketFile)
 
 	migrationContext.SetHeartbeatIntervalMilliseconds(heartbeatIntervalMillis)
 	migrationContext.SetNiceRatio(niceRatio)
@@ -661,6 +671,10 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	migrationContext.SetMaxLagMillisecondsThrottleThreshold(maxLagMillis)
 	migrationContext.SetThrottleQuery(throttleQuery)
 	migrationContext.SetThrottleHTTP(throttleHTTP)
+	// gh-ost's CLI initializes these HTTP throttle defaults; embedded use
+	// must do the same even when no throttle URL is configured.
+	migrationContext.ThrottleHTTPIntervalMillis = 100
+	migrationContext.ThrottleHTTPTimeoutMillis = 1000
 	migrationContext.SetDefaultNumRetries(defaultRetries)
 	migrationContext.ApplyCredentials()
 	if err := migrationContext.SetupTLS(); err != nil {
@@ -702,42 +716,13 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 	// }()
 
 	buf := bytes.NewBufferString("")
-	migrator := logic.NewMigrator(migrationContext)
+	// gh-ost 1.1.8 writes through MigrationContext.Log rather than exposing
+	// a Migrator.Log buffer. Capture that logger output for the existing
+	// progress and error handling below.
+	migrationContext.Log = &ghostLogger{writer: buf}
+	migrator := logic.NewMigrator(migrationContext, "goinception")
 
 	stop := make(chan bool)
-
-	// log.Errorf("start runtime.NumGoroutine: %v", runtime.NumGoroutine())
-
-	//实时循环读取输出流中的一行内容
-	f := func(reader *bufio.Reader) {
-		statusTick := time.NewTicker(500 * time.Millisecond)
-	FOR:
-		for {
-			<-statusTick.C
-
-			select {
-			case <-stop:
-				break FOR
-			default:
-				line, err2 := reader.ReadString('\n')
-				if err2 != nil || io.EOF == err2 || line == "" {
-					// 此处不要中止for循环，仅跳过当次循环
-					continue
-				}
-				buf.WriteString(line)
-				buf.WriteString("\n")
-				if ok := s.mysqlAnalyzeGhostOutput(line, p); ok {
-					statusTick.Stop()
-					break FOR
-				}
-			}
-		}
-
-		// log.Error("end reader -------")
-		// log.Errorf("defer runtime.NumGoroutine: %v", runtime.NumGoroutine())
-	}
-
-	migrator.Log = bytes.NewBufferString("")
 
 	// 监听Kill操作
 	go func() {
@@ -768,11 +753,16 @@ func (s *session) mysqlExecuteAlterTableGhost(r *Record) {
 		// log.Error("end panic -------")
 		// log.Errorf("defer runtime.NumGoroutine: %v", runtime.NumGoroutine())
 	}()
-	go f(bufio.NewReader(migrator.Log))
-
 	if err := migrator.Migrate(); err != nil {
 		log.Error(err)
 		s.appendErrorMsg(err.Error())
+	}
+	// The current gh-ost logger writes directly to buf. Replay its output
+	// through the existing progress parser after migration completes.
+	for _, line := range strings.Split(buf.String(), "\n") {
+		if line != "" {
+			s.mysqlAnalyzeGhostOutput(line, p)
+		}
 	}
 
 	s.sessionManager.OscLock()

@@ -140,6 +140,7 @@ var type2Str = map[byte]string{
 	mysql.TypeTinyBlob:   "tinytext",
 	mysql.TypeVarchar:    "varchar",
 	mysql.TypeVarString:  "var_string",
+	mysql.TypeVector:     "vector",
 	mysql.TypeYear:       "year",
 }
 
@@ -179,6 +180,7 @@ func KindStr(kind byte) (r string) {
 // It is used for converting Text to Blob,
 // or converting Char to Binary.
 // Args:
+//
 //	tp: type enum
 //	cs: charset
 func TypeToStr(tp byte, cs string) (r string) {

@@ -226,7 +226,7 @@ func (s *testSessionIncTranSuite) TestUpdate(c *C) {
 	res := s.mustRunBackupTran(c, "update t1 set c1=10 where id = 1;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		"UPDATE `test_inc`.`t1` SET `id`=1, `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;
@@ -235,7 +235,7 @@ func (s *testSessionIncTranSuite) TestUpdate(c *C) {
 	res = s.mustRunBackupTran(c, "update t1 set id=id+2 where id > 0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		strings.Join([]string{
 			"UPDATE `test_inc`.`t1` SET `id`=1, `c1`=1 WHERE `id`=3;",
 			"UPDATE `test_inc`.`t1` SET `id`=2, `c1`=2 WHERE `id`=4;",
@@ -257,7 +257,7 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 	res := s.mustRunBackupTran(c, "update t1 set c1=10 where id = 1;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1 AND `c1`=10;", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;
         create table t1(id int primary key,c1 int);
@@ -266,7 +266,7 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 	res = s.mustRunBackupTran(c, "update t1 set c1=10 where id > 0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		strings.Join([]string{
 			"UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1;",
 			"UPDATE `test_inc`.`t1` SET `c1`=2 WHERE `id`=2;",
@@ -279,7 +279,7 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 	res = s.mustRunBackupTran(c, "update t1 set c1=2 where id > 0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		"UPDATE `test_inc`.`t1` SET `c1`=1 WHERE `id`=1;", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;
@@ -289,7 +289,7 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 	res = s.mustRunBackupTran(c, "update t1 set c1=130,c2='aa' where id > 0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		strings.Join([]string{
 			"UPDATE `test_inc`.`t1` SET `c1`=127, `c2`='t1' WHERE `id`=1;",
 			"UPDATE `test_inc`.`t1` SET `c2`='t2' WHERE `id`=2;",
@@ -302,7 +302,7 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 	res = s.mustRunBackupTran(c, "update t1 set c1=130,c2='aa' where id > 0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		strings.Join([]string{
 			"UPDATE `test_inc`.`t1` SET `c1`=127, `c2`='t1' WHERE `id`=1 AND `c1`=130 AND `c2`='aa';",
 			"UPDATE `test_inc`.`t1` SET `c2`='t2' WHERE `id`=2 AND `c1`=130 AND `c2`='aa';",
@@ -314,7 +314,7 @@ func (s *testSessionIncTranSuite) TestMinimalUpdate(c *C) {
 	res = s.mustRunBackupTran(c, "update t1 set id=id+2 where id > 0;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		strings.Join([]string{
 			"UPDATE `test_inc`.`t1` SET `id`=1 WHERE `id`=3;",
 			"UPDATE `test_inc`.`t1` SET `id`=2 WHERE `id`=4;",
@@ -333,7 +333,7 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 	res := s.mustRunBackupTran(c, "delete from t1 where id <= 2;")
 	row := res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup := s.query("t1", row[7].(string))
-	c.Assert(backup, Equals,
+	s.assertBackup(c, backup,
 		strings.Join([]string{
 			"INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1);",
 			"INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(2,2);",
@@ -343,7 +343,7 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'\x01\x02\x03');", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'\x01\x02\x03');", Commentf("%v", res.Rows()))
 
 	if s.DBVersion >= 50708 {
 		s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 json);
@@ -351,13 +351,13 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 		res = s.mustRunBackupTran(c, "delete from t1;")
 		row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
-		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
+		s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
 
 		s.mustRunBackupTran(c, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');")
 		res = s.mustRunBackupTran(c, "delete from t1;")
 		row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
-		c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
+		s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'{\\\"result\\\":\\\"fail\\\",\\\"time\\\":\\\"2015-01-01 13:00:00\\\"}');", Commentf("%v", res.Rows()))
 	}
 
 	s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 enum('type1','type2','type3','type4'));
@@ -365,47 +365,47 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2);")
 
 	s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 bit);
     insert into t1 values(1,1);`)
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1);", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1);", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 decimal(10,2));
     insert into t1 values(1,1.11);`)
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11);", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11);", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 double);
     insert into t1 values(1,1.11e100);`)
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,1.11e+100);")
 
 	s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 date);
     insert into t1 values(1,'2019-1-1');`)
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'2019-01-01');", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'2019-01-01');", Commentf("%v", res.Rows()))
 
 	if s.DBVersion >= 50700 {
 		s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 timestamp);
@@ -414,7 +414,7 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 		row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 		backup = s.query("t1", row[7].(string))
 		if s.explicitDefaultsForTimestamp {
-			c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
+			s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,NULL);", Commentf("%v", res.Rows()))
 		} else {
 			v := strings.HasPrefix(backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'20")
 			c.Assert(v, Equals, true, Commentf("%v", res.Rows()))
@@ -426,14 +426,14 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'00:01:01');", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'00:01:01');", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;create table t1(id int primary key,c1 year);
     insert into t1 values(1,2019);`)
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2019);", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,2019);", Commentf("%v", res.Rows()))
 
 	s.mustRunBackupTran(c, `drop table if exists t1;
     create table t1(id int primary key,c1 varchar(100))default character set utf8mb4;
@@ -441,7 +441,7 @@ func (s *testSessionIncTranSuite) TestDelete(c *C) {
 	res = s.mustRunBackupTran(c, "delete from t1;")
 	row = res.Rows()[int(s.tk.Se.AffectedRows())-1]
 	backup = s.query("t1", row[7].(string))
-	c.Assert(backup, Equals, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'😁😄🙂👩');", Commentf("%v", res.Rows()))
+	s.assertBackup(c, backup, "INSERT INTO `test_inc`.`t1`(`id`,`c1`) VALUES(1,'😁😄🙂👩');", Commentf("%v", res.Rows()))
 
 }
 

@@ -39,6 +39,25 @@ var _ = Suite(&testParserSuite{})
 type testParserSuite struct {
 }
 
+func (s *testParserSuite) TestMySQL9Syntax(c *C) {
+	stmts, _, err := New().Parse("SHOW BINARY LOG STATUS", "", "")
+	c.Assert(err, IsNil)
+	c.Assert(stmts, HasLen, 1)
+	show, ok := stmts[0].(*ast.ShowStmt)
+	c.Assert(ok, IsTrue)
+	c.Assert(show.Tp, Equals, ast.ShowStmtType(ast.ShowMasterStatus))
+	c.Assert(show.ShowBinaryLogStatus, IsTrue)
+
+	stmts, _, err = New().Parse("CREATE TABLE t (v VECTOR(3))", "", "")
+	c.Assert(err, IsNil)
+	c.Assert(stmts, HasLen, 1)
+	create, ok := stmts[0].(*ast.CreateTableStmt)
+	c.Assert(ok, IsTrue)
+	c.Assert(create.Cols, HasLen, 1)
+	c.Assert(create.Cols[0].Tp.Tp, Equals, mysql.TypeVector)
+	c.Assert(create.Cols[0].Tp.Flen, Equals, 3)
+}
+
 func (s *testParserSuite) TestSimple(c *C) {
 	defer testleak.AfterTest(c)()
 	parser := New()
@@ -674,6 +693,7 @@ func (s *testParserSuite) TestDBAStmt(c *C) {
 		// {`SHOW PROFILE CPU FOR QUERY 2 LIMIT 1,1`, true, "SHOW PROFILE CPU FOR QUERY 2 LIMIT 1,1"},
 		// {`SHOW PROFILE CPU, MEMORY, BLOCK IO, CONTEXT SWITCHES, PAGE FAULTS, IPC, SWAPS, SOURCE FOR QUERY 1 limit 100`, true, "SHOW PROFILE CPU, MEMORY, BLOCK IO, CONTEXT SWITCHES, PAGE FAULTS, IPC, SWAPS, SOURCE FOR QUERY 1 LIMIT 100"},
 		{`SHOW MASTER STATUS`, true, "SHOW MASTER STATUS"},
+		{`SHOW BINARY LOG STATUS`, true, "SHOW BINARY LOG STATUS"},
 		{`SHOW PRIVILEGES`, true, "SHOW PRIVILEGES"},
 		// for show character set
 		{"show character set;", true, "SHOW CHARSET"},

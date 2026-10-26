@@ -1648,7 +1648,7 @@ func (s *session) executeRemoteStatementAndBackup(record *Record) {
 func (s *session) mysqlFetchMasterBinlogPosition() *MasterStatus {
 	log.Debug("mysqlFetchMasterBinlogPosition")
 
-	sql := "SHOW MASTER STATUS;"
+	sql := binlogStatusQuery(s.dbType, s.dbVersion)
 	if s.isMiddleware() {
 		sql = s.opt.middlewareExtend + sql
 	}
@@ -1777,17 +1777,11 @@ func (s *session) mysqlServerVersion() {
 					s.dbType = DBTypeMysql
 				}
 
-				versionStr := strings.Split(value, "-")[0]
-				versionSeg := strings.Split(versionStr, ".")
-				if len(versionSeg) == 3 {
-					versionStr = fmt.Sprintf("%s%02s%02s", versionSeg[0], versionSeg[1], versionSeg[2])
-					version, err := strconv.Atoi(versionStr)
-					if err != nil {
-						s.appendErrorMsg(err.Error())
-					}
-					s.dbVersion = version
+				version, versionErr := ParseMySQLVersion(value)
+				if versionErr != nil {
+					s.appendErrorMsg(versionErr.Error())
 				} else {
-					s.appendErrorMsg(fmt.Sprintf("无法解析版本号:%s", value))
+					s.dbVersion = version
 				}
 				log.Debug("db version: ", s.dbVersion)
 			case "version_comment":
@@ -3262,6 +3256,7 @@ func (s *session) buildTableInfo(node *ast.CreateTableStmt) *TableInfo {
 
 	s.checkTableCharsetCollation(character, collation)
 
+	table.Charset = character
 	if collation != "" {
 		table.Collation = collation
 	}
@@ -4314,22 +4309,14 @@ func (s *session) checkModifyColumn(t *TableInfo, c *ast.AlterTableSpec) {
 			switch nc.Tp.Tp {
 			case mysql.TypeDecimal, mysql.TypeNewDecimal,
 				mysql.TypeVarchar,
-				mysql.TypeVarString:
-				str := string([]byte(foundField.Type)[:7])
-				// 类型不一致
-				if !strings.Contains(fieldType, str) {
-					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
-						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-						foundField.Type, fieldType)
-				} else if GetDataTypeLength(fieldType)[0] < GetDataTypeLength(foundField.Type)[0] {
-					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
-						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
-						foundField.Type, fieldType)
-				}
-			case mysql.TypeString:
-				str := string([]byte(foundField.Type)[:4])
-				// 类型不一致
-				if !strings.Contains(fieldType, str) {
+				mysql.TypeVarString,
+				mysql.TypeString:
+				oldType := GetDataTypeBase(foundField.Type)
+				newType := GetDataTypeBase(fieldType)
+				// Compare normalized type names instead of slicing a fixed
+				// number of bytes. MySQL 8.4 returns `int` rather than
+				// legacy `int(11)` metadata.
+				if !strings.EqualFold(newType, oldType) {
 					s.appendErrorNo(ER_CHANGE_COLUMN_TYPE,
 						fmt.Sprintf("%s.%s", t.Name, nc.Name.Name),
 						foundField.Type, fieldType)
@@ -5375,7 +5362,14 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 				s.appendErrorNo(ER_BLOB_USED_AS_KEY, foundField.Field)
 			}
 
-			columnIndexLength := foundField.getDataBytes(s.dbVersion, s.databaseCharset)
+			defaultCharset := s.databaseCharset
+			if t.Charset != "" {
+				defaultCharset = t.Charset
+			}
+			if t.Collation != "" {
+				defaultCharset = strings.SplitN(t.Collation, "_", 2)[0]
+			}
+			columnIndexLength := foundField.getDataBytes(s.dbVersion, defaultCharset)
 
 			// Length must be specified for BLOB and TEXT column indexes.
 			// if types.IsTypeBlob(col.FieldType.Tp) && ic.Length == types.UnspecifiedLength {
@@ -5402,10 +5396,17 @@ func (s *session) checkCreateIndex(table *ast.TableName, IndexName string,
 			if col.Length == types.UnspecifiedLength {
 				keyMaxLen += columnIndexLength
 			} else {
+				fieldCollation := foundField.Collation
+				if fieldCollation == "" {
+					fieldCollation = t.Collation
+					if fieldCollation == "" {
+						fieldCollation = t.Charset
+					}
+				}
 				tmpField := &FieldInfo{
 					Field:     foundField.Field,
 					Type:      fmt.Sprintf("%s(%d)", GetDataTypeBase(foundField.Type), col.Length),
-					Collation: foundField.Collation,
+					Collation: fieldCollation,
 				}
 
 				columnIndexLength = tmpField.getDataLength(s.dbVersion, s.databaseCharset)
@@ -8585,8 +8586,11 @@ func (s *session) buildNewColumnToCache(t *TableInfo, field *ast.ColumnDef) *Fie
 		}
 	}
 
-	if c.Collation == "" && t.Collation != "" {
-		// 字符串类型才需要排序规则
+	if c.Collation == "" && (t.Collation != "" || t.Charset != "") {
+		// 字符串类型才需要排序规则/字符集
+		if t.Collation == "" {
+			c.Collation = t.Charset
+		}
 		switch GetDataTypeBase(c.Type) {
 		case "char", "binary", "varchar", "varbinary", "enum", "set",
 			"geometry", "point", "linestring", "polygon",

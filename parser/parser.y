@@ -118,6 +118,7 @@ import (
 	distinctRow       "DISTINCTROW"
 	div               "DIV"
 	doubleType        "DOUBLE"
+	vectorType        "VECTOR"
 	drop              "DROP"
 	dual              "DUAL"
 	elseKwd           "ELSE"
@@ -891,6 +892,7 @@ import (
 	InOrNotOp                     "In predicate"
 	LikeOrNotOp                   "Like predicate"
 	RegexpOrNotOp                 "Regexp predicate"
+	VectorType                    "VECTOR type"
 	NumericType                   "Numeric types"
 	IntegerType                   "Integer Types types"
 	BooleanType                   "Boolean Types types"
@@ -7184,6 +7186,17 @@ ShowStmt:
 			Tp: ast.ShowMasterStatus,
 		}
 	}
+|	"SHOW" "BINARY" identifier "STATUS"
+	{
+		if !strings.EqualFold($3, "log") {
+			yylex.AppendError(fmt.Errorf("expected LOG in SHOW BINARY LOG STATUS"))
+			return 1
+		}
+		$$ = &ast.ShowStmt{
+			Tp:                 ast.ShowMasterStatus,
+			ShowBinaryLogStatus: true,
+		}
+	}
 |	"SHOW" OptFull "PROCESSLIST"
 	{
 		$$ = &ast.ShowStmt{
@@ -7852,7 +7865,11 @@ RowFormat:
 
 /*************************************Type Begin***************************************/
 Type:
-	NumericType
+	VectorType
+	{
+		$$ = $1
+	}
+|	NumericType
 	{
 		$$ = $1
 	}
@@ -7863,6 +7880,17 @@ Type:
 |	DateAndTimeType
 	{
 		$$ = $1
+	}
+
+VectorType:
+	"VECTOR" OptFieldLen
+	{
+		x := types.NewFieldType(mysql.TypeVector)
+		x.Flen = $2.(int)
+		if x.Flen == types.UnspecifiedLength {
+			x.Flen = 2048
+		}
+		$$ = x
 	}
 
 NumericType:

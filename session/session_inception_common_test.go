@@ -17,7 +17,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -542,6 +546,17 @@ inception_magic_commit;`
 	return res
 }
 
+func (s *testCommon) skipIfPtOSCUnavailable(c *C) {
+	binDir := config.GetGlobalConfig().Osc.OscBinDir
+	candidate := filepath.Join(binDir, "pt-online-schema-change")
+	if _, err := os.Stat(candidate); err != nil {
+		c.Skip("pt-online-schema-change is not installed")
+	}
+	if err := exec.Command(candidate, "--version").Run(); err != nil {
+		c.Skip(fmt.Sprintf("pt-online-schema-change is not runnable: %v", err))
+	}
+}
+
 func (s *testCommon) getAddr() string {
 	if s.dbAddr != "" {
 		return s.dbAddr
@@ -629,6 +644,30 @@ func (s *testCommon) mysqlServerVersion() error {
 		}
 	}
 	return nil
+}
+
+var mysqlIntegerDisplayWidth = regexp.MustCompile(`(?i)\b(tinyint|smallint|mediumint|int|bigint)\([0-9]+\)`)
+
+func (s *testCommon) normalizeMySQL8SQL(value string) string {
+	if s.DBVersion >= 80000 {
+		return mysqlIntegerDisplayWidth.ReplaceAllString(value, "$1")
+	}
+	return value
+}
+
+func (s *testCommon) assertVersionedEqual(c *C, got, want interface{}, args ...interface{}) {
+	gotString, gotOK := got.(string)
+	wantString, wantOK := want.(string)
+	if gotOK && wantOK {
+		got = s.normalizeMySQL8SQL(gotString)
+		want = s.normalizeMySQL8SQL(wantString)
+	}
+	assertArgs := append([]interface{}{want}, args...)
+	c.Assert(got, Equals, assertArgs...)
+}
+
+func (s *testCommon) assertBackup(c *C, got, want string, args ...interface{}) {
+	s.assertVersionedEqual(c, got, want, args...)
 }
 
 func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...string) error {
@@ -773,7 +812,7 @@ func (s *testCommon) assertRows(c *C, rows [][]interface{}, rollbackSqls ...stri
 	}
 
 	for i := range result {
-		c.Assert(result[i], Equals, rollbackSqls[i], Commentf("%v", result))
+		s.assertBackup(c, result[i], rollbackSqls[i], Commentf("%v", result))
 	}
 
 	return nil
